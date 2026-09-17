@@ -20,6 +20,7 @@ export function PaymentForm({ onSubmit, isLoading }: PaymentFormProps) {
   const form = useForm<PaymentFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(paymentSchema) as any,
+    mode: 'onTouched',
     defaultValues: {
       channel: 'Transferencia con comprobante',
       operationNumber: '',

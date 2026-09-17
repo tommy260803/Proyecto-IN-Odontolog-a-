@@ -29,6 +29,7 @@ export function BuyerForm({ initialValues, onSubmit, isLoading, isEdit, formId =
   const form = useForm<BuyerFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(buyerSchema) as any,
+    mode: 'onTouched',
     defaultValues: {
       firstName: initialValues?.firstName || '',
       lastName: initialValues?.lastName || '',

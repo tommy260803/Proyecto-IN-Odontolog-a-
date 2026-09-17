@@ -20,6 +20,7 @@ export function DentalAttentionForm({ initialValues, onSubmit, isLoading, disabl
   const form = useForm<DentalAttentionFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(dentalAttentionSchema) as any,
+    mode: 'onTouched',
     defaultValues: {
       reasonForConsultation: initialValues?.reasonForConsultation || '',
       relevantBackground: initialValues?.relevantBackground || '',

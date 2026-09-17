@@ -59,6 +59,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
 
   const [isConvertOpen, setIsConvertOpen] = useState(false);
   const [incidentReason, setIncidentReason] = useState('');
+  const [incidentError, setIncidentError] = useState('');
   const [isIncidentOpen, setIsIncidentOpen] = useState(false);
 
   if (!isOpen || !customerId) return null;
@@ -110,7 +111,12 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
   };
 
   const handleRegisterIncident = () => {
-    if (!customer || incidentReason.length < 10) return;
+    if (!customer) return;
+    if (incidentReason.trim().length < 10) {
+      setIncidentError('El motivo de la incidencia debe contener al menos 10 caracteres');
+      return;
+    }
+    setIncidentError('');
     registerIncident.mutate({ id: customer.id, reason: incidentReason }, {
       onSuccess: () => {
         toast({ title: 'Incidencia Registrada', description: 'Se guardó el reporte de soporte.' });
@@ -372,20 +378,34 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
 
         <ConfirmationDialog
           isOpen={isIncidentOpen}
-          onClose={() => setIsIncidentOpen(false)}
+          onClose={() => {
+            setIsIncidentOpen(false);
+            setIncidentError('');
+          }}
           onConfirm={handleRegisterIncident}
           title="Registrar Incidencia de Soporte"
           description="Reporta cualquier eventualidad técnica u operativa ocurrida durante la atención."
           confirmText="Registrar Incidencia"
           variant="destructive"
         >
-          <div className="pt-3">
+          <div className="pt-3 space-y-1.5">
             <Input 
               placeholder="Motivo de la incidencia (mín. 10 caracteres)" 
               value={incidentReason}
-              onChange={(e) => setIncidentReason(e.target.value)}
-              className="rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs"
+              onChange={(e) => {
+                setIncidentReason(e.target.value);
+                if (incidentError) setIncidentError('');
+              }}
+              className={`rounded-xl bg-slate-50 dark:bg-slate-800 text-xs ${
+                incidentError ? '!border-rose-500 !ring-1 !ring-rose-500 text-rose-900 dark:text-rose-100' : 'border-slate-200 dark:border-slate-700'
+              }`}
             />
+            {incidentError && (
+              <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1.5 animate-in fade-in-50">
+                <span className="inline-block w-1 h-1 rounded-full bg-rose-500 shrink-0" />
+                {incidentError}
+              </p>
+            )}
           </div>
         </ConfirmationDialog>
       </DialogContent>

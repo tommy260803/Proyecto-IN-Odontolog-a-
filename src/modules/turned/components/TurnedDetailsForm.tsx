@@ -19,6 +19,7 @@ export function TurnedDetailsForm({ initialValues, onSubmit, isLoading, formId, 
   const form = useForm<TurnedDetailsFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(turnedDetailsSchema) as any,
+    mode: 'onTouched',
     defaultValues: { 
       finalResult: initialValues.finalResult || '', 
       satisfaction: initialValues.satisfaction || 0,

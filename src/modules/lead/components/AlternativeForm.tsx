@@ -15,6 +15,7 @@ export function AlternativeForm({ onSubmit, isLoading }: AlternativeFormProps) {
   const form = useForm<AlternativeFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(alternativeSchema) as any,
+    mode: 'onTouched',
     defaultValues: {
       service: '',
       professional: '',

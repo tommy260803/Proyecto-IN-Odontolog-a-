@@ -58,8 +58,10 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
 
   const [isConvertOpen, setIsConvertOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [rejectError, setRejectError] = useState('');
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [revertReason, setRevertReason] = useState('');
+  const [revertError, setRevertError] = useState('');
   const [isRevertOpen, setIsRevertOpen] = useState(false);
 
   if (!isOpen || !payerId) return null;
@@ -87,7 +89,12 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
   };
 
   const handleReject = () => {
-    if (!payer || rejectReason.length < 10) return;
+    if (!payer) return;
+    if (rejectReason.trim().length < 10) {
+      setRejectError('El motivo del rechazo debe tener al menos 10 caracteres');
+      return;
+    }
+    setRejectError('');
     rejectPayment.mutate({ id: payer.id, reason: rejectReason }, {
       onSuccess: () => {
         toast({ title: 'Rechazado', description: 'Pago rechazado e incidencia registrada.', variant: 'destructive' });
@@ -100,7 +107,12 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
   };
 
   const handleRevert = () => {
-    if (!payer || revertReason.length < 10) return;
+    if (!payer) return;
+    if (revertReason.trim().length < 10) {
+      setRevertError('El motivo de la reversión debe tener al menos 10 caracteres');
+      return;
+    }
+    setRevertError('');
     revertPayment.mutate({ id: payer.id, reason: revertReason }, {
       onSuccess: () => {
         toast({ title: 'Revertido', description: 'Pago revertido exitosamente.' });
@@ -454,39 +466,67 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
 
         <ConfirmationDialog
           isOpen={isRejectOpen}
-          onClose={() => setIsRejectOpen(false)}
+          onClose={() => {
+            setIsRejectOpen(false);
+            setRejectError('');
+          }}
           onConfirm={handleReject}
           title="Rechazar Pago"
           description="Esta acción marcará el comprobante como inválido y registrará una incidencia. El paciente deberá abonar nuevamente."
           confirmText="Rechazar Pago"
           variant="destructive"
         >
-          <div className="pt-3">
+          <div className="pt-3 space-y-1.5">
             <Input 
               placeholder="Motivo del rechazo (mín. 10 caracteres)" 
               value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              className="rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs"
+              onChange={(e) => {
+                setRejectReason(e.target.value);
+                if (rejectError) setRejectError('');
+              }}
+              className={`rounded-xl bg-slate-50 dark:bg-slate-800 text-xs ${
+                rejectError ? '!border-rose-500 !ring-1 !ring-rose-500 text-rose-900 dark:text-rose-100' : 'border-slate-200 dark:border-slate-700'
+              }`}
             />
+            {rejectError && (
+              <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1.5 animate-in fade-in-50">
+                <span className="inline-block w-1 h-1 rounded-full bg-rose-500 shrink-0" />
+                {rejectError}
+              </p>
+            )}
           </div>
         </ConfirmationDialog>
 
         <ConfirmationDialog
           isOpen={isRevertOpen}
-          onClose={() => setIsRevertOpen(false)}
+          onClose={() => {
+            setIsRevertOpen(false);
+            setRevertError('');
+          }}
           onConfirm={handleRevert}
           title="Revertir Pago Validado"
           description="Advertencia: Revertirá una validación bancaria previa. Esto reabrirá una incidencia para revisión."
           confirmText="Revertir Pago"
           variant="destructive"
         >
-          <div className="pt-3">
+          <div className="pt-3 space-y-1.5">
             <Input 
               placeholder="Motivo de la reversión (mín. 10 caracteres)" 
               value={revertReason}
-              onChange={(e) => setRevertReason(e.target.value)}
-              className="rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs"
+              onChange={(e) => {
+                setRevertReason(e.target.value);
+                if (revertError) setRevertError('');
+              }}
+              className={`rounded-xl bg-slate-50 dark:bg-slate-800 text-xs ${
+                revertError ? '!border-rose-500 !ring-1 !ring-rose-500 text-rose-900 dark:text-rose-100' : 'border-slate-200 dark:border-slate-700'
+              }`}
             />
+            {revertError && (
+              <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1.5 animate-in fade-in-50">
+                <span className="inline-block w-1 h-1 rounded-full bg-rose-500 shrink-0" />
+                {revertError}
+              </p>
+            )}
           </div>
         </ConfirmationDialog>
       </DialogContent>

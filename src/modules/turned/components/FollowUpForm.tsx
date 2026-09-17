@@ -10,6 +10,7 @@ export function FollowUpForm({ onSubmit, isLoading }: { onSubmit: (d: FollowUpFo
   const form = useForm<FollowUpFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(followUpSchema) as any,
+    mode: 'onTouched',
     defaultValues: { channel: '', contactResult: '', observations: '', nextFollowUpDate: '' },
   });
 

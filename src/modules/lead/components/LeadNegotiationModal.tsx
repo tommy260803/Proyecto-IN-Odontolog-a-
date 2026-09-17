@@ -53,6 +53,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const [selectedOpcion, setSelectedOpcion] = useState<number | null>(null);
   const [selectedDisponibilidad, setSelectedDisponibilidad] = useState('');
   const [precioOfrecido, setPrecioOfrecido] = useState('150.00');
+  const [offerErrors, setOfferErrors] = useState<{ disponibilidad?: string; precio?: string }>({});
   const [editingOptionId, setEditingOptionId] = useState<number | null>(null);
   const [editingPrice, setEditingPrice] = useState<string>('');
   const [savingEdit, setSavingEdit] = useState(false);
@@ -81,7 +82,22 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   };
 
   const handleAddAlternative = async () => {
-    if (!selectedDisponibilidad || !leadId) return;
+    const errors: { disponibilidad?: string; precio?: string } = {};
+    if (!selectedDisponibilidad) {
+      errors.disponibilidad = 'Debes seleccionar un turno de disponibilidad de la agenda';
+    }
+    const numPrice = Number(precioOfrecido);
+    if (!precioOfrecido || isNaN(numPrice) || numPrice <= 0) {
+      errors.precio = 'Ingresa una tarifa válida mayor a 0';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setOfferErrors(errors);
+      return;
+    }
+
+    setOfferErrors({});
+    if (!leadId) return;
     setAddingAlternative(true);
     const ultimaSolicitud = lead?.Solicitudes?.[lead.Solicitudes.length - 1];
     try {
@@ -289,9 +305,19 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-[1fr_140px] gap-3">
                     <div className="space-y-1">
-                      <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Disponibilidad en Agenda</Label>
-                      <Select onValueChange={setSelectedDisponibilidad} value={selectedDisponibilidad}>
-                        <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs h-9 rounded-xl">
+                      <Label className={`text-[11px] font-medium ${offerErrors.disponibilidad ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-600 dark:text-slate-400'}`}>
+                        Disponibilidad en Agenda
+                      </Label>
+                      <Select 
+                        onValueChange={(val) => {
+                          setSelectedDisponibilidad(val);
+                          if (offerErrors.disponibilidad) setOfferErrors(prev => ({ ...prev, disponibilidad: undefined }));
+                        }} 
+                        value={selectedDisponibilidad}
+                      >
+                        <SelectTrigger className={`w-full bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs h-9 rounded-xl ${
+                          offerErrors.disponibilidad ? '!border-rose-500 !ring-1 !ring-rose-500' : 'border-slate-200 dark:border-slate-700'
+                        }`}>
                           <SelectValue placeholder="Selecciona un turno libre..." />
                         </SelectTrigger>
                         <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
@@ -302,24 +328,43 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                           ))}
                         </SelectContent>
                       </Select>
+                      {offerErrors.disponibilidad && (
+                        <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1.5 animate-in fade-in-50">
+                          <span className="inline-block w-1 h-1 rounded-full bg-rose-500 shrink-0" />
+                          {offerErrors.disponibilidad}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Tarifa Ofrecida</Label>
+                      <Label className={`text-[11px] font-medium ${offerErrors.precio ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-600 dark:text-slate-400'}`}>
+                        Tarifa Ofrecida
+                      </Label>
                       <div className="relative">
                         <span className="absolute left-2.5 top-2 text-slate-400 text-xs font-semibold">S/</span>
                         <input 
                           type="number" 
-                          className="flex h-9 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-7 pr-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500 font-semibold" 
+                          className={`flex h-9 w-full rounded-xl bg-slate-50 dark:bg-slate-800 pl-7 pr-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 font-semibold ${
+                            offerErrors.precio ? '!border-rose-500 !ring-1 !ring-rose-500 text-rose-900 dark:text-rose-100' : 'border border-slate-200 dark:border-slate-700 focus:ring-teal-500'
+                          }`} 
                           value={precioOfrecido} 
-                          onChange={(e) => setPrecioOfrecido(e.target.value)} 
+                          onChange={(e) => {
+                            setPrecioOfrecido(e.target.value);
+                            if (offerErrors.precio) setOfferErrors(prev => ({ ...prev, precio: undefined }));
+                          }} 
                         />
                       </div>
+                      {offerErrors.precio && (
+                        <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1.5 animate-in fade-in-50">
+                          <span className="inline-block w-1 h-1 rounded-full bg-rose-500 shrink-0" />
+                          {offerErrors.precio}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex justify-end pt-1">
                     <Button 
                       onClick={handleAddAlternative} 
-                      disabled={addingAlternative || !selectedDisponibilidad} 
+                      disabled={addingAlternative} 
                       className="bg-slate-900 dark:bg-teal-600 hover:bg-slate-800 dark:hover:bg-teal-500 text-white rounded-xl text-xs h-8 px-3"
                     >
                       <Plus className="h-3.5 w-3.5 mr-1.5" />

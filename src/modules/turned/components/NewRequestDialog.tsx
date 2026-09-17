@@ -19,6 +19,7 @@ export function NewRequestDialog({ isOpen, onClose, onSubmit, isLoading }: NewRe
   const form = useForm<NewRequestFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(newRequestSchema) as any,
+    mode: 'onTouched',
     defaultValues: { serviceOfInterestId: '', channel: 'Teléfono', contactAuthorization: true, concreteRequest: '' },
   });
 
