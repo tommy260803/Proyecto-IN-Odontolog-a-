@@ -72,12 +72,14 @@ export function PaymentForm({ onSubmit, isLoading }: PaymentFormProps) {
             name="channel"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Canal de Pago</FormLabel>
+                <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300">Canal de Pago</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                    <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl text-xs h-9">
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs">
                     <SelectItem value="Web">Interfaz web</SelectItem>
                     <SelectItem value="Enlace de pago">Enlace de pago</SelectItem>
                     <SelectItem value="Transferencia con comprobante">Transferencia con comprobante</SelectItem>
@@ -93,8 +95,14 @@ export function PaymentForm({ onSubmit, isLoading }: PaymentFormProps) {
             name="operationDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Fecha y Hora</FormLabel>
-                <FormControl><Input type="datetime-local" {...field} /></FormControl>
+                <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300">Fecha y Hora</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="datetime-local" 
+                    {...field} 
+                    className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl text-xs h-9"
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -104,8 +112,14 @@ export function PaymentForm({ onSubmit, isLoading }: PaymentFormProps) {
             name="operationNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Nº de Operación</FormLabel>
-                <FormControl><Input {...field} placeholder="Ej. 123456" /></FormControl>
+                <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nº de Operación</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...field} 
+                    placeholder="Ej. 123456" 
+                    className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl text-xs h-9"
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -115,8 +129,14 @@ export function PaymentForm({ onSubmit, isLoading }: PaymentFormProps) {
             name="observations"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Observaciones</FormLabel>
-                <FormControl><Input {...field} placeholder="Opcional" /></FormControl>
+                <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300">Observaciones</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...field} 
+                    placeholder="Opcional" 
+                    className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl text-xs h-9"
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -124,30 +144,34 @@ export function PaymentForm({ onSubmit, isLoading }: PaymentFormProps) {
         </div>
 
         {channelValue === 'Transferencia con comprobante' && (
-          <div className="border border-dashed p-4 rounded-lg flex flex-col items-center justify-center gap-2">
-            <Upload className="h-6 w-6 text-muted-foreground" />
-            <span className="text-sm font-medium">Subir comprobante simulado</span>
-            <span className="text-xs text-muted-foreground text-center">
+          <div className="border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-4 rounded-xl flex flex-col items-center justify-center gap-2">
+            <Upload className="h-6 w-6 text-slate-400" />
+            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Subir comprobante simulado</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 text-center">
               JPG, PNG o PDF. Max 5MB.<br/>(Solo se guardarán los metadatos)
             </span>
             <Input 
               type="file" 
               accept=".jpg,.jpeg,.png,.pdf" 
-              className="max-w-xs cursor-pointer"
+              className="max-w-xs cursor-pointer text-xs bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
               onChange={handleFileChange} 
             />
-            {fileError && <span className="text-xs text-destructive">{fileError}</span>}
+            {fileError && <span className="text-xs text-rose-600 dark:text-rose-400">{fileError}</span>}
             {receiptMetadataValue && (
-              <span className="text-xs text-success">
-                Archivo listos: {receiptMetadataValue.name}
+              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                Archivo listo: {receiptMetadataValue.name}
               </span>
             )}
           </div>
         )}
 
         <div className="flex justify-end pt-2">
-          <Button type="submit" disabled={isLoading}>
-            Registrar Pago (Enviar a revisión)
+          <Button 
+            type="submit" 
+            disabled={isLoading}
+            className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold h-9 px-4 shadow-sm"
+          >
+            {isLoading ? 'Registrando...' : 'Registrar Pago (Enviar a revisión)'}
           </Button>
         </div>
       </form>
