@@ -1,0 +1,45 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { PrismaClient } from '@prisma/client';
+import buyerRoutes from './routes/buyer.routes';
+import leadRoutes from './routes/lead.routes';
+
+dotenv.config({ override: true });
+
+const app = express();
+const prisma = new PrismaClient();
+const port = process.env.PORT || 3001;
+
+app.use(cors());
+app.use(express.json());
+
+// Registrar rutas
+app.use('/api/buyer', buyerRoutes);
+app.use('/api/lead', leadRoutes);
+
+// Ruta de prueba
+app.get('/api/ping', async (req, res) => {
+  try {
+    // Intenta hacer una consulta muy simple para validar conexión a base de datos
+    await prisma.$queryRaw`SELECT 1 as result`;
+    res.json({ message: 'Pong! Conexión a la base de datos exitosa.', db: 'Connected' });
+  } catch (error) {
+    console.error('Error de conexión a la base de datos:', error);
+    res.status(500).json({ message: 'Error conectando a la base de datos.', error });
+  }
+});
+
+// Ejemplo: Obtener todas las etapas
+app.get('/api/etapas', async (req, res) => {
+  try {
+    const etapas = await prisma.etapas.findMany();
+    res.json(etapas);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener etapas' });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Servidor backend corriendo en http://localhost:${port}`);
+});

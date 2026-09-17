@@ -1,0 +1,409 @@
+datasource db {
+  provider = "sqlserver"
+  url      = env("SQLSERVER_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Etapas {
+  id_etapa       Int            @id @default(autoincrement())
+  nombre         String         @unique @db.VarChar(20)
+  descripcion    String?        @db.VarChar(200)
+  Personas       Personas[]
+  EventosOrigen  EventosEtapa[] @relation("EtapaOrigen")
+  EventosDestino EventosEtapa[] @relation("EtapaDestino")
+}
+
+model Canales {
+  id_canal      Int                   @id @default(autoincrement())
+  nombre        String                @unique @db.VarChar(50)
+  activo        Boolean               @default(true)
+  Preferencias  PersonaPreferencias[]
+  Interacciones Interacciones[]
+  Campanas      Campanas[]
+}
+
+model Fuentes {
+  id_fuente     Int             @id @default(autoincrement())
+  nombre        String          @unique @db.VarChar(100)
+  descripcion   String?         @db.VarChar(200)
+  activo        Boolean         @default(true)
+  Interacciones Interacciones[]
+  Campanas      Campanas[]
+}
+
+model Horarios {
+  id_horario   Int                   @id @default(autoincrement())
+  dia_semana   Int                   @db.TinyInt
+  hora_inicio  DateTime              @db.Time
+  hora_fin     DateTime              @db.Time
+  Preferencias PersonaPreferencias[]
+}
+
+model Modalidades {
+  id_modalidad Int                   @id @default(autoincrement())
+  nombre       String                @unique @db.VarChar(50)
+  Preferencias PersonaPreferencias[]
+}
+
+model Roles {
+  id_rol   Int        @id @default(autoincrement())
+  nombre   String     @unique @db.VarChar(50)
+  Usuarios Usuarios[]
+}
+
+model Usuarios {
+  id_usuario             Int             @id @default(autoincrement())
+  nombres                String          @db.VarChar(50)
+  apellidos              String          @db.VarChar(50)
+  email                  String          @unique @db.VarChar(100)
+  password_hash          String          @db.VarChar(255)
+  id_rol                 Int
+  activo                 Boolean         @default(true)
+  Rol                    Roles           @relation(fields: [id_rol], references: [id_rol], onDelete: NoAction, onUpdate: NoAction)
+  Interacciones          Interacciones[]
+  PagosValidados         Pagos[]         @relation("PagosValidadosPor")
+  Seguimientos           Seguimientos[]
+  EventosEtapa           EventosEtapa[]
+  DecisionesIA           DecisionesIA[]
+  IncidenciasResponsable Incidencias[]   @relation("IncidenciasResponsable")
+}
+
+model Personas {
+  id_persona          Int                   @id @default(autoincrement())
+  nombres             String                @db.VarChar(50)
+  apellidos           String                @db.VarChar(50)
+  dni                 String?               @unique @db.Char(8)
+  email               String?               @db.VarChar(100)
+  numero              String?               @db.VarChar(9)
+  fecha_nacimiento    DateTime?             @db.Date
+  zona                String?               @db.VarChar(100)
+  autoriza_contacto   Boolean               @default(false)
+  fecha_autorizacion  DateTime?             @db.DateTime2
+  id_etapa_actual     Int
+  fecha_registro      DateTime              @default(now()) @db.DateTime2
+  fecha_actualizacion DateTime?             @db.DateTime2
+  Etapa               Etapas                @relation(fields: [id_etapa_actual], references: [id_etapa], onDelete: NoAction, onUpdate: NoAction)
+  DatosAcademicos     DatosAcademicos[]
+  DatosLaborales      DatosLaborales[]
+  Preferencias        PersonaPreferencias[]
+  Interacciones       Interacciones[]
+  Solicitudes         Solicitudes[]
+  Reservas            Reservas[]
+  Pagos               Pagos[]
+  Atenciones          Atenciones[]
+  Seguimientos        Seguimientos[]
+  EventosEtapa        EventosEtapa[]
+  DecisionesIA        DecisionesIA[]
+  Incidencias         Incidencias[]
+}
+
+model DatosAcademicos {
+  id_dato_academico Int      @id @default(autoincrement())
+  id_persona        Int
+  universidad       String?  @db.VarChar(150)
+  carrera           String?  @db.VarChar(150)
+  ciclo             String?  @db.VarChar(30)
+  aplica            Boolean  @default(true)
+  Persona           Personas @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model DatosLaborales {
+  id_dato_laboral Int      @id @default(autoincrement())
+  id_persona      Int
+  ocupacion       String?  @db.VarChar(100)
+  empresa         String?  @db.VarChar(150)
+  modalidad       String?  @db.VarChar(50)
+  disponibilidad  String?  @db.VarChar(200)
+  aplica          Boolean  @default(true)
+  Persona         Personas @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model PersonaPreferencias {
+  id_preferencia        Int          @id @default(autoincrement())
+  id_persona            Int
+  id_canal              Int?
+  id_horario            Int?
+  id_modalidad          Int?
+  sede_preferida        String?      @db.VarChar(150)
+  profesional_preferido String?      @db.VarChar(150)
+  fecha_inicio          DateTime     @default(now()) @db.DateTime2
+  fecha_fin             DateTime?    @db.DateTime2
+  Persona               Personas     @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+  Canal                 Canales?     @relation(fields: [id_canal], references: [id_canal], onDelete: NoAction, onUpdate: NoAction)
+  Horario               Horarios?    @relation(fields: [id_horario], references: [id_horario], onDelete: NoAction, onUpdate: NoAction)
+  Modalidad             Modalidades? @relation(fields: [id_modalidad], references: [id_modalidad], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Servicios {
+  id_servicio         Int                   @id @default(autoincrement())
+  nombre              String                @unique @db.VarChar(100)
+  descripcion         String?               @db.VarChar(300)
+  activo              Boolean               @default(true)
+  Tarifas             Tarifas[]
+  ProfesionalServicio ProfesionalServicio[]
+  Solicitudes         Solicitudes[]
+  Atenciones          Atenciones[]
+}
+
+model Tarifas {
+  id_tarifa    Int       @id @default(autoincrement())
+  id_servicio  Int
+  precio       Decimal   @db.Decimal(10, 2)
+  fecha_inicio DateTime  @default(now()) @db.DateTime2
+  fecha_fin    DateTime? @db.DateTime2
+  activo       Boolean   @default(true)
+  Servicio     Servicios @relation(fields: [id_servicio], references: [id_servicio], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Profesionales {
+  id_profesional      Int                   @id @default(autoincrement())
+  nombres             String                @db.VarChar(50)
+  apellidos           String                @db.VarChar(50)
+  numero_colegiatura  String?               @db.VarChar(50)
+  especialidad        String?               @db.VarChar(100)
+  activo              Boolean               @default(true)
+  ProfesionalServicio ProfesionalServicio[]
+  Disponibilidad      Disponibilidad[]
+  Atenciones          Atenciones[]
+}
+
+model Sedes {
+  id_sede        Int              @id @default(autoincrement())
+  nombre         String           @db.VarChar(100)
+  direccion      String           @db.VarChar(200)
+  zona           String?          @db.VarChar(100)
+  activo         Boolean          @default(true)
+  Disponibilidad Disponibilidad[]
+  Atenciones     Atenciones[]
+}
+
+model ProfesionalServicio {
+  id_profesional Int
+  id_servicio    Int
+  Profesional    Profesionales @relation(fields: [id_profesional], references: [id_profesional], onDelete: NoAction, onUpdate: NoAction)
+  Servicio       Servicios     @relation(fields: [id_servicio], references: [id_servicio], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([id_profesional, id_servicio])
+}
+
+model Disponibilidad {
+  id_disponibilidad Int           @id @default(autoincrement())
+  id_profesional    Int
+  id_sede           Int
+  fecha             DateTime      @db.Date
+  hora_inicio       DateTime      @db.Time
+  hora_fin          DateTime      @db.Time
+  estado            String        @default("Disponible") @db.VarChar(20)
+  Profesional       Profesionales @relation(fields: [id_profesional], references: [id_profesional], onDelete: NoAction, onUpdate: NoAction)
+  Sede              Sedes         @relation(fields: [id_sede], references: [id_sede], onDelete: NoAction, onUpdate: NoAction)
+  Opciones          Opciones[]
+}
+
+model Interacciones {
+  id_interaccion    Int       @id @default(autoincrement())
+  id_persona        Int
+  id_canal          Int?
+  id_fuente         Int?
+  id_usuario        Int?
+  fecha_hora        DateTime  @default(now()) @db.DateTime2
+  tipo              String    @db.VarChar(50)
+  mensaje           String?   @db.VarChar(Max)
+  es_respuesta_util Boolean   @default(false)
+  resultado         String?   @db.VarChar(200)
+  Persona           Personas  @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+  Canal             Canales?  @relation(fields: [id_canal], references: [id_canal], onDelete: NoAction, onUpdate: NoAction)
+  Fuente            Fuentes?  @relation(fields: [id_fuente], references: [id_fuente], onDelete: NoAction, onUpdate: NoAction)
+  Usuario           Usuarios? @relation(fields: [id_usuario], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id_persona, fecha_hora])
+}
+
+model Solicitudes {
+  id_solicitud            Int        @id @default(autoincrement())
+  id_persona              Int
+  id_servicio             Int?
+  fecha_solicitud         DateTime   @default(now()) @db.DateTime2
+  motivo                  String?    @db.VarChar(200)
+  tipo_consulta           String?    @db.VarChar(50)
+  prioridad               String?    @db.VarChar(20)
+  estado                  String     @default("Abierta") @db.VarChar(30)
+  fecha_primera_respuesta DateTime?  @db.DateTime2
+  fecha_cierre            DateTime?  @db.DateTime2
+  Persona                 Personas   @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+  Servicio                Servicios? @relation(fields: [id_servicio], references: [id_servicio], onDelete: NoAction, onUpdate: NoAction)
+  Opciones                Opciones[]
+  Reservas                Reservas[]
+
+  @@index([id_persona, fecha_solicitud])
+}
+
+model Opciones {
+  id_opcion         Int            @id @default(autoincrement())
+  id_solicitud      Int
+  id_disponibilidad Int
+  precio_ofrecido   Decimal        @db.Decimal(10, 2)
+  fecha_ofrecida    DateTime       @default(now()) @db.DateTime2
+  seleccionada      Boolean        @default(false)
+  Solicitud         Solicitudes    @relation(fields: [id_solicitud], references: [id_solicitud], onDelete: NoAction, onUpdate: NoAction)
+  Disponibilidad    Disponibilidad @relation(fields: [id_disponibilidad], references: [id_disponibilidad], onDelete: NoAction, onUpdate: NoAction)
+  Reservas          Reservas[]
+}
+
+model Reservas {
+  id_reserva                Int           @id @default(autoincrement())
+  id_persona                Int
+  id_solicitud              Int
+  id_opcion                 Int
+  fecha_reserva             DateTime      @default(now()) @db.DateTime2
+  estado                    String        @default("Pendiente") @db.VarChar(30)
+  fecha_vencimiento_bloqueo DateTime?     @db.DateTime2
+  confirmacion_explicita    Boolean       @default(false)
+  fecha_confirmacion        DateTime?     @db.DateTime2
+  Persona                   Personas      @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+  Solicitud                 Solicitudes   @relation(fields: [id_solicitud], references: [id_solicitud], onDelete: NoAction, onUpdate: NoAction)
+  Opcion                    Opciones      @relation(fields: [id_opcion], references: [id_opcion], onDelete: NoAction, onUpdate: NoAction)
+  Pagos                     Pagos[]
+  Atenciones                Atenciones[]
+  Incidencias               Incidencias[]
+
+  @@index([fecha_reserva, estado])
+}
+
+model Pagos {
+  id_pago          Int           @id @default(autoincrement())
+  id_persona       Int
+  id_reserva       Int
+  referencia_pago  String?       @db.VarChar(100)
+  importe          Decimal       @db.Decimal(10, 2)
+  canal_pago       String?       @db.VarChar(50)
+  fecha_registro   DateTime      @default(now()) @db.DateTime2
+  fecha_validacion DateTime?     @db.DateTime2
+  estado           String        @default("Pendiente") @db.VarChar(20)
+  comprobante      String?       @db.VarChar(300)
+  validado_por     Int?
+  observaciones    String?       @db.VarChar(300)
+  Persona          Personas      @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+  Reserva          Reservas      @relation(fields: [id_reserva], references: [id_reserva], onDelete: NoAction, onUpdate: NoAction)
+  UsuarioValidador Usuarios?     @relation("PagosValidadosPor", fields: [validado_por], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+  Incidencias      Incidencias[]
+
+  @@index([estado, fecha_registro])
+}
+
+model Atenciones {
+  id_atencion          Int            @id @default(autoincrement())
+  id_persona           Int
+  id_reserva           Int
+  id_servicio          Int
+  id_profesional       Int
+  id_sede              Int
+  fecha_atencion       DateTime       @db.DateTime2
+  asistencia           String         @default("Pendiente") @db.VarChar(20)
+  estado_servicio      String         @default("Programado") @db.VarChar(30)
+  observaciones        String?        @db.VarChar(500)
+  resultado            String?        @db.VarChar(200)
+  indicaciones_finales String?        @db.VarChar(500)
+  Persona              Personas       @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+  Reserva              Reservas       @relation(fields: [id_reserva], references: [id_reserva], onDelete: NoAction, onUpdate: NoAction)
+  Servicio             Servicios      @relation(fields: [id_servicio], references: [id_servicio], onDelete: NoAction, onUpdate: NoAction)
+  Profesional          Profesionales  @relation(fields: [id_profesional], references: [id_profesional], onDelete: NoAction, onUpdate: NoAction)
+  Sede                 Sedes          @relation(fields: [id_sede], references: [id_sede], onDelete: NoAction, onUpdate: NoAction)
+  Seguimientos         Seguimientos[]
+  Incidencias          Incidencias[]
+}
+
+model Seguimientos {
+  id_seguimiento Int       @id @default(autoincrement())
+  id_persona     Int
+  id_atencion    Int
+  id_usuario     Int?
+  fecha_hora     DateTime  @default(now()) @db.DateTime2
+  canal          String?   @db.VarChar(50)
+  tipo           String    @db.VarChar(50)
+  resultado      String?   @db.VarChar(200)
+  satisfaccion   Int?      @db.TinyInt
+  incidencia     Boolean   @default(false)
+  observaciones  String?   @db.VarChar(500)
+  Persona        Personas  @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+  Atencion       Atenciones @relation(fields: [id_atencion], references: [id_atencion], onDelete: NoAction, onUpdate: NoAction)
+  Usuario        Usuarios? @relation(fields: [id_usuario], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model EventosEtapa {
+  id_evento_etapa Int       @id @default(autoincrement())
+  id_persona      Int
+  etapa_origen    Int?
+  etapa_destino   Int
+  fecha_hora      DateTime  @default(now()) @db.DateTime2
+  id_usuario      Int?
+  motivo          String?   @db.VarChar(300)
+  evidencia       String?   @db.VarChar(500)
+  Persona         Personas  @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+  EtapaOrigen     Etapas?   @relation("EtapaOrigen", fields: [etapa_origen], references: [id_etapa], onDelete: NoAction, onUpdate: NoAction)
+  EtapaDestino    Etapas    @relation("EtapaDestino", fields: [etapa_destino], references: [id_etapa], onDelete: NoAction, onUpdate: NoAction)
+  Usuario         Usuarios? @relation(fields: [id_usuario], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id_persona, fecha_hora])
+}
+
+model Campanas {
+  id_campana    Int             @id @default(autoincrement())
+  nombre        String          @db.VarChar(150)
+  descripcion   String?         @db.VarChar(300)
+  id_fuente     Int?
+  id_canal      Int?
+  fecha_inicio  DateTime?       @db.Date
+  fecha_fin     DateTime?       @db.Date
+  activo        Boolean         @default(true)
+  Fuente        Fuentes?        @relation(fields: [id_fuente], references: [id_fuente], onDelete: NoAction, onUpdate: NoAction)
+  Canal         Canales?        @relation(fields: [id_canal], references: [id_canal], onDelete: NoAction, onUpdate: NoAction)
+  GastosCampana GastosCampana[]
+}
+
+model GastosCampana {
+  id_gasto    Int      @id @default(autoincrement())
+  id_campana  Int
+  fecha       DateTime @db.Date
+  importe     Decimal  @db.Decimal(10, 2)
+  descripcion String?  @db.VarChar(300)
+  Campana     Campanas @relation(fields: [id_campana], references: [id_campana], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model DecisionesIA {
+  id_decision        Int       @id @default(autoincrement())
+  id_persona         Int?
+  id_usuario         Int?
+  agente             String    @db.VarChar(50)
+  fecha_hora         DateTime  @default(now()) @db.DateTime2
+  entrada            String?   @db.VarChar(Max)
+  regla_aplicada     String?   @db.VarChar(300)
+  decision           String?   @db.VarChar(500)
+  accion             String?   @db.VarChar(500)
+  requiere_revision  Boolean   @default(false)
+  resultado_revision String?   @db.VarChar(300)
+  Persona            Personas? @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+  Usuario            Usuarios? @relation(fields: [id_usuario], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Incidencias {
+  id_incidencia          Int         @id @default(autoincrement())
+  id_persona             Int?
+  id_pago                Int?
+  id_reserva             Int?
+  id_atencion            Int?
+  tipo                   String      @db.VarChar(100)
+  descripcion            String      @db.VarChar(500)
+  prioridad              String      @default("Media") @db.VarChar(20)
+  estado                 String      @default("Abierta") @db.VarChar(30)
+  fecha_registro         DateTime    @default(now()) @db.DateTime2
+  fecha_resolucion       DateTime?   @db.DateTime2
+  id_usuario_responsable Int?
+  Persona                Personas?   @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+  Pago                   Pagos?      @relation(fields: [id_pago], references: [id_pago], onDelete: NoAction, onUpdate: NoAction)
+  Reserva                Reservas?   @relation(fields: [id_reserva], references: [id_reserva], onDelete: NoAction, onUpdate: NoAction)
+  Atencion               Atenciones? @relation(fields: [id_atencion], references: [id_atencion], onDelete: NoAction, onUpdate: NoAction)
+  UsuarioResponsable     Usuarios?   @relation("IncidenciasResponsable", fields: [id_usuario_responsable], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+}
