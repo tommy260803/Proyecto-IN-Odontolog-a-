@@ -28,7 +28,12 @@ router.post('/register', async (req, res) => {
     id_canal,
     id_fuente,
     id_servicio,
-    sede_preferida
+    sede_preferida,
+    id_campana_origen,
+    id_canal_origen,
+    tipo_persona,
+    estado_calidad,
+    id_servicio_interes,
   } = req.body;
 
   try {
@@ -44,7 +49,7 @@ router.post('/register', async (req, res) => {
       // Crear persona como BUYER inicialmente (y la cambiamos a LEAD inmediatamente por la solicitud de info)
       // Nota: Aquí lo haremos directo a LEAD si ya están solicitando info, 
       // pero para respetar el flujo BUYER -> LEAD, la creamos y generamos un evento.
-      
+
       const persona = await tx.personas.create({
         data: {
           nombres,
@@ -53,7 +58,11 @@ router.post('/register', async (req, res) => {
           numero,
           autoriza_contacto: autoriza_contacto || false,
           fecha_autorizacion: autoriza_contacto ? new Date() : null,
-          id_etapa_actual: etapaLead.id_etapa, // Lo pasamos a LEAD porque está haciendo la solicitud concreta
+          id_campana_origen: id_campana_origen ? Number(id_campana_origen) : null,
+          id_canal_origen: id_canal_origen ? Number(id_canal_origen) : null,
+          tipo_persona: tipo_persona || 'Adulto General',
+          estado_calidad: estado_calidad || 'Valido',
+          id_etapa_actual: etapaLead.id_etapa,
         }
       });
 
@@ -69,11 +78,12 @@ router.post('/register', async (req, res) => {
       });
 
       // Guardar preferencias si existen
-      if (sede_preferida || id_canal) {
+      if (sede_preferida || id_canal || id_servicio_interes) {
         await tx.personaPreferencias.create({
           data: {
             id_persona: persona.id_persona,
             id_canal: id_canal || null,
+            id_servicio_interes: id_servicio_interes ? Number(id_servicio_interes) : null,
             sede_preferida: sede_preferida || null,
           }
         });
@@ -131,13 +141,13 @@ router.get('/', async (req, res) => {
       let state = 'NEW';
       if (p.Etapa.nombre === 'LEAD' || p.Etapa.nombre === 'PAYER') state = 'CONVERTED';
 
-      const canal = p.Interacciones.length > 0 && p.Interacciones[0].Canal 
+      const canal = p.Interacciones.length > 0 && p.Interacciones[0].Canal
         ? p.Interacciones[0].Canal.nombre : 'Web';
-        
-      const fuente = p.Interacciones.length > 0 && p.Interacciones[0].Fuente 
+
+      const fuente = p.Interacciones.length > 0 && p.Interacciones[0].Fuente
         ? p.Interacciones[0].Fuente.nombre : 'Organico';
-        
-      const servicio = p.Solicitudes.length > 0 && p.Solicitudes[0].Servicio 
+
+      const servicio = p.Solicitudes.length > 0 && p.Solicitudes[0].Servicio
         ? p.Solicitudes[0].Servicio.nombre : undefined;
 
       const motivo = p.Solicitudes.length > 0 ? p.Solicitudes[0].motivo : undefined;
@@ -171,13 +181,13 @@ router.get('/', async (req, res) => {
 
 // Crear un BUYER (Dashboard)
 router.post('/', async (req, res) => {
-  const { firstName, lastName, email, phone, documentNumber, channel, attractionSource, serviceOfInterestId, contactAuthorization, concreteRequest } = req.body;
+  const { firstName, lastName, email, phone, documentNumber, channel, attractionSource, serviceOfInterestId, contactAuthorization, concreteRequest, id_campana_origen, id_canal_origen, tipo_persona, estado_calidad } = req.body;
   try {
     const dniToSave = documentNumber ? documentNumber.trim() : null;
     if (dniToSave && dniToSave.length > 8) return res.status(400).json({ error: 'El DNI no puede superar los 8 caracteres.' });
-    
+
     const phoneToSave = phone ? phone.trim() : null;
-    if (phoneToSave && phoneToSave.length > 9) return res.status(400).json({ error: 'El teléfono no puede superar los 9 caracteres.' });
+    if (phoneToSave && phoneToSave.length > 20) return res.status(400).json({ error: 'El teléfono no puede superar los 20 caracteres.' });
 
     let etapaBuyer = await prisma.etapas.findFirst({ where: { nombre: 'BUYER' } });
     if (!etapaBuyer) etapaBuyer = await prisma.etapas.create({ data: { nombre: 'BUYER', descripcion: 'Contacto inicial' } });
@@ -192,6 +202,10 @@ router.post('/', async (req, res) => {
           dni: dniToSave,
           autoriza_contacto: contactAuthorization || false,
           fecha_autorizacion: contactAuthorization ? new Date() : null,
+          id_campana_origen: id_campana_origen ? Number(id_campana_origen) : null,
+          id_canal_origen: id_canal_origen ? Number(id_canal_origen) : null,
+          tipo_persona: tipo_persona || 'Adulto General',
+          estado_calidad: estado_calidad || 'Valido',
           id_etapa_actual: etapaBuyer.id_etapa,
         }
       });
@@ -225,13 +239,13 @@ router.put('/:id', async (req, res) => {
     if (person?.firstName) updateData.nombres = person.firstName;
     if (person?.lastName) updateData.apellidos = person.lastName;
     if (person?.email !== undefined) updateData.email = person.email || null;
-    
+
     if (person?.phone !== undefined) {
       const phoneToSave = person.phone ? person.phone.trim() : null;
-      if (phoneToSave && phoneToSave.length > 9) return res.status(400).json({ error: 'El teléfono no puede superar los 9 caracteres.' });
+      if (phoneToSave && phoneToSave.length > 20) return res.status(400).json({ error: 'El teléfono no puede superar los 20 caracteres.' });
       updateData.numero = phoneToSave;
     }
-    
+
     if (person?.documentNumber !== undefined) {
       const dniToSave = person.documentNumber ? person.documentNumber.trim() : null;
       if (dniToSave && dniToSave.length > 8) return res.status(400).json({ error: 'El DNI no puede superar los 8 caracteres.' });
@@ -253,7 +267,7 @@ router.put('/:id', async (req, res) => {
         const solicitudExistente = await tx.solicitudes.findFirst({
           where: { id_persona: Number(id) }
         });
-        
+
         if (solicitudExistente) {
           await tx.solicitudes.update({
             where: { id_solicitud: solicitudExistente.id_solicitud },
@@ -285,8 +299,8 @@ router.post('/:id/convert', async (req, res) => {
   try {
     let etapaLead = await prisma.etapas.findFirst({ where: { nombre: 'LEAD' } });
     if (!etapaLead) etapaLead = await prisma.etapas.create({ data: { nombre: 'LEAD', descripcion: 'Intención concreta' } });
-    
-    const personaActual = await prisma.personas.findUnique({ 
+
+    const personaActual = await prisma.personas.findUnique({
       where: { id_persona: Number(id) },
       include: { Solicitudes: true }
     });

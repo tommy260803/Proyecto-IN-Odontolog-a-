@@ -6,7 +6,7 @@ export const buyerSchema = z.object({
   documentType: z.string().optional(),
   documentNumber: z.string().optional(),
   email: z.string().email('Ingresa un correo electrónico válido').optional().or(z.literal('')),
-  phone: z.string().regex(/^$|^[0-9+ -]{6,15}$/, 'Número de teléfono inválido (mínimo 6 dígitos)').optional().or(z.literal('')),
+  phone: z.string().regex(/^$|^[0-9+ -]{6,20}$/, 'Número de teléfono inválido (mínimo 6 dígitos)').optional().or(z.literal('')),
   channel: z.string().min(1, 'Selecciona un canal de contacto'),
   attractionSource: z.string().min(1, 'Selecciona una fuente de atracción'),
   serviceOfInterestId: z.string().optional(),

@@ -31,6 +31,19 @@ describe('Buyer Module', () => {
       expect(result.success).toBe(true);
     });
 
+    it('should accept international phones up to 20 characters', () => {
+      const validData = {
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: '+51 987 654 321 567',
+        channel: 'WhatsApp',
+        attractionSource: 'Google',
+        contactAuthorization: true,
+      };
+      const result = buyerSchema.safeParse(validData);
+      expect(result.success).toBe(true);
+    });
+
     it('should fail when both phone and email are missing or empty', () => {
       const invalidData = {
         firstName: 'John',
@@ -74,10 +87,10 @@ describe('Buyer Module', () => {
 
       // 3. Convert to Lead
       const lead = await buyerUseCases.convertToLead(newBuyer.id);
-      
+
       expect(lead).toBeDefined();
       expect(lead.buyerId).toBe(newBuyer.id);
-      
+
       // 4. Check Buyer state is updated
       const updatedBuyer = await buyerUseCases.getBuyerById(newBuyer.id);
       expect(updatedBuyer?.state).toBe(BuyerState.CONVERTED);

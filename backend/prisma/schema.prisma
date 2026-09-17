@@ -17,12 +17,13 @@ model Etapas {
 }
 
 model Canales {
-  id_canal      Int                   @id @default(autoincrement())
-  nombre        String                @unique @db.VarChar(50)
-  activo        Boolean               @default(true)
-  Preferencias  PersonaPreferencias[]
-  Interacciones Interacciones[]
-  Campanas      Campanas[]
+  id_canal         Int                   @id @default(autoincrement())
+  nombre           String                @unique @db.VarChar(50)
+  activo           Boolean               @default(true)
+  Preferencias     PersonaPreferencias[]
+  Interacciones    Interacciones[]
+  Campanas         Campanas[]
+  PersonasOrigen   Personas[]            @relation("CanalOrigen")
 }
 
 model Fuentes {
@@ -77,15 +78,21 @@ model Personas {
   apellidos           String                @db.VarChar(50)
   dni                 String?               @db.Char(8)
   email               String?               @db.VarChar(100)
-  numero              String?               @db.VarChar(9)
+  numero              String?               @db.VarChar(20)
   fecha_nacimiento    DateTime?             @db.Date
   zona                String?               @db.VarChar(100)
+  tipo_persona        String?               @default("Adulto General") @db.VarChar(30)
   autoriza_contacto   Boolean               @default(false)
   fecha_autorizacion  DateTime?             @db.DateTime2
+  estado_calidad      String                @default("Valido") @db.VarChar(20)
+  id_campana_origen   Int?
+  id_canal_origen     Int?
   id_etapa_actual     Int
   fecha_registro      DateTime              @default(now()) @db.DateTime2
   fecha_actualizacion DateTime?             @db.DateTime2
   Etapa               Etapas                @relation(fields: [id_etapa_actual], references: [id_etapa], onDelete: NoAction, onUpdate: NoAction)
+  CampanaOrigen       Campanas?             @relation("CampanaOrigen", fields: [id_campana_origen], references: [id_campana], onDelete: NoAction, onUpdate: NoAction)
+  CanalOrigen         Canales?              @relation("CanalOrigen", fields: [id_canal_origen], references: [id_canal], onDelete: NoAction, onUpdate: NoAction)
   DatosAcademicos     DatosAcademicos[]
   DatosLaborales      DatosLaborales[]
   Preferencias        PersonaPreferencias[]
@@ -127,6 +134,7 @@ model PersonaPreferencias {
   id_canal              Int?
   id_horario            Int?
   id_modalidad          Int?
+  id_servicio_interes   Int?
   sede_preferida        String?      @db.VarChar(150)
   profesional_preferido String?      @db.VarChar(150)
   fecha_inicio          DateTime     @default(now()) @db.DateTime2
@@ -135,6 +143,7 @@ model PersonaPreferencias {
   Canal                 Canales?     @relation(fields: [id_canal], references: [id_canal], onDelete: NoAction, onUpdate: NoAction)
   Horario               Horarios?    @relation(fields: [id_horario], references: [id_horario], onDelete: NoAction, onUpdate: NoAction)
   Modalidad             Modalidades? @relation(fields: [id_modalidad], references: [id_modalidad], onDelete: NoAction, onUpdate: NoAction)
+  ServicioInteres       Servicios?   @relation("ServicioInteres", fields: [id_servicio_interes], references: [id_servicio], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model Servicios {
@@ -146,6 +155,7 @@ model Servicios {
   ProfesionalServicio ProfesionalServicio[]
   Solicitudes         Solicitudes[]
   Atenciones          Atenciones[]
+  PreferenciasServicio PersonaPreferencias[] @relation("ServicioInteres")
 }
 
 model Tarifas {
@@ -309,7 +319,9 @@ model Atenciones {
   antecedentes         String?        @db.VarChar(500)
   alergias             String?        @db.VarChar(300)
   evaluacion           String?        @db.VarChar(500)
+  diagnostico_basico   String?        @db.VarChar(200)
   procedimiento        String?        @db.VarChar(500)
+  procedimiento_realizado String?      @db.VarChar(200)
   observaciones        String?        @db.VarChar(500)
   resultado            String?        @db.VarChar(200)
   indicaciones_finales String?        @db.VarChar(500)
@@ -357,17 +369,18 @@ model EventosEtapa {
 }
 
 model Campanas {
-  id_campana    Int             @id @default(autoincrement())
-  nombre        String          @db.VarChar(150)
-  descripcion   String?         @db.VarChar(300)
-  id_fuente     Int?
-  id_canal      Int?
-  fecha_inicio  DateTime?       @db.Date
-  fecha_fin     DateTime?       @db.Date
-  activo        Boolean         @default(true)
-  Fuente        Fuentes?        @relation(fields: [id_fuente], references: [id_fuente], onDelete: NoAction, onUpdate: NoAction)
-  Canal         Canales?        @relation(fields: [id_canal], references: [id_canal], onDelete: NoAction, onUpdate: NoAction)
-  GastosCampana GastosCampana[]
+  id_campana     Int             @id @default(autoincrement())
+  nombre         String          @db.VarChar(150)
+  descripcion    String?         @db.VarChar(300)
+  id_fuente      Int?
+  id_canal       Int?
+  fecha_inicio   DateTime?       @db.Date
+  fecha_fin      DateTime?       @db.Date
+  activo         Boolean         @default(true)
+  Fuente         Fuentes?        @relation(fields: [id_fuente], references: [id_fuente], onDelete: NoAction, onUpdate: NoAction)
+  Canal          Canales?        @relation(fields: [id_canal], references: [id_canal], onDelete: NoAction, onUpdate: NoAction)
+  GastosCampana  GastosCampana[]
+  PersonasOrigen Personas[]      @relation("CampanaOrigen")
 }
 
 model GastosCampana {
