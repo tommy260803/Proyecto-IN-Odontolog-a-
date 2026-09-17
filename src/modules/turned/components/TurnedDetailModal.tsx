@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/sha
 import { useToast } from '@/shared/hooks/use-toast';
 import { TurnedState } from '@/domain/enums';
 import { 
-  useTurned, 
+  useTurnedById, 
   useUpdateTurnedDetails,
   useAddFollowUp,
   useCreateNewRequest
@@ -48,7 +48,7 @@ export function TurnedDetailModal({ turnedId, isOpen, onClose }: TurnedDetailMod
     enabled: isOpen && !!turnedId,
   });
 
-  const { data: turned, isLoading, isError } = useTurned(turnedId || '');
+  const { data: turned, isLoading, isError } = useTurnedById(turnedId || '');
   const updateDetails = useUpdateTurnedDetails();
   const addFollowUp = useAddFollowUp();
   const createNewRequest = useCreateNewRequest();
@@ -124,7 +124,7 @@ export function TurnedDetailModal({ turnedId, isOpen, onClose }: TurnedDetailMod
         <Bot className="text-teal-600 dark:text-teal-400 w-8 h-8 shrink-0 mt-0.5" />
         <div className="flex-1">
           <h4 className="font-bold text-xs text-teal-900 dark:text-teal-200 flex items-center gap-2">
-            Asistente de Postventa y Fidelización <StatusBadge status="IA Activa" variant="primary" />
+            Asistente de Postventa y Fidelización <StatusBadge status="Activo" variant="primary" />
           </h4>
           <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">{message}</p>
           {alerts.length > 0 && (
@@ -268,7 +268,8 @@ export function TurnedDetailModal({ turnedId, isOpen, onClose }: TurnedDetailMod
                         </p>
                       ) : (
                         <div className="space-y-3 pt-2">
-                          {turned.followUps.map(f => (
+                          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                          {turned.followUps.map((f: any) => (
                             <div key={f.id} className="text-xs border-l-2 border-teal-500 pl-3 py-1 relative">
                               <div className="absolute w-2 h-2 bg-teal-500 rounded-full -left-[5px] top-2" />
                               <p className="font-semibold text-slate-900 dark:text-white">

@@ -170,10 +170,13 @@ export class CustomerUseCases {
       createdAt: new Date().toISOString(),
     };
     await this.turnedsRepo.create(turned);
+    await this.customersRepo.update(customerId, { isTurned: true, currentPhase: Phase.TURNED });
+
+
+    const journeys = await this.journeysRepo.getAll();
+    const journey = journeys.find(j => j.personId === customer.person.id);
 
     // Actualizar Journey
-    const journeys = await this.journeysRepo.getAll();
-    const journey = journeys.find(j => j.customerId === customerId);
     if (journey) {
       await this.journeysRepo.update(journey.id, {
         turnedId: turned.id,

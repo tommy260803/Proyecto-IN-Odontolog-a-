@@ -1,7 +1,7 @@
 import type { Buyer, Lead, Payer, Customer, TurnedRecord, CustomerJourney, DentalAttention, Payment } from '../entities';
 import { differenceInDays, differenceInMinutes, parseISO } from 'date-fns';
 import { calculateBusinessMinutes } from '@/shared/utils/dateUtils';
-import { BuyerState, LeadState, PayerState, CustomerState, TurnedState } from '../enums';
+import { BuyerState, LeadState, PayerState, CustomerState, TurnedState, Phase } from '../enums';
 
 export type IndicatorStatus = 'green' | 'amber' | 'red';
 
@@ -287,61 +287,61 @@ export function calculateP4(payers: Payer[], journeys: CustomerJourney[]): Indic
 
 // C1: Porcentaje de atenciones realizadas
 export function calculateC1(customers: Customer[]): IndicatorResult {
-  if (customers.length === 0) return { id: 'C1', name: 'Atenciones Realizadas', value: 0, unit: '%', formula: '', status: 'red', format: 'percentage' };
-  const attended = customers.filter(c => c.state === CustomerState.ATTENDED).length;
-  const value = (attended / customers.length) * 100;
+  const resolved = customers.filter(c => c.state === CustomerState.ATTENDED || c.state === CustomerState.NO_SHOW);
+  if (resolved.length === 0) return { id: 'C1', name: 'Atenciones Realizadas', value: 0, unit: '%', formula: '', status: 'red', format: 'percentage' };
+  const attended = resolved.filter(c => c.state === CustomerState.ATTENDED).length;
+  const value = (attended / resolved.length) * 100;
   return {
     id: 'C1', name: 'Atenciones Realizadas', value, unit: '%', 
-    formula: 'Atendidos / Total Programados × 100',
+    formula: 'Atendidos / Citas con resultado definitivo × 100',
     status: value >= 85 ? 'green' : value >= 70 ? 'amber' : 'red', format: 'percentage'
   };
 }
 
 // C2: Porcentaje de inasistencias
 export function calculateC2(customers: Customer[]): IndicatorResult {
-  if (customers.length === 0) return { id: 'C2', name: 'Inasistencias', value: 0, unit: '%', formula: '', status: 'green', format: 'percentage' };
-  const noshow = customers.filter(c => c.state === CustomerState.NO_SHOW).length;
-  const value = (noshow / customers.length) * 100;
+  const resolved = customers.filter(c => c.state === CustomerState.ATTENDED || c.state === CustomerState.NO_SHOW);
+  if (resolved.length === 0) return { id: 'C2', name: 'Inasistencias', value: 0, unit: '%', formula: '', status: 'green', format: 'percentage' };
+  const noshow = resolved.filter(c => c.state === CustomerState.NO_SHOW).length;
+  const value = (noshow / resolved.length) * 100;
   return {
     id: 'C2', name: 'Inasistencias', value, unit: '%', 
-    formula: 'No Asistió / Total Programados × 100',
+    formula: 'No asistió / Citas con resultado definitivo × 100',
     status: value <= 10 ? 'green' : value <= 20 ? 'amber' : 'red', format: 'percentage'
   };
 }
 
 // C3: Tiempo promedio de atención
 export function calculateC3(attentions: DentalAttention[]): IndicatorResult {
-  const valid = attentions.filter(a => a.startTime && a.endTime);
-  if (valid.length === 0) return { id: 'C3', name: 'Tiempo prom. Atención', value: 0, unit: 'min', formula: '', status: 'amber', format: 'time' };
-  
-  let totalMins = 0;
-  valid.forEach(a => {
-    // Si start y end son strings 'HH:MM:SS', los parseamos con una fecha mock
-    const tStart = parseISO(`2026-01-01T${a.startTime}`);
-    const tEnd = parseISO(`2026-01-01T${a.endTime}`);
-    if (!isNaN(tStart.getTime()) && !isNaN(tEnd.getTime())) {
-      totalMins += differenceInMinutes(tEnd, tStart);
-    }
+  const durations = attentions.flatMap(a => {
+    if (!a.startTime || !a.endTime) return [];
+    let tStart = parseISO(a.startTime);
+    let tEnd = parseISO(a.endTime);
+
+    // Si start y end son strings 'HH:MM:SS', parseISO retornará Invalid Date
+    if (isNaN(tStart.getTime())) tStart = parseISO(`2026-01-01T${a.startTime}`);
+    if (isNaN(tEnd.getTime())) tEnd = parseISO(`2026-01-01T${a.endTime}`);
+
+    if (isNaN(tStart.getTime()) || isNaN(tEnd.getTime())) return [];
+    const minutes = differenceInMinutes(tEnd, tStart);
+    return minutes > 0 ? [minutes] : [];
   });
 
-  const value = totalMins / valid.length;
+  if (durations.length === 0) return { id: 'C3', name: 'Tiempo prom. Atención', value: 0, unit: 'min', formula: '', status: 'amber', format: 'time' };
+  const value = durations.reduce((total, minutes) => total + minutes, 0) / durations.length;
   return {
     id: 'C3', name: 'Tiempo prom. Atención', value, unit: 'min', 
-    formula: 'Suma tiempos (Fin - Inicio) / Atenciones',
-    status: value >= 15 && value <= 60 ? 'green' : 'amber', format: 'time'
+    formula: 'Promedio duración (Fin - Inicio)',
+    status: value <= 45 ? 'green' : value <= 60 ? 'amber' : 'red', format: 'time'
   };
 }
 
 // C4: Conversión a TURNED
-export function calculateC4(customers: Customer[], journeys: CustomerJourney[]): IndicatorResult {
+export function calculateC4(customers: Customer[]): IndicatorResult {
   const attended = customers.filter(c => c.state === CustomerState.ATTENDED);
   if (attended.length === 0) return { id: 'C4', name: 'Conversión a TURNED', value: 0, unit: '%', formula: '', status: 'red', format: 'percentage' };
   
-  let converted = 0;
-  attended.forEach(c => {
-    const journey = journeys.find(j => j.customerId === c.id);
-    if (journey?.turnedId) converted++;
-  });
+  const converted = attended.filter(c => c.currentPhase === Phase.TURNED || c.isTurned).length;
 
   const value = (converted / attended.length) * 100;
   return {

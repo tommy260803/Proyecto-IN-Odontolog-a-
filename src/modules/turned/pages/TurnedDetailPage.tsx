@@ -4,12 +4,13 @@ import { PageHeader } from '@/shared/components/data-display/PageHeader';
 import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { ErrorState } from '@/shared/components/feedback/ErrorState';
 import { StatusBadge } from '@/shared/components/feedback/StatusBadge';
+import type { FollowUp } from '@/domain/entities';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/card';
 import { useToast } from '@/shared/hooks/use-toast';
 import { TurnedState } from '@/domain/enums';
 import { 
-  useTurned, 
+  useTurnedById, 
   useUpdateTurnedDetails,
   useAddFollowUp,
   useCreateNewRequest
@@ -38,7 +39,7 @@ export default function TurnedDetailPage() {
     queryFn: () => new LocalRepository<CustomerJourney>(QUERY_KEYS.JOURNEYS).getAll() 
   });
 
-  const { data: turned, isLoading, isError } = useTurned(id!);
+  const { data: turned, isLoading, isError } = useTurnedById(id!);
   const updateDetails = useUpdateTurnedDetails();
   const addFollowUp = useAddFollowUp();
   const createNewRequest = useCreateNewRequest();
@@ -212,7 +213,7 @@ export default function TurnedDetailPage() {
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {turned.followUps.map(f => (
+                  {turned.followUps.map((f: FollowUp) => (
                     <div key={f.id} className="text-sm border-l-2 border-primary pl-4 pb-4 last:pb-0 relative">
                       <div className="absolute w-2 h-2 bg-primary rounded-full -left-[5px] top-1.5" />
                       <p className="font-semibold">

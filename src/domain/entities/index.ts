@@ -158,6 +158,8 @@ export interface Customer {
   state: CustomerState;
   createdAt: string;
   attentionId?: string;
+  isTurned?: boolean;
+  currentPhase?: typeof Phase.CUSTOMER | typeof Phase.TURNED;
 }
 
 export interface CustomerIncident {

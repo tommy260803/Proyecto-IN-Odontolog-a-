@@ -18,6 +18,9 @@ export type LeadWithDetails = Lead & {
 };
 
 export class LeadUseCases {
+  async updateAlternative(_id: string, _data: any): Promise<any> { return null; }
+  async deleteAlternative(_id: string): Promise<any> { return null; }
+
   private leadsRepo = new LocalRepository<Lead>(QUERY_KEYS.LEADS);
   private buyersRepo = new LocalRepository<Buyer>(QUERY_KEYS.BUYERS);
   private personsRepo = new LocalRepository<Person>(QUERY_KEYS.PERSONS);

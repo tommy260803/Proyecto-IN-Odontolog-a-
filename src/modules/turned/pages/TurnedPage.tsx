@@ -29,7 +29,7 @@ export default function TurnedPage() {
   const [selectedTurnedId, setSelectedTurnedId] = useState<string | null>(null);
 
   const filteredTurneds = useMemo(() => {
-    return turneds?.filter((t: any) => {
+    return turneds?.filter((t: TurnedWithDetails) => {
       const term = searchTerm.trim().toLowerCase();
       let matchSearch = true;
       if (term) {
@@ -113,10 +113,10 @@ export default function TurnedPage() {
       header: 'Servicio Finalizado', 
       cell: (t: TurnedWithDetails) => <span className="text-slate-700 dark:text-slate-300">{t.lead.requestedServiceId}</span>
     },
-    { 
-      header: 'Fecha Atención', 
-      cell: (t: TurnedWithDetails) => <span className="text-slate-700 dark:text-slate-300">{format(new Date(t.reservation.date), 'dd MMM yyyy', { locale: es })}</span>
-    },
+      { 
+        header: 'Fecha Atención', 
+        cell: (t: TurnedWithDetails) => <span className="text-slate-700 dark:text-slate-300">{t.reservation?.date ? format(new Date(t.reservation.date), 'dd MMM yyyy', { locale: es }) : 'Sin fecha'}</span>
+      },
     { 
       header: 'Próximo Seguimiento', 
       cell: (t: TurnedWithDetails) => <span className="text-slate-700 dark:text-slate-300">{t.nextContactDate ? format(new Date(t.nextContactDate), 'dd MMM yyyy', { locale: es }) : 'No agendado'}</span>

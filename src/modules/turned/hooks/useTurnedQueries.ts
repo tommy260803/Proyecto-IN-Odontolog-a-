@@ -1,58 +1,54 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { turnedUseCases } from '@/application/use-cases/turned';
+import { turnedService } from '../services/turned.service';
 import { QUERY_KEYS } from '@/shared/constants';
-import type { FollowUpFormValues, NewRequestFormValues } from '../schemas/turnedSchema';
-import type { TurnedRecord } from '@/domain/entities';
+import type { NewRequestFormValues } from '../schemas/turnedSchema';
 
-export function useTurneds() {
+export const useTurneds = () => {
   return useQuery({
     queryKey: [QUERY_KEYS.TURNED],
-    queryFn: () => turnedUseCases.getAllTurneds(),
+    queryFn: () => turnedService.getAllTurneds(),
   });
-}
+};
 
-export function useTurned(id: string) {
+export const useTurnedById = (id: string) => {
   return useQuery({
     queryKey: [QUERY_KEYS.TURNED, id],
-    queryFn: () => turnedUseCases.getTurnedById(id),
+    queryFn: () => turnedService.getTurnedById(id),
     enabled: !!id,
   });
-}
+};
 
-export function useUpdateTurnedDetails() {
+export const useAddFollowUp = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string, data: Partial<TurnedRecord> }) => 
-      turnedUseCases.updateTurnedDetails(id, data),
-    onSuccess: (_, variables) => {
+    mutationFn: ({ id, data }: { id: string; data: import('../schemas/turnedSchema').FollowUpFormValues }) => turnedService.addFollowUp(id, data),
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TURNED] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TURNED, variables.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TURNED, id] });
     },
   });
-}
+};
 
-export function useAddFollowUp() {
+export const useUpdateTurnedDetails = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string, data: FollowUpFormValues }) => 
-      turnedUseCases.addFollowUp(id, data),
-    onSuccess: (_, variables) => {
+    mutationFn: ({ id, data }: { id: string; data: Partial<import('@/domain/entities').TurnedRecord> }) => turnedService.updateTurnedDetails(id, data),
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TURNED] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TURNED, variables.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TURNED, id] });
     },
   });
-}
+};
 
-export function useCreateNewRequest() {
+export const useCreateNewRequest = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string, data: NewRequestFormValues }) => 
-      turnedUseCases.createNewRequest(id, data),
-    onSuccess: (_, variables) => {
+    mutationFn: ({ id, data }: { id: string; data: NewRequestFormValues }) => turnedService.createNewRequest(id, data),
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TURNED] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TURNED, variables.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TURNED, id] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUYERS] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.JOURNEYS] });
     },
   });
-}
+};

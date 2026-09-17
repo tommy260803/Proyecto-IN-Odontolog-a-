@@ -39,6 +39,20 @@ interface CustomerDetailModalProps {
   onClose: () => void;
 }
 
+const formatPeruTime = (isoString?: string) => {
+  if (!isoString || isoString === '-') return '-';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    return d.toLocaleString('es-PE', {
+      timeZone: 'America/Lima',
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true
+    });
+  } catch {
+    return isoString;
+  }
+};
 export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDetailModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -143,7 +157,9 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
   };
 
   const transitionCheck = customer ? canTransitionCustomerToTurned(customer, customer.attention) : { success: false, error: '' };
+  const isTurned = Boolean(customer?.isTurned);
   const isAttentionDisabled = customer?.state !== CustomerState.IN_ATTENTION;
+  const canEditForm = !isTurned && (!isAttentionDisabled || customer?.state === CustomerState.ATTENDED);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -170,7 +186,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                 <div className="flex items-center gap-2">
                   <StatusBadge status={customer.state} />
                   <Button 
-                    disabled={!transitionCheck.success || convertTurned.isPending} 
+                    disabled={isTurned || !transitionCheck.success || convertTurned.isPending} 
                     onClick={() => setIsConvertOpen(true)}
                     className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-sm text-xs font-semibold px-3 py-2 h-8"
                   >
@@ -214,7 +230,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                       <div className="flex flex-wrap gap-2 mb-5 p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
                         <Button 
                           variant="outline" size="sm" 
-                          disabled={customer.state !== CustomerState.SCHEDULED}
+                          disabled={isTurned || customer.state !== CustomerState.SCHEDULED}
                           onClick={() => handleStateChange(CustomerState.ATTENDANCE_CONFIRMED, 'Asistencia confirmada')}
                           className="rounded-xl text-xs font-semibold bg-white dark:bg-slate-800"
                         >
@@ -222,7 +238,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                         </Button>
                         <Button 
                           variant="outline" size="sm" 
-                          disabled={customer.state !== CustomerState.ATTENDANCE_CONFIRMED}
+                          disabled={isTurned || customer.state !== CustomerState.ATTENDANCE_CONFIRMED}
                           onClick={handleStartAttention}
                           className="rounded-xl text-xs font-semibold bg-white dark:bg-slate-800"
                         >
@@ -230,7 +246,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                         </Button>
                         <Button 
                           variant="outline" size="sm" 
-                          disabled={customer.state !== CustomerState.IN_ATTENTION}
+                          disabled={isTurned || customer.state !== CustomerState.IN_ATTENTION}
                           onClick={handleFinishAttention}
                           className="rounded-xl text-xs font-semibold bg-white dark:bg-slate-800"
                         >
@@ -238,14 +254,14 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                         </Button>
                         <Button 
                           variant="ghost" size="sm" className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl text-xs ml-auto"
-                          disabled={customer.state === CustomerState.ATTENDED || customer.state === CustomerState.IN_ATTENTION}
+                          disabled={isTurned || customer.state === CustomerState.ATTENDED || customer.state === CustomerState.IN_ATTENTION}
                           onClick={() => handleStateChange(CustomerState.NO_SHOW, 'Marcado como No Asistió')}
                         >
                           <UserX className="w-3.5 h-3.5 mr-1 text-rose-500" /> No Asistió
                         </Button>
                         <Button 
                           variant="ghost" size="sm" className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl text-xs"
-                          disabled={customer.state === CustomerState.ATTENDED || customer.state === CustomerState.IN_ATTENTION}
+                          disabled={isTurned || customer.state === CustomerState.ATTENDED || customer.state === CustomerState.IN_ATTENTION}
                           onClick={() => handleStateChange(CustomerState.CANCELED, 'Cita cancelada')}
                         >
                           <XCircle className="w-3.5 h-3.5 mr-1 text-rose-500" /> Cancelar
@@ -257,7 +273,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                         initialValues={customer.attention} 
                         onSubmit={handleSaveAttentionDetails}
                         isLoading={registerDetails.isPending}
-                        disabled={isAttentionDisabled && customer.state !== CustomerState.ATTENDED}
+                        disabled={!canEditForm}
                         hideSubmitButton={true}
                       />
                     </CardContent>
@@ -283,12 +299,12 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                       <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Sede & Horario</p>
                         <p className="text-slate-700 dark:text-slate-300 mt-0.5">{customer.reservation.branchId}</p>
-                        <p className="text-slate-500 dark:text-slate-400">{customer.reservation.date} - {customer.reservation.time}</p>
+                        <p className="text-slate-500 dark:text-slate-400">{formatPeruTime(customer.reservation.date)}</p>
                       </div>
                       <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Tiempos de Atención</p>
-                        <p className="text-slate-700 dark:text-slate-300 mt-0.5">Inicio: {customer.attention?.startTime || '-'}</p>
-                        <p className="text-slate-700 dark:text-slate-300">Fin: {customer.attention?.endTime || '-'}</p>
+                        <p className="text-slate-700 dark:text-slate-300 mt-0.5">Inicio: {formatPeruTime(customer.attention?.startTime)}</p>
+                        <p className="text-slate-700 dark:text-slate-300">Fin: {formatPeruTime(customer.attention?.endTime)}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -343,7 +359,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
             >
               Cerrar
             </Button>
-            {(!isAttentionDisabled || customer?.state === CustomerState.ATTENDED) && (
+            {canEditForm && (
               <Button
                 form="customer-dental-form"
                 type="submit"
@@ -353,7 +369,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                 {registerDetails.isPending ? 'Guardando...' : 'Guardar Registros'}
               </Button>
             )}
-            {transitionCheck.success && (
+            {(!isTurned && transitionCheck.success) && (
               <Button
                 type="button"
                 className="bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-semibold h-9 px-4 shadow-sm"
@@ -412,3 +428,5 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
     </Dialog>
   );
 }
+
+

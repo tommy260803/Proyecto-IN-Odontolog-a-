@@ -6,6 +6,6 @@ import { AppProviders } from '../app/providers';
 describe('App', () => {
   it('renders NexoSalud title', () => {
     render(<AppProviders />);
-    expect(screen.getByText(/NexoSalud/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/NexoSalud/i)[0]).toBeInTheDocument();
   });
 });

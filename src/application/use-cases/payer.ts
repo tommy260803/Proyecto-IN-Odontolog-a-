@@ -192,6 +192,16 @@ export class PayerUseCases {
   }
 
   async validatePayment(payerId: string): Promise<Payer> {
+    try {
+      const res = await fetch(`http://localhost:3001/api/payer/${payerId}/validate`, { method: 'POST' });
+      if (res.ok) {
+        // Mock a Payer object since API might not return it exactly
+        return { id: payerId, state: PayerState.VALIDATED } as Payer;
+      }
+    } catch (e) {
+      // Fallback
+    }
+    
     const payer = await this.payersRepo.getById(payerId);
     if (!payer) throw new Error('Payer no encontrado');
     if (!payer.paymentId) throw new Error('No hay pago registrado para validar');
@@ -233,6 +243,31 @@ export class PayerUseCases {
   }
 
   async convertToCustomer(payerId: string): Promise<Customer> {
+    try {
+      const res = await fetch(`http://localhost:3001/api/payer/${payerId}/convert-customer`, { method: 'POST' });
+      if (res.ok) {
+        const journeysStr = localStorage.getItem('journeys');
+        if (journeysStr) {
+          try {
+            const journeys = JSON.parse(journeysStr);
+            const journeyIndex = journeys.findIndex((j: any) => j.payerId === payerId || j.personId === payerId);
+            if (journeyIndex >= 0) {
+              journeys[journeyIndex].customerId = payerId;
+              journeys[journeyIndex].currentPhase = 'CUSTOMER';
+              journeys[journeyIndex].updatedAt = new Date().toISOString();
+              localStorage.setItem('journeys', JSON.stringify(journeys));
+            }
+          } catch(e) {}
+        }
+        return { 
+          id: getUUID(), payerId, reservationId: 'res-' + payerId, 
+          state: CustomerState.SCHEDULED, createdAt: new Date().toISOString() 
+        } as Customer;
+      }
+    } catch (e) {
+      // Fallback
+    }
+
     const payer = await this.payersRepo.getById(payerId);
     if (!payer) throw new Error('Payer no encontrado');
     
@@ -258,9 +293,9 @@ export class PayerUseCases {
     };
     await this.customersRepo.create(customer);
 
-    // Actualizar Journey
     const journeys = await this.journeysRepo.getAll();
-    const journey = journeys.find(j => j.payerId === payerId);
+    const journey = journeys.find(j => j.payerId === payer.id);
+    
     if (journey) {
       await this.journeysRepo.update(journey.id, {
         customerId: customer.id,

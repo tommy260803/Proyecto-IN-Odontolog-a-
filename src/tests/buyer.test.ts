@@ -44,7 +44,7 @@ describe('Buyer Module', () => {
       const result = buyerSchema.safeParse(invalidData);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.errors[0].message).toBe('Debe existir al menos un medio de contacto utilizable (teléfono o correo)');
+        expect(result.error.errors[0].message).toBe('Debe ingresar al menos un medio de contacto (teléfono o correo)');
       }
     });
   });

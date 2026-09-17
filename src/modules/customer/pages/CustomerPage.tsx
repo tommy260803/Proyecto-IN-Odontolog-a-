@@ -11,34 +11,37 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCustomers } from '../hooks/useCustomerQueries';
 import { CustomerState } from '@/domain/enums';
 import { Search, Eye, X, RotateCcw } from 'lucide-react';
-import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, isAfter, isBefore, isValid, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { CustomerWithDetails } from '@/application/use-cases/customer';
-import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEYS } from '@/shared/constants';
-import { LocalRepository } from '@/infrastructure/repositories';
-import type { CustomerJourney, DentalAttention } from '@/domain/entities';
+import type { DentalAttention } from '@/domain/entities';
 import { calculateC1, calculateC2, calculateC3, calculateC4 } from '@/domain/indicators';
 import { IndicatorCard } from '@/shared/components/data-display/IndicatorCard';
 import { CustomerDetailModal } from '../components/CustomerDetailModal';
 
 export default function CustomerPage() {
   const { data: customers, isLoading, isError } = useCustomers();
-  const { data: journeys = [] } = useQuery({ 
-    queryKey: [QUERY_KEYS.JOURNEYS], 
-    queryFn: () => new LocalRepository<CustomerJourney>(QUERY_KEYS.JOURNEYS).getAll() 
-  });
-
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [phaseFilter, setPhaseFilter] = useState('ALL');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
   // Modales
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
+  const periodCustomers = useMemo(() => {
+    return customers?.filter((c: CustomerWithDetails) => {
+      const appointmentDate = parseISO(c.reservation?.date || '');
+      if (!isValid(appointmentDate)) return !startDate && !endDate;
+      if (startDate && isBefore(appointmentDate, startOfDay(parseISO(startDate)))) return false;
+      if (endDate && isAfter(appointmentDate, endOfDay(parseISO(endDate)))) return false;
+      return true;
+    }) || [];
+  }, [customers, startDate, endDate]);
+
   const filteredCustomers = useMemo(() => {
-    return customers?.filter((c: any) => {
+    return periodCustomers.filter((c: CustomerWithDetails) => {
       const term = searchTerm.trim().toLowerCase();
       let matchSearch = true;
       if (term) {
@@ -71,39 +74,30 @@ export default function CustomerPage() {
       }
 
       const matchStatus = statusFilter === 'ALL' || c.state === statusFilter;
-      
-      let matchDate = true;
-      if (startDate && c.createdAt) {
-        const start = startOfDay(parseISO(c.createdAt));
-        matchDate = matchDate && !isBefore(parseISO(c.createdAt), start);
-      }
-      if (endDate && c.createdAt) {
-        const end = endOfDay(parseISO(endDate));
-        matchDate = matchDate && !isAfter(parseISO(c.createdAt), end);
-      }
-      
-      return matchSearch && matchStatus && matchDate;
-    }) || [];
-  }, [customers, searchTerm, statusFilter, startDate, endDate]);
+      const matchPhase = phaseFilter === 'ALL' || c.currentPhase === phaseFilter;
+      return matchSearch && matchStatus && matchPhase;
+    });
+  }, [periodCustomers, searchTerm, statusFilter, phaseFilter]);
 
-  const hasActiveFilters = Boolean(searchTerm || statusFilter !== 'ALL' || startDate || endDate);
+  const hasActiveFilters = Boolean(searchTerm || statusFilter !== 'ALL' || phaseFilter !== 'ALL' || startDate || endDate);
 
   const handleResetFilters = () => {
     setSearchTerm('');
     setStatusFilter('ALL');
+    setPhaseFilter('ALL');
     setStartDate('');
     setEndDate('');
   };
 
   const indicators = useMemo(() => {
-    const attentions = filteredCustomers.map(c => c.attention).filter(Boolean) as DentalAttention[];
+    const attentions = periodCustomers.map(c => c.attention).filter(Boolean) as DentalAttention[];
     return [
-      calculateC1(filteredCustomers),
-      calculateC2(filteredCustomers),
+      calculateC1(periodCustomers),
+      calculateC2(periodCustomers),
       calculateC3(attentions),
-      calculateC4(filteredCustomers, journeys)
+      calculateC4(periodCustomers)
     ];
-  }, [filteredCustomers, journeys]);
+  }, [periodCustomers]);
 
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState />;
@@ -146,14 +140,27 @@ export default function CustomerPage() {
       )
     },
     { 
-      header: 'Estado', 
+      header: 'Estado clínico',
       cell: (c: CustomerWithDetails) => {
         let variant: 'neutral' | 'success' | 'warning' | 'error' = 'neutral';
         if (c.state === CustomerState.ATTENDED) variant = 'success';
         if (c.state === CustomerState.NO_SHOW || c.state === CustomerState.CANCELED) variant = 'error';
         if (c.state === CustomerState.SCHEDULED || c.state === CustomerState.IN_ATTENTION) variant = 'warning';
-        return <StatusBadge status={c.state} variant={variant} />;
+        const labels: Record<string, string> = {
+          SCHEDULED: 'Programado', ATTENDANCE_CONFIRMED: 'Asistencia confirmada',
+          IN_ATTENTION: 'En atención', ATTENDED: 'Atendido', NO_SHOW: 'No asistió', CANCELED: 'Cancelado'
+        };
+        return <StatusBadge status={labels[c.state] || c.state} variant={variant} />;
       }
+    },
+    {
+      header: 'Etapa actual',
+      cell: (c: CustomerWithDetails) => (
+        <StatusBadge
+          status={c.currentPhase || (c.isTurned ? 'TURNED' : 'CUSTOMER')}
+          variant={c.currentPhase === 'TURNED' || c.isTurned ? 'primary' : 'neutral'}
+        />
+      )
     },
     { 
       header: 'Acciones', 
@@ -216,6 +223,19 @@ export default function CustomerPage() {
                 <SelectItem value={CustomerState.ATTENDED}>Atendido</SelectItem>
                 <SelectItem value={CustomerState.NO_SHOW}>No Asistió</SelectItem>
                 <SelectItem value={CustomerState.CANCELED}>Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full sm:w-[150px]">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 block">Etapa</span>
+            <Select value={phaseFilter} onValueChange={setPhaseFilter}>
+              <SelectTrigger className="rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs h-9">
+                <SelectValue placeholder="Etapa" />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs">
+                <SelectItem value="ALL">Todas las etapas</SelectItem>
+                <SelectItem value="CUSTOMER">CUSTOMER</SelectItem>
+                <SelectItem value="TURNED">TURNED</SelectItem>
               </SelectContent>
             </Select>
           </div>

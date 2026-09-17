@@ -3,7 +3,7 @@ import {
   calculateB1, calculateB2, calculateB3,
   calculateL2, calculateL3,
   calculateP1, calculateP3,
-  calculateC1, calculateC2, calculateC3,
+  calculateC1, calculateC2, calculateC3, calculateC4,
   calculateT1, calculateT2, calculateT3
 } from '../domain/indicators';
 import { BuyerState, LeadState, PayerState, CustomerState, TurnedState, Phase } from '../domain/enums';
@@ -106,6 +106,26 @@ describe('Indicators Formulas', () => {
       expect(calculateC2(customers).value).toBeCloseTo(66.67);
     });
 
+    it('C1 and C2 should exclude pending and canceled appointments', () => {
+      const customers: Customer[] = [
+        { id: 'c1', payerId: 'p1', reservationId: 'r1', state: CustomerState.ATTENDED, createdAt: '' },
+        { id: 'c2', payerId: 'p2', reservationId: 'r2', state: CustomerState.NO_SHOW, createdAt: '' },
+        { id: 'c3', payerId: 'p3', reservationId: 'r3', state: CustomerState.SCHEDULED, createdAt: '' },
+        { id: 'c4', payerId: 'p4', reservationId: 'r4', state: CustomerState.CANCELED, createdAt: '' },
+      ];
+      expect(calculateC1(customers).value).toBe(50);
+      expect(calculateC2(customers).value).toBe(50);
+    });
+
+    it('C4 should report 100% when every attended customer is TURNED', () => {
+      const customers: Customer[] = [
+        { id: 'c1', payerId: 'p1', reservationId: 'r1', state: CustomerState.ATTENDED, currentPhase: Phase.TURNED, createdAt: '' },
+        { id: 'c2', payerId: 'p2', reservationId: 'r2', state: CustomerState.ATTENDED, currentPhase: Phase.TURNED, createdAt: '' },
+        { id: 'c3', payerId: 'p3', reservationId: 'r3', state: CustomerState.CANCELED, currentPhase: Phase.CUSTOMER, createdAt: '' },
+      ];
+      expect(calculateC4(customers).value).toBe(100);
+    });
+
     it('C3: should calculate average attention time', () => {
       const attentions: DentalAttention[] = [
         { id: 'a1', customerId: 'c1', startTime: '10:00:00', endTime: '10:30:00' }, // 30 min
@@ -113,6 +133,15 @@ describe('Indicators Formulas', () => {
       ];
       const result = calculateC3(attentions);
       expect(result.value).toBe(45); // Average: 45 min
+    });
+
+    it('C3 should ignore zero and invalid durations', () => {
+      const attentions: DentalAttention[] = [
+        { id: 'a1', customerId: 'c1', startTime: '10:00:00', endTime: '10:00:00' },
+        { id: 'a2', customerId: 'c2', startTime: 'bad', endTime: '12:00:00' },
+        { id: 'a3', customerId: 'c3', startTime: '11:00:00', endTime: '11:30:00' },
+      ];
+      expect(calculateC3(attentions).value).toBe(30);
     });
   });
 

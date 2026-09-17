@@ -6,8 +6,10 @@ import buyerRoutes from './routes/buyer.routes';
 import leadRoutes from './routes/lead.routes';
 import payerRoutes from './routes/payer.routes';
 import paymentRoutes from './routes/payment.routes';
+import customerRoutes from './routes/customer.routes';
+import turnedRoutes from './routes/turned.routes';
 
-dotenv.config({ override: true });
+dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
@@ -21,6 +23,8 @@ app.use('/api/buyer', buyerRoutes);
 app.use('/api/lead', leadRoutes);
 app.use('/api/payer', payerRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/customer', customerRoutes);
+app.use('/api/turned', turnedRoutes);
 
 // Ruta de prueba
 app.get('/api/ping', async (req, res) => {

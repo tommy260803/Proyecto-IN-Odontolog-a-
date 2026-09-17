@@ -121,7 +121,7 @@ router.get('/', async (req, res) => {
       },
       include: {
         Etapa: true,
-        Interacciones: { include: { Canal: true } },
+        Interacciones: { include: { Canal: true, Fuente: true } },
         Solicitudes: { include: { Servicio: true } }
       }
     });
@@ -210,9 +210,9 @@ router.post('/', async (req, res) => {
     });
 
     res.status(201).json(result);
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
-    res.status(500).json({ error: 'Error al crear BUYER' });
+    res.status(500).json({ error: error.message || 'Error al crear BUYER' });
   }
 });
 

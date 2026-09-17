@@ -302,4 +302,51 @@ router.post('/clear-all', async (req, res) => {
   }
 });
 
+router.post('/:id/convert-customer', async (req, res) => {
+  const { id } = req.params;
+  try {
+    let etapaCustomer = await prisma.etapas.findFirst({ where: { nombre: 'CUSTOMER' } });
+    if (!etapaCustomer) etapaCustomer = await prisma.etapas.create({ data: { nombre: 'CUSTOMER', descripcion: 'Atencion' } });
+    
+    const reserva = await prisma.reservas.findUnique({
+      where: { id_reserva: Number(id) },
+      include: { Opcion: { include: { Disponibilidad: true } }, Solicitud: true, Pagos: true }
+    });
+    
+    if (!reserva) {
+      return res.status(404).json({ error: 'Reserva no encontrada' });
+    }
+
+    if (!reserva.Pagos.some(pago => pago.estado === 'Validado')) {
+      return res.status(409).json({ error: 'El pago debe estar validado antes de pasar a CUSTOMER' });
+    }
+
+    const persona = await prisma.personas.update({
+      where: { id_persona: reserva.id_persona },
+      data: { id_etapa_actual: etapaCustomer.id_etapa }
+    });
+    
+    const existingAtencion = await prisma.atenciones.findFirst({ where: { id_reserva: reserva.id_reserva } });
+    if (!existingAtencion) {
+      await prisma.atenciones.create({
+        data: {
+          id_persona: persona.id_persona,
+          id_reserva: reserva.id_reserva,
+          id_servicio: reserva.Solicitud?.id_servicio || 1,
+          id_profesional: reserva.Opcion.Disponibilidad.id_profesional,
+          id_sede: reserva.Opcion.Disponibilidad.id_sede,
+          fecha_atencion: reserva.Opcion.Disponibilidad.fecha,
+          estado_servicio: 'Programado',
+          asistencia: 'Pendiente'
+        }
+      });
+    }
+
+    res.json({ message: 'Convertido a CUSTOMER' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al convertir a CUSTOMER' });
+  }
+});
+
 export default router;

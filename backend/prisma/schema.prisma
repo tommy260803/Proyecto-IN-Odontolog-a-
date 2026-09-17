@@ -75,7 +75,7 @@ model Personas {
   id_persona          Int                   @id @default(autoincrement())
   nombres             String                @db.VarChar(50)
   apellidos           String                @db.VarChar(50)
-  dni                 String?               @unique @db.Char(8)
+  dni                 String?               @db.Char(8)
   email               String?               @db.VarChar(100)
   numero              String?               @db.VarChar(9)
   fecha_nacimiento    DateTime?             @db.Date
@@ -301,8 +301,15 @@ model Atenciones {
   id_profesional       Int
   id_sede              Int
   fecha_atencion       DateTime       @db.DateTime2
+  fecha_inicio         DateTime?      @db.DateTime2
+  fecha_fin            DateTime?      @db.DateTime2
   asistencia           String         @default("Pendiente") @db.VarChar(20)
   estado_servicio      String         @default("Programado") @db.VarChar(30)
+  motivo_consulta      String?        @db.VarChar(300)
+  antecedentes         String?        @db.VarChar(500)
+  alergias             String?        @db.VarChar(300)
+  evaluacion           String?        @db.VarChar(500)
+  procedimiento        String?        @db.VarChar(500)
   observaciones        String?        @db.VarChar(500)
   resultado            String?        @db.VarChar(200)
   indicaciones_finales String?        @db.VarChar(500)
