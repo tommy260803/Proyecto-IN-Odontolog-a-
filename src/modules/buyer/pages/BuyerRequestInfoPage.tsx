@@ -1,14 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/shared/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
 import { Label } from '@/shared/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { buyerService } from '../services/buyer.service';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/shared/hooks/use-toast';
 
 export default function BuyerRequestInfoPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [catalogs, setCatalogs] = useState<any>({ canales: [], fuentes: [], servicios: [], sedes: [] });
   const [formData, setFormData] = useState({
     nombres: '',
@@ -29,11 +31,11 @@ export default function BuyerRequestInfoPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    setFormData((prev: any) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev: any) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,11 +48,10 @@ export default function BuyerRequestInfoPage() {
         id_fuente: Number(formData.id_fuente),
         id_servicio: Number(formData.id_servicio),
       });
-      alert(result.message);
-      // Opcional: Redirigir a una página de éxito o limpiar formulario
+      toast({ title: 'Solicitud Registrada', description: result.message || 'Tu solicitud ha sido enviada exitosamente.' });
       navigate('/');
     } catch (error) {
-      alert('Hubo un error al enviar la solicitud');
+      toast({ title: 'Error', description: 'Hubo un error al enviar la solicitud.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

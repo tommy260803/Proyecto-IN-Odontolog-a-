@@ -222,4 +222,65 @@ router.post('/:id/alternative', async (req, res) => {
   }
 });
 
+// Editar una alternativa de la mesa de negociación
+router.put('/options/:id_opcion', async (req, res) => {
+  const { id_opcion } = req.params;
+  const { precio_ofrecido } = req.body;
+  try {
+    const updated = await prisma.opciones.update({
+      where: { id_opcion: Number(id_opcion) },
+      data: {
+        precio_ofrecido: Number(precio_ofrecido)
+      },
+      include: {
+        Disponibilidad: {
+          include: { Profesional: true, Sede: true }
+        }
+      }
+    });
+    res.json({ message: 'Alternativa actualizada exitosamente', data: updated });
+  } catch (error) {
+    console.error('Error al actualizar alternativa:', error);
+    res.status(500).json({ error: 'Error al actualizar alternativa' });
+  }
+});
+
+// Eliminar una alternativa de la mesa de negociación
+router.delete('/options/:id_opcion', async (req, res) => {
+  const { id_opcion } = req.params;
+  try {
+    await prisma.reservas.deleteMany({ where: { id_opcion: Number(id_opcion) } });
+    await prisma.opciones.delete({ where: { id_opcion: Number(id_opcion) } });
+    res.json({ message: 'Alternativa eliminada del tablero exitosamente' });
+  } catch (error) {
+    console.error('Error al eliminar alternativa:', error);
+    res.status(500).json({ error: 'Error al eliminar alternativa' });
+  }
+});
+
+// Eliminar un LEAD
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  const numId = Number(id);
+  try {
+    if (!isNaN(numId)) {
+      await prisma.pagos.deleteMany({ where: { id_persona: numId } });
+      await prisma.reservas.deleteMany({ where: { id_persona: numId } });
+      const solicitudes = await prisma.solicitudes.findMany({ where: { id_persona: numId } });
+      for (const sol of solicitudes) {
+        await prisma.opciones.deleteMany({ where: { id_solicitud: sol.id_solicitud } });
+      }
+      await prisma.solicitudes.deleteMany({ where: { id_persona: numId } });
+      await prisma.eventosEtapa.deleteMany({ where: { id_persona: numId } });
+      await prisma.interacciones.deleteMany({ where: { id_persona: numId } });
+      await prisma.personaPreferencias.deleteMany({ where: { id_persona: numId } });
+      await prisma.personas.delete({ where: { id_persona: numId } });
+    }
+    res.json({ message: 'Lead eliminado exitosamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al eliminar lead' });
+  }
+});
+
 export default router;

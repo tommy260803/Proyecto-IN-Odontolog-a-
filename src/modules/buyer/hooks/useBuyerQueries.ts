@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { buyerUseCases } from '@/application/use-cases/buyer';
 import { QUERY_KEYS } from '@/shared/constants';
 import type { BuyerFormValues } from '../schemas/buyerSchema';
 import type { Buyer } from '@/domain/entities';

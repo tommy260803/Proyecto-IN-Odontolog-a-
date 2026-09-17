@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import buyerRoutes from './routes/buyer.routes';
 import leadRoutes from './routes/lead.routes';
+import payerRoutes from './routes/payer.routes';
+import paymentRoutes from './routes/payment.routes';
 
 dotenv.config({ override: true });
 
@@ -17,6 +19,8 @@ app.use(express.json());
 // Registrar rutas
 app.use('/api/buyer', buyerRoutes);
 app.use('/api/lead', leadRoutes);
+app.use('/api/payer', payerRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Ruta de prueba
 app.get('/api/ping', async (req, res) => {
@@ -30,7 +34,7 @@ app.get('/api/ping', async (req, res) => {
   }
 });
 
-// Ejemplo: Obtener todas las etapas
+// Obtener todas las etapas
 app.get('/api/etapas', async (req, res) => {
   try {
     const etapas = await prisma.etapas.findMany();

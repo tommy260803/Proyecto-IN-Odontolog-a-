@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { leadUseCases } from '@/application/use-cases/lead';
 import { QUERY_KEYS } from '@/shared/constants';
 import type { AlternativeFormValues, LeadUpdateFormValues } from '../schemas/leadSchema';
 

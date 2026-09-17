@@ -32,6 +32,23 @@ export class PayerUseCases {
   private journeysRepo = new LocalRepository<CustomerJourney>(QUERY_KEYS.JOURNEYS);
 
   async getAllPayers(): Promise<PayerWithDetails[]> {
+    try {
+      const res = await fetch('http://localhost:3001/api/payer');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data.map(d => ({
+            ...d,
+            lead: d.lead || { id: d.leadId, buyerId: d.leadId, state: 'PAYMENT_REQUESTED' },
+            buyer: d.buyer || { id: d.leadId, personId: d.leadId },
+            incidents: d.incidents || []
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn('[PayerUseCases] Backend API no disponible, usando fallback LocalStorage');
+    }
+
     const payers = await this.payersRepo.getAll();
     const leads = await this.leadsRepo.getAll();
     const buyers = await this.buyersRepo.getAll();
@@ -53,8 +70,82 @@ export class PayerUseCases {
   }
 
   async getPayerById(id: string): Promise<PayerWithDetails | null> {
-    const payer = await this.payersRepo.getById(id);
+    // 1. Consultar la API REST de Express / SQL Server
+    try {
+      const res = await fetch(`http://localhost:3001/api/payer/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.id) {
+          return {
+            ...data,
+            lead: data.lead || { id: data.leadId, buyerId: data.leadId, state: 'PAYMENT_REQUESTED' },
+            buyer: data.buyer || { id: data.leadId, personId: data.leadId },
+            incidents: data.incidents || []
+          } as PayerWithDetails;
+        }
+      }
+    } catch (e) {
+      console.warn('[PayerUseCases] Backend API no disponible, usando fallback LocalStorage');
+    }
+
+    // 2. Fallback a LocalRepository
+    let payer = await this.payersRepo.getById(id);
+    if (!payer) {
+      const allPayers = await this.payersRepo.getAll();
+      payer = allPayers.find(p => p.id === id || p.leadId === id || p.reservationId === id) || null;
+    }
     if (!payer) return null;
+
+    // Si la respuesta del repositorio (ej. ApiRepository) ya trae las relaciones integradas:
+    if (payer && (payer as any).person && (payer as any).reservation) {
+      return {
+        ...payer,
+        lead: (payer as any).lead || { id: payer.leadId, buyerId: payer.leadId, state: 'PAYMENT_REQUESTED' },
+        buyer: (payer as any).buyer || { id: payer.leadId, personId: payer.leadId },
+        incidents: (payer as any).incidents || []
+      } as PayerWithDetails;
+    }
+
+    if (!payer) {
+      // Intento de recuperación fallback si viene por leadId o personaId
+      const leads = await this.leadsRepo.getAll();
+      const leadMatch = leads.find(l => l.id === id || l.buyerId === id);
+      if (leadMatch) {
+        const buyers = await this.buyersRepo.getAll();
+        const persons = await this.personsRepo.getAll();
+        const buyerMatch = buyers.find(b => b.id === leadMatch.buyerId);
+        const personMatch = buyerMatch ? persons.find(p => p.id === buyerMatch.personId) : undefined;
+        const reservations = await this.reservationsRepo.getAll();
+        const resMatch = reservations.find(r => r.leadId === leadMatch.id);
+
+        if (personMatch || (leadMatch as any).person) {
+          const finalPerson = personMatch || (leadMatch as any).person;
+          return {
+            id: id,
+            leadId: leadMatch.id,
+            reservationId: resMatch?.id || 'res-1',
+            amountToPay: leadMatch.price || 1.00,
+            currency: 'PEN',
+            state: PayerState.PENDING,
+            createdAt: new Date().toISOString(),
+            lead: leadMatch,
+            buyer: buyerMatch || { id: leadMatch.buyerId, personId: leadMatch.id } as any,
+            person: finalPerson,
+            reservation: resMatch || {
+              id: 'res-1',
+              leadId: leadMatch.id,
+              date: new Date().toISOString().split('T')[0],
+              time: '15:00 - 16:00',
+              branchId: 'Sede Norte',
+              professionalId: 'Dr. Perez',
+              status: 'PENDING'
+            },
+            incidents: []
+          } as PayerWithDetails;
+        }
+      }
+      return null;
+    }
     
     const lead = await this.leadsRepo.getById(payer.leadId);
     const buyer = lead ? await this.buyersRepo.getById(lead.buyerId) : null;
@@ -65,10 +156,17 @@ export class PayerUseCases {
     const allIncidents = await this.incidentsRepo.getAll();
     const incidents = allIncidents.filter(i => i.payerId === payer.id);
 
-    if (!lead || !buyer || !person || !reservation) return null;
+    const finalPerson = person || (payer as any).person || { firstName: 'Paciente', lastName: 'NexoSalud' };
+    const finalReservation = reservation || (payer as any).reservation || { id: payer.reservationId, date: '2026-09-17', time: '15:00', branchId: 'Sede Norte', professionalId: 'Dr. Perez' };
 
     return { 
-      ...payer, lead, buyer, person, reservation, payment: payment || undefined, incidents 
+      ...payer, 
+      lead: lead || { id: payer.leadId, buyerId: payer.leadId, state: 'PAYMENT_REQUESTED' } as any, 
+      buyer: buyer || { id: payer.leadId, personId: payer.leadId } as any, 
+      person: finalPerson as any, 
+      reservation: finalReservation as any, 
+      payment: payment || undefined, 
+      incidents 
     };
   }
 

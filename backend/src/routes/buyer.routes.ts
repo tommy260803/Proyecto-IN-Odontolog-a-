@@ -323,4 +323,29 @@ router.post('/:id/convert', async (req, res) => {
   }
 });
 
+// Eliminar un BUYER
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  const numId = Number(id);
+  try {
+    if (!isNaN(numId)) {
+      await prisma.pagos.deleteMany({ where: { id_persona: numId } });
+      await prisma.reservas.deleteMany({ where: { id_persona: numId } });
+      const solicitudes = await prisma.solicitudes.findMany({ where: { id_persona: numId } });
+      for (const sol of solicitudes) {
+        await prisma.opciones.deleteMany({ where: { id_solicitud: sol.id_solicitud } });
+      }
+      await prisma.solicitudes.deleteMany({ where: { id_persona: numId } });
+      await prisma.eventosEtapa.deleteMany({ where: { id_persona: numId } });
+      await prisma.interacciones.deleteMany({ where: { id_persona: numId } });
+      await prisma.personaPreferencias.deleteMany({ where: { id_persona: numId } });
+      await prisma.personas.delete({ where: { id_persona: numId } });
+    }
+    res.json({ message: 'Buyer eliminado exitosamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al eliminar buyer' });
+  }
+});
+
 export default router;

@@ -5,6 +5,8 @@ import { Button } from '@/shared/components/ui/button';
 import { Label } from '@/shared/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { leadService } from '../services/lead.service';
+import { useToast } from '@/shared/hooks/use-toast';
+import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 
 import { 
   CheckCircle2,
@@ -17,12 +19,17 @@ import {
   Stethoscope,
   Mail,
   Phone,
-  MessageSquare
+  MessageSquare,
+  Edit2,
+  Trash2,
+  Check,
+  X
 } from 'lucide-react';
 
 export default function LeadNegotiationPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [lead, setLead] = useState<any>(null);
   const [options, setOptions] = useState<any>({ profesionales: [], sedes: [], disponibilidades: [] });
   const [loading, setLoading] = useState(true);
@@ -32,6 +39,11 @@ export default function LeadNegotiationPage() {
   const [selectedOpcion, setSelectedOpcion] = useState<number | null>(null);
   const [selectedDisponibilidad, setSelectedDisponibilidad] = useState('');
   const [precioOfrecido, setPrecioOfrecido] = useState('150.00');
+  const [editingOptionId, setEditingOptionId] = useState<number | null>(null);
+  const [editingPrice, setEditingPrice] = useState<string>('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingOptionTarget, setDeletingOptionTarget] = useState<any | null>(null);
+  const [isDeletingOption, setIsDeletingOption] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -64,15 +76,68 @@ export default function LeadNegotiationPage() {
       });
       fetchLeadData();
       setSelectedDisponibilidad('');
+      toast({ title: 'Alternativa Agregada', description: 'La opción de turno ha sido añadida al tablero.' });
     } catch (error) {
-      alert('Error al añadir la alternativa.');
+      toast({ title: 'Error', description: 'Error al añadir la alternativa.', variant: 'destructive' });
     } finally {
       setAddingAlternative(false);
     }
   };
 
+  const handleStartEdit = (e: React.MouseEvent, opt: any) => {
+    e.stopPropagation();
+    setEditingOptionId(opt.id_opcion);
+    setEditingPrice(opt.precio_ofrecido?.toString() || '150.00');
+  };
+
+  const handleSaveEdit = async (e: React.MouseEvent, id_opcion: number) => {
+    e.stopPropagation();
+    if (!editingPrice || isNaN(Number(editingPrice)) || Number(editingPrice) <= 0) {
+      toast({ title: 'Precio Inválido', description: 'Por favor ingresa una tarifa válida mayor a 0.', variant: 'destructive' });
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await leadService.updateAlternative(id_opcion, { precio_ofrecido: editingPrice });
+      setEditingOptionId(null);
+      fetchLeadData();
+      toast({ title: 'Tarifa Actualizada', description: `Nueva tarifa establecida: S/ ${Number(editingPrice).toFixed(2)}` });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Error al actualizar el precio de la alternativa.', variant: 'destructive' });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleCancelEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingOptionId(null);
+    setEditingPrice('');
+  };
+
+  const handleConfirmDeleteOption = async () => {
+    if (!deletingOptionTarget) return;
+    setIsDeletingOption(true);
+    try {
+      await leadService.deleteAlternative(deletingOptionTarget.id_opcion);
+      if (selectedOpcion === deletingOptionTarget.id_opcion) {
+        setSelectedOpcion(null);
+      }
+      fetchLeadData();
+      toast({ title: 'Alternativa Removida', description: 'La opción ha sido eliminada del tablero de negociación.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Error al eliminar la alternativa.', variant: 'destructive' });
+    } finally {
+      setIsDeletingOption(false);
+      setDeletingOptionTarget(null);
+    }
+  };
+
   const handleReserve = async () => {
-    if (!selectedOpcion) return alert('Selecciona una opción ofrecida primero');
+    if (!selectedOpcion) {
+      toast({ title: 'Atención', description: 'Selecciona una de las alternativas del tablero antes de cerrar el trato.' });
+      return;
+    }
     
     const ultimaSolicitud = lead.Solicitudes[lead.Solicitudes.length - 1];
 
@@ -84,7 +149,7 @@ export default function LeadNegotiationPage() {
       });
       setIsSuccess(true);
     } catch (error) {
-      alert('Error al confirmar la reserva.');
+      toast({ title: 'Error', description: 'Error al confirmar la reserva.', variant: 'destructive' });
     } finally {
       setReserving(false);
     }
@@ -283,9 +348,60 @@ export default function LeadNegotiationPage() {
                           <Calendar className="h-4 w-4 text-slate-500" />
                           {opt.Disponibilidad?.fecha.split('T')[0]}
                         </span>
-                        <p className={`font-bold text-xl ${selectedOpcion === opt.id_opcion ? 'text-indigo-700' : 'text-slate-700'}`}>
-                          S/ {opt.precio_ofrecido}
-                        </p>
+                        
+                        {editingOptionId === opt.id_opcion ? (
+                          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <span className="text-xs font-semibold text-slate-500">S/</span>
+                            <input 
+                              type="number" 
+                              step="1"
+                              className="w-20 px-2 py-1 text-sm font-bold border border-indigo-400 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800" 
+                              value={editingPrice} 
+                              onChange={(e) => setEditingPrice(e.target.value)} 
+                              autoFocus 
+                            />
+                            <button 
+                              title="Guardar precio" 
+                              onClick={(e) => handleSaveEdit(e, opt.id_opcion)} 
+                              disabled={savingEdit} 
+                              className="p-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                            </button>
+                            <button 
+                              title="Cancelar edición" 
+                              onClick={handleCancelEdit} 
+                              className="p-1.5 rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300 transition"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <p className={`font-bold text-xl ${selectedOpcion === opt.id_opcion ? 'text-indigo-700' : 'text-slate-700'}`}>
+                              S/ {opt.precio_ofrecido}
+                            </p>
+                            <div className="flex items-center gap-1 ml-1" onClick={(e) => e.stopPropagation()}>
+                              <button 
+                                title="Editar precio" 
+                                onClick={(e) => handleStartEdit(e, opt)} 
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </button>
+                              <button 
+                                title="Eliminar del tablero" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingOptionTarget(opt);
+                                }} 
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -325,6 +441,19 @@ export default function LeadNegotiationPage() {
           </div>
         </Card>
       </div>
+
+      {/* Modal Confirmación Eliminación de Alternativa */}
+      <ConfirmationDialog
+        isOpen={!!deletingOptionTarget}
+        onClose={() => setDeletingOptionTarget(null)}
+        onConfirm={handleConfirmDeleteOption}
+        isLoading={isDeletingOption}
+        title="¿Remover alternativa del tablero?"
+        description={`Se descartará la propuesta del turno ${deletingOptionTarget?.Disponibilidad?.fecha?.split('T')[0]} (Dr. ${deletingOptionTarget?.Disponibilidad?.Profesional?.apellidos}) de la mesa de negociación.`}
+        confirmText="Sí, Remover Alternativa"
+        cancelText="Conservar"
+        variant="destructive"
+      />
     </div>
   );
 }

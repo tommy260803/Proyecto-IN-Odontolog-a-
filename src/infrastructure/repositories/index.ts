@@ -1,5 +1,6 @@
 import type { IRepository } from '@/application/ports';
 import { storage } from '../storage';
+import { ApiRepository } from './ApiRepository';
 
 /**
  * Implementación base de repositorio simulado usando localStorage asíncrono.
@@ -53,3 +54,19 @@ export class LocalRepository<
     await storage.setItem(this.collectionKey, filteredData);
   }
 }
+
+/**
+ * Fábrica de repositorios que selecciona automáticamente entre ApiRepository (SQL Server)
+ * y LocalRepository (LocalStorage) según la variable de entorno VITE_USE_API.
+ */
+export function getRepository<T extends { id: string }>(
+  collectionKey: string,
+): IRepository<T> {
+  const useApi = import.meta.env.VITE_USE_API === 'true';
+  if (useApi) {
+    return new ApiRepository<T>(collectionKey);
+  }
+  return new LocalRepository<T>(collectionKey);
+}
+
+export { ApiRepository };

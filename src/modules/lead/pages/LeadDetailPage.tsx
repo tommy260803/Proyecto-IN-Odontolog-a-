@@ -150,7 +150,7 @@ export default function LeadDetailPage() {
             </div>
           ) : (
             <div className="grid gap-4">
-              {lead.alternatives.map((alt) => {
+              {lead.alternatives.map((alt: any) => {
                 const isSelected = lead.selectedAlternativeId === alt.id;
                 return (
                   <div key={alt.id} className={`p-4 border rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${isSelected ? 'border-primary bg-primary/5' : ''}`}>

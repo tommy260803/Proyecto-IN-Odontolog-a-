@@ -7,7 +7,15 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/shared/components/ui/form';
 
-export function TurnedDetailsForm({ initialValues, onSubmit, isLoading }: { initialValues: Partial<TurnedDetailsFormValues>, onSubmit: (d: TurnedDetailsFormValues) => void, isLoading: boolean }) {
+interface TurnedDetailsFormProps {
+  initialValues: Partial<TurnedDetailsFormValues>;
+  onSubmit: (d: TurnedDetailsFormValues) => void;
+  isLoading: boolean;
+  formId?: string;
+  hideSubmitButton?: boolean;
+}
+
+export function TurnedDetailsForm({ initialValues, onSubmit, isLoading, formId, hideSubmitButton }: TurnedDetailsFormProps) {
   const form = useForm<TurnedDetailsFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(turnedDetailsSchema) as any,
@@ -28,7 +36,7 @@ export function TurnedDetailsForm({ initialValues, onSubmit, isLoading }: { init
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -52,9 +60,11 @@ export function TurnedDetailsForm({ initialValues, onSubmit, isLoading }: { init
             )}
           />
         </div>
-        <div className="flex justify-end pt-2">
-          <Button type="submit" disabled={isLoading}>Guardar Cierre (Marcar CLOSED)</Button>
-        </div>
+        {!hideSubmitButton && (
+          <div className="flex justify-end pt-2">
+            <Button type="submit" disabled={isLoading}>Guardar Cierre (Marcar CLOSED)</Button>
+          </div>
+        )}
       </form>
     </Form>
   );

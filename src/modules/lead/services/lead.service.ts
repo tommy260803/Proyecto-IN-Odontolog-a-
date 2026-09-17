@@ -47,6 +47,24 @@ export const leadService = {
     return res.json();
   },
 
+  updateAlternative: async (id_opcion: number | string, data: any) => {
+    const res = await fetch(`http://localhost:3001/api/lead/options/${id_opcion}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Error al actualizar alternativa');
+    return res.json();
+  },
+
+  deleteAlternative: async (id_opcion: number | string) => {
+    const res = await fetch(`http://localhost:3001/api/lead/options/${id_opcion}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Error al eliminar alternativa');
+    return res.json();
+  },
+
   convertToPayer: async (id: string, data: any = {}) => {
     // Para simplificar, mapeamos convertToPayer a la ruta /reserve con datos dummy
     // o podemos requerir que data tenga id_solicitud y id_disponibilidad

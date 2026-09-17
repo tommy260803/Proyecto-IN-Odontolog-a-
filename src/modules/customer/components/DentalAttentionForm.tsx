@@ -12,9 +12,11 @@ interface DentalAttentionFormProps {
   onSubmit: (data: DentalAttentionFormValues) => void;
   isLoading: boolean;
   disabled?: boolean;
+  formId?: string;
+  hideSubmitButton?: boolean;
 }
 
-export function DentalAttentionForm({ initialValues, onSubmit, isLoading, disabled }: DentalAttentionFormProps) {
+export function DentalAttentionForm({ initialValues, onSubmit, isLoading, disabled, formId, hideSubmitButton }: DentalAttentionFormProps) {
   const form = useForm<DentalAttentionFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(dentalAttentionSchema) as any,
@@ -45,7 +47,7 @@ export function DentalAttentionForm({ initialValues, onSubmit, isLoading, disabl
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -125,7 +127,7 @@ export function DentalAttentionForm({ initialValues, onSubmit, isLoading, disabl
             )}
           />
         </div>
-        {!disabled && (
+        {!disabled && !hideSubmitButton && (
           <div className="flex justify-end pt-2">
             <Button type="submit" disabled={isLoading}>
               Guardar Registros

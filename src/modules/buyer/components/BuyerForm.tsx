@@ -15,9 +15,11 @@ interface BuyerFormProps {
   onSubmit: (data: BuyerFormValues) => void;
   isLoading: boolean;
   isEdit?: boolean;
+  formId?: string;
+  hideSubmitButton?: boolean;
 }
 
-export function BuyerForm({ initialValues, onSubmit, isLoading, isEdit }: BuyerFormProps) {
+export function BuyerForm({ initialValues, onSubmit, isLoading, isEdit, formId = 'buyer-form', hideSubmitButton = false }: BuyerFormProps) {
   const [catalogs, setCatalogs] = useState<any>({ canales: [], fuentes: [], servicios: [], sedes: [] });
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export function BuyerForm({ initialValues, onSubmit, isLoading, isEdit }: BuyerF
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <Card>
           <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
@@ -258,11 +260,13 @@ export function BuyerForm({ initialValues, onSubmit, isLoading, isEdit }: BuyerF
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-4">
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Guardando...' : (isEdit ? 'Actualizar' : 'Guardar')}
-          </Button>
-        </div>
+        {!hideSubmitButton && (
+          <div className="flex justify-end gap-4">
+            <Button type="submit" disabled={isLoading} className="bg-slate-900 dark:bg-teal-600 hover:bg-slate-800 dark:hover:bg-teal-500 text-white rounded-xl">
+              {isLoading ? 'Guardando...' : (isEdit ? 'Actualizar' : 'Guardar')}
+            </Button>
+          </div>
+        )}
       </form>
     </Form>
   );

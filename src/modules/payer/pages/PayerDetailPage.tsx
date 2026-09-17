@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/shared/components/data-display/PageHeader';
 import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { ErrorState } from '@/shared/components/feedback/ErrorState';
@@ -19,6 +19,7 @@ import {
   useConvertPayerToCustomer 
 } from '../hooks/usePayerQueries';
 import { PaymentForm } from '../components/PaymentForm';
+import { YapePaymentButton } from '../components/YapePaymentButton';
 import type { PaymentFormValues } from '../schemas/payerSchema';
 import { AlertCircle, FileText, Bot, ArrowRight, XCircle } from 'lucide-react';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
@@ -31,6 +32,7 @@ import type { CustomerJourney } from '@/domain/entities';
 export default function PayerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
 
   const { data: journeys = [] } = useQuery({ 
@@ -50,6 +52,24 @@ export default function PayerDetailPage() {
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [revertReason, setRevertReason] = useState('');
   const [isRevertOpen, setIsRevertOpen] = useState(false);
+
+  // Detector de retorno automático desde Yape / Mercado Pago
+  useEffect(() => {
+    const status = searchParams.get('status');
+    const paymentId = searchParams.get('payment_id');
+
+    if (status === 'approved' && payer && payer.state !== PayerState.VALIDATED) {
+      validatePayment.mutate(payer.id, {
+        onSuccess: () => {
+          toast({
+            title: '¡Pago de Yape Verificado en Vivo! 🎉',
+            description: `Transacción aprobada por Mercado Pago (Ref: ${paymentId || 'YAPE_0.10'}). Estado cambiado a VALIDADO.`,
+          });
+          setSearchParams({}, { replace: true });
+        }
+      });
+    }
+  }, [searchParams, payer]);
 
   if (isLoading) return <LoadingState />;
   if (isError || !payer) return <ErrorState message="No se encontró el Payer." />;
@@ -217,12 +237,22 @@ export default function PayerDetailPage() {
         </div>
 
         <div className="lg:col-span-2 space-y-6">
+          {(payer.state === PayerState.PENDING || payer.state === PayerState.REJECTED || payer.state === PayerState.IN_REVIEW) && (
+            <YapePaymentButton
+              payerId={payer.id}
+              personName={`${payer.person.firstName} ${payer.person.lastName}`}
+              email={payer.person.email}
+              amount={(payer as any).amountToPay ? Number((payer as any).amountToPay) : (payer.payment?.amount || 1.00)}
+              serviceName="Atención Odontológica"
+            />
+          )}
+
           {payer.state === PayerState.PENDING || payer.state === PayerState.REJECTED ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Registrar Pago</CardTitle>
+                <CardTitle className="text-lg">Registrar Pago Manual (Voucher / Foto)</CardTitle>
                 <CardDescription>
-                  El registro enviará el pago a revisión automáticamente.
+                  También puedes registrar un comprobante manual enviándolo a revisión.
                 </CardDescription>
               </CardHeader>
               <CardContent>

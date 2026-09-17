@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/shared/components/data-display/PageHeader';
 import { BaseTable } from '@/shared/components/data-display/BaseTable';
 import { StatusBadge } from '@/shared/components/feedback/StatusBadge';
@@ -11,21 +10,26 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { useBuyers } from '../hooks/useBuyerQueries';
 import { BuyerState } from '@/domain/enums';
-import { Plus, Search, Eye } from 'lucide-react';
+import { Plus, Search, Eye, Trash2 } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { leadUseCases } from '@/application/use-cases/lead';
 import { QUERY_KEYS } from '@/shared/constants';
 import { LocalRepository } from '@/infrastructure/repositories';
 import type { CustomerJourney } from '@/domain/entities';
 import { calculateB1, calculateB2, calculateB3 } from '@/domain/indicators';
 import { IndicatorCard } from '@/shared/components/data-display/IndicatorCard';
+import { useToast } from '@/shared/hooks/use-toast';
+import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
+import { BuyerCreateModal } from '../components/BuyerCreateModal';
+import { BuyerDetailModal } from '../components/BuyerDetailModal';
 
 import type { BuyerWithPerson } from '@/application/use-cases/buyer';
 
 export default function BuyerPage() {
-  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { data: buyers, isLoading, isError } = useBuyers();
   const { data: leads = [] } = useQuery({ queryKey: [QUERY_KEYS.LEADS], queryFn: () => leadUseCases.getAllLeads() });
   const { data: journeys = [] } = useQuery({ 
@@ -35,20 +39,24 @@ export default function BuyerPage() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  
-  // Filtros de fecha (opcional UI minimalista)
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  // Modales
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [selectedBuyerId, setSelectedBuyerId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<BuyerWithPerson | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const filteredBuyers = useMemo(() => {
-    return buyers?.filter(b => {
+    return buyers?.filter((b: any) => {
       const term = searchTerm.toLowerCase();
       const matchSearch = 
         b.person.firstName.toLowerCase().includes(term) ||
         b.person.lastName.toLowerCase().includes(term) ||
         (b.person.documentNumber && b.person.documentNumber.includes(term)) ||
-        b.person.phone?.includes(term) ||
-        b.person.email?.toLowerCase().includes(term);
+        (b.person.email && b.person.email.toLowerCase().includes(term)) ||
+        (b.person.phone && b.person.phone.includes(term));
       const matchStatus = statusFilter === 'ALL' || b.state === statusFilter;
       
       let matchDate = true;
@@ -60,37 +68,32 @@ export default function BuyerPage() {
   }, [buyers, searchTerm, statusFilter, startDate, endDate]);
 
   const indicators = useMemo(() => {
-    const filteredLeads = leads.filter(l => filteredBuyers.some(b => b.id === l.buyerId));
-    
     return [
       calculateB1(filteredBuyers, journeys),
       calculateB2(filteredBuyers),
-      calculateB3(filteredBuyers, filteredLeads)
+      calculateB3(filteredBuyers, leads)
     ];
-  }, [filteredBuyers, leads, journeys]);
+  }, [filteredBuyers, journeys, leads]);
 
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState />;
 
   const columns = [
     { 
-      header: 'Nombre', 
-      cell: (b: BuyerWithPerson) => <span className="font-medium">{b.person.firstName} {b.person.lastName}</span> 
-    },
-    { 
-      header: 'Contacto', 
+      header: 'Persona', 
       cell: (b: BuyerWithPerson) => (
-        <div className="text-sm">
-          {b.person.phone && <div>{b.person.phone}</div>}
-          {b.person.email && <div className="text-muted-foreground">{b.person.email}</div>}
+        <div>
+          <p className="font-semibold text-slate-900 dark:text-white">{b.person.firstName} {b.person.lastName}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{b.person.documentNumber || 'Sin Doc'}</p>
         </div>
-      )
+      ) 
     },
-    { header: 'Canal', cell: (b: BuyerWithPerson) => b.channel },
-    { header: 'Servicio', cell: (b: BuyerWithPerson) => b.serviceOfInterestId || '-' },
+    { header: 'Canal', cell: (b: BuyerWithPerson) => <span className="text-slate-700 dark:text-slate-300">{b.channel}</span> },
+    { header: 'Fuente', cell: (b: BuyerWithPerson) => <span className="text-slate-700 dark:text-slate-300">{b.attractionSource}</span> },
+    { header: 'Servicio', cell: (b: BuyerWithPerson) => <span className="text-slate-700 dark:text-slate-300">{b.serviceOfInterestId || '-'}</span> },
     { 
       header: 'Fecha', 
-      cell: (b: BuyerWithPerson) => format(new Date(b.createdAt), 'dd MMM yyyy, HH:mm', { locale: es }) 
+      cell: (b: BuyerWithPerson) => <span className="text-slate-700 dark:text-slate-300">{format(new Date(b.createdAt), 'dd MMM yyyy, HH:mm', { locale: es })}</span>
     },
     { 
       header: 'Estado', 
@@ -105,13 +108,38 @@ export default function BuyerPage() {
     { 
       header: 'Acciones', 
       cell: (b: BuyerWithPerson) => (
-        <Button variant="ghost" size="sm" onClick={() => navigate(`/buyer/${b.id}`)}>
-          <Eye className="w-4 h-4 mr-2" />
-          Ver
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setSelectedBuyerId(b.id)} className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800">
+            <Eye className="w-4 h-4 mr-1" />
+            Ver
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg"
+            onClick={() => setDeleteTarget(b)}
+          >
+            <Trash2 className="w-4 h-4 text-rose-500" />
+          </Button>
+        </div>
       )
     },
   ];
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await fetch(`http://localhost:3001/api/buyer/${deleteTarget.id}`, { method: 'DELETE' });
+      const buyersRepo = new LocalRepository<any>(QUERY_KEYS.BUYERS);
+      await buyersRepo.delete(deleteTarget.id);
+    } catch (e) {}
+    await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUYERS] });
+    await queryClient.refetchQueries({ queryKey: [QUERY_KEYS.BUYERS] });
+    toast({ title: 'Eliminado con éxito', description: `El paciente ${deleteTarget.person.firstName} ha sido removido del sistema.` });
+    setIsDeleting(false);
+    setDeleteTarget(null);
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -119,32 +147,32 @@ export default function BuyerPage() {
         title="Módulo BUYER" 
         description="Gestión de interesados iniciales y captación de potenciales leads."
         actions={
-          <Button onClick={() => navigate('/buyer/new')}>
+          <Button onClick={() => setIsCreateOpen(true)} className="bg-slate-900 dark:bg-teal-600 hover:bg-slate-800 dark:hover:bg-teal-500 text-white rounded-xl shadow-sm">
             <Plus className="w-4 h-4 mr-2" />
             Registrar BUYER
           </Button>
         }
       />
 
-      <div className="flex flex-col gap-4 bg-card p-4 rounded-lg border">
+      <div className="flex flex-col gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
         <div className="flex flex-col sm:flex-row gap-4 items-end">
           <div className="relative flex-1 w-full">
-            <span className="text-xs text-muted-foreground mb-1 block">Buscar</span>
-            <Search className="absolute left-2.5 top-7 h-4 w-4 text-muted-foreground" />
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">Buscar</span>
+            <Search className="absolute left-2.5 top-8 h-4 w-4 text-slate-400 dark:text-slate-500" />
             <Input
               placeholder="Buscar por nombre, documento, correo..."
-              className="pl-8"
+              className="pl-8 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="w-full sm:w-[150px]">
-            <span className="text-xs text-muted-foreground mb-1 block">Estado</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">Estado</span>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
+              <SelectTrigger className="rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
                 <SelectItem value="ALL">Todos</SelectItem>
                 <SelectItem value={BuyerState.NEW}>Nuevo</SelectItem>
                 <SelectItem value={BuyerState.CONTACTED}>Contactado</SelectItem>
@@ -153,13 +181,13 @@ export default function BuyerPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="w-full sm:w-[130px]">
-            <span className="text-xs text-muted-foreground mb-1 block">Desde</span>
-            <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          <div className="w-full sm:w-[160px]">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">Desde</span>
+            <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white px-3 font-medium cursor-pointer" />
           </div>
-          <div className="w-full sm:w-[130px]">
-            <span className="text-xs text-muted-foreground mb-1 block">Hasta</span>
-            <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+          <div className="w-full sm:w-[160px]">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">Hasta</span>
+            <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white px-3 font-medium cursor-pointer" />
           </div>
         </div>
       </div>
@@ -182,6 +210,32 @@ export default function BuyerPage() {
           keyExtractor={(item) => item.id} 
         />
       )}
+
+      {/* Modal de Creación */}
+      <BuyerCreateModal 
+        isOpen={isCreateOpen} 
+        onClose={() => setIsCreateOpen(false)} 
+      />
+
+      {/* Modal de Detalle / Edición / Conversión */}
+      <BuyerDetailModal 
+        buyerId={selectedBuyerId} 
+        isOpen={!!selectedBuyerId} 
+        onClose={() => setSelectedBuyerId(null)} 
+      />
+
+      {/* Modal Elegante de Confirmación de Eliminación */}
+      <ConfirmationDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="¿Eliminar registro de paciente?"
+        description={`Esta acción eliminará de forma permanente el registro de ${deleteTarget?.person.firstName} ${deleteTarget?.person.lastName} de la etapa BUYER y su historial asociado.`}
+        confirmText="Sí, Eliminar Paciente"
+        cancelText="Conservar Registro"
+        variant="destructive"
+      />
     </div>
   );
 }
