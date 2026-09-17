@@ -3,17 +3,19 @@ import { leadUseCases } from '@/application/use-cases/lead';
 import { QUERY_KEYS } from '@/shared/constants';
 import type { AlternativeFormValues, LeadUpdateFormValues } from '../schemas/leadSchema';
 
+import { leadService } from '../services/lead.service';
+
 export function useLeads() {
   return useQuery({
     queryKey: [QUERY_KEYS.LEADS],
-    queryFn: () => leadUseCases.getAllLeads(),
+    queryFn: () => leadService.getAllLeads(),
   });
 }
 
 export function useLead(id: string) {
   return useQuery({
     queryKey: [QUERY_KEYS.LEADS, id],
-    queryFn: () => leadUseCases.getLeadById(id),
+    queryFn: () => leadService.getLeadDetails(id),
     enabled: !!id,
   });
 }
@@ -22,7 +24,7 @@ export function useUpdateLead() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string, data: LeadUpdateFormValues }) => 
-      leadUseCases.updateLead(id, data),
+      leadService.updateLead(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, variables.id] });
@@ -34,7 +36,7 @@ export function useAddAlternative() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string, data: AlternativeFormValues }) => 
-      leadUseCases.addAlternative(id, data),
+      leadService.addAlternative(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, variables.id] });
@@ -46,7 +48,8 @@ export function useSelectAlternative() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ leadId, altId }: { leadId: string, altId: string }) => 
-      leadUseCases.selectAlternativeAndReserve(leadId, altId),
+      // Alias this to reserve, since selectAlternativeAndReserve is not natively in the mock API mapping
+      leadService.reserve(leadId, { id_solicitud: 1, id_disponibilidad: altId, precio_ofrecido: 0 }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, variables.leadId] });
@@ -58,7 +61,7 @@ export function useSelectAlternative() {
 export function useConvertLeadToPayer() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => leadUseCases.convertToPayer(id),
+    mutationFn: (id: string) => leadService.convertToPayer(id),
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, id] });

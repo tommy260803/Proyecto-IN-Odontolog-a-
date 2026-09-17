@@ -98,7 +98,7 @@ export default function LeadPage() {
     { 
       header: 'Acciones', 
       cell: (l: LeadWithDetails) => (
-        <Button variant="ghost" size="sm" onClick={() => navigate(`/lead/${l.id}`)}>
+        <Button variant="ghost" size="sm" onClick={() => navigate(`/lead/${l.id}/negotiation`)}>
           <Eye className="w-4 h-4 mr-2" />
           Negociar
         </Button>
