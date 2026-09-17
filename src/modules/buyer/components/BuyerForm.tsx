@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { BuyerFormValues } from '../schemas/buyerSchema';
@@ -7,6 +8,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/shared/components/ui/form';
 import { Card, CardContent } from '@/shared/components/ui/card';
+import { buyerService } from '../services/buyer.service';
 
 interface BuyerFormProps {
   initialValues?: Partial<BuyerFormValues>;
@@ -16,6 +18,12 @@ interface BuyerFormProps {
 }
 
 export function BuyerForm({ initialValues, onSubmit, isLoading, isEdit }: BuyerFormProps) {
+  const [catalogs, setCatalogs] = useState<any>({ canales: [], fuentes: [], servicios: [], sedes: [] });
+
+  useEffect(() => {
+    buyerService.getCatalogs().then(setCatalogs).catch(console.error);
+  }, []);
+
   const form = useForm<BuyerFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(buyerSchema) as any,
@@ -131,11 +139,19 @@ export function BuyerForm({ initialValues, onSubmit, isLoading, isEdit }: BuyerF
                       <SelectTrigger><SelectValue placeholder="Seleccionar canal" /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="WhatsApp">WhatsApp</SelectItem>
-                      <SelectItem value="Facebook">Facebook</SelectItem>
-                      <SelectItem value="Instagram">Instagram</SelectItem>
-                      <SelectItem value="Web">Web</SelectItem>
-                      <SelectItem value="Presencial">Presencial</SelectItem>
+                      {catalogs.canales.length > 0 ? (
+                        catalogs.canales.map((c: any) => (
+                          <SelectItem key={c.id_canal} value={c.id_canal.toString()}>{c.nombre}</SelectItem>
+                        ))
+                      ) : (
+                        <>
+                          <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                          <SelectItem value="Facebook">Facebook</SelectItem>
+                          <SelectItem value="Instagram">Instagram</SelectItem>
+                          <SelectItem value="Web">Web</SelectItem>
+                          <SelectItem value="Presencial">Presencial</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -153,10 +169,18 @@ export function BuyerForm({ initialValues, onSubmit, isLoading, isEdit }: BuyerF
                       <SelectTrigger><SelectValue placeholder="Seleccionar fuente" /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Google">Google Ads</SelectItem>
-                      <SelectItem value="FacebookAds">Facebook Ads</SelectItem>
-                      <SelectItem value="Recomendacion">Recomendación</SelectItem>
-                      <SelectItem value="Organico">Orgánico</SelectItem>
+                      {catalogs.fuentes.length > 0 ? (
+                        catalogs.fuentes.map((f: any) => (
+                          <SelectItem key={f.id_fuente} value={f.id_fuente.toString()}>{f.nombre}</SelectItem>
+                        ))
+                      ) : (
+                        <>
+                          <SelectItem value="Google">Google Ads</SelectItem>
+                          <SelectItem value="FacebookAds">Facebook Ads</SelectItem>
+                          <SelectItem value="Recomendacion">Recomendación</SelectItem>
+                          <SelectItem value="Organico">Orgánico</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -169,7 +193,16 @@ export function BuyerForm({ initialValues, onSubmit, isLoading, isEdit }: BuyerF
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Servicio de interés</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar servicio" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {catalogs.servicios.map((s: any) => (
+                        <SelectItem key={s.id_servicio} value={s.id_servicio.toString()}>{s.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
