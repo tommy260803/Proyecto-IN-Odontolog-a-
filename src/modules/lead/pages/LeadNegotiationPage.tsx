@@ -261,49 +261,46 @@ export default function LeadNegotiationPage() {
                   <p className="text-sm text-slate-500">Aún no se han ofrecido turnos al paciente.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
                   {lead.Solicitudes[lead.Solicitudes.length - 1].Opciones.map((opt: any) => (
                     <div 
                       key={opt.id_opcion} 
                       onClick={() => setSelectedOpcion(opt.id_opcion)} 
-                      className={`relative p-5 border-2 rounded-xl cursor-pointer transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                      className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all flex flex-col justify-between gap-3 ${
                         selectedOpcion === opt.id_opcion 
                           ? 'bg-indigo-50/50 border-indigo-600 shadow-sm' 
                           : 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-sm'
                       }`}
                     >
                       {selectedOpcion === opt.id_opcion && (
-                        <div className="absolute -top-3 -right-3 bg-indigo-600 rounded-full p-1 shadow-md">
+                        <div className="absolute -top-3 -right-3 bg-indigo-600 rounded-full p-1 shadow-md z-10">
                           <CheckCircle2 className="h-4 w-4 text-white" />
                         </div>
                       )}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 text-sm bg-slate-100 px-2.5 py-1 rounded-md">
-                            <Calendar className="h-4 w-4 text-slate-500" />
-                            {opt.Disponibilidad?.fecha.split('T')[0]}
-                          </span>
-                          <span className="inline-flex items-center gap-1.5 font-medium text-slate-600 text-sm">
-                            <Clock className="h-4 w-4 text-slate-400" />
-                            {opt.Disponibilidad?.hora_inicio.substring(11, 16)} - {opt.Disponibilidad?.hora_fin.substring(11, 16)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-slate-500 pt-1">
-                          <span className="flex items-center gap-1.5">
-                            <MapPin className="h-3.5 w-3.5" />
-                            {opt.Disponibilidad?.Sede?.nombre}
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <User className="h-3.5 w-3.5" />
-                            Dr. {opt.Disponibilidad?.Profesional?.apellidos}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-left md:text-right border-t md:border-t-0 pt-3 md:pt-0 mt-1 md:mt-0">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Tarifa Final</p>
-                        <p className={`font-bold text-2xl ${selectedOpcion === opt.id_opcion ? 'text-indigo-700' : 'text-slate-700'}`}>
+                      
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 text-sm bg-slate-100 px-2.5 py-1 rounded-md">
+                          <Calendar className="h-4 w-4 text-slate-500" />
+                          {opt.Disponibilidad?.fecha.split('T')[0]}
+                        </span>
+                        <p className={`font-bold text-xl ${selectedOpcion === opt.id_opcion ? 'text-indigo-700' : 'text-slate-700'}`}>
                           S/ {opt.precio_ofrecido}
                         </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <span className="flex items-center gap-2 font-medium text-slate-600 text-sm">
+                          <Clock className="h-4 w-4 text-slate-400" />
+                          {opt.Disponibilidad?.hora_inicio.substring(11, 16)} - {opt.Disponibilidad?.hora_fin.substring(11, 16)}
+                        </span>
+                        <span className="flex items-center gap-2 text-sm text-slate-500">
+                          <MapPin className="h-4 w-4 text-slate-400" />
+                          {opt.Disponibilidad?.Sede?.nombre}
+                        </span>
+                        <span className="flex items-center gap-2 text-sm text-slate-500">
+                          <User className="h-4 w-4 text-slate-400" />
+                          Dr. {opt.Disponibilidad?.Profesional?.apellidos}
+                        </span>
                       </div>
                     </div>
                   ))}
