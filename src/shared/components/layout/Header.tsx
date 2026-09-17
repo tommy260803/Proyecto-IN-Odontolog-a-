@@ -1,4 +1,4 @@
-import { Menu, Database, CreditCard } from 'lucide-react';
+import { Menu, Database, CreditCard, PanelLeft } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import {
   Sheet,
@@ -8,8 +8,11 @@ import {
 } from '@/shared/components/ui/sheet';
 import { Sidebar } from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
+import { useSidebar } from '@/shared/context/SidebarContext';
 
 export function Header() {
+  const { toggleSidebar } = useSidebar();
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/70 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 sm:px-6 lg:px-8 transition-colors">
       {/* Mobile Menu Toggle */}
@@ -37,10 +40,20 @@ export function Header() {
         <span className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">NexoSalud BI</span>
       </div>
 
-      {/* Center Context / Search or Active Clinic (Hidden on mobile) */}
-      <div className="hidden md:flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
-        <span className="h-2 w-2 rounded-full bg-teal-500"></span>
-        <span>Sistema de Inteligencia de Negocios & Gestión Clínica</span>
+      {/* Center Context / Search or Active Clinic (Desktop) */}
+      <div className="hidden md:flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 font-medium">
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          title="Alternar barra lateral"
+          className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        >
+          <PanelLeft className="h-4 w-4" />
+        </button>
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-teal-500"></span>
+          <span>Sistema de Inteligencia de Negocios & Gestión Clínica</span>
+        </div>
       </div>
 
       {/* Right Actions & Health Indicators */}
