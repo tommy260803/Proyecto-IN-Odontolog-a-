@@ -9,9 +9,13 @@ import {
 import { Sidebar } from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
 import { useSidebar } from '@/shared/context/SidebarContext';
+import { useTheme } from '@/shared/context/ThemeContext';
 
 export function Header() {
   const { toggleSidebar } = useSidebar();
+  const { theme } = useTheme();
+
+  const logoSrc = theme === 'dark' ? '/Logo_NexoSalus_Oscuro.png' : '/Logo_NexoSalud.png';
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/70 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 sm:px-6 lg:px-8 transition-colors">
@@ -27,9 +31,9 @@ export function Header() {
           <SheetContent side="left" className="flex flex-col p-6 w-80 bg-white dark:bg-slate-900 dark:border-slate-800">
             <SheetTitle className="flex items-center gap-2.5 text-lg font-bold text-slate-900 dark:text-white mb-6">
               <img 
-                src="/Logo_NexoSalud.png" 
+                src={logoSrc} 
                 alt="Logo NexoSalud" 
-                className="h-9 w-9 object-contain rounded-lg shadow-sm ring-1 ring-slate-200/80 dark:ring-slate-700 bg-white p-0.5"
+                className="h-9 w-9 object-contain rounded-lg shadow-sm ring-1 ring-slate-200/80 dark:ring-slate-700 bg-white dark:bg-slate-800 p-0.5"
               />
               NexoSalud Odontología
             </SheetTitle>

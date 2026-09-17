@@ -28,6 +28,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.classList.remove('dark');
     }
     localStorage.setItem('nexosalud_theme', theme);
+
+    // Update browser tab favicon dynamically based on theme
+    const favicon = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    if (favicon) {
+      favicon.href = theme === 'dark' ? '/Logo_NexoSalus_Oscuro.png' : '/Logo_NexoSalud.png';
+    }
   }, [theme]);
 
   const toggleTheme = () => {

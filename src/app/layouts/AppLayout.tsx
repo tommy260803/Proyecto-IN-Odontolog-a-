@@ -3,10 +3,14 @@ import { Header } from '@/shared/components/layout/Header';
 import { Sidebar } from '@/shared/components/layout/Sidebar';
 import { Toaster } from '@/shared/components/ui/toaster';
 import { useSidebar } from '@/shared/context/SidebarContext';
+import { useTheme } from '@/shared/context/ThemeContext';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 export default function AppLayout() {
   const { isCollapsed, toggleSidebar } = useSidebar();
+  const { theme } = useTheme();
+
+  const logoSrc = theme === 'dark' ? '/Logo_NexoSalus_Oscuro.png' : '/Logo_NexoSalud.png';
 
   return (
     <div className="flex min-h-[100dvh] w-full flex-col bg-[#f8fafc] dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -26,9 +30,9 @@ export default function AppLayout() {
                 <>
                   <div className="flex items-center gap-3 overflow-hidden">
                     <img 
-                      src="/Logo_NexoSalud.png" 
+                      src={logoSrc} 
                       alt="Logo NexoSalud" 
-                      className="h-10 w-10 object-contain rounded-xl shadow-sm ring-1 ring-slate-200/80 dark:ring-slate-700 bg-white p-0.5 shrink-0"
+                      className="h-10 w-10 object-contain rounded-xl shadow-sm ring-1 ring-slate-200/80 dark:ring-slate-700 bg-white dark:bg-slate-800 p-0.5 shrink-0 transition-all"
                     />
                     <div className="flex flex-col truncate">
                       <div className="flex items-center gap-1.5">
@@ -56,9 +60,9 @@ export default function AppLayout() {
                   className="group relative p-1 rounded-xl transition-all hover:scale-105"
                 >
                   <img 
-                    src="/Logo_NexoSalud.png" 
+                    src={logoSrc} 
                     alt="Logo NexoSalud" 
-                    className="h-10 w-10 object-contain rounded-xl shadow-sm ring-1 ring-slate-200/80 dark:ring-slate-700 bg-white p-0.5 shrink-0 group-hover:ring-2 group-hover:ring-teal-500 transition-all"
+                    className="h-10 w-10 object-contain rounded-xl shadow-sm ring-1 ring-slate-200/80 dark:ring-slate-700 bg-white dark:bg-slate-800 p-0.5 shrink-0 group-hover:ring-2 group-hover:ring-teal-500 transition-all"
                   />
                   <span className="absolute -bottom-1 -right-1 bg-slate-900 dark:bg-slate-700 text-white p-0.5 rounded-full border border-white dark:border-slate-800 shadow">
                     <PanelLeftOpen className="h-3 w-3 text-teal-400" />
