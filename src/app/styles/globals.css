@@ -139,4 +139,25 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   scrollbar-width: none; /* Firefox */
 }
 
+/* Mercado Pago Card Brick Dark Mode Rules */
+.dark #cardPaymentBrick_container,
+.dark .mp-card-payment-form,
+.dark .svelte-1v3b9x2,
+.dark .mp-checkout-custom-card {
+  background-color: transparent !important;
+  color: #f8fafc !important;
+}
+
+.dark #cardPaymentBrick_container iframe {
+  color-scheme: dark;
+  border-radius: 0.75rem;
+}
+
+.dark .mp-form-input,
+.dark .mp-input-container input {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  border-color: #334155 !important;
+}
+
 

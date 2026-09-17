@@ -8,6 +8,7 @@ import { CreditCard, Smartphone, Sparkles, Loader2, CheckCircle2, ShieldCheck, L
 import { useQueryClient } from '@tanstack/react-query';
 import { initMercadoPago, CardPayment } from '@mercadopago/sdk-react';
 import { QUERY_KEYS } from '@/shared/constants';
+import { useTheme } from '@/shared/context/ThemeContext';
 
 // Inicializar Mercado Pago Checkout API con la Public Key
 const MP_PUBLIC_KEY = import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY || 'TEST-2057dc67-b4dd-4efa-972d-5ce965d7ab15';
@@ -82,6 +83,7 @@ export function YapePaymentButton({
   const [isApproved, setIsApproved] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { theme } = useTheme();
 
   const finalAmount = Math.max(Number(amount) || 2, 2);
 
@@ -417,19 +419,39 @@ export function YapePaymentButton({
                     </div>
                   </div>
 
-                  <div className="min-h-[220px] relative rounded-xl p-2 bg-white dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60">
+                  <div className="min-h-[220px] relative rounded-2xl p-2 bg-slate-50/50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-sm">
                     {loading && (
-                      <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/80 backdrop-blur-xs flex items-center justify-center z-10 rounded-xl">
+                      <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/80 backdrop-blur-xs flex items-center justify-center z-10 rounded-2xl">
                         <Loader2 className="w-8 h-8 animate-spin text-sky-600 dark:text-sky-400" />
                       </div>
                     )}
                     
                     <CardPayment
+                      key={theme}
                       initialization={{
                         amount: Math.max(Number(amount) || 1, 1),
                         payer: {
                           email: (email && email.includes('@')) ? email : 'paciente@nexosalud.com',
                         },
+                      }}
+                      customization={{
+                        visual: {
+                          style: {
+                            theme: (theme === 'dark' ? 'dark' : 'default') as any,
+                            customVariables: theme === 'dark' ? {
+                              baseColor: '#742284',
+                              formBackgroundColor: '#0f172a',
+                              formPadding: '12px',
+                              borderRadius: '12px',
+                            } : {
+                              baseColor: '#742284',
+                              borderRadius: '12px',
+                            }
+                          }
+                        },
+                        paymentMethods: {
+                          maxInstallments: 1
+                        }
                       }}
                       onSubmit={async (formData) => {
                         await handleProcessCheckoutApi({ formData });
