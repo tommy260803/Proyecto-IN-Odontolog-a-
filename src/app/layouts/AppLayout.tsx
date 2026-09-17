@@ -32,7 +32,7 @@ export default function AppLayout() {
                     <img 
                       src={logoSrc} 
                       alt="Logo NexoSalud" 
-                      className="h-10 w-10 object-contain rounded-xl shadow-sm ring-1 ring-slate-200/80 dark:ring-slate-700 bg-white dark:bg-slate-800 p-0.5 shrink-0 transition-all"
+                      className="h-10 w-10 object-contain rounded-xl shadow-sm ring-1 ring-slate-200/80 dark:ring-slate-800 bg-white dark:bg-[#020617] p-0.5 shrink-0 transition-all"
                     />
                     <div className="flex flex-col truncate">
                       <div className="flex items-center gap-1.5">
@@ -62,7 +62,7 @@ export default function AppLayout() {
                   <img 
                     src={logoSrc} 
                     alt="Logo NexoSalud" 
-                    className="h-10 w-10 object-contain rounded-xl shadow-sm ring-1 ring-slate-200/80 dark:ring-slate-700 bg-white dark:bg-slate-800 p-0.5 shrink-0 group-hover:ring-2 group-hover:ring-teal-500 transition-all"
+                    className="h-10 w-10 object-contain rounded-xl shadow-sm ring-1 ring-slate-200/80 dark:ring-slate-800 bg-white dark:bg-[#020617] p-0.5 shrink-0 group-hover:ring-2 group-hover:ring-teal-500 transition-all"
                   />
                   <span className="absolute -bottom-1 -right-1 bg-slate-900 dark:bg-slate-700 text-white p-0.5 rounded-full border border-white dark:border-slate-800 shadow">
                     <PanelLeftOpen className="h-3 w-3 text-teal-400" />

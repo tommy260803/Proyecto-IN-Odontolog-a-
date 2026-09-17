@@ -33,7 +33,7 @@ export function Header() {
               <img 
                 src={logoSrc} 
                 alt="Logo NexoSalud" 
-                className="h-9 w-9 object-contain rounded-lg shadow-sm ring-1 ring-slate-200/80 dark:ring-slate-700 bg-white dark:bg-slate-800 p-0.5"
+                className="h-9 w-9 object-contain rounded-lg shadow-sm ring-1 ring-slate-200/80 dark:ring-slate-800 bg-white dark:bg-[#020617] p-0.5"
               />
               NexoSalud Odontología
             </SheetTitle>
