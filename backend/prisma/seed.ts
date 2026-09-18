@@ -5,12 +5,11 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding database mock data (Appended to SQL structure)...');
 
-  // 1. Roles y Usuarios
-  // Usar el rol "Administrador" insertado por el script SQL
-  const rolAdmin = await prisma.roles.findUniqueOrThrow({
+  const rolAdmin = await prisma.roles.upsert({
     where: { nombre: 'Administrador' },
+    update: {},
+    create: { nombre: 'Administrador' }
   });
-
   const usuario1 = await prisma.usuarios.upsert({
     where: { email: 'admin@nexosalud.com' },
     update: {},
@@ -23,20 +22,20 @@ async function main() {
     },
   });
 
-  // 2. Etapas
-  // Usar las etapas en mayúsculas del script SQL original
   const etapasNombres = ['LEAD', 'BUYER', 'PAYER', 'CUSTOMER', 'TURNED'];
   const createdEtapas: Record<string, any> = {};
   for (const etapa of etapasNombres) {
-    createdEtapas[etapa] = await prisma.etapas.findUniqueOrThrow({
+    createdEtapas[etapa] = await prisma.etapas.upsert({
       where: { nombre: etapa },
+      update: {},
+      create: { nombre: etapa, descripcion: `Etapa ${etapa}` }
     });
   }
 
-  // 3. Canales y Fuentes
-  // Usar "WhatsApp" que inserta el script SQL
-  const canalWpp = await prisma.canales.findUniqueOrThrow({
+  const canalWpp = await prisma.canales.upsert({
     where: { nombre: 'WhatsApp' },
+    update: {},
+    create: { nombre: 'WhatsApp' }
   });
   
   // El script SQL original no inserta Fuentes por defecto, la creamos o buscamos:
@@ -46,10 +45,10 @@ async function main() {
     create: { nombre: 'Búsqueda Orgánica' },
   });
 
-  // 4. Modalidades y Horarios
-  // Usar "Presencial" que inserta el script SQL
-  const modalidadP = await prisma.modalidades.findUniqueOrThrow({
+  const modalidadP = await prisma.modalidades.upsert({
     where: { nombre: 'Presencial' },
+    update: {},
+    create: { nombre: 'Presencial' }
   });
 
   // 5. Infraestructura y Médicos
@@ -61,13 +60,16 @@ async function main() {
     data: { nombre: 'Sede Sur', direccion: 'Av. El Sol 456', zona: 'Sur' },
   });
 
-  // Usar los servicios reales insertados por el script SQL
-  const servicioGeneral = await prisma.servicios.findUniqueOrThrow({
+  const servicioGeneral = await prisma.servicios.upsert({
     where: { nombre: 'Evaluación odontológica' },
+    update: {},
+    create: { nombre: 'Evaluación odontológica', descripcion: 'Evaluación odontológica general' }
   });
 
-  const servicioControl = await prisma.servicios.findUniqueOrThrow({
+  const servicioControl = await prisma.servicios.upsert({
     where: { nombre: 'Control odontológico' },
+    update: {},
+    create: { nombre: 'Control odontológico', descripcion: 'Control' }
   });
 
   const drPerez = await prisma.profesionales.create({
