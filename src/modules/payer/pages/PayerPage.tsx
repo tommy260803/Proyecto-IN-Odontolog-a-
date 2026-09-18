@@ -40,23 +40,7 @@ export default function PayerPage() {
   // Modales
   const [selectedPayerId, setSelectedPayerId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PayerWithDetails | null>(null);
-  const [isClearAllOpen, setIsClearAllOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  const handleConfirmClearAll = async () => {
-    setIsProcessing(true);
-    try {
-      await fetch(`${API_URL}/payer/clear-all`, { method: 'POST' });
-      await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
-      toast({ title: 'Limpieza Completada', description: 'Todos los registros de cobranza han sido eliminados.' });
-      setTimeout(() => window.location.reload(), 500);
-    } catch (e) {
-      toast({ title: 'Error', description: 'No se pudo limpiar la base de datos.', variant: 'destructive' });
-    } finally {
-      setIsProcessing(false);
-      setIsClearAllOpen(false);
-    }
-  };
 
   const filteredPayers = useMemo(() => {
     return payers?.filter((p: any) => {
@@ -215,17 +199,6 @@ export default function PayerPage() {
       <PageHeader 
         title="Módulo PAYER" 
         description="Gestión de pagos, validaciones e incidencias de recaudación."
-        actions={
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setIsClearAllOpen(true)} 
-            className="text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold rounded-xl"
-          >
-            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-            Limpiar Base de Pruebas
-          </Button>
-        }
       />
 
       <div className="flex flex-col gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
@@ -331,19 +304,6 @@ export default function PayerPage() {
         title="¿Eliminar registro de cobranza?"
         description={`Esta acción eliminará de forma permanente el cobro del paciente ${deleteTarget?.person.firstName} ${deleteTarget?.person.lastName} y su comprobante asociado.`}
         confirmText="Sí, Eliminar Cobro"
-        cancelText="Cancelar"
-        variant="destructive"
-      />
-
-      {/* Modal Confirmación Limpieza Total */}
-      <ConfirmationDialog
-        isOpen={isClearAllOpen}
-        onClose={() => setIsClearAllOpen(false)}
-        onConfirm={handleConfirmClearAll}
-        isLoading={isProcessing}
-        title="¿Limpiar toda la base de pruebas de PAYER?"
-        description="Esta acción eliminará todos los registros de cobro, pagos y transacciones de prueba en la base de datos SQL Server y local. Esta acción es irreversible."
-        confirmText="Sí, Limpiar Todo"
         cancelText="Cancelar"
         variant="destructive"
       />

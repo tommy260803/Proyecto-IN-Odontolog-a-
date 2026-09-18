@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -67,8 +67,6 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
   const [aiCalled, setAiCalled] = useState(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [showCopyPreview, setShowCopyPreview] = useState(false);
-
-  if (!isOpen || !payerId) return null;
 
   const handleRegisterPayment = (data: PaymentFormValues) => {
     if (!payer) return;
@@ -173,6 +171,17 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
       setAiLoading(false);
     }
   };
+
+  // Auto-consultar a la IA al abrir el modal para el paciente seleccionado
+  useEffect(() => {
+    if (isOpen && payer) {
+      handleAskAI(payer);
+    } else if (!isOpen) {
+      setAiResult(null);
+      setAiError('');
+      setAiCalled(false);
+    }
+  }, [isOpen, payer?.id]);
 
   // Abrir WhatsApp con el mensaje generado por la IA
   const handleSendWhatsApp = (p: PayerWithDetails) => {
@@ -361,6 +370,8 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
       </div>
     );
   };
+
+  if (!isOpen || !payerId) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
