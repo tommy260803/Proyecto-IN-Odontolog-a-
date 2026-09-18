@@ -117,14 +117,6 @@ router.post('/create-preference', async (req, res) => {
   const { payerId, title, amount, personName, email } = req.body;
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
 
-  if (!accessToken || accessToken.includes('TU_ACCESS_TOKEN')) {
-    const mockInitPoint = `http://localhost:5173/payer/${payerId}?status=approved&payment_id=SIMULATED_YAPE_${Date.now()}`;
-    return res.json({
-      id: `PREFERENCE_MOCK_${Date.now()}`,
-      initPoint: mockInitPoint,
-      isMock: true,
-      message: 'Modo simulación activo.'
-    });
   if (!accessToken) {
     return res.status(500).json({ error: 'MERCADOPAGO_ACCESS_TOKEN no configurado en backend/.env' });
   }
@@ -134,11 +126,9 @@ router.post('/create-preference', async (req, res) => {
       items: [
         {
           id: String(payerId || '1'),
-          title: title || 'Reserva de Servicio Odontológico (Prueba Yape)',
           title: title || 'Reserva de Servicio Odontológico',
           quantity: 1,
           currency_id: 'PEN',
-          unit_price: Number(amount) || 0.10,
           unit_price: Number(amount) || 2.00,
         },
       ],
@@ -170,7 +160,6 @@ router.post('/create-preference', async (req, res) => {
 
     if (!response.ok) {
       console.error('Error desde la API de Mercado Pago:', data);
-      return res.status(response.status).json({ error: 'Error generando preferencia en Mercado Pago', details: data });
       return res.status(response.status).json({
         error: data.message || (data.cause && data.cause[0]?.description) || 'Error generando preferencia en Mercado Pago',
         details: data
@@ -183,37 +172,26 @@ router.post('/create-preference', async (req, res) => {
       sandboxInitPoint: data.sandbox_init_point,
       isMock: false
     });
-  } catch (error) {
   } catch (error: any) {
     console.error('Error en servidor payment.routes:', error);
-    res.status(500).json({ error: 'Error interno al procesar pago' });
     res.status(500).json({ error: error.message || 'Error interno al procesar preferencia' });
   }
 });
 
 /**
  * 3. Procesar Pago vía Checkout API (Payment Brick)
- * Recibe el token y datos generados directamente en el frontend sin redirección ni login forzoso
  * Recibe el token y datos generados directamente en el frontend y valida estrictamente con Mercado Pago
  */
 router.post('/process-checkout-api', async (req, res) => {
   const { payerId, formData, amount, email } = req.body;
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
 
-  if (!accessToken || accessToken.includes('TU_ACCESS_TOKEN')) {
-    return res.json({
-      status: 'approved',
-      id: `SIMULATED_API_${Date.now()}`,
-      status_detail: 'accredited',
-      message: 'Pago simulado aprobado con éxito'
-    });
   if (!accessToken) {
     return res.status(500).json({ error: 'MERCADOPAGO_ACCESS_TOKEN no configurado en backend/.env' });
   }
 
   try {
     const rawAmount = formData?.transaction_amount ?? amount;
-    const paymentAmount = Number(rawAmount) > 0 ? Number(rawAmount) : 1.00;
     const paymentAmount = Number(rawAmount) > 0 ? Number(rawAmount) : 2.00;
 
     const paymentBody: any = {
@@ -228,7 +206,6 @@ router.post('/process-checkout-api', async (req, res) => {
       }
     };
 
-    console.log('Enviando pago a Mercado Pago /v1/payments:', JSON.stringify(paymentBody, null, 2));
     console.log('[Tarjeta] Enviando pago a Mercado Pago /v1/payments:', JSON.stringify(paymentBody, null, 2));
 
     const response = await fetch('https://api.mercadopago.com/v1/payments', {
@@ -245,23 +222,11 @@ router.post('/process-checkout-api', async (req, res) => {
     console.log('[Tarjeta] Respuesta de Mercado Pago /v1/payments:', data);
 
     if (!response.ok) {
-      console.warn('Aviso de Mercado Pago API:', data);
-      // Si estamos usando credenciales de prueba (TEST-), auto-aprobar en modo sandbox para que el flujo académico funcione al 100%
-      if (accessToken.startsWith('TEST-')) {
-        console.log('Ambiente TEST detectado: Aprobando en Sandbox exitosamente para el flujo de prueba.');
-        return res.json({
-          status: 'approved',
-          id: `TEST_SANDBOX_${Date.now()}`,
-          status_detail: 'accredited',
-          isSandbox: true
-        });
-      }
       const errorMsg = data.message ||
         (data.cause && data.cause[0]?.description) ||
         'Error al procesar el pago con la tarjeta. Verifica que los datos sean correctos (o usa una tarjeta de prueba de Mercado Pago válida).';
 
       return res.status(response.status).json({
-        error: data.message || (data.cause && data.cause[0]?.description) || 'Error al procesar el pago con la API de Mercado Pago.',
         error: errorMsg,
         details: data
       });
@@ -289,10 +254,8 @@ router.post('/process-checkout-api', async (req, res) => {
       id: data.id,
       status_detail: data.status_detail
     });
-  } catch (error) {
   } catch (error: any) {
     console.error('Error interno procesando Checkout API:', error);
-    res.status(500).json({ error: 'Error interno en Checkout API' });
     res.status(500).json({ error: error.message || 'Error interno en Checkout API' });
   }
 });
