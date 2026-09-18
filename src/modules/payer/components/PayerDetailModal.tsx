@@ -286,7 +286,7 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
             type="button"
             onClick={() => handleSendWhatsApp(p)}
             size="sm"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-medium"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
             title="Enviar mensaje persuasivo por WhatsApp"
           >
             <MessageSquare className="w-3.5 h-3.5" />
@@ -298,25 +298,23 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
             type="button"
             onClick={() => handleSendEmail(p)}
             size="sm"
-            variant="outline"
-            className="rounded-xl text-xs h-8 px-3 gap-1.5 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-slate-700 dark:text-slate-200"
-            title="Enviar correo formal de cobranza"
+            className="bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
+            title="Enviar proforma y correo formal de cobranza"
           >
-            <Mail className="w-3.5 h-3.5 text-indigo-500" />
+            <Mail className="w-3.5 h-3.5" />
             Enviar Correo
           </Button>
 
-          {/* Botón Previsualizar PDF */}
+          {/* Botón Ver PDF */}
           <Button
             type="button"
             onClick={() => setIsPdfModalOpen(true)}
             size="sm"
-            variant="outline"
-            className="rounded-xl text-xs h-8 px-3 gap-1.5 border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200 hover:bg-teal-100 font-medium"
-            title="Previsualizar y descargar proforma en PDF"
+            className="bg-teal-50 hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800 dark:hover:bg-teal-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
+            title="Abrir visor oficial de proforma en PDF"
           >
-            <Eye className="w-3.5 h-3.5 text-teal-600" />
-            Previsualizar Proforma PDF
+            <FileText className="w-3.5 h-3.5" />
+            Ver PDF
           </Button>
 
           {/* Ver mensaje redactado */}
