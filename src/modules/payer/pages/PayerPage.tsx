@@ -184,14 +184,31 @@ export default function PayerPage() {
     if (!deleteTarget) return;
     setIsProcessing(true);
     try {
-      await fetch(`${API_URL}/payer/${deleteTarget.id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/payer/${deleteTarget.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'No se pudo eliminar el cobro.');
+      }
 
-    } catch (e) {}
-    await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
-    await queryClient.refetchQueries({ queryKey: [QUERY_KEYS.PAYERS] });
-    toast({ title: 'Cobro Eliminado', description: `El registro de cobro de ${deleteTarget.person.firstName} ${deleteTarget.person.lastName} ha sido eliminado.` });
-    setIsProcessing(false);
-    setDeleteTarget(null);
+      toast({ 
+        title: 'Cobro Eliminado', 
+        description: `El registro de cobro de ${deleteTarget.person.firstName} ${deleteTarget.person.lastName} ha sido eliminado exitosamente.` 
+      });
+      setDeleteTarget(null);
+    } catch (e: any) {
+      console.error(e);
+      toast({ 
+        title: 'Error al eliminar', 
+        description: e.message || 'Ocurrió un error al intentar eliminar el registro de cobranza.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
+      await queryClient.refetchQueries({ queryKey: [QUERY_KEYS.PAYERS] });
+      await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
+      await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.JOURNEYS] });
+      setIsProcessing(false);
+    }
   };
 
   return (

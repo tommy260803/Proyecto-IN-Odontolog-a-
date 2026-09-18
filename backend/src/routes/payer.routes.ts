@@ -281,47 +281,93 @@ router.post('/:id/validate', async (req, res) => {
   }
 });
 
-// Eliminar un PAYER individual (Reserva y pagos asociados en SQL Server)
+// Eliminar un PAYER individual (Reserva, atenciones, incidencias y pagos asociados en SQL Server)
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   const numId = Number(id);
 
   try {
-    if (!isNaN(numId)) {
-      // 1. Eliminar pagos vinculados a la reserva o persona
-      await prisma.pagos.deleteMany({
-        where: {
-          OR: [
-            { id_reserva: numId },
-            { id_persona: numId }
-          ]
-        }
-      });
-
-      // 2. Eliminar la reserva
-      await prisma.reservas.deleteMany({
-        where: {
-          OR: [
-            { id_reserva: numId },
-            { id_persona: numId }
-          ]
-        }
-      });
-
-      // 3. Regresar etapa de la persona a LEAD si existe
-      const etapaLead = await prisma.etapas.findFirst({ where: { nombre: 'LEAD' } });
-      if (etapaLead) {
-        await prisma.personas.updateMany({
-          where: { id_persona: numId },
-          data: { id_etapa_actual: etapaLead.id_etapa }
-        }).catch(() => {});
-      }
+    if (isNaN(numId)) {
+      return res.status(400).json({ error: 'ID inválido' });
     }
 
-    res.json({ message: 'Payer eliminado exitosamente en SQL Server' });
-  } catch (error) {
+    // 1. Buscar la reserva objetivo
+    const reserva = await prisma.reservas.findFirst({
+      where: {
+        OR: [
+          { id_reserva: numId },
+          { id_persona: numId }
+        ]
+      },
+      include: {
+        Pagos: true,
+        Atenciones: true,
+        Incidencias: true
+      }
+    });
+
+    if (!reserva) {
+      return res.status(404).json({ error: 'Registro de cobro no encontrado' });
+    }
+
+    const reservaId = reserva.id_reserva;
+    const personaId = reserva.id_persona;
+    const atencionIds = reserva.Atenciones.map(a => a.id_atencion);
+    const pagoIds = reserva.Pagos.map(p => p.id_pago);
+
+    await prisma.$transaction(async (tx) => {
+      // a. Eliminar Seguimientos asociados a las atenciones
+      if (atencionIds.length > 0) {
+        await tx.seguimientos.deleteMany({
+          where: { id_atencion: { in: atencionIds } }
+        });
+      }
+
+      // b. Eliminar Incidencias asociadas a reservas, pagos o atenciones
+      await tx.incidencias.deleteMany({
+        where: {
+          OR: [
+            { id_reserva: reservaId },
+            ...(pagoIds.length > 0 ? [{ id_pago: { in: pagoIds } }] : []),
+            ...(atencionIds.length > 0 ? [{ id_atencion: { in: atencionIds } }] : [])
+          ]
+        }
+      });
+
+      // c. Eliminar Atenciones
+      if (atencionIds.length > 0) {
+        await tx.atenciones.deleteMany({
+          where: { id_atencion: { in: atencionIds } }
+        });
+      }
+
+      // d. Eliminar Pagos
+      await tx.pagos.deleteMany({
+        where: { id_reserva: reservaId }
+      });
+
+      // e. Eliminar la Reserva
+      await tx.reservas.deleteMany({
+        where: { id_reserva: reservaId }
+      });
+
+      // f. Revertir etapa de la persona a LEAD si no tiene otras reservas
+      const otherReservas = await tx.reservas.count({ where: { id_persona: personaId } });
+      if (otherReservas === 0) {
+        const etapaLead = await tx.etapas.findFirst({ where: { nombre: 'LEAD' } });
+        if (etapaLead) {
+          await tx.personas.update({
+            where: { id_persona: personaId },
+            data: { id_etapa_actual: etapaLead.id_etapa }
+          });
+        }
+      }
+    });
+
+    res.json({ message: 'Payer y registros asociados eliminados exitosamente en SQL Server' });
+  } catch (error: any) {
     console.error('Error al eliminar Payer en backend:', error);
-    res.status(500).json({ error: 'Error al eliminar payer en base de datos' });
+    res.status(500).json({ error: error.message || 'Error al eliminar payer en base de datos' });
   }
 });
 
