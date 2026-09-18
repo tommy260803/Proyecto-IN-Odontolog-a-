@@ -1,11 +1,28 @@
 import { Router } from 'express';
+import { randomUUID } from 'crypto';
 
 const router = Router();
 
 /**
+ * 0. Consultar medios de pago habilitados en la cuenta de Mercado Pago
+ */
+router.get('/payment-methods', async (req, res) => {
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN || 'APP_USR-4001730668702458-091700-e25cb8b7b1adb93aed667a28cfa96a3a-3595881654';
+  try {
+    const response = await fetch('https://api.mercadopago.com/v1/payment_methods', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Error al consultar medios de pago' });
+  }
+});
+
+/**
  * 1. Procesar Pago Directo con YAPE (Flujo Oficial Mercado Pago)
- * Paso 1: Generar YAPE_TOKEN con teléfono + OTP
- * Paso 2: Crear el pago en /v1/payments con payment_method_id: 'yape'
+ * Paso 1: Generar YAPE_TOKEN con teléfono + OTP usando requestId UUID
+ * Paso 2: Crear el pago en /v1/payments con payment_method_id: 'yape', installments: 1
  */
 router.post('/process-yape', async (req, res) => {
   const { payerId, amount, phone, otpCode, email } = req.body;
@@ -30,16 +47,17 @@ router.post('/process-yape', async (req, res) => {
   }
 
   try {
-    console.log(`[Yape] Solicitando token a Mercado Pago para celular: ${rawPhone}, OTP: ${rawOtp.substring(0, 2)}****`);
+    const requestId = randomUUID();
+    console.log(`[Yape] Solicitando token a Mercado Pago con requestId UUID: ${requestId}, celular: ${rawPhone}`);
 
-    // Paso 1: Generar el token oficial en la API de Yape de Mercado Pago
+    // Paso 1: Generar el token oficial en la API de Yape de Mercado Pago (requestId DEBE ser UUID)
     const tokenResponse = await fetch(`https://api.mercadopago.com/platforms/pci/yape/v1/payment?public_key=${publicKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         phoneNumber: rawPhone,
         otp: rawOtp,
-        requestId: `yape-req-${payerId}-${Date.now()}`
+        requestId: requestId
       })
     });
 
@@ -49,7 +67,7 @@ router.post('/process-yape', async (req, res) => {
     if (!tokenResponse.ok || !tokenData || !tokenData.id) {
       const errorMsg = tokenData?.message ||
         (tokenData?.cause && tokenData.cause[0]?.description) ||
-        'Código de aprobación de Yape inválido o expirado. Abre tu app Yape, pulsa en "Código de aprobación" y escribe los 6 dígitos generados (recuerda que dura 90 segundos).';
+        'Código de aprobación de Yape inválido o expirado. Abre tu app Yape, pulsa en "Código de aprobación" y escribe los 6 dígitos generados.';
 
       return res.status(400).json({
         error: errorMsg,
