@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,7 @@ interface PayerDetailModalProps {
 }
 
 export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalProps) {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -83,8 +85,12 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
     if (!payer) return;
     validatePayment.mutate(payer.id, {
       onSuccess: () => {
-        toast({ title: 'Validado', description: 'El pago ha sido validado correctamente.' });
+        toast({ 
+          title: 'Pago Validado', 
+          description: 'El pago ha sido aprobado y el paciente fue transferido automáticamente a CUSTOMER.' 
+        });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
       },
       onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' })
     });
@@ -312,15 +318,18 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                 Enviar Confirmación al Correo
               </Button>
 
-              {/* Botón Pasar a CUSTOMER */}
+              {/* Botón Ir a Módulo CUSTOMER */}
               <Button
                 type="button"
-                onClick={() => setIsConvertOpen(true)}
+                onClick={() => {
+                  onClose();
+                  navigate('/customer');
+                }}
                 size="sm"
                 className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs h-8 px-3.5 gap-1.5 shadow-sm font-semibold ml-auto"
-                title="Transferir paciente a la etapa CUSTOMER"
+                title="Ir al módulo CUSTOMER para gestionar la atención clínica"
               >
-                Pasar a CUSTOMER
+                Ver en CUSTOMER
                 <ArrowRight className="w-3.5 h-3.5" />
               </Button>
             </>
@@ -443,10 +452,13 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                   <StatusBadge status={payer.state} />
                   {payer.state === PayerState.VALIDATED && (
                     <Button 
-                      onClick={() => setIsConvertOpen(true)} 
+                      onClick={() => {
+                        onClose();
+                        navigate('/customer');
+                      }} 
                       className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-sm text-xs font-semibold px-3 py-2 h-8"
                     >
-                      Pasar a CUSTOMER <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                      Ir a CUSTOMER <ArrowRight className="w-3.5 h-3.5 ml-1" />
                     </Button>
                   )}
                 </div>
@@ -677,9 +689,12 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
               <Button
                 type="button"
                 className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold h-9 px-4 shadow-sm"
-                onClick={() => setIsConvertOpen(true)}
+                onClick={() => {
+                  onClose();
+                  navigate('/customer');
+                }}
               >
-                Pasar a CUSTOMER <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                Ir a Módulo CUSTOMER <ArrowRight className="w-3.5 h-3.5 ml-1" />
               </Button>
             )}
           </div>

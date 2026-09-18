@@ -188,7 +188,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Validar pago de una reserva en SQL Server
+// Validar pago de una reserva en SQL Server y transferir automáticamente a CUSTOMER
 router.post('/:id/validate', async (req, res) => {
   const { id } = req.params;
   const numId = Number(id);
@@ -201,18 +201,24 @@ router.post('/:id/validate', async (req, res) => {
           { id_persona: isNaN(numId) ? -1 : numId }
         ]
       },
-      include: { Opcion: true, Pagos: true }
+      include: { 
+        Opcion: { include: { Disponibilidad: true } }, 
+        Solicitud: true, 
+        Pagos: true 
+      }
     });
 
     if (!reserva) {
       return res.status(404).json({ error: 'Reserva no encontrada' });
     }
 
+    // 1. Confirmar Reserva
     await prisma.reservas.update({
       where: { id_reserva: reserva.id_reserva },
       data: { estado: 'Confirmada', confirmacion_explicita: true, fecha_confirmacion: new Date() }
     });
 
+    // 2. Validar o Crear Pago
     let pago = reserva.Pagos.length > 0 ? reserva.Pagos[0] : null;
     if (pago) {
       pago = await prisma.pagos.update({
@@ -233,9 +239,44 @@ router.post('/:id/validate', async (req, res) => {
       });
     }
 
-    res.json({ message: 'Pago validado exitosamente en SQL Server', pago });
+    // 3. Promover automáticamente la persona a etapa CUSTOMER
+    let etapaCustomer = await prisma.etapas.findFirst({ where: { nombre: 'CUSTOMER' } });
+    if (!etapaCustomer) {
+      etapaCustomer = await prisma.etapas.create({ data: { nombre: 'CUSTOMER', descripcion: 'Atención' } });
+    }
+
+    const persona = await prisma.personas.update({
+      where: { id_persona: reserva.id_persona },
+      data: { id_etapa_actual: etapaCustomer.id_etapa }
+    });
+
+    // 4. Crear registro en la tabla Atenciones para la historia clínica si no existe
+    const existingAtencion = await prisma.atenciones.findFirst({ where: { id_reserva: reserva.id_reserva } });
+    if (!existingAtencion) {
+      const defaultProf = await prisma.profesionales.findFirst();
+      const defaultSede = await prisma.sedes.findFirst();
+
+      await prisma.atenciones.create({
+        data: {
+          id_persona: persona.id_persona,
+          id_reserva: reserva.id_reserva,
+          id_servicio: reserva.Solicitud?.id_servicio || 1,
+          id_profesional: reserva.Opcion?.Disponibilidad?.id_profesional || defaultProf?.id_profesional || 1,
+          id_sede: reserva.Opcion?.Disponibilidad?.id_sede || defaultSede?.id_sede || 1,
+          fecha_atencion: reserva.Opcion?.Disponibilidad?.fecha || new Date(),
+          estado_servicio: 'Programado',
+          asistencia: 'Pendiente'
+        }
+      });
+    }
+
+    res.json({ 
+      message: 'Pago validado exitosamente y paciente transferido a CUSTOMER', 
+      pago,
+      personaId: persona.id_persona
+    });
   } catch (error) {
-    console.error(error);
+    console.error('Error al validar pago en backend:', error);
     res.status(500).json({ error: 'Error al validar pago en backend' });
   }
 });

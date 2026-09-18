@@ -38,6 +38,8 @@ export function useValidatePayment() {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS, id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.JOURNEYS] });
     },
   });
 }
