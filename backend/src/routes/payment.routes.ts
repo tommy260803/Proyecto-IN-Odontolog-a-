@@ -113,17 +113,23 @@ router.post('/process-yape', async (req, res) => {
     }
 
     // Si el pago no fue aprobado por Mercado Pago
-    let rejectionReason = data?.message ||
-      (data?.cause && data.cause[0]?.description) ||
-      (data?.status_detail === 'cc_rejected_insufficient_amount' ? 'Saldo insuficiente en tu cuenta Yape.' : 'El pago fue rechazado por la pasarela de Yape. Verifica tu saldo o genera un nuevo código OTP.');
+    const causeMsg = data?.cause && Array.isArray(data.cause)
+      ? data.cause.map((c: any) => c.description || c.code || JSON.stringify(c)).join(', ')
+      : '';
 
-    if (rejectionReason === 'internal_error') {
-      rejectionReason = 'El servicio de Yape reportó un error interno de comunicación con el banco. Por favor genera un nuevo código OTP en tu app Yape e inténtalo nuevamente.';
+    const detailMsg = causeMsg || data?.status_detail || data?.message || 'Error en pasarela de pago';
+
+    let rejectionReason = detailMsg;
+    if (detailMsg === 'cc_rejected_insufficient_amount') {
+      rejectionReason = 'Saldo insuficiente en tu cuenta Yape.';
+    } else if (detailMsg === 'internal_error' || data?.message === 'internal_error') {
+      rejectionReason = 'Mercado Pago (internal_error): El servicio del banco BCP no pudo procesar la transacción en este instante. Verifica que tu saldo sea suficiente o genera un nuevo código de aprobación.';
     }
 
     return res.status(400).json({
       error: rejectionReason,
       status: data.status,
+      status_detail: data.status_detail,
       details: data
     });
 
