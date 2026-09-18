@@ -13,20 +13,19 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const saved = localStorage.getItem('nexosalud_theme');
-    if (saved === 'dark' || saved === 'light') return saved;
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
+    if (saved === 'dark' || saved === 'light') return saved as Theme;
     return 'light';
   });
 
   useEffect(() => {
     const root = document.documentElement;
+
     if (theme === 'dark') {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
+
     localStorage.setItem('nexosalud_theme', theme);
 
     // Update browser tab favicon dynamically based on theme

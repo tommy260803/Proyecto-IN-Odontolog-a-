@@ -102,6 +102,7 @@ model Personas {
   Pagos               Pagos[]
   Atenciones          Atenciones[]
   Seguimientos        Seguimientos[]
+  SaludOdontologica   PersonaSaludOdontologica[]
   EventosEtapa        EventosEtapa[]
   DecisionesIA        DecisionesIA[]
   Incidencias         Incidencias[]
@@ -126,6 +127,40 @@ model DatosLaborales {
   disponibilidad  String?  @db.VarChar(200)
   aplica          Boolean  @default(true)
   Persona         Personas @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model PersonaSaludOdontologica {
+  id_salud_odonto          Int      @id @default(autoincrement())
+  id_persona               Int
+
+  // Estado general bucal
+  estado_general_bucal     String?  @db.VarChar(200)
+  nivel_higiene_bucal      String?  @db.VarChar(50)
+  frecuencia_cepillado     String?  @db.VarChar(50)
+  usa_enjuague_bucal       String?  @db.VarChar(20)
+  usa_hilo_dental          String?  @db.VarChar(20)
+  ultima_visita_odontologo String?  @db.VarChar(50)
+
+  // Condiciones preexistentes
+  tiene_caries             String?  @db.VarChar(20)
+  tiene_enfermedad_gingival String? @db.VarChar(20)
+  tiene_sensibilidad        String? @db.VarChar(20)
+  usa_protesis              String? @db.VarChar(20)
+  usa_ortodoncia            String? @db.VarChar(20)
+  tiene_bruxismo            String? @db.VarChar(20)
+  condiciones_relevantes    String? @db.VarChar(500)
+
+  // Historial de tratamientos
+  tratamientos_previos     String?  @db.VarChar(500)
+  alergias_materiales      String?  @db.VarChar(200)
+  medicamentos_actuales    String?  @db.VarChar(300)
+
+  // Motivación y objetivos
+  motivo_consulta_principal String? @db.VarChar(300)
+  objetivo_estetico         String? @db.VarChar(200)
+
+  fecha_registro           DateTime @default(now()) @db.DateTime2
+  Persona                  Personas @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model PersonaPreferencias {

@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Label } from '@/shared/components/ui/label';
+import { Badge } from '@/shared/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { leadService } from '../services/lead.service';
 import { useToast } from '@/shared/hooks/use-toast';
@@ -16,24 +17,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
 import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { ErrorState } from '@/shared/components/feedback/ErrorState';
-
-import { 
-  CheckCircle2,
-  Calendar,
-  Clock,
-  MapPin,
-  User,
-  Plus,
-  ArrowRight,
-  Stethoscope,
-  Mail,
-  Phone,
-  MessageSquare,
-  Edit2,
-  Trash2,
-  Check,
-  X,
-  Briefcase
+import {
+  CheckCircle2, Calendar, Clock, MapPin, User, Plus, ArrowRight,
+  Stethoscope, Mail, Phone, MessageSquare, Edit2, Trash2,
+  Check, X, Briefcase, GraduationCap, Settings2, Activity,
+  Building2, DollarSign, ChevronDown, ChevronRight, HeartPulse,
 } from 'lucide-react';
 
 interface LeadNegotiationModalProps {
@@ -42,109 +30,210 @@ interface LeadNegotiationModalProps {
   onClose: () => void;
 }
 
+// ── Helper: calcular edad ────────────────────────────────────────────────────
+function calcAge(dob: string | null | undefined): string | null {
+  if (!dob) return null;
+  const diff = Date.now() - new Date(dob).getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25)).toString();
+}
+
+// ── Sub-componente: Fila de dato ─────────────────────────────────────────────
+function DataRow({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string | null | undefined }) {
+  if (!value) return null;
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{label}</span>
+      <div className="flex items-center gap-1.5 text-sm font-medium text-slate-800 dark:text-slate-200">
+        {icon && <span className="text-slate-400 dark:text-slate-500 shrink-0">{icon}</span>}
+        <span>{value}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Chip para condiciones booleanas (Sí/No) ──────────────────────────────────
+function CondChip({ label, value }: { label: string; value: string | null | undefined }) {
+  if (!value) return null;
+  const isYes = value.toLowerCase().startsWith('sí') || value.toLowerCase().startsWith('si');
+  return (
+    <div className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs border ${isYes
+      ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200/70 dark:border-rose-800/50 text-rose-700 dark:text-rose-400'
+      : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/70 dark:border-slate-700/60 text-slate-600 dark:text-slate-400'
+    }`}>
+      <span className="font-medium">{label}</span>
+      <span className={`font-bold ${isYes ? 'text-rose-600 dark:text-rose-300' : 'text-slate-500 dark:text-slate-400'}`}>{value}</span>
+    </div>
+  );
+}
+
+// ── Sección Acordeón ─────────────────────────────────────────────────────────
+function AccordionSection({ title, subtitle, icon, children, defaultOpen = false }: {
+  title: string; subtitle: string; icon: React.ReactNode;
+  children: React.ReactNode; defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Card className="shadow-sm border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full text-left"
+      >
+        <CardHeader className="pb-3 pt-4 px-4 bg-white dark:bg-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+          <div className="flex items-center justify-between">
+            <div className="flex items-start gap-2">
+              <span className="text-slate-500 dark:text-slate-400 mt-0.5 shrink-0">{icon}</span>
+              <div>
+                <CardTitle className="text-xs font-bold text-slate-800 dark:text-slate-100">{title}</CardTitle>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-normal">{subtitle}</p>
+              </div>
+            </div>
+            <span className="text-slate-400 dark:text-slate-500 shrink-0 ml-2">
+              {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            </span>
+          </div>
+        </CardHeader>
+      </button>
+      {open && (
+        <CardContent className="p-4 bg-white dark:bg-slate-900/80 space-y-3 border-t border-slate-200/70 dark:border-slate-700/80 animate-in slide-in-from-top-1 duration-150">
+          {children}
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
+// ── Sección siempre abierta (Datos Personales) ───────────────────────────────
+function StaticSection({ title, subtitle, icon, children }: {
+  title: string; subtitle: string; icon: React.ReactNode; children: React.ReactNode;
+}) {
+  return (
+    <Card className="shadow-sm border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden">
+      <CardHeader className="pb-3 pt-4 px-4 bg-white dark:bg-slate-800/60 border-b border-slate-200/70 dark:border-slate-700/80">
+        <div className="flex items-start gap-2">
+          <span className="text-slate-500 dark:text-slate-400 mt-0.5 shrink-0">{icon}</span>
+          <div>
+            <CardTitle className="text-xs font-bold text-slate-800 dark:text-slate-100">{title}</CardTitle>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-normal">{subtitle}</p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 bg-white dark:bg-slate-900/80 space-y-3">{children}</CardContent>
+    </Card>
+  );
+}
+
 export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiationModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
   const [lead, setLead] = useState<any>(null);
-  const [options, setOptions] = useState<any>({ profesionales: [], sedes: [], disponibilidades: [] });
+  const [catalogs, setCatalogs] = useState<any>({ profesionales: [], sedes: [], servicios: [], disponibilidades: [] });
   const [loading, setLoading] = useState(true);
-  const [reserving, setReserving] = useState(false);
+
+  // Form alternativa
+  const [altServicioId, setAltServicioId] = useState('');
+  const [altProfesionalId, setAltProfesionalId] = useState('');
+  const [altSedeId, setAltSedeId] = useState('');
+  const [altFecha, setAltFecha] = useState('');
+  const [altDisponibilidadId, setAltDisponibilidadId] = useState('');
+  const [altPrecio, setAltPrecio] = useState('150.00');
+  const [altCondiciones, setAltCondiciones] = useState('');
   const [addingAlternative, setAddingAlternative] = useState(false);
+  const [offerErrors, setOfferErrors] = useState<Record<string, string>>({});
+
+  // Opciones del tablero
   const [selectedOpcion, setSelectedOpcion] = useState<number | null>(null);
-  const [selectedDisponibilidad, setSelectedDisponibilidad] = useState('');
-  const [precioOfrecido, setPrecioOfrecido] = useState('150.00');
-  const [offerErrors, setOfferErrors] = useState<{ disponibilidad?: string; precio?: string }>({});
+  const [reserving, setReserving] = useState(false);
   const [editingOptionId, setEditingOptionId] = useState<number | null>(null);
-  const [editingPrice, setEditingPrice] = useState<string>('');
+  const [editingPrice, setEditingPrice] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingOptionTarget, setDeletingOptionTarget] = useState<any | null>(null);
   const [isDeletingOption, setIsDeletingOption] = useState(false);
 
-  const fetchLeadData = () => {
+  const fetchData = () => {
     if (!leadId) return;
     setLoading(true);
     Promise.all([
       leadService.getLeadDetails(leadId),
-      leadService.getAvailabilityOptions()
+      leadService.getAvailabilityOptions(),
     ])
-    .then(([leadData, optionsData]) => {
-      setLead(leadData);
-      setOptions(optionsData);
-    })
-    .catch(console.error)
-    .finally(() => setLoading(false));
+      .then(([leadData, catData]) => { setLead(leadData); setCatalogs(catData); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    if (isOpen && leadId) {
-      fetchLeadData();
-    }
-  }, [isOpen, leadId]);
+  useEffect(() => { if (isOpen && leadId) fetchData(); }, [isOpen, leadId]);
+
+  const filteredDisps = useMemo(() => {
+    return (catalogs.disponibilidades || []).filter((d: any) => {
+      if (altProfesionalId && d.id_profesional.toString() !== altProfesionalId) return false;
+      if (altSedeId && d.id_sede.toString() !== altSedeId) return false;
+      if (altFecha && d.fecha.split('T')[0] !== altFecha) return false;
+      return true;
+    });
+  }, [catalogs.disponibilidades, altProfesionalId, altSedeId, altFecha]);
+
+  const resetAltForm = () => {
+    setAltServicioId(''); setAltProfesionalId(''); setAltSedeId('');
+    setAltFecha(''); setAltDisponibilidadId(''); setAltPrecio('150.00');
+    setAltCondiciones(''); setOfferErrors({});
+  };
 
   const handleAddAlternative = async () => {
-    const errors: { disponibilidad?: string; precio?: string } = {};
-    if (!selectedDisponibilidad) {
-      errors.disponibilidad = 'Debes seleccionar un turno de disponibilidad de la agenda';
-    }
-    const numPrice = Number(precioOfrecido);
-    if (!precioOfrecido || isNaN(numPrice) || numPrice <= 0) {
-      errors.precio = 'Ingresa una tarifa válida mayor a 0';
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setOfferErrors(errors);
-      return;
-    }
+    const errors: Record<string, string> = {};
+    if (!altDisponibilidadId) errors.disp = 'Selecciona un horario disponible';
+    if (!altPrecio || isNaN(Number(altPrecio)) || Number(altPrecio) <= 0) errors.precio = 'Ingresa una tarifa válida mayor a 0';
+    if (Object.keys(errors).length > 0) { setOfferErrors(errors); return; }
 
     setOfferErrors({});
-    if (!leadId) return;
     setAddingAlternative(true);
-    const ultimaSolicitud = lead?.Solicitudes?.[lead.Solicitudes.length - 1];
+    const ultimaSolicitud = lead?.Solicitudes?.[0];
     try {
-      await leadService.addAlternative(leadId, {
+      await leadService.addAlternative(leadId!, {
         id_solicitud: ultimaSolicitud?.id_solicitud,
-        id_disponibilidad: selectedDisponibilidad,
-        precio_ofrecido: precioOfrecido
+        id_disponibilidad: altDisponibilidadId,
+        precio_ofrecido: altPrecio,
+        condiciones: altCondiciones,
       });
-      fetchLeadData();
-      setSelectedDisponibilidad('');
-      toast({ title: 'Alternativa Agregada', description: 'La opción de turno ha sido añadida al tablero.' });
-    } catch (error) {
-      toast({ title: 'Error', description: 'Error al añadir la alternativa.', variant: 'destructive' });
+      fetchData();
+      resetAltForm();
+      toast({ title: 'Alternativa Agregada', description: 'La opción ha sido añadida al tablero.' });
+    } catch {
+      toast({ title: 'Error', description: 'No se pudo añadir la alternativa.', variant: 'destructive' });
     } finally {
       setAddingAlternative(false);
     }
   };
 
-  const handleStartEdit = (e: React.MouseEvent, opt: any) => {
-    e.stopPropagation();
-    setEditingOptionId(opt.id_opcion);
-    setEditingPrice(opt.precio_ofrecido?.toString() || '150.00');
+  const handleReserve = async () => {
+    if (!selectedOpcion || !leadId) { toast({ title: 'Atención', description: 'Selecciona una alternativa del tablero.' }); return; }
+    const ultimaSolicitud = lead?.Solicitudes?.[0];
+    setReserving(true);
+    try {
+      await leadService.reserve(leadId, { id_solicitud: ultimaSolicitud?.id_solicitud || 1, id_opcion: selectedOpcion });
+      toast({ title: '¡Trato Cerrado! 🎉', description: 'El paciente pasa a la etapa PAYER.' });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
+      onClose();
+    } catch {
+      toast({ title: 'Error', description: 'Error al confirmar la reserva.', variant: 'destructive' });
+    } finally { setReserving(false); }
   };
 
   const handleSaveEdit = async (e: React.MouseEvent, id_opcion: number) => {
     e.stopPropagation();
     if (!editingPrice || isNaN(Number(editingPrice)) || Number(editingPrice) <= 0) {
-      toast({ title: 'Precio Inválido', description: 'Por favor ingresa una tarifa válida mayor a 0.', variant: 'destructive' });
-      return;
+      toast({ title: 'Precio Inválido', variant: 'destructive' }); return;
     }
     setSavingEdit(true);
     try {
       await leadService.updateAlternative(id_opcion, { precio_ofrecido: editingPrice });
-      setEditingOptionId(null);
-      fetchLeadData();
-      toast({ title: 'Tarifa Actualizada', description: `Nueva tarifa establecida: S/ ${Number(editingPrice).toFixed(2)}` });
-    } catch (error) {
-      toast({ title: 'Error', description: 'Error al actualizar el precio de la alternativa.', variant: 'destructive' });
-    } finally {
-      setSavingEdit(false);
-    }
-  };
-
-  const handleCancelEdit = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingOptionId(null);
-    setEditingPrice('');
+      setEditingOptionId(null); fetchData();
+      toast({ title: 'Tarifa Actualizada', description: `S/ ${Number(editingPrice).toFixed(2)}` });
+    } catch {
+      toast({ title: 'Error', description: 'Error al actualizar.', variant: 'destructive' });
+    } finally { setSavingEdit(false); }
   };
 
   const handleConfirmDeleteOption = async () => {
@@ -152,54 +241,31 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     setIsDeletingOption(true);
     try {
       await leadService.deleteAlternative(deletingOptionTarget.id_opcion);
-      if (selectedOpcion === deletingOptionTarget.id_opcion) {
-        setSelectedOpcion(null);
-      }
-      fetchLeadData();
-      toast({ title: 'Alternativa Removida', description: 'La opción ha sido eliminada del tablero de negociación.' });
-    } catch (error) {
-      toast({ title: 'Error', description: 'Error al eliminar la alternativa.', variant: 'destructive' });
-    } finally {
-      setIsDeletingOption(false);
-      setDeletingOptionTarget(null);
-    }
-  };
-
-  const handleReserve = async () => {
-    if (!selectedOpcion || !leadId) {
-      toast({ title: 'Atención', description: 'Selecciona una de las alternativas del tablero antes de cerrar el trato.' });
-      return;
-    }
-    
-    const ultimaSolicitud = lead?.Solicitudes?.[lead.Solicitudes.length - 1];
-
-    setReserving(true);
-    try {
-      await leadService.reserve(leadId, {
-        id_solicitud: ultimaSolicitud?.id_solicitud || 1, 
-        id_opcion: selectedOpcion
-      });
-      toast({ 
-        title: '¡Trato Cerrado con Éxito! 🎉', 
-        description: 'La reserva ha sido confirmada. El paciente pasa a la etapa PAYER para conciliación de pago.' 
-      });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
-      onClose();
-    } catch (error) {
-      toast({ title: 'Error', description: 'Error al confirmar la reserva.', variant: 'destructive' });
-    } finally {
-      setReserving(false);
-    }
+      if (selectedOpcion === deletingOptionTarget.id_opcion) setSelectedOpcion(null);
+      fetchData();
+      toast({ title: 'Alternativa Removida' });
+    } catch {
+      toast({ title: 'Error', variant: 'destructive' });
+    } finally { setIsDeletingOption(false); setDeletingOptionTarget(null); }
   };
 
   if (!isOpen || !leadId) return null;
 
+  const pref = lead?.Preferencias?.[0];
+  const datAcad = lead?.DatosAcademicos?.[0];
+  const datLab = lead?.DatosLaborales?.[0];
+  const saludOdonto = lead?.SaludOdontologica?.[0];
+  const interaccionReciente = lead?.Interacciones?.[0];
+  const ultimaSolicitud = lead?.Solicitudes?.[0];
+  const edad = calcAge(lead?.fecha_nacimiento);
+  const opciones = ultimaSolicitud?.Opciones || [];
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl max-h-[85vh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-        {/* Header Fijo */}
-        <div className="p-5 sm:p-6 pb-4 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+      <DialogContent className="max-w-6xl max-h-[92vh] sm:max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+
+        {/* ── Header ─────────────────────────────────────────── */}
+        <div className="p-5 pb-4 border-b border-slate-200/80 dark:border-slate-800 shrink-0">
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 ring-4 ring-teal-50/70 dark:ring-teal-950/40 border border-teal-200/60 dark:border-teal-800/60">
@@ -210,190 +276,305 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                   Mesa de Negociación (LEAD)
                 </DialogTitle>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
-                  Configura alternativas de horarios, tarifas y cierra el trato comercial.
+                  Configura alternativas y cierra el trato comercial con el paciente.
                 </p>
               </div>
             </div>
           </DialogHeader>
         </div>
 
-        {/* Cuerpo Scrolleable sin Scrollbar */}
-        <div className="p-5 sm:p-6 overflow-y-auto no-scrollbar flex-1">
+        {/* ── Body ───────────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto no-scrollbar">
           {loading ? (
-            <LoadingState />
+            <div className="p-6"><LoadingState /></div>
           ) : !lead ? (
-            <ErrorState message="No se encontró la oportunidad (LEAD)." />
+            <div className="p-6"><ErrorState message="No se encontró la oportunidad (LEAD)." /></div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Información del LEAD */}
-              <div className="lg:col-span-1 space-y-4">
-                <Card className="shadow-sm border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 rounded-xl">
-                  <CardHeader className="border-b border-slate-200/80 dark:border-slate-700/80 pb-3">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-                      <User className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-                      Perfil del Paciente
-                    </CardTitle>
-                    <CardDescription className="text-xs dark:text-slate-400">Contexto capturado en fase BUYER</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0 divide-y divide-slate-200/80 dark:divide-slate-700/80">
-                    <div className="p-4 space-y-1">
-                      <Label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">Nombre Completo</Label>
-                      <p className="font-semibold text-slate-900 dark:text-white text-sm">{lead.nombres} {lead.apellidos}</p>
-                    </div>
-                    
-                    <div className="p-4 space-y-2">
-                      <Label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">Contacto y Origen</Label>
-                      <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
-                        {lead.email && (
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-3.5 w-3.5 text-slate-400" />
-                            <span className="truncate">{lead.email}</span>
-                          </div>
-                        )}
-                        {lead.numero && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-3.5 w-3.5 text-slate-400" />
-                            <span>{lead.numero}</span>
-                          </div>
-                        )}
-                        {lead.Interacciones?.length > 0 && lead.Interacciones[0].Canal && (
-                          <div className="flex items-center gap-2">
-                            <MessageSquare className="h-3.5 w-3.5 text-slate-400" />
-                            <span>Canal: {lead.Interacciones[0].Canal.nombre}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+            <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] divide-y lg:divide-y-0 lg:divide-x divide-slate-200/80 dark:divide-slate-800 min-h-full">
 
-                    {lead.Solicitudes?.length > 0 && (
-                      <div className="p-4 bg-teal-50/50 dark:bg-teal-950/30">
-                        <Label className="text-[10px] font-bold text-teal-600 dark:text-teal-400 tracking-wider uppercase flex items-center gap-1.5 mb-1">
-                          <Stethoscope className="h-3.5 w-3.5" />
-                          Servicio Solicitado
-                        </Label>
-                        <p className="font-semibold text-slate-900 dark:text-white text-xs">
-                          {lead.Solicitudes[lead.Solicitudes.length - 1].Servicio?.nombre || 'Servicio no especificado'}
-                        </p>
-                        {lead.Solicitudes[lead.Solicitudes.length - 1].motivo && (
-                          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 italic">
-                            "{lead.Solicitudes[lead.Solicitudes.length - 1].motivo}"
-                          </p>
+              {/* ══ COLUMNA IZQUIERDA: Información del paciente ══ */}
+              <div className="p-4 space-y-3 overflow-y-auto no-scrollbar">
+
+                {/* 1. Datos personales — siempre abierto */}
+                <StaticSection
+                  title="Datos Personales"
+                  subtitle="Identificación general del individuo"
+                  icon={<User className="h-3.5 w-3.5" />}
+                >
+                  <DataRow label="Nombre completo" value={`${lead.nombres} ${lead.apellidos}`} />
+                  <div className="grid grid-cols-2 gap-3">
+                    {edad && <DataRow label="Edad" icon={<Activity className="h-3.5 w-3.5" />} value={`${edad} años`} />}
+                    {lead.zona && <DataRow label="Ciudad" icon={<MapPin className="h-3.5 w-3.5" />} value={lead.zona} />}
+                  </div>
+                  {lead.numero && <DataRow label="Teléfono" icon={<Phone className="h-3.5 w-3.5" />} value={lead.numero} />}
+                  {lead.email && <DataRow label="Correo electrónico" icon={<Mail className="h-3.5 w-3.5" />} value={lead.email} />}
+                </StaticSection>
+
+                {/* 2. Gustos y preferencias — acordeón */}
+                <AccordionSection
+                  title="Gustos y Preferencias"
+                  subtitle="Condiciones preferidas para comunicación y acuerdos"
+                  icon={<Settings2 className="h-3.5 w-3.5" />}
+                >
+                  {!pref ? (
+                    <p className="text-xs text-slate-400 dark:text-slate-500 italic">Sin preferencias registradas</p>
+                  ) : (
+                    <>
+                      {pref.Horario && (
+                        <DataRow
+                          label="Horario preferido"
+                          icon={<Clock className="h-3.5 w-3.5" />}
+                          value={`${['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][pref.Horario.dia_semana] || `Día ${pref.Horario.dia_semana}`} (${String(pref.Horario.hora_inicio).substring(11,16)} – ${String(pref.Horario.hora_fin).substring(11,16)})`}
+                        />
+                      )}
+                      {pref.Canal && <DataRow label="Medio de comunicación preferido" icon={<MessageSquare className="h-3.5 w-3.5" />} value={pref.Canal.nombre} />}
+                      {pref.Modalidad && <DataRow label="Modalidad preferida" icon={<Building2 className="h-3.5 w-3.5" />} value={pref.Modalidad.nombre} />}
+                      {pref.sede_preferida && <DataRow label="Sede preferida" icon={<MapPin className="h-3.5 w-3.5" />} value={pref.sede_preferida} />}
+                      {pref.profesional_preferido && <DataRow label="Profesional preferido" icon={<Stethoscope className="h-3.5 w-3.5" />} value={pref.profesional_preferido} />}
+                    </>
+                  )}
+                </AccordionSection>
+
+                {/* 3. Datos de estudiante — acordeón */}
+                <AccordionSection
+                  title="Datos de Estudiante"
+                  subtitle="Historial académico actual"
+                  icon={<GraduationCap className="h-3.5 w-3.5" />}
+                >
+                  {!datAcad ? (
+                    <p className="text-xs text-slate-400 dark:text-slate-500 italic">Sin datos registrados</p>
+                  ) : datAcad.aplica === false ? (
+                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
+                      <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 mt-0.5">
+                        <X className="w-3 h-3 text-slate-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Condición de estudiante: <span className="font-bold">No aplica</span></p>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">La persona no se encuentra matriculada actualmente en programas universitarios o de pregrado.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      <Badge variant="outline" className="text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50">Estudiante activo</Badge>
+                      <DataRow label="Universidad" value={datAcad.universidad} />
+                      <DataRow label="Carrera" value={datAcad.carrera} />
+                      <DataRow label="Ciclo" value={datAcad.ciclo} />
+                    </div>
+                  )}
+                </AccordionSection>
+
+                {/* 4. Datos laborales — acordeón */}
+                <AccordionSection
+                  title="Datos Laborales"
+                  subtitle="Ocupación y régimen laboral"
+                  icon={<Briefcase className="h-3.5 w-3.5" />}
+                >
+                  {!datLab ? (
+                    <p className="text-xs text-slate-400 dark:text-slate-500 italic">Sin datos laborales registrados</p>
+                  ) : (
+                    <>
+                      {datLab.ocupacion && <DataRow label="Ocupación" icon={<Activity className="h-3.5 w-3.5" />} value={datLab.ocupacion} />}
+                      {datLab.empresa && <DataRow label="Tipo o lugar de trabajo" icon={<Building2 className="h-3.5 w-3.5" />} value={datLab.empresa} />}
+                      {datLab.modalidad && <DataRow label="Horario laboral" icon={<Clock className="h-3.5 w-3.5" />} value={datLab.modalidad} />}
+                      {datLab.disponibilidad && <DataRow label="Disponibilidad para coordinaciones" value={datLab.disponibilidad} />}
+                    </>
+                  )}
+                </AccordionSection>
+
+                {/* 5. Salud Odontológica — acordeón */}
+                <AccordionSection
+                  title="Salud Odontológica"
+                  subtitle="Estado bucal, antecedentes y condiciones clínicas"
+                  icon={<HeartPulse className="h-3.5 w-3.5" />}
+                >
+                  {!saludOdonto ? (
+                    <p className="text-xs text-slate-400 dark:text-slate-500 italic">Sin historial odontológico registrado</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Estado general */}
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Estado general</p>
+                        {saludOdonto.estado_general_bucal && <DataRow label="Estado bucal" value={saludOdonto.estado_general_bucal} />}
+                        <div className="grid grid-cols-2 gap-2">
+                          {saludOdonto.nivel_higiene_bucal && <DataRow label="Higiene bucal" value={saludOdonto.nivel_higiene_bucal} />}
+                          {saludOdonto.frecuencia_cepillado && <DataRow label="Cepillado" value={saludOdonto.frecuencia_cepillado} />}
+                          {saludOdonto.usa_enjuague_bucal && <DataRow label="Enjuague bucal" value={saludOdonto.usa_enjuague_bucal} />}
+                          {saludOdonto.usa_hilo_dental && <DataRow label="Hilo dental" value={saludOdonto.usa_hilo_dental} />}
+                        </div>
+                        {saludOdonto.ultima_visita_odontologo && <DataRow label="Última visita al odontólogo" icon={<Calendar className="h-3.5 w-3.5" />} value={saludOdonto.ultima_visita_odontologo} />}
+                      </div>
+
+                      {/* Condiciones preexistentes */}
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Condiciones preexistentes</p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <CondChip label="Caries" value={saludOdonto.tiene_caries} />
+                          <CondChip label="Enfermedad gingival" value={saludOdonto.tiene_enfermedad_gingival} />
+                          <CondChip label="Sensibilidad" value={saludOdonto.tiene_sensibilidad} />
+                          <CondChip label="Prótesis" value={saludOdonto.usa_protesis} />
+                          <CondChip label="Ortodoncia activa" value={saludOdonto.usa_ortodoncia} />
+                          <CondChip label="Bruxismo" value={saludOdonto.tiene_bruxismo} />
+                        </div>
+                        {saludOdonto.condiciones_relevantes && (
+                          <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-800/50 text-xs text-amber-800 dark:text-amber-300">
+                            {saludOdonto.condiciones_relevantes}
+                          </div>
                         )}
                       </div>
-                    )}
-                    
-                    {lead.Preferencias?.length > 0 && lead.Preferencias[0].sede_preferida && (
-                      <div className="p-4 space-y-1">
-                        <Label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">Preferencias</Label>
-                        <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 mt-1">
-                          <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                          <span>Sede preferida: {lead.Preferencias[0].sede_preferida}</span>
-                        </div>
+
+                      {/* Historial y objetivos */}
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Historial y objetivos</p>
+                        {saludOdonto.tratamientos_previos && <DataRow label="Tratamientos previos" value={saludOdonto.tratamientos_previos} />}
+                        {saludOdonto.alergias_materiales && <DataRow label="Alergias a materiales" value={saludOdonto.alergias_materiales} />}
+                        {saludOdonto.medicamentos_actuales && <DataRow label="Medicamentos actuales" value={saludOdonto.medicamentos_actuales} />}
+                        {saludOdonto.motivo_consulta_principal && <DataRow label="Motivo principal de consulta" value={saludOdonto.motivo_consulta_principal} />}
+                        {saludOdonto.objetivo_estetico && <DataRow label="Objetivo estético" value={saludOdonto.objetivo_estetico} />}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    </div>
+                  )}
+                </AccordionSection>
+
+                {/* 6. Otros datos administrativos — acordeón */}
+                <AccordionSection
+                  title="Otros Datos Administrativos"
+                  subtitle="Parámetros de negociación y seguimiento de contacto"
+                  icon={<Settings2 className="h-3.5 w-3.5" />}
+                >
+                  <div className="grid grid-cols-2 gap-3">
+                    {lead.CanalOrigen && <DataRow label="Canal de captación" value={lead.CanalOrigen.nombre} />}
+                    {ultimaSolicitud && <DataRow label="Nivel de interés" value={ultimaSolicitud.tipo_consulta || 'Consulta general'} />}
+                  </div>
+                  {interaccionReciente?.mensaje && (
+                    <div>
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Observaciones administrativas</span>
+                      <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 leading-relaxed bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-lg border border-slate-200/70 dark:border-slate-700/60">
+                        {interaccionReciente.mensaje}
+                      </p>
+                    </div>
+                  )}
+                </AccordionSection>
+
               </div>
 
-              {/* Panel de Alternativas y Cierre */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* 1. Ofrecer Nueva Alternativa */}
-                <div className="p-4 bg-white dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/90 shadow-sm rounded-xl space-y-3">
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              {/* ══ COLUMNA DERECHA: Negociación ══ */}
+              <div className="p-5 space-y-6 overflow-y-auto no-scrollbar">
+
+                {/* Banner solicitud */}
+                {ultimaSolicitud && (
+                  <div className="p-4 rounded-xl bg-teal-50/80 dark:bg-teal-950/40 border border-teal-200/70 dark:border-teal-800/60">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Stethoscope className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                      <span className="text-xs font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wide">Solicitud del Paciente</span>
+                    </div>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">{ultimaSolicitud.Servicio?.nombre || 'Servicio por definir'}</p>
+                    {ultimaSolicitud.motivo && (
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 italic">"{ultimaSolicitud.motivo}"</p>
+                    )}
+                  </div>
+                )}
+
+                {/* 1. Diseñar oferta */}
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold">1</span>
                     Diseñar Oferta
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-[1fr_140px] gap-3">
+
+                  <div className="space-y-3 p-4 bg-white dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/90 rounded-xl shadow-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Servicio</Label>
+                        <Select onValueChange={(v) => { setAltServicioId(v); setAltProfesionalId(''); setAltDisponibilidadId(''); }} value={altServicioId}>
+                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"><SelectValue placeholder="Seleccionar servicio..." /></SelectTrigger>
+                          <SelectContent>{catalogs.servicios?.map((s: any) => <SelectItem key={s.id_servicio} value={s.id_servicio.toString()} className="text-xs">{s.nombre}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Profesional</Label>
+                        <Select onValueChange={(v) => { setAltProfesionalId(v); setAltDisponibilidadId(''); }} value={altProfesionalId}>
+                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"><SelectValue placeholder="Seleccionar profesional..." /></SelectTrigger>
+                          <SelectContent>{catalogs.profesionales?.map((p: any) => <SelectItem key={p.id_profesional} value={p.id_profesional.toString()} className="text-xs">Dr/a. {p.nombres} {p.apellidos} — {p.especialidad || 'General'}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Sede</Label>
+                        <Select onValueChange={(v) => { setAltSedeId(v); setAltDisponibilidadId(''); }} value={altSedeId}>
+                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"><SelectValue placeholder="Seleccionar sede..." /></SelectTrigger>
+                          <SelectContent>{catalogs.sedes?.map((s: any) => <SelectItem key={s.id_sede} value={s.id_sede.toString()} className="text-xs">{s.nombre}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Fecha</Label>
+                        <input type="date" className="flex h-9 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500" value={altFecha} onChange={(e) => { setAltFecha(e.target.value); setAltDisponibilidadId(''); }} />
+                      </div>
+                    </div>
+
                     <div className="space-y-1">
-                      <Label className={`text-[11px] font-medium ${offerErrors.disponibilidad ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-600 dark:text-slate-400'}`}>
-                        Disponibilidad en Agenda
-                      </Label>
-                      <Select 
-                        onValueChange={(val) => {
-                          setSelectedDisponibilidad(val);
-                          if (offerErrors.disponibilidad) setOfferErrors(prev => ({ ...prev, disponibilidad: undefined }));
-                        }} 
-                        value={selectedDisponibilidad}
-                      >
-                        <SelectTrigger className={`w-full bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs h-9 rounded-xl ${
-                          offerErrors.disponibilidad ? '!border-rose-500 !ring-1 !ring-rose-500' : 'border-slate-200 dark:border-slate-700'
-                        }`}>
-                          <SelectValue placeholder="Selecciona un turno libre..." />
+                      <Label className={`text-[11px] font-medium ${offerErrors.disp ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-400'}`}>Horario disponible</Label>
+                      <Select onValueChange={(v) => { setAltDisponibilidadId(v); if (offerErrors.disp) setOfferErrors(p => ({ ...p, disp: '' })); }} value={altDisponibilidadId}>
+                        <SelectTrigger className={`h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 ${offerErrors.disp ? '!border-rose-500 !ring-1 !ring-rose-500' : 'border-slate-200 dark:border-slate-700'}`}>
+                          <SelectValue placeholder={filteredDisps.length === 0 ? 'Sin turnos para los filtros seleccionados...' : 'Seleccionar horario...'} />
                         </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
-                          {options.disponibilidades.map((disp: any) => (
-                            <SelectItem key={disp.id_disponibilidad} value={disp.id_disponibilidad.toString()} className="text-xs">
-                              {disp.fecha.split('T')[0]} | {disp.hora_inicio.substring(11, 16)} - {disp.hora_fin.substring(11, 16)} | {disp.Sede?.nombre} | Dr. {disp.Profesional?.apellidos}
+                        <SelectContent>
+                          {filteredDisps.map((d: any) => (
+                            <SelectItem key={d.id_disponibilidad} value={d.id_disponibilidad.toString()} className="text-xs">
+                              {d.fecha.split('T')[0]} | {String(d.hora_inicio).substring(11,16)} – {String(d.hora_fin).substring(11,16)} | {d.Sede?.nombre} | Dr/a. {d.Profesional?.apellidos}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      {offerErrors.disponibilidad && (
-                        <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1.5 animate-in fade-in-50">
-                          <span className="inline-block w-1 h-1 rounded-full bg-rose-500 shrink-0" />
-                          {offerErrors.disponibilidad}
-                        </p>
-                      )}
+                      {offerErrors.disp && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">{offerErrors.disp}</p>}
                     </div>
-                    <div className="space-y-1">
-                      <Label className={`text-[11px] font-medium ${offerErrors.precio ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-600 dark:text-slate-400'}`}>
-                        Tarifa Ofrecida
-                      </Label>
-                      <div className="relative">
-                        <span className="absolute left-2.5 top-2 text-slate-400 text-xs font-semibold">S/</span>
-                        <input 
-                          type="number" 
-                          className={`flex h-9 w-full rounded-xl bg-slate-50 dark:bg-slate-800 pl-7 pr-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 font-semibold ${
-                            offerErrors.precio ? '!border-rose-500 !ring-1 !ring-rose-500 text-rose-900 dark:text-rose-100' : 'border border-slate-200 dark:border-slate-700 focus:ring-teal-500'
-                          }`} 
-                          value={precioOfrecido} 
-                          onChange={(e) => {
-                            setPrecioOfrecido(e.target.value);
-                            if (offerErrors.precio) setOfferErrors(prev => ({ ...prev, precio: undefined }));
-                          }} 
-                        />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className={`text-[11px] font-medium ${offerErrors.precio ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-400'}`}>Precio ofrecido (S/)</Label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+                          <input type="number" className={`flex h-9 w-full rounded-xl border pl-7 pr-3 text-xs text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-1 font-semibold ${offerErrors.precio ? '!border-rose-500 !ring-1 !ring-rose-500' : 'border-slate-200 dark:border-slate-700 focus:ring-teal-500'}`} value={altPrecio} onChange={(e) => { setAltPrecio(e.target.value); if (offerErrors.precio) setOfferErrors(p => ({ ...p, precio: '' })); }} />
+                        </div>
+                        {offerErrors.precio && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">{offerErrors.precio}</p>}
                       </div>
-                      {offerErrors.precio && (
-                        <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1.5 animate-in fade-in-50">
-                          <span className="inline-block w-1 h-1 rounded-full bg-rose-500 shrink-0" />
-                          {offerErrors.precio}
-                        </p>
-                      )}
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Modalidad / Condiciones</Label>
+                        <input type="text" className="flex h-9 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500" placeholder="Ej. Presencial, pago en cuotas..." value={altCondiciones} onChange={(e) => setAltCondiciones(e.target.value)} />
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex justify-end pt-1">
-                    <Button 
-                      onClick={handleAddAlternative} 
-                      disabled={addingAlternative} 
-                      className="bg-slate-900 dark:bg-teal-600 hover:bg-slate-800 dark:hover:bg-teal-500 text-white rounded-xl text-xs h-8 px-3"
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1.5" />
-                      {addingAlternative ? 'Registrando...' : 'Añadir al Tablero'}
-                    </Button>
+
+                    <div className="flex justify-end pt-1">
+                      <Button onClick={handleAddAlternative} disabled={addingAlternative} className="bg-slate-900 dark:bg-teal-600 hover:bg-slate-800 dark:hover:bg-teal-500 text-white rounded-xl text-xs h-8 px-4">
+                        <Plus className="h-3.5 w-3.5 mr-1.5" />
+                        {addingAlternative ? 'Registrando...' : 'Añadir al Tablero'}
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
-                {/* 2. Alternativas en Tablero */}
-                <div className="space-y-3">
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                {/* 2. Tablero de alternativas */}
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold">2</span>
                     Alternativas sobre la Mesa
                   </h3>
 
-                  {(!lead.Solicitudes || lead.Solicitudes.length === 0 || !lead.Solicitudes[lead.Solicitudes.length - 1].Opciones || lead.Solicitudes[lead.Solicitudes.length - 1].Opciones.length === 0) ? (
-                    <div className="py-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30">
+                  {opciones.length === 0 ? (
+                    <div className="py-10 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30">
                       <p className="text-xs text-slate-400 dark:text-slate-500">Aún no se han ofrecido turnos al paciente.</p>
+                      <p className="text-[11px] text-slate-300 dark:text-slate-600 mt-1">Usa el formulario de arriba para añadir una propuesta.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {lead.Solicitudes[lead.Solicitudes.length - 1].Opciones.map((opt: any) => (
-                        <div 
-                          key={opt.id_opcion} 
-                          onClick={() => setSelectedOpcion(opt.id_opcion)} 
-                          className={`relative p-3.5 border-2 rounded-xl cursor-pointer transition-all flex flex-col justify-between gap-2.5 ${
-                            selectedOpcion === opt.id_opcion 
-                              ? 'bg-teal-50/50 dark:bg-teal-950/40 border-teal-600 dark:border-teal-500 shadow-sm' 
-                              : 'bg-white dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-600'
+                      {opciones.map((opt: any) => (
+                        <div
+                          key={opt.id_opcion}
+                          onClick={() => setSelectedOpcion(opt.id_opcion)}
+                          className={`relative p-3.5 border-2 rounded-xl cursor-pointer transition-all flex flex-col justify-between gap-2.5 ${selectedOpcion === opt.id_opcion
+                            ? 'bg-teal-50/50 dark:bg-teal-950/40 border-teal-600 dark:border-teal-500 shadow-sm'
+                            : 'bg-white dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-600'
                           }`}
                         >
                           {selectedOpcion === opt.id_opcion && (
@@ -401,36 +582,19 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                               <CheckCircle2 className="h-3.5 w-3.5" />
                             </div>
                           )}
-                          
+
                           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-2">
                             <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-md">
                               <Calendar className="h-3 w-3 text-slate-400" />
                               {opt.Disponibilidad?.fecha.split('T')[0]}
                             </span>
-                            
+
                             {editingOptionId === opt.id_opcion ? (
                               <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                 <span className="text-[10px] font-semibold text-slate-400">S/</span>
-                                <input 
-                                  type="number" 
-                                  className="w-16 px-1.5 py-0.5 text-xs font-bold border border-teal-500 rounded bg-white dark:bg-slate-900 text-slate-900 dark:text-white" 
-                                  value={editingPrice} 
-                                  onChange={(e) => setEditingPrice(e.target.value)} 
-                                  autoFocus 
-                                />
-                                <button 
-                                  onClick={(e) => handleSaveEdit(e, opt.id_opcion)} 
-                                  disabled={savingEdit} 
-                                  className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition"
-                                >
-                                  <Check className="h-3 w-3" />
-                                </button>
-                                <button 
-                                  onClick={handleCancelEdit} 
-                                  className="p-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 transition"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
+                                <input type="number" className="w-16 px-1.5 py-0.5 text-xs font-bold border border-teal-500 rounded bg-white dark:bg-slate-900 text-slate-900 dark:text-white" value={editingPrice} onChange={(e) => setEditingPrice(e.target.value)} autoFocus />
+                                <button onClick={(e) => handleSaveEdit(e, opt.id_opcion)} disabled={savingEdit} className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition"><Check className="h-3 w-3" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); setEditingOptionId(null); }} className="p-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 transition"><X className="h-3 w-3" /></button>
                               </div>
                             ) : (
                               <div className="flex items-center gap-1.5">
@@ -438,41 +602,17 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                                   S/ {opt.precio_ofrecido}
                                 </p>
                                 <div className="flex items-center gap-0.5 ml-1" onClick={(e) => e.stopPropagation()}>
-                                  <button 
-                                    title="Editar precio" 
-                                    onClick={(e) => handleStartEdit(e, opt)} 
-                                    className="p-1 rounded text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950 transition"
-                                  >
-                                    <Edit2 className="h-3 w-3" />
-                                  </button>
-                                  <button 
-                                    title="Eliminar alternativa" 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setDeletingOptionTarget(opt);
-                                    }} 
-                                    className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 transition"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
+                                  <button title="Editar precio" onClick={(e) => { e.stopPropagation(); setEditingOptionId(opt.id_opcion); setEditingPrice(opt.precio_ofrecido?.toString() || ''); }} className="p-1 rounded text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950 transition"><Edit2 className="h-3 w-3" /></button>
+                                  <button title="Eliminar alternativa" onClick={(e) => { e.stopPropagation(); setDeletingOptionTarget(opt); }} className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 transition"><Trash2 className="h-3 w-3" /></button>
                                 </div>
                               </div>
                             )}
                           </div>
 
                           <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="h-3 w-3 text-slate-400" />
-                              <span>{opt.Disponibilidad?.hora_inicio.substring(11, 16)} - {opt.Disponibilidad?.hora_fin.substring(11, 16)}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <MapPin className="h-3 w-3 text-slate-400" />
-                              <span>{opt.Disponibilidad?.Sede?.nombre}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <User className="h-3 w-3 text-slate-400" />
-                              <span>Dr. {opt.Disponibilidad?.Profesional?.apellidos}</span>
-                            </div>
+                            <div className="flex items-center gap-1.5"><Clock className="h-3 w-3 text-slate-400" /><span>{String(opt.Disponibilidad?.hora_inicio).substring(11,16)} – {String(opt.Disponibilidad?.hora_fin).substring(11,16)}</span></div>
+                            <div className="flex items-center gap-1.5"><MapPin className="h-3 w-3 text-slate-400" /><span>{opt.Disponibilidad?.Sede?.nombre}</span></div>
+                            <div className="flex items-center gap-1.5"><User className="h-3 w-3 text-slate-400" /><span>Dr/a. {opt.Disponibilidad?.Profesional?.apellidos}</span></div>
                           </div>
                         </div>
                       ))}
@@ -484,29 +624,24 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
           )}
         </div>
 
-        {/* Footer Fijo con Botones */}
-        <div className="p-4 sm:p-5 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/80 shrink-0 flex items-center justify-between gap-3 rounded-b-2xl">
+        {/* ── Footer ─────────────────────────────────────────── */}
+        <div className="p-4 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/80 shrink-0 flex items-center justify-between gap-3 rounded-b-2xl">
           <Button variant="ghost" className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300" onClick={onClose}>
             Pausar negociación
           </Button>
-          <Button 
-            onClick={handleReserve} 
-            disabled={reserving || !selectedOpcion || !lead}
-            className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-sm text-xs font-semibold px-5 py-2 h-9"
-          >
+          <Button onClick={handleReserve} disabled={reserving || !selectedOpcion || !lead} className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-sm text-xs font-semibold px-5 py-2 h-9">
             {reserving ? 'Cerrando trato...' : 'Cerrar Trato (Pasar a PAYER)'}
             {!reserving && <ArrowRight className="h-3.5 w-3.5 ml-1.5" />}
           </Button>
         </div>
 
-        {/* Modal Confirmación Eliminación de Alternativa */}
         <ConfirmationDialog
           isOpen={!!deletingOptionTarget}
           onClose={() => setDeletingOptionTarget(null)}
           onConfirm={handleConfirmDeleteOption}
           isLoading={isDeletingOption}
           title="¿Remover alternativa del tablero?"
-          description={`Se descartará la propuesta del turno ${deletingOptionTarget?.Disponibilidad?.fecha?.split('T')[0]} (Dr. ${deletingOptionTarget?.Disponibilidad?.Profesional?.apellidos}) de la mesa de negociación.`}
+          description={`Se descartará la propuesta del turno ${deletingOptionTarget?.Disponibilidad?.fecha?.split('T')[0]} (Dr/a. ${deletingOptionTarget?.Disponibilidad?.Profesional?.apellidos}).`}
           confirmText="Sí, Remover Alternativa"
           cancelText="Conservar"
           variant="destructive"
@@ -515,4 +650,3 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     </Dialog>
   );
 }
-

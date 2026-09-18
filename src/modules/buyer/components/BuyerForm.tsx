@@ -30,7 +30,7 @@ export function BuyerForm({ initialValues, onSubmit, isLoading, isEdit, formId =
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(buyerSchema) as any,
     mode: 'onTouched',
-    defaultValues: {
+    values: {
       firstName: initialValues?.firstName || '',
       lastName: initialValues?.lastName || '',
       documentType: initialValues?.documentType || 'DNI',

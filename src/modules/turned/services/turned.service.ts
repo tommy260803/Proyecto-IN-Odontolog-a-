@@ -51,23 +51,6 @@ export const turnedService = {
     if (!res.ok) throw new Error('Error al crear request');
     
     const parsedData = await res.json();
-    
-    const journeysStr = localStorage.getItem('journeys');
-    if (journeysStr && parsedData.newBuyerId) {
-      try {
-        const journeys = JSON.parse(journeysStr);
-        journeys.push({
-          id: crypto.randomUUID(),
-          personId: id,
-          buyerId: parsedData.newBuyerId,
-          currentPhase: 'BUYER',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isActive: true
-        });
-        localStorage.setItem('journeys', JSON.stringify(journeys));
-      } catch(e) {}
-    }
     return parsedData;
   }
 };
