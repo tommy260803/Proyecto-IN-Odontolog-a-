@@ -50,13 +50,13 @@ router.post('/process-yape', async (req, res) => {
     const requestId = randomUUID();
     console.log(`[Yape] Solicitando token a Mercado Pago con requestId UUID: ${requestId}, celular: ${rawPhone}`);
 
-    // Paso 1: Generar el token oficial en la API de Yape de Mercado Pago (requestId DEBE ser UUID)
+    // Paso 1: Generar el token oficial en la API de Yape de Mercado Pago (requestId DEBE ser UUID, phoneNumber como número)
     const tokenResponse = await fetch(`https://api.mercadopago.com/platforms/pci/yape/v1/payment?public_key=${publicKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        phoneNumber: rawPhone,
-        otp: rawOtp,
+        phoneNumber: Number(rawPhone),
+        otp: String(rawOtp),
         requestId: requestId
       })
     });
@@ -65,9 +65,10 @@ router.post('/process-yape', async (req, res) => {
     console.log('[Yape] Respuesta de tokenización Mercado Pago:', tokenData);
 
     if (!tokenResponse.ok || !tokenData || !tokenData.id) {
-      const errorMsg = tokenData?.message ||
-        (tokenData?.cause && tokenData.cause[0]?.description) ||
-        'Código de aprobación de Yape inválido o expirado. Abre tu app Yape, pulsa en "Código de aprobación" y escribe los 6 dígitos generados.';
+      const rawMsg = tokenData?.message || (tokenData?.cause && tokenData.cause[0]?.description) || '';
+      const errorMsg = rawMsg === 'internal_error'
+        ? 'El servicio de Yape (BCP) no pudo validar tu cuenta en este momento. Verifica que tu app Yape esté abierta y genera un nuevo código de aprobación.'
+        : (rawMsg || 'Código de aprobación de Yape inválido o expirado. Genera uno nuevo en tu app Yape.');
 
       return res.status(400).json({
         error: errorMsg,
@@ -81,12 +82,12 @@ router.post('/process-yape', async (req, res) => {
     // Paso 2: Crear el cobro en /v1/payments usando el token obtenido
     const paymentData = {
       token: yapeTokenId,
-      transaction_amount: paymentAmount,
+      transaction_amount: Number(paymentAmount.toFixed(2)),
       description: 'Reserva Odontológica NexoSalud - Yape',
       payment_method_id: 'yape',
       installments: 1,
       payer: {
-        email: (email && email.includes('@')) ? email : 'paciente_yape@nexosalud.com',
+        email: (email && email.includes('@')) ? email : 'paciente_yape@gmail.com',
       }
     };
 
@@ -112,9 +113,13 @@ router.post('/process-yape', async (req, res) => {
     }
 
     // Si el pago no fue aprobado por Mercado Pago
-    const rejectionReason = data?.message ||
+    let rejectionReason = data?.message ||
       (data?.cause && data.cause[0]?.description) ||
       (data?.status_detail === 'cc_rejected_insufficient_amount' ? 'Saldo insuficiente en tu cuenta Yape.' : 'El pago fue rechazado por la pasarela de Yape. Verifica tu saldo o genera un nuevo código OTP.');
+
+    if (rejectionReason === 'internal_error') {
+      rejectionReason = 'El servicio de Yape reportó un error interno de comunicación con el banco. Por favor genera un nuevo código OTP en tu app Yape e inténtalo nuevamente.';
+    }
 
     return res.status(400).json({
       error: rejectionReason,
