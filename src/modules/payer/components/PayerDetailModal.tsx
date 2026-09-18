@@ -279,53 +279,100 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
           )}
         </div>
 
-        {/* Barra de Acciones Multicanal */}
+        {/* Barra de Acciones Multicanal según Estado */}
         <div className="pt-1 flex flex-wrap items-center gap-2">
-          {/* Botón WhatsApp */}
-          <Button
-            type="button"
-            onClick={() => handleSendWhatsApp(p)}
-            size="sm"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
-            title="Enviar mensaje persuasivo por WhatsApp"
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            Contactar por WhatsApp
-          </Button>
+          {p.state === PayerState.VALIDATED ? (
+            <>
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                Pago Validado
+              </span>
 
-          {/* Botón Correo */}
-          <Button
-            type="button"
-            onClick={() => handleSendEmail(p)}
-            size="sm"
-            className="bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
-            title="Enviar proforma y correo formal de cobranza"
-          >
-            <Mail className="w-3.5 h-3.5" />
-            Enviar Correo
-          </Button>
+              {/* Botón Ver PDF de Constancia */}
+              <Button
+                type="button"
+                onClick={() => setIsPdfModalOpen(true)}
+                size="sm"
+                className="bg-teal-50 hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800 dark:hover:bg-teal-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
+                title="Ver constancia oficial de pago en PDF"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Ver Constancia PDF
+              </Button>
 
-          {/* Botón Ver PDF */}
-          <Button
-            type="button"
-            onClick={() => setIsPdfModalOpen(true)}
-            size="sm"
-            className="bg-teal-50 hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800 dark:hover:bg-teal-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
-            title="Abrir visor oficial de proforma en PDF"
-          >
-            <FileText className="w-3.5 h-3.5" />
-            Ver PDF
-          </Button>
+              {/* Botón Enviar Confirmación */}
+              <Button
+                type="button"
+                onClick={() => handleSendEmail(p)}
+                size="sm"
+                className="bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
+                title="Enviar constancia y confirmación de cita por correo al paciente"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                Enviar Confirmación al Correo
+              </Button>
 
-          {/* Ver mensaje redactado */}
-          {aiResult?.whatsappMessage && (
-            <button
-              type="button"
-              onClick={() => setShowCopyPreview(!showCopyPreview)}
-              className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 underline ml-auto"
-            >
-              {showCopyPreview ? 'Ocultar textos de IA' : 'Ver textos redactados por IA'}
-            </button>
+              {/* Botón Pasar a CUSTOMER */}
+              <Button
+                type="button"
+                onClick={() => setIsConvertOpen(true)}
+                size="sm"
+                className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs h-8 px-3.5 gap-1.5 shadow-sm font-semibold ml-auto"
+                title="Transferir paciente a la etapa CUSTOMER"
+              >
+                Pasar a CUSTOMER
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            </>
+          ) : (
+            <>
+              {/* Botón WhatsApp de Cobro */}
+              <Button
+                type="button"
+                onClick={() => handleSendWhatsApp(p)}
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
+                title="Enviar mensaje persuasivo por WhatsApp"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                Contactar por WhatsApp
+              </Button>
+
+              {/* Botón Correo de Cobro */}
+              <Button
+                type="button"
+                onClick={() => handleSendEmail(p)}
+                size="sm"
+                className="bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
+                title="Enviar proforma y correo formal de cobranza"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                Enviar Correo
+              </Button>
+
+              {/* Botón Ver PDF Proforma */}
+              <Button
+                type="button"
+                onClick={() => setIsPdfModalOpen(true)}
+                size="sm"
+                className="bg-teal-50 hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800 dark:hover:bg-teal-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
+                title="Abrir visor oficial de proforma en PDF"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Ver PDF
+              </Button>
+
+              {/* Ver mensaje redactado */}
+              {aiResult?.whatsappMessage && (
+                <button
+                  type="button"
+                  onClick={() => setShowCopyPreview(!showCopyPreview)}
+                  className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 underline ml-auto"
+                >
+                  {showCopyPreview ? 'Ocultar textos de IA' : 'Ver textos redactados por IA'}
+                </button>
+              )}
+            </>
           )}
         </div>
 
@@ -476,7 +523,7 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
 
                 {/* Columna Derecha: Pagos Yape y Comprobantes */}
                 <div className="lg:col-span-2 space-y-4">
-                  {(payer.state === PayerState.PENDING || payer.state === PayerState.REJECTED || payer.state === PayerState.IN_REVIEW) && (
+                  {(payer.state === PayerState.PENDING || payer.state === PayerState.REJECTED || (payer.state as string) === 'REVERTED') && (
                     <YapePaymentButton
                       payerId={payer.id}
                       personName={`${payer.person.firstName} ${payer.person.lastName}`}

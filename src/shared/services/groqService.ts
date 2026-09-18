@@ -43,58 +43,75 @@ const STATE_LABELS: Record<string, string> = {
 function buildSystemPrompt(): string {
   return `Eres el Agente Inteligente de Cobranzas y Comunicaciones de NexoSalud (Clínica Odontológica).
 Tu objetivo es doble:
-1. Asistir al operador interno con una recomendación estratégica de cobranza.
-2. Redactar los mensajes de notificación al paciente (WhatsApp y Correo) con un tono profesional, empático, claro y persuasivo.
+1. Asistir al operador interno con una recomendación estratégica según el estado del paciente.
+2. Redactar los mensajes de notificación al paciente (WhatsApp y Correo).
+
+Reglas de Negocio según el Estado:
+- Si el estado es PENDING, REJECTED o REVERTED: Redacta recordatorios persuasivos y claros de cobro para regularizar el abono pendiente antes de la cita (indicando Yape y Tarjeta).
+- Si el estado es IN_REVIEW: Sugiere al operador verificar el comprobante adjunto y conciliar con el banco.
+- Si el estado es VALIDATED: ¡El pago ya fue aprobado! Tu recomendación interna debe ser indicar que el paciente está listo para ser pasado a CUSTOMER. Los mensajes de WhatsApp y Correo deben ser de CONFIRMACIÓN DE CITA Y PAGO RECIBIDO (agradecimiento y confirmación de turno), NUNCA de cobro de deuda.
 
 Debes responder ÚNICAMENTE con un objeto JSON válido con la siguiente estructura (sin bloques markdown adicionales ni texto fuera del JSON):
 {
   "internalRecommendation": "Análisis y recomendación concisa para el operador interno (máximo 2 oraciones).",
-  "whatsappMessage": "Mensaje personalizado y persuasivo para enviar por WhatsApp al paciente, incluyendo saludo con su nombre, recordatorio de su cita/tratamiento, monto a abonar y canales disponibles (Yape/Tarjeta).",
+  "whatsappMessage": "Mensaje personalizado para WhatsApp (de cobro persuasivo si está pendiente/rechazado, o de confirmación alegre si está validado).",
   "emailSubject": "Asunto claro y formal para el correo electrónico.",
-  "emailBody": "Cuerpo del correo formal y detallado con la información del servicio, monto, fecha/hora y llamada a la acción para regularizar el pago."
+  "emailBody": "Cuerpo del correo formal y detallado con la información correspondiente al estado del paciente."
 }`;
 }
 
 function buildUserPrompt(ctx: PayerContext): string {
   const stateLabel = STATE_LABELS[ctx.state] || ctx.state;
+  const isValidated = ctx.state === 'VALIDATED';
   const incidents = ctx.incidentsCount > 0
     ? `Incidencias previas: ${ctx.incidentsCount} (${ctx.lastIncidentReason || 'Rechazo previo'}).`
     : 'Sin incidencias.';
 
-  return `Genera las comunicaciones de cobranza para el siguiente paciente:
-
+  return `Genera las comunicaciones para el siguiente paciente:
 - Paciente: ${ctx.patientName}
 - Teléfono: ${ctx.phone || 'No registrado'}
 - Correo: ${ctx.email || 'No registrado'}
-- Estado actual: ${stateLabel}
-- Monto a abonar: S/ ${ctx.amountToPay.toFixed(2)}
+- Estado actual del Pago: ${stateLabel} ${isValidated ? '(YA PAGADO Y APROBADO)' : ''}
+- Monto: S/ ${ctx.amountToPay.toFixed(2)}
 - Servicio / Tratamiento: ${ctx.serviceName || 'Consulta Odontológica'}
 - Cita: ${ctx.reservationDate || 'Por coordinar'} a las ${ctx.reservationTime || 'hora acordada'}
 - Sede: ${ctx.branch || 'Sede Principal'}
 - Especialista: Dr/a. ${ctx.professional || 'Especialista de Turno'}
 - ${incidents}
 
+${isValidated ? 'IMPORTANTE: El paciente YA PAGÓ. Genera un mensaje de CONFIRMACIÓN DE CITA y agradecimiento, NO le cobres.' : ''}
+
 Genera el JSON con: internalRecommendation, whatsappMessage, emailSubject, emailBody.`;
 }
 
 function parseAiResponse(raw: string, ctx: PayerContext): AiCollectionResult {
+  const isValidated = ctx.state === 'VALIDATED';
+
   try {
-    // Limpiar posibles etiquetas de código markdown ```json ... ```
     const cleanJson = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(cleanJson);
     if (parsed.internalRecommendation && parsed.whatsappMessage) {
       return {
         internalRecommendation: parsed.internalRecommendation,
         whatsappMessage: parsed.whatsappMessage,
-        emailSubject: parsed.emailSubject || `Recordatorio de Pago de Cita Odontológica - NexoSalud`,
+        emailSubject: parsed.emailSubject || (isValidated ? `Confirmación de Pago y Cita Odontológica - NexoSalud` : `Recordatorio de Pago de Cita Odontológica - NexoSalud`),
         emailBody: parsed.emailBody || parsed.whatsappMessage,
       };
     }
   } catch (e) {
-    // Si falla el parseo estricto de JSON, extraer por regex o fallback
+    // Si falla el parseo estricto de JSON, extraer por fallback
   }
 
-  // Fallback estructurado si la IA respondió en texto plano
+  if (isValidated) {
+    return {
+      internalRecommendation: `El pago de S/ ${ctx.amountToPay.toFixed(2)} ha sido validado y aprobado exitosamente. El paciente está listo para ser transferido a la etapa CUSTOMER para su atención médica.`,
+      whatsappMessage: `¡Hola ${ctx.patientName}! Te confirmamos que tu pago de S/ ${ctx.amountToPay.toFixed(2)} para tu cita del ${ctx.reservationDate || 'próximo turno'} (${ctx.serviceName || 'Atención Odontológica'}) ha sido validado con éxito. ¡Te esperamos en NexoSalud!`,
+      emailSubject: `Confirmación de Pago y Cita Odontológica - NexoSalud`,
+      emailBody: `Estimado(a) ${ctx.patientName},\n\nLe confirmamos que hemos recibido y validado exitosamente su pago de S/ ${ctx.amountToPay.toFixed(2)} correspondiente a su cita de ${ctx.serviceName || 'Tratamiento Odontológico'}.\n\nSu atención médica está 100% confirmada para el día ${ctx.reservationDate || 'programado'} en nuestra ${ctx.branch || 'Sede Principal'}.\n\n¡Muchas gracias por su confianza!\n\nAtentamente,\nClínica Odontológica NexoSalud`,
+    };
+  }
+
+  // Fallback estructurado para pagos pendientes
   return {
     internalRecommendation: raw.length > 200 ? raw.substring(0, 200) + '...' : raw,
     whatsappMessage: `Hola ${ctx.patientName}, te saludamos de la Clínica Odontológica NexoSalud. Te recordamos que tienes una cita programada para el ${ctx.reservationDate || 'próximo turno'} (${ctx.serviceName || 'Tratamiento Odontológico'}). Para confirmar tu atención, puedes abonar los S/ ${ctx.amountToPay.toFixed(2)} pendientes mediante Yape o Tarjeta. ¡Quedamos atentos!`,
