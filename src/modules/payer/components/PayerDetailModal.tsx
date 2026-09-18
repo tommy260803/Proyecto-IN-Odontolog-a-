@@ -196,14 +196,13 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
     toast({ title: 'WhatsApp Abierto', description: 'Redirigiendo a WhatsApp con el mensaje de cobranza.' });
   };
 
-  // Abrir cliente de correo con el asunto y cuerpo de la IA
+  // Abrir modal de Proforma PDF con opción directa de envío al correo
   const handleSendEmail = (p: PayerWithDetails) => {
-    const email = p.person.email || '';
-    const subject = aiResult?.emailSubject || `Recordatorio de Pago de Consulta - NexoSalud`;
-    const body = aiResult?.emailBody || `Estimado(a) ${p.person.firstName},\n\nLe recordamos que mantiene un saldo de S/ ${p.amountToPay.toFixed(2)} pendiente de regularización.\n\nAtentamente,\nNexoSalud`;
-    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailtoUrl;
-    toast({ title: 'Correo Preparado', description: 'Abriendo cliente de correo con el texto generado por la IA.' });
+    setIsPdfModalOpen(true);
+    toast({ 
+      title: 'Proforma Lista', 
+      description: `Revisa la proforma oficial de ${p.person.firstName} y haz clic en "Enviar PDF al Correo".` 
+    });
   };
 
   // Alertas estáticas según estado (complementan la IA)
@@ -724,6 +723,8 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
             isOpen={isPdfModalOpen}
             onClose={() => setIsPdfModalOpen(false)}
             customMessage={aiResult?.whatsappMessage}
+            emailSubject={aiResult?.emailSubject}
+            emailBody={aiResult?.emailBody}
           />
         )}
       </DialogContent>
