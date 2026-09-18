@@ -384,56 +384,37 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                 {/* 5. Salud Odontológica — acordeón */}
                 <AccordionSection
                   title="Salud Odontológica"
-                  subtitle="Estado bucal, antecedentes y condiciones clínicas"
+                  subtitle="Antecedentes clínicos y contexto bucal del paciente"
                   icon={<HeartPulse className="h-3.5 w-3.5" />}
                 >
                   {!saludOdonto ? (
                     <p className="text-xs text-slate-400 dark:text-slate-500 italic">Sin historial odontológico registrado</p>
                   ) : (
-                    <div className="space-y-4">
-                      {/* Estado general */}
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Estado general</p>
-                        {saludOdonto.estado_general_bucal && <DataRow label="Estado bucal" value={saludOdonto.estado_general_bucal} />}
-                        <div className="grid grid-cols-2 gap-2">
-                          {saludOdonto.nivel_higiene_bucal && <DataRow label="Higiene bucal" value={saludOdonto.nivel_higiene_bucal} />}
-                          {saludOdonto.frecuencia_cepillado && <DataRow label="Cepillado" value={saludOdonto.frecuencia_cepillado} />}
-                          {saludOdonto.usa_enjuague_bucal && <DataRow label="Enjuague bucal" value={saludOdonto.usa_enjuague_bucal} />}
-                          {saludOdonto.usa_hilo_dental && <DataRow label="Hilo dental" value={saludOdonto.usa_hilo_dental} />}
-                        </div>
-                        {saludOdonto.ultima_visita_odontologo && <DataRow label="Última visita al odontólogo" icon={<Calendar className="h-3.5 w-3.5" />} value={saludOdonto.ultima_visita_odontologo} />}
+                    <div className="space-y-2">
+                      {/* Fila 1: Última visita + Motivo */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <DataRow label="Última visita" icon={<Calendar className="h-3.5 w-3.5" />} value={saludOdonto.ultima_visita_odontologica} />
+                        <DataRow label="Motivo de consulta" value={saludOdonto.motivo_consulta} />
                       </div>
-
-                      {/* Condiciones preexistentes */}
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Condiciones preexistentes</p>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <CondChip label="Caries" value={saludOdonto.tiene_caries} />
-                          <CondChip label="Enfermedad gingival" value={saludOdonto.tiene_enfermedad_gingival} />
-                          <CondChip label="Sensibilidad" value={saludOdonto.tiene_sensibilidad} />
-                          <CondChip label="Prótesis" value={saludOdonto.usa_protesis} />
-                          <CondChip label="Ortodoncia activa" value={saludOdonto.usa_ortodoncia} />
-                          <CondChip label="Bruxismo" value={saludOdonto.tiene_bruxismo} />
-                        </div>
-                        {saludOdonto.condiciones_relevantes && (
-                          <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-800/50 text-xs text-amber-800 dark:text-amber-300">
-                            {saludOdonto.condiciones_relevantes}
-                          </div>
-                        )}
+                      {/* Fila 2: Tratamiento previo + Nivel dolor */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <DataRow label="Tratamiento previo" value={saludOdonto.tratamiento_previo} />
+                        <DataRow label="Nivel de dolor" value={saludOdonto.nivel_dolor} />
                       </div>
-
-                      {/* Historial y objetivos */}
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Historial y objetivos</p>
-                        {saludOdonto.tratamientos_previos && <DataRow label="Tratamientos previos" value={saludOdonto.tratamientos_previos} />}
-                        {saludOdonto.alergias_materiales && <DataRow label="Alergias a materiales" value={saludOdonto.alergias_materiales} />}
-                        {saludOdonto.medicamentos_actuales && <DataRow label="Medicamentos actuales" value={saludOdonto.medicamentos_actuales} />}
-                        {saludOdonto.motivo_consulta_principal && <DataRow label="Motivo principal de consulta" value={saludOdonto.motivo_consulta_principal} />}
-                        {saludOdonto.objetivo_estetico && <DataRow label="Objetivo estético" value={saludOdonto.objetivo_estetico} />}
+                      {/* Chips Sí/No */}
+                      <div className="grid grid-cols-2 gap-1.5 pt-1">
+                        <CondChip label="Sensibilidad" value={saludOdonto.presenta_sensibilidad} />
+                        <CondChip label="Sangrado / Inflamación" value={saludOdonto.sangrado_o_inflamacion} />
+                      </div>
+                      {/* Fila 3: Aparato + Condición especial */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <DataRow label="Aparato / Prótesis" value={saludOdonto.usa_aparato_o_protesis} />
+                        <DataRow label="Cond. especial de atención" value={saludOdonto.condicion_atencion_especial} />
                       </div>
                     </div>
                   )}
                 </AccordionSection>
+
 
                 {/* 6. Otros datos administrativos — acordeón */}
                 <AccordionSection

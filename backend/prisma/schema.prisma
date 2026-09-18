@@ -130,38 +130,22 @@ model DatosLaborales {
 }
 
 model PersonaSaludOdontologica {
-  id_salud_odonto          Int      @id @default(autoincrement())
-  id_persona               Int
+  id_salud_odonto           Int      @id @default(autoincrement())
+  id_persona                Int
 
-  // Estado general bucal
-  estado_general_bucal     String?  @db.VarChar(200)
-  nivel_higiene_bucal      String?  @db.VarChar(50)
-  frecuencia_cepillado     String?  @db.VarChar(50)
-  usa_enjuague_bucal       String?  @db.VarChar(20)
-  usa_hilo_dental          String?  @db.VarChar(20)
-  ultima_visita_odontologo String?  @db.VarChar(50)
+  ultima_visita_odontologica  String? @db.VarChar(50)   // Menos de 6 meses / 6-12 meses / más de 1 año / nunca
+  motivo_consulta             String? @db.VarChar(100)  // Evaluación / prevención / dolor / estética / control / otro
+  tratamiento_previo          String? @db.VarChar(100)  // Limpieza / restauración / ortodoncia / extracción / ninguno / otro
+  nivel_dolor                 String? @db.VarChar(20)   // Ninguno / leve / moderado / intenso
+  presenta_sensibilidad       String? @db.VarChar(10)   // Sí / No
+  sangrado_o_inflamacion      String? @db.VarChar(30)   // Ninguno / sangrado / inflamación / ambos
+  usa_aparato_o_protesis      String? @db.VarChar(30)   // Ortodoncia / prótesis / ambos / ninguno
+  condicion_atencion_especial String? @db.VarChar(100)  // Diabetes / hipertensión / embarazo / ansiedad dental / otra / ninguna
 
-  // Condiciones preexistentes
-  tiene_caries             String?  @db.VarChar(20)
-  tiene_enfermedad_gingival String? @db.VarChar(20)
-  tiene_sensibilidad        String? @db.VarChar(20)
-  usa_protesis              String? @db.VarChar(20)
-  usa_ortodoncia            String? @db.VarChar(20)
-  tiene_bruxismo            String? @db.VarChar(20)
-  condiciones_relevantes    String? @db.VarChar(500)
-
-  // Historial de tratamientos
-  tratamientos_previos     String?  @db.VarChar(500)
-  alergias_materiales      String?  @db.VarChar(200)
-  medicamentos_actuales    String?  @db.VarChar(300)
-
-  // Motivación y objetivos
-  motivo_consulta_principal String? @db.VarChar(300)
-  objetivo_estetico         String? @db.VarChar(200)
-
-  fecha_registro           DateTime @default(now()) @db.DateTime2
-  Persona                  Personas @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+  fecha_registro              DateTime @default(now()) @db.DateTime2
+  Persona                     Personas @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
 }
+
 
 model PersonaPreferencias {
   id_preferencia        Int          @id @default(autoincrement())
