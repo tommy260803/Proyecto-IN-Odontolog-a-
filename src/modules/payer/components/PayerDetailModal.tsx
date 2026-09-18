@@ -61,7 +61,6 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
   const [isRevertOpen, setIsRevertOpen] = useState(false);
 
   // Groq AI Agent state
-  const [aiMessage, setAiMessage] = useState<string>('');
   const [aiResult, setAiResult] = useState<AiCollectionResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
@@ -70,7 +69,6 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
   const [showCopyPreview, setShowCopyPreview] = useState(false);
 
   if (!isOpen || !payerId) return null;
-
 
   const handleRegisterPayment = (data: PaymentFormValues) => {
     if (!payer) return;

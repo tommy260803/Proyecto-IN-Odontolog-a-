@@ -62,6 +62,7 @@ function buildUserPrompt(ctx: PayerContext): string {
     : 'Sin incidencias.';
 
   return `Genera las comunicaciones de cobranza para el siguiente paciente:
+
 - Paciente: ${ctx.patientName}
 - Teléfono: ${ctx.phone || 'No registrado'}
 - Correo: ${ctx.email || 'No registrado'}
@@ -78,6 +79,7 @@ Genera el JSON con: internalRecommendation, whatsappMessage, emailSubject, email
 
 function parseAiResponse(raw: string, ctx: PayerContext): AiCollectionResult {
   try {
+    // Limpiar posibles etiquetas de código markdown ```json ... ```
     const cleanJson = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(cleanJson);
     if (parsed.internalRecommendation && parsed.whatsappMessage) {
@@ -88,10 +90,11 @@ function parseAiResponse(raw: string, ctx: PayerContext): AiCollectionResult {
         emailBody: parsed.emailBody || parsed.whatsappMessage,
       };
     }
-  } catch {
-    // Si falla el parseo estricto de JSON, retornar fallback con datos del paciente
+  } catch (e) {
+    // Si falla el parseo estricto de JSON, extraer por regex o fallback
   }
 
+  // Fallback estructurado si la IA respondió en texto plano
   return {
     internalRecommendation: raw.length > 200 ? raw.substring(0, 200) + '...' : raw,
     whatsappMessage: `Hola ${ctx.patientName}, te saludamos de la Clínica Odontológica NexoSalud. Te recordamos que tienes una cita programada para el ${ctx.reservationDate || 'próximo turno'} (${ctx.serviceName || 'Tratamiento Odontológico'}). Para confirmar tu atención, puedes abonar los S/ ${ctx.amountToPay.toFixed(2)} pendientes mediante Yape o Tarjeta. ¡Quedamos atentos!`,
