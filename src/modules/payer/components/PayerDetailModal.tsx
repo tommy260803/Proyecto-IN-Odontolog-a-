@@ -23,14 +23,15 @@ import {
   useConvertPayerToCustomer 
 } from '../hooks/usePayerQueries';
 import { PaymentForm } from './PaymentForm';
-import { YapePaymentButton } from './YapePaymentButton';
 import type { PaymentFormValues } from '../schemas/payerSchema';
-import { AlertCircle, FileText, Bot, ArrowRight, XCircle, CreditCard, CheckCircle2, RefreshCw } from 'lucide-react';
+import { YapePaymentButton } from './YapePaymentButton';
+import { AlertCircle, FileText, Bot, ArrowRight, XCircle, CreditCard, CheckCircle2, RefreshCw, MessageSquare, Mail, Eye, Send } from 'lucide-react';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
-import { callGroqAssistant, type PayerContext } from '@/shared/services/groqService';
+import { callGroqAssistant, type PayerContext, type AiCollectionResult } from '@/shared/services/groqService';
+import { PaymentNoticePdfModal } from './PaymentNoticePdfModal';
 
 interface PayerDetailModalProps {
   payerId: string | null;
@@ -61,9 +62,12 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
 
   // Groq AI Agent state
   const [aiMessage, setAiMessage] = useState<string>('');
+  const [aiResult, setAiResult] = useState<AiCollectionResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
   const [aiCalled, setAiCalled] = useState(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [showCopyPreview, setShowCopyPreview] = useState(false);
 
   if (!isOpen || !payerId) return null;
 
@@ -140,7 +144,7 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
     });
   };
 
-  // Groq AI Agent — llamada real a la API
+  // Groq AI Agent — llamada real a la API con generación multicanal
   const handleAskAI = async (p: PayerWithDetails) => {
     setAiLoading(true);
     setAiError('');
@@ -148,6 +152,8 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
     try {
       const ctx: PayerContext = {
         patientName: `${p.person.firstName} ${p.person.lastName}`,
+        phone: p.person.phone,
+        email: p.person.email,
         state: p.state,
         amountToPay: p.amountToPay,
         reservationDate: p.reservation?.date,
@@ -162,12 +168,35 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
         lastIncidentReason: p.incidents?.[p.incidents.length - 1]?.reason,
       };
       const response = await callGroqAssistant(ctx);
-      setAiMessage(response);
+      setAiResult(response);
     } catch (err: any) {
       setAiError(err.message || 'Error al conectar con el asistente de IA.');
     } finally {
       setAiLoading(false);
     }
+  };
+
+  // Abrir WhatsApp con el mensaje generado por la IA
+  const handleSendWhatsApp = (p: PayerWithDetails) => {
+    const rawPhone = (p.person.phone || '').replace(/\D/g, '');
+    const cleanPhone = rawPhone.length === 9 ? `51${rawPhone}` : rawPhone;
+    const defaultMsg = `Hola ${p.person.firstName}, te saludamos de NexoSalud. Te recordamos que tienes una cita pendiente por confirmar con un abono de S/ ${p.amountToPay.toFixed(2)}.`;
+    const message = aiResult?.whatsappMessage || defaultMsg;
+    const url = cleanPhone 
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+      : `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+    toast({ title: 'WhatsApp Abierto', description: 'Redirigiendo a WhatsApp con el mensaje de cobranza.' });
+  };
+
+  // Abrir cliente de correo con el asunto y cuerpo de la IA
+  const handleSendEmail = (p: PayerWithDetails) => {
+    const email = p.person.email || '';
+    const subject = aiResult?.emailSubject || `Recordatorio de Pago de Consulta - NexoSalud`;
+    const body = aiResult?.emailBody || `Estimado(a) ${p.person.firstName},\n\nLe recordamos que mantiene un saldo de S/ ${p.amountToPay.toFixed(2)} pendiente de regularización.\n\nAtentamente,\nNexoSalud`;
+    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoUrl;
+    toast({ title: 'Correo Preparado', description: 'Abriendo cliente de correo con el texto generado por la IA.' });
   };
 
   // Alertas estáticas según estado (complementan la IA)
@@ -184,60 +213,153 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
   const renderAgentPanel = (p: PayerWithDetails) => {
     const alerts = getStaticAlerts(p);
     return (
-      <div className="bg-teal-50/60 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/80 rounded-2xl p-4 flex gap-3.5 items-start">
-        <Bot className="text-teal-600 dark:text-teal-400 w-8 h-8 shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <h4 className="font-bold text-xs text-teal-900 dark:text-teal-200 flex items-center gap-2">
-              Asistente de Recaudación IA
-              <StatusBadge status="Groq AI" variant="primary" />
-            </h4>
-            <button
-              type="button"
-              onClick={() => handleAskAI(p)}
-              disabled={aiLoading}
-              className="flex items-center gap-1 text-[10px] font-semibold text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-100 transition-colors disabled:opacity-50"
-              title="Consultar al asistente de IA"
-            >
-              <RefreshCw className={`w-3 h-3 ${aiLoading ? 'animate-spin' : ''}`} />
-              {aiCalled ? 'Regenerar' : 'Consultar IA'}
-            </button>
+      <div className="bg-gradient-to-br from-teal-50/80 via-white to-teal-50/40 dark:from-teal-950/40 dark:via-slate-900 dark:to-teal-950/20 border border-teal-200/90 dark:border-teal-800/80 rounded-2xl p-4 sm:p-5 flex flex-col gap-3 shadow-sm">
+        {/* Cabecera del Agente */}
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-white shadow-sm">
+              <Bot className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                Agente Inteligente de Cobranzas
+                <StatusBadge status="Groq AI Llama" variant="primary" />
+              </h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Análisis predictivo de recaudación y generación de alertas multicanal
+              </p>
+            </div>
           </div>
 
-          <div className="mt-2 min-h-[2rem]">
-            {aiLoading && (
-              <div className="flex items-center gap-2 text-xs text-teal-700 dark:text-teal-400 animate-pulse">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                Analizando el caso con Groq AI...
-              </div>
-            )}
-            {!aiLoading && aiError && (
-              <p className="text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                <AlertCircle className="w-3 h-3 shrink-0" /> {aiError}
-              </p>
-            )}
-            {!aiLoading && !aiError && aiMessage && (
-              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed animate-in fade-in duration-300">
-                {aiMessage}
-              </p>
-            )}
-            {!aiLoading && !aiError && !aiMessage && (
-              <p className="text-xs text-slate-400 dark:text-slate-500 italic">
-                Presiona "Consultar IA" para obtener un análisis personalizado de este caso.
-              </p>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => handleAskAI(p)}
+            disabled={aiLoading}
+            className="flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-300 bg-teal-100/60 dark:bg-teal-950/80 hover:bg-teal-200/80 dark:hover:bg-teal-900 px-3 py-1.5 rounded-xl transition-all disabled:opacity-50 shadow-sm"
+            title="Analizar caso con IA"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${aiLoading ? 'animate-spin' : ''}`} />
+            {aiCalled ? 'Regenerar Análisis' : 'Consultar IA'}
+          </button>
+        </div>
 
-          {alerts.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {alerts.map((a, i) => (
-                <span key={i} className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 px-2 py-0.5 rounded-md flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {a}
-                </span>
-              ))}
+        {/* Recomendación Interna */}
+        <div className="bg-white/80 dark:bg-slate-900/80 border border-teal-100 dark:border-teal-900/60 rounded-xl p-3 text-xs leading-relaxed min-h-[2.5rem]">
+          {aiLoading && (
+            <div className="flex items-center gap-2 text-teal-700 dark:text-teal-400 font-medium animate-pulse py-1">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              Groq AI analizando historial del paciente y redactando comunicaciones...
             </div>
           )}
+          {!aiLoading && aiError && (
+            <p className="text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+              <AlertCircle className="w-4 h-4 shrink-0" /> {aiError}
+            </p>
+          )}
+          {!aiLoading && !aiError && aiResult?.internalRecommendation && (
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400 block">
+                Recomendación para el Operador:
+              </span>
+              <p className="text-slate-800 dark:text-slate-200 font-medium">
+                {aiResult.internalRecommendation}
+              </p>
+            </div>
+          )}
+          {!aiLoading && !aiError && !aiResult && (
+            <p className="text-slate-400 dark:text-slate-500 italic">
+              Presiona "Consultar IA" para generar la recomendación estratégica y las comunicaciones automáticas de WhatsApp, Correo y Proforma PDF.
+            </p>
+          )}
         </div>
+
+        {/* Barra de Acciones Multicanal */}
+        <div className="pt-1 flex flex-wrap items-center gap-2">
+          {/* Botón WhatsApp */}
+          <Button
+            type="button"
+            onClick={() => handleSendWhatsApp(p)}
+            size="sm"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-medium"
+            title="Enviar mensaje persuasivo por WhatsApp"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            Contactar por WhatsApp
+          </Button>
+
+          {/* Botón Correo */}
+          <Button
+            type="button"
+            onClick={() => handleSendEmail(p)}
+            size="sm"
+            variant="outline"
+            className="rounded-xl text-xs h-8 px-3 gap-1.5 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-slate-700 dark:text-slate-200"
+            title="Enviar correo formal de cobranza"
+          >
+            <Mail className="w-3.5 h-3.5 text-indigo-500" />
+            Enviar Correo
+          </Button>
+
+          {/* Botón Previsualizar PDF */}
+          <Button
+            type="button"
+            onClick={() => setIsPdfModalOpen(true)}
+            size="sm"
+            variant="outline"
+            className="rounded-xl text-xs h-8 px-3 gap-1.5 border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200 hover:bg-teal-100 font-medium"
+            title="Previsualizar y descargar proforma en PDF"
+          >
+            <Eye className="w-3.5 h-3.5 text-teal-600" />
+            Previsualizar Proforma PDF
+          </Button>
+
+          {/* Ver mensaje redactado */}
+          {aiResult?.whatsappMessage && (
+            <button
+              type="button"
+              onClick={() => setShowCopyPreview(!showCopyPreview)}
+              className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 underline ml-auto"
+            >
+              {showCopyPreview ? 'Ocultar textos de IA' : 'Ver textos redactados por IA'}
+            </button>
+          )}
+        </div>
+
+        {/* Desplegable con los textos generados */}
+        {showCopyPreview && aiResult && (
+          <div className="mt-1 p-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2.5 text-xs animate-in slide-in-from-top-2 duration-200">
+            <div>
+              <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 uppercase">
+                <MessageSquare className="w-3 h-3" /> Texto para WhatsApp:
+              </p>
+              <p className="text-slate-700 dark:text-slate-300 mt-0.5 bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-800">
+                {aiResult.whatsappMessage}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-1 uppercase">
+                <Mail className="w-3 h-3" /> Asunto y Cuerpo del Correo:
+              </p>
+              <p className="text-slate-600 dark:text-slate-400 font-semibold mt-0.5">
+                {aiResult.emailSubject}
+              </p>
+              <p className="text-slate-700 dark:text-slate-300 mt-1 whitespace-pre-line bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-[11px]">
+                {aiResult.emailBody}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Badges de alerta de estado */}
+        {alerts.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
+            {alerts.map((a, i) => (
+              <span key={i} className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {a}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -586,6 +708,15 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
             )}
           </div>
         </ConfirmationDialog>
+
+        {payer && (
+          <PaymentNoticePdfModal
+            payer={payer}
+            isOpen={isPdfModalOpen}
+            onClose={() => setIsPdfModalOpen(false)}
+            customMessage={aiResult?.whatsappMessage}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
