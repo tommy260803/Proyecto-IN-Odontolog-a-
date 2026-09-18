@@ -220,7 +220,7 @@ router.put('/:id', async (req, res) => {
 // ── Añadir alternativa a la mesa de negociación ────────────────────────────
 router.post('/:id/alternative', async (req, res) => {
   const { id } = req.params;
-  const { id_solicitud, id_disponibilidad, precio_ofrecido, condiciones } = req.body;
+  const { id_solicitud, id_disponibilidad, precio_ofrecido, condiciones, fecha, hora_inicio, hora_fin, id_profesional, id_sede } = req.body;
   try {
     // Si no viene id_solicitud, buscar o crear una
     let solicitudId = Number(id_solicitud);
@@ -234,20 +234,47 @@ router.post('/:id/alternative', async (req, res) => {
       }
     }
 
+    let dispId = Number(id_disponibilidad);
+
+    // Si es un horario personalizado y no tiene id_disponibilidad previo, crearlo en la tabla Disponibilidad
+    if ((!dispId || isNaN(dispId)) && fecha) {
+      const defaultProf = await prisma.profesionales.findFirst({ where: { activo: true } });
+      const defaultSede = await prisma.sedes.findFirst({ where: { activo: true } });
+
+      const startH = hora_inicio || '09:00';
+      const endH = hora_fin || '10:00';
+
+      const newDisp = await prisma.disponibilidad.create({
+        data: {
+          id_profesional: Number(id_profesional) || defaultProf?.id_profesional || 1,
+          id_sede: Number(id_sede) || defaultSede?.id_sede || 1,
+          fecha: new Date(fecha),
+          hora_inicio: new Date(`1970-01-01T${startH}:00`),
+          hora_fin: new Date(`1970-01-01T${endH}:00`),
+          estado: 'Disponible'
+        }
+      });
+      dispId = newDisp.id_disponibilidad;
+    }
+
+    if (!dispId || isNaN(dispId)) {
+      return res.status(400).json({ error: 'Debes seleccionar una fecha y horario disponible.' });
+    }
+
     const opcion = await prisma.opciones.create({
       data: {
         id_solicitud: solicitudId,
-        id_disponibilidad: Number(id_disponibilidad),
-        precio_ofrecido: Number(precio_ofrecido),
+        id_disponibilidad: dispId,
+        precio_ofrecido: Number(precio_ofrecido) || 150.00,
         seleccionada: false,
       },
       include: { Disponibilidad: { include: { Profesional: true, Sede: true } } }
     });
 
-    res.json({ message: 'Alternativa registrada', data: opcion });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al añadir alternativa' });
+    res.json({ message: 'Alternativa registrada en el tablero', data: opcion });
+  } catch (error: any) {
+    console.error('Error al añadir alternativa:', error);
+    res.status(500).json({ error: error.message || 'Error al añadir alternativa' });
   }
 });
 

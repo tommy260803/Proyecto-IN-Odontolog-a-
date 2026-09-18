@@ -23,22 +23,34 @@ import {
   Edit2,
   Trash2,
   Check,
-  X
+  X,
+  DollarSign
 } from 'lucide-react';
+import { InteractiveAvailabilityPicker } from '../components/InteractiveAvailabilityPicker';
 
 export default function LeadNegotiationPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [lead, setLead] = useState<any>(null);
-  const [options, setOptions] = useState<any>({ profesionales: [], sedes: [], disponibilidades: [] });
+  const [options, setOptions] = useState<any>({ profesionales: [], sedes: [], servicios: [], disponibilidades: [] });
   const [loading, setLoading] = useState(true);
   const [reserving, setReserving] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [addingAlternative, setAddingAlternative] = useState(false);
   const [selectedOpcion, setSelectedOpcion] = useState<number | null>(null);
+
+  // Form states for alternative offer
+  const [selectedProfesionalId, setSelectedProfesionalId] = useState('');
+  const [selectedSedeId, setSelectedSedeId] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
   const [selectedDisponibilidad, setSelectedDisponibilidad] = useState('');
+  const [customTime, setCustomTime] = useState({ startTime: '09:00', endTime: '10:00' });
+  const [isCustomMode, setIsCustomMode] = useState(false);
   const [precioOfrecido, setPrecioOfrecido] = useState('150.00');
+  const [condiciones, setCondiciones] = useState('');
+  const [offerErrors, setOfferErrors] = useState<Record<string, string>>({});
+
   const [editingOptionId, setEditingOptionId] = useState<number | null>(null);
   const [editingPrice, setEditingPrice] = useState<string>('');
   const [savingEdit, setSavingEdit] = useState(false);
@@ -65,18 +77,42 @@ export default function LeadNegotiationPage() {
   }, [id]);
 
   const handleAddAlternative = async () => {
-    if (!selectedDisponibilidad) return;
+    const errors: Record<string, string> = {};
+    if (!isCustomMode && !selectedDisponibilidad) {
+      errors.disp = 'Por favor selecciona un turno disponible en el calendario interactivo.';
+    }
+    if (isCustomMode && !selectedDate) {
+      errors.disp = 'Selecciona una fecha en el calendario para el horario personalizado.';
+    }
+    if (!precioOfrecido || isNaN(Number(precioOfrecido)) || Number(precioOfrecido) <= 0) {
+      errors.precio = 'Ingresa una tarifa válida mayor a 0.';
+    }
+    if (Object.keys(errors).length > 0) {
+      setOfferErrors(errors);
+      return;
+    }
+
+    setOfferErrors({});
     setAddingAlternative(true);
-    const ultimaSolicitud = lead.Solicitudes[lead.Solicitudes.length - 1];
+    const ultimaSolicitud = lead.Solicitudes?.[lead.Solicitudes.length - 1];
     try {
       await leadService.addAlternative(id!, {
         id_solicitud: ultimaSolicitud?.id_solicitud,
-        id_disponibilidad: selectedDisponibilidad,
-        precio_ofrecido: precioOfrecido
+        id_disponibilidad: (!isCustomMode && selectedDisponibilidad) ? selectedDisponibilidad : undefined,
+        fecha: selectedDate,
+        hora_inicio: customTime.startTime,
+        hora_fin: customTime.endTime,
+        id_profesional: selectedProfesionalId || undefined,
+        id_sede: selectedSedeId || undefined,
+        precio_ofrecido: precioOfrecido,
+        condiciones: condiciones,
       });
       fetchLeadData();
       setSelectedDisponibilidad('');
-      toast({ title: 'Alternativa Agregada', description: 'La opción de turno ha sido añadida al tablero.' });
+      setSelectedDate('');
+      setIsCustomMode(false);
+      setCondiciones('');
+      toast({ title: 'Alternativa Agregada 🎉', description: 'La propuesta horaria ha sido añadida al tablero de negociación.' });
     } catch (error) {
       toast({ title: 'Error', description: 'Error al añadir la alternativa.', variant: 'destructive' });
     } finally {
@@ -268,47 +304,112 @@ export default function LeadNegotiationPage() {
             {/* 1. Ofrecer Nueva Alternativa */}
             <section>
               <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs">1</span>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-700 text-xs font-bold">1</span>
                 Diseñar Oferta
               </h3>
               <div className="p-5 bg-white border border-slate-200 shadow-sm rounded-xl space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_150px] gap-4">
+                {/* Filtro Profesional y Sede */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600">Disponibilidad en Agenda</Label>
-                    <Select onValueChange={setSelectedDisponibilidad} value={selectedDisponibilidad}>
-                      <SelectTrigger className="w-full bg-slate-50 border-slate-200">
-                        <SelectValue placeholder="Selecciona un turno libre..." />
+                    <Label className="text-xs font-medium text-slate-600">Profesional</Label>
+                    <Select onValueChange={(v) => { setSelectedProfesionalId(v); setSelectedDisponibilidad(''); }} value={selectedProfesionalId}>
+                      <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-xs">
+                        <SelectValue placeholder="Todos los doctores..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {options.disponibilidades.map((disp: any) => (
-                          <SelectItem key={disp.id_disponibilidad} value={disp.id_disponibilidad.toString()}>
-                            {disp.fecha.split('T')[0]} | {disp.hora_inicio.substring(11, 16)} - {disp.hora_fin.substring(11, 16)} | {disp.Sede?.nombre} | Dr. {disp.Profesional?.apellidos}
+                        <SelectItem value="ALL_PROFESSIONALS" className="text-xs font-semibold text-teal-600">Todos los doctores</SelectItem>
+                        {options.profesionales?.map((p: any) => (
+                          <SelectItem key={p.id_profesional} value={p.id_profesional.toString()} className="text-xs">
+                            Dr/a. {p.nombres} {p.apellidos}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600">Tarifa Ofrecida</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-2.5 text-slate-500 text-sm font-medium">S/</span>
-                      <input 
-                        type="number" 
-                        className="flex h-10 w-full rounded-md border border-slate-200 bg-slate-50 pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" 
-                        value={precioOfrecido} 
-                        onChange={(e) => setPrecioOfrecido(e.target.value)} 
-                      />
-                    </div>
+                    <Label className="text-xs font-medium text-slate-600">Sede</Label>
+                    <Select onValueChange={(v) => { setSelectedSedeId(v); setSelectedDisponibilidad(''); }} value={selectedSedeId}>
+                      <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-xs">
+                        <SelectValue placeholder="Todas las sedes..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL_SEDES" className="text-xs font-semibold text-teal-600">Todas las sedes</SelectItem>
+                        {options.sedes?.map((s: any) => (
+                          <SelectItem key={s.id_sede} value={s.id_sede.toString()} className="text-xs">
+                            {s.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-                <div className="flex justify-end pt-1">
+
+                {/* Mini-calendario y Horarios Interactivos */}
+                <div className="pt-1">
+                  <InteractiveAvailabilityPicker
+                    disponibilidades={options.disponibilidades || []}
+                    profesionales={options.profesionales || []}
+                    sedes={options.sedes || []}
+                    selectedProfesionalId={selectedProfesionalId === 'ALL_PROFESSIONALS' ? '' : selectedProfesionalId}
+                    selectedSedeId={selectedSedeId === 'ALL_SEDES' ? '' : selectedSedeId}
+                    selectedDate={selectedDate}
+                    selectedDisponibilidadId={selectedDisponibilidad}
+                    customTime={customTime}
+                    isCustomMode={isCustomMode}
+                    onSelectDate={(d) => { setSelectedDate(d); setSelectedDisponibilidad(''); }}
+                    onSelectDisponibilidad={(id, disp) => {
+                      setSelectedDisponibilidad(id);
+                      if (disp?.id_profesional && !selectedProfesionalId) setSelectedProfesionalId(disp.id_profesional.toString());
+                      if (disp?.id_sede && !selectedSedeId) setSelectedSedeId(disp.id_sede.toString());
+                      if (offerErrors.disp) setOfferErrors(p => ({ ...p, disp: '' }));
+                    }}
+                    onCustomTimeChange={(ct) => setCustomTime(ct)}
+                    onToggleCustomMode={(mode) => {
+                      setIsCustomMode(mode);
+                      if (mode) setSelectedDisponibilidad('');
+                      if (offerErrors.disp) setOfferErrors(p => ({ ...p, disp: '' }));
+                    }}
+                    errorMessage={offerErrors.disp}
+                  />
+                </div>
+
+                {/* Tarifa y Condiciones */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  <div className="space-y-1.5">
+                    <Label className={`text-xs font-medium ${offerErrors.precio ? 'text-rose-600' : 'text-slate-600'}`}>Tarifa Ofrecida</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                      <input 
+                        type="number" 
+                        className={`flex h-10 w-full rounded-xl border bg-slate-50 pl-9 pr-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 ${offerErrors.precio ? 'border-rose-500 ring-rose-500/20' : 'border-slate-200 focus:ring-teal-500/20 focus:border-teal-500'}`} 
+                        value={precioOfrecido} 
+                        onChange={(e) => {
+                          setPrecioOfrecido(e.target.value);
+                          if (offerErrors.precio) setOfferErrors(p => ({ ...p, precio: '' }));
+                        }} 
+                      />
+                    </div>
+                    {offerErrors.precio && <p className="text-[11px] text-rose-600 font-medium">{offerErrors.precio}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600">Modalidad / Condiciones</Label>
+                    <input 
+                      type="text" 
+                      placeholder="Ej. Presencial, pago en cuotas..." 
+                      className="flex h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                      value={condiciones} 
+                      onChange={(e) => setCondiciones(e.target.value)} 
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
                   <Button 
                     onClick={handleAddAlternative} 
-                    disabled={addingAlternative || !selectedDisponibilidad} 
-                    variant="outline"
-                    className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:text-indigo-800 transition-colors"
+                    disabled={addingAlternative} 
+                    className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs h-9 px-5 shadow-sm transition-colors"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="h-4 w-4 mr-1.5" />
                     {addingAlternative ? 'Registrando...' : 'Añadir al tablero'}
                   </Button>
                 </div>

@@ -24,6 +24,8 @@ import {
   Building2, DollarSign, ChevronDown, ChevronRight, HeartPulse,
 } from 'lucide-react';
 
+import { InteractiveAvailabilityPicker } from './InteractiveAvailabilityPicker';
+
 interface LeadNegotiationModalProps {
   leadId: string | null;
   isOpen: boolean;
@@ -137,6 +139,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const [altSedeId, setAltSedeId] = useState('');
   const [altFecha, setAltFecha] = useState('');
   const [altDisponibilidadId, setAltDisponibilidadId] = useState('');
+  const [altCustomTime, setAltCustomTime] = useState({ startTime: '09:00', endTime: '10:00' });
+  const [isCustomMode, setIsCustomMode] = useState(false);
   const [altPrecio, setAltPrecio] = useState('150.00');
   const [altCondiciones, setAltCondiciones] = useState('');
   const [addingAlternative, setAddingAlternative] = useState(false);
@@ -165,26 +169,34 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
   useEffect(() => { if (isOpen && leadId) fetchData(); }, [isOpen, leadId]);
 
-  const filteredDisps = useMemo(() => {
-    return (catalogs.disponibilidades || []).filter((d: any) => {
-      if (altProfesionalId && d.id_profesional.toString() !== altProfesionalId) return false;
-      if (altSedeId && d.id_sede.toString() !== altSedeId) return false;
-      if (altFecha && d.fecha.split('T')[0] !== altFecha) return false;
-      return true;
-    });
-  }, [catalogs.disponibilidades, altProfesionalId, altSedeId, altFecha]);
-
   const resetAltForm = () => {
-    setAltServicioId(''); setAltProfesionalId(''); setAltSedeId('');
-    setAltFecha(''); setAltDisponibilidadId(''); setAltPrecio('150.00');
-    setAltCondiciones(''); setOfferErrors({});
+    setAltServicioId(''); 
+    setAltProfesionalId(''); 
+    setAltSedeId('');
+    setAltFecha(''); 
+    setAltDisponibilidadId(''); 
+    setAltCustomTime({ startTime: '09:00', endTime: '10:00' });
+    setIsCustomMode(false);
+    setAltPrecio('150.00');
+    setAltCondiciones(''); 
+    setOfferErrors({});
   };
 
   const handleAddAlternative = async () => {
     const errors: Record<string, string> = {};
-    if (!altDisponibilidadId) errors.disp = 'Selecciona un horario disponible';
-    if (!altPrecio || isNaN(Number(altPrecio)) || Number(altPrecio) <= 0) errors.precio = 'Ingresa una tarifa válida mayor a 0';
-    if (Object.keys(errors).length > 0) { setOfferErrors(errors); return; }
+    if (!isCustomMode && !altDisponibilidadId) {
+      errors.disp = 'Por favor selecciona un horario disponible en el calendario interactivo.';
+    }
+    if (isCustomMode && !altFecha) {
+      errors.disp = 'Selecciona una fecha en el calendario para el horario personalizado.';
+    }
+    if (!altPrecio || isNaN(Number(altPrecio)) || Number(altPrecio) <= 0) {
+      errors.precio = 'Ingresa una tarifa válida mayor a 0';
+    }
+    if (Object.keys(errors).length > 0) { 
+      setOfferErrors(errors); 
+      return; 
+    }
 
     setOfferErrors({});
     setAddingAlternative(true);
@@ -192,13 +204,18 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     try {
       await leadService.addAlternative(leadId!, {
         id_solicitud: ultimaSolicitud?.id_solicitud,
-        id_disponibilidad: altDisponibilidadId,
+        id_disponibilidad: (!isCustomMode && altDisponibilidadId) ? altDisponibilidadId : undefined,
+        fecha: altFecha,
+        hora_inicio: altCustomTime.startTime,
+        hora_fin: altCustomTime.endTime,
+        id_profesional: altProfesionalId || undefined,
+        id_sede: altSedeId || undefined,
         precio_ofrecido: altPrecio,
         condiciones: altCondiciones,
       });
       fetchData();
       resetAltForm();
-      toast({ title: 'Alternativa Agregada', description: 'La opción ha sido añadida al tablero.' });
+      toast({ title: 'Alternativa Agregada 🎉', description: 'La propuesta horaria ha sido añadida al tablero de negociación.' });
     } catch {
       toast({ title: 'Error', description: 'No se pudo añadir la alternativa.', variant: 'destructive' });
     } finally {
@@ -462,11 +479,12 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                     Diseñar Oferta
                   </h3>
 
-                  <div className="space-y-3 p-4 bg-white dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/90 rounded-xl shadow-sm">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-4 p-4 bg-white dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/90 rounded-xl shadow-sm">
+                    {/* Servicio, Profesional, Sede */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="space-y-1">
                         <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Servicio</Label>
-                        <Select onValueChange={(v) => { setAltServicioId(v); setAltProfesionalId(''); setAltDisponibilidadId(''); }} value={altServicioId}>
+                        <Select onValueChange={(v) => { setAltServicioId(v); }} value={altServicioId}>
                           <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"><SelectValue placeholder="Seleccionar servicio..." /></SelectTrigger>
                           <SelectContent>{catalogs.servicios?.map((s: any) => <SelectItem key={s.id_servicio} value={s.id_servicio.toString()} className="text-xs">{s.nombre}</SelectItem>)}</SelectContent>
                         </Select>
@@ -474,48 +492,59 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                       <div className="space-y-1">
                         <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Profesional</Label>
                         <Select onValueChange={(v) => { setAltProfesionalId(v); setAltDisponibilidadId(''); }} value={altProfesionalId}>
-                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"><SelectValue placeholder="Seleccionar profesional..." /></SelectTrigger>
-                          <SelectContent>{catalogs.profesionales?.map((p: any) => <SelectItem key={p.id_profesional} value={p.id_profesional.toString()} className="text-xs">Dr/a. {p.nombres} {p.apellidos} — {p.especialidad || 'General'}</SelectItem>)}</SelectContent>
+                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"><SelectValue placeholder="Todos los doctores..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ALL_PROFESSIONALS" className="text-xs font-semibold text-teal-600">Todos los doctores</SelectItem>
+                            {catalogs.profesionales?.map((p: any) => <SelectItem key={p.id_profesional} value={p.id_profesional.toString()} className="text-xs">Dr/a. {p.nombres} {p.apellidos}</SelectItem>)}
+                          </SelectContent>
                         </Select>
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Sede</Label>
                         <Select onValueChange={(v) => { setAltSedeId(v); setAltDisponibilidadId(''); }} value={altSedeId}>
-                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"><SelectValue placeholder="Seleccionar sede..." /></SelectTrigger>
-                          <SelectContent>{catalogs.sedes?.map((s: any) => <SelectItem key={s.id_sede} value={s.id_sede.toString()} className="text-xs">{s.nombre}</SelectItem>)}</SelectContent>
+                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"><SelectValue placeholder="Todas las sedes..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ALL_SEDES" className="text-xs font-semibold text-teal-600">Todas las sedes</SelectItem>
+                            {catalogs.sedes?.map((s: any) => <SelectItem key={s.id_sede} value={s.id_sede.toString()} className="text-xs">{s.nombre}</SelectItem>)}
+                          </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-1">
-                        <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Fecha</Label>
-                        <input type="date" className="flex h-9 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500" value={altFecha} onChange={(e) => { setAltFecha(e.target.value); setAltDisponibilidadId(''); }} />
-                      </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <Label className={`text-[11px] font-medium ${offerErrors.disp ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-400'}`}>Horario disponible</Label>
-                      <Select onValueChange={(v) => { setAltDisponibilidadId(v); if (offerErrors.disp) setOfferErrors(p => ({ ...p, disp: '' })); }} value={altDisponibilidadId}>
-                        <SelectTrigger className={`h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 ${offerErrors.disp ? '!border-rose-500 !ring-1 !ring-rose-500' : 'border-slate-200 dark:border-slate-700'}`}>
-                          <SelectValue placeholder={filteredDisps.length === 0 ? 'Sin turnos para los filtros seleccionados...' : 'Seleccionar horario...'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredDisps.map((d: any) => (
-                            <SelectItem key={d.id_disponibilidad} value={d.id_disponibilidad.toString()} className="text-xs">
-                              {d.fecha.split('T')[0]} | {String(d.hora_inicio).substring(11,16)} – {String(d.hora_fin).substring(11,16)} | {d.Sede?.nombre} | Dr/a. {d.Profesional?.apellidos}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {offerErrors.disp && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">{offerErrors.disp}</p>}
+                    {/* Selector interactivo de calendario y horarios */}
+                    <div className="pt-1">
+                      <InteractiveAvailabilityPicker
+                        disponibilidades={catalogs.disponibilidades || []}
+                        profesionales={catalogs.profesionales || []}
+                        sedes={catalogs.sedes || []}
+                        selectedProfesionalId={altProfesionalId === 'ALL_PROFESSIONALS' ? '' : altProfesionalId}
+                        selectedSedeId={altSedeId === 'ALL_SEDES' ? '' : altSedeId}
+                        selectedDate={altFecha}
+                        selectedDisponibilidadId={altDisponibilidadId}
+                        customTime={altCustomTime}
+                        isCustomMode={isCustomMode}
+                        onSelectDate={(d) => { setAltFecha(d); setAltDisponibilidadId(''); }}
+                        onSelectDisponibilidad={(id, disp) => {
+                          setAltDisponibilidadId(id);
+                          if (disp?.id_profesional && !altProfesionalId) setAltProfesionalId(disp.id_profesional.toString());
+                          if (disp?.id_sede && !altSedeId) setAltSedeId(disp.id_sede.toString());
+                          if (offerErrors.disp) setOfferErrors(p => ({ ...p, disp: '' }));
+                        }}
+                        onCustomTimeChange={(ct) => setAltCustomTime(ct)}
+                        onToggleCustomMode={(mode) => {
+                          setIsCustomMode(mode);
+                          if (mode) setAltDisponibilidadId('');
+                          if (offerErrors.disp) setOfferErrors(p => ({ ...p, disp: '' }));
+                        }}
+                        errorMessage={offerErrors.disp}
+                      />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                       <div className="space-y-1">
                         <Label className={`text-[11px] font-medium ${offerErrors.precio ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-400'}`}>Precio ofrecido (S/)</Label>
                         <div className="relative">
-                          <DollarSign className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+                          <DollarSign className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                           <input type="number" className={`flex h-9 w-full rounded-xl border pl-7 pr-3 text-xs text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-1 font-semibold ${offerErrors.precio ? '!border-rose-500 !ring-1 !ring-rose-500' : 'border-slate-200 dark:border-slate-700 focus:ring-teal-500'}`} value={altPrecio} onChange={(e) => { setAltPrecio(e.target.value); if (offerErrors.precio) setOfferErrors(p => ({ ...p, precio: '' })); }} />
                         </div>
                         {offerErrors.precio && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">{offerErrors.precio}</p>}
@@ -526,8 +555,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                       </div>
                     </div>
 
-                    <div className="flex justify-end pt-1">
-                      <Button onClick={handleAddAlternative} disabled={addingAlternative} className="bg-slate-900 dark:bg-teal-600 hover:bg-slate-800 dark:hover:bg-teal-500 text-white rounded-xl text-xs h-8 px-4">
+                    <div className="flex justify-end pt-2">
+                      <Button onClick={handleAddAlternative} disabled={addingAlternative} className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs h-9 px-5 shadow-sm">
                         <Plus className="h-3.5 w-3.5 mr-1.5" />
                         {addingAlternative ? 'Registrando...' : 'Añadir al Tablero'}
                       </Button>
