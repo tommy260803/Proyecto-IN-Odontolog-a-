@@ -50,12 +50,12 @@ router.post('/process-yape', async (req, res) => {
     const requestId = randomUUID();
     console.log(`[Yape] Solicitando token a Mercado Pago con requestId UUID: ${requestId}, celular: ${rawPhone}`);
 
-    // Paso 1: Generar el token oficial en la API de Yape de Mercado Pago (requestId DEBE ser UUID, phoneNumber como número)
+    // Paso 1: Generar el token oficial en la API de Yape de Mercado Pago (todos los campos como string con requestId UUID)
     const tokenResponse = await fetch(`https://api.mercadopago.com/platforms/pci/yape/v1/payment?public_key=${publicKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        phoneNumber: Number(rawPhone),
+        phoneNumber: String(rawPhone),
         otp: String(rawOtp),
         requestId: requestId
       })
@@ -67,7 +67,7 @@ router.post('/process-yape', async (req, res) => {
     if (!tokenResponse.ok || !tokenData || !tokenData.id) {
       const rawMsg = tokenData?.message || (tokenData?.cause && tokenData.cause[0]?.description) || '';
       const errorMsg = rawMsg === 'internal_error'
-        ? 'El servicio de Yape (BCP) no pudo validar tu cuenta en este momento. Verifica que tu app Yape esté abierta y genera un nuevo código de aprobación.'
+        ? 'El servicio de Yape (BCP) no pudo validar el código en este momento. Abre tu app Yape, pulsa en "Código de aprobación" y escribe el código de 6 dígitos activo.'
         : (rawMsg || 'Código de aprobación de Yape inválido o expirado. Genera uno nuevo en tu app Yape.');
 
       return res.status(400).json({
@@ -96,7 +96,7 @@ router.post('/process-yape', async (req, res) => {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
-        'X-Idempotency-Key': `yape-${payerId}-${Date.now()}`
+        'X-Idempotency-Key': randomUUID()
       },
       body: JSON.stringify(paymentData)
     });
