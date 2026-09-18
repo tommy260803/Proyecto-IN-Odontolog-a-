@@ -16,8 +16,6 @@ import { es } from 'date-fns/locale';
 import type { LeadWithDetails } from '@/application/use-cases/lead';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
-import { LocalRepository } from '@/infrastructure/repositories';
-import type { CustomerJourney } from '@/domain/entities';
 import { calculateL1, calculateL2, calculateL3 } from '@/domain/indicators';
 import { IndicatorCard } from '@/shared/components/data-display/IndicatorCard';
 import { useToast } from '@/shared/hooks/use-toast';
@@ -28,10 +26,7 @@ export default function LeadPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: leads, isLoading, isError } = useLeads();
-  const { data: journeys = [] } = useQuery({ 
-    queryKey: [QUERY_KEYS.JOURNEYS], 
-    queryFn: () => new LocalRepository<CustomerJourney>(QUERY_KEYS.JOURNEYS).getAll() 
-  });
+  const journeys: any[] = [];
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -172,9 +167,9 @@ export default function LeadPage() {
     setIsDeleting(true);
     try {
       await fetch(`http://localhost:3001/api/lead/${deleteTarget.id}`, { method: 'DELETE' });
-      const leadsRepo = new LocalRepository<any>(QUERY_KEYS.LEADS);
-      await leadsRepo.delete(deleteTarget.id);
-    } catch (e) {}
+    } catch (e) {
+      console.error(e);
+    }
     await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
     await queryClient.refetchQueries({ queryKey: [QUERY_KEYS.LEADS] });
     toast({ title: 'Lead Eliminado', description: `La oportunidad de ${deleteTarget.person.firstName} ${deleteTarget.person.lastName} ha sido eliminada.` });

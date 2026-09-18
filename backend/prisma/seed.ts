@@ -1,139 +1,292 @@
 import { PrismaClient } from '@prisma/client';
-import dotenv from 'dotenv';
 
-dotenv.config({ override: true });
-
-const prisma = new PrismaClient({
-  datasources: { db: { url: process.env.SQLSERVER_URL } }
-});
+const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Iniciando Seeder...');
+  console.log('Seeding database mock data (Appended to SQL structure)...');
 
-  // 1. Etapas
-  const etapas = ['BUYER', 'LEAD', 'PAYER', 'CUSTOMER', 'TURNED'];
-  for (const nombre of etapas) {
-    await prisma.etapas.upsert({
-      where: { nombre },
-      update: {},
-      create: { nombre, descripcion: `Etapa ${nombre}` },
+  // 1. Roles y Usuarios
+  // Usar el rol "Administrador" insertado por el script SQL
+  const rolAdmin = await prisma.roles.findUniqueOrThrow({
+    where: { nombre: 'Administrador' },
+  });
+
+  const usuario1 = await prisma.usuarios.upsert({
+    where: { email: 'admin@nexosalud.com' },
+    update: {},
+    create: {
+      nombres: 'Admin',
+      apellidos: 'Principal',
+      email: 'admin@nexosalud.com',
+      password_hash: 'hashedpassword',
+      id_rol: rolAdmin.id_rol,
+    },
+  });
+
+  // 2. Etapas
+  // Usar las etapas en mayúsculas del script SQL original
+  const etapasNombres = ['LEAD', 'BUYER', 'PAYER', 'CUSTOMER', 'TURNED'];
+  const createdEtapas: Record<string, any> = {};
+  for (const etapa of etapasNombres) {
+    createdEtapas[etapa] = await prisma.etapas.findUniqueOrThrow({
+      where: { nombre: etapa },
     });
   }
-  console.log('✅ Etapas creadas.');
 
-  // 2. Canales
-  const canales = ['WhatsApp', 'Facebook', 'Página Web', 'Recomendación'];
-  for (const nombre of canales) {
-    await prisma.canales.upsert({
-      where: { nombre },
-      update: {},
-      create: { nombre },
-    });
-  }
-  console.log('✅ Canales creados.');
-
-  // 3. Fuentes
-  const fuentes = ['Campaña Redes Enero', 'Búsqueda Orgánica', 'Referido'];
-  for (const nombre of fuentes) {
-    await prisma.fuentes.upsert({
-      where: { nombre },
-      update: {},
-      create: { nombre },
-    });
-  }
-  console.log('✅ Fuentes creadas.');
-
-  // 4. Servicios y Tarifas
-  const servicios = [
-    { nombre: 'Evaluación General', precio: 50.00 },
-    { nombre: 'Ortodoncia Inicial', precio: 150.00 },
-    { nombre: 'Blanqueamiento Dental', precio: 200.00 },
-    { nombre: 'Implante Dental', precio: 1500.00 },
-  ];
-  for (const s of servicios) {
-    const srv = await prisma.servicios.upsert({
-      where: { nombre: s.nombre },
-      update: {},
-      create: { nombre: s.nombre, descripcion: `Descripción de ${s.nombre}` },
-    });
-
-    // Agregar tarifa
-    const tarifas = await prisma.tarifas.findMany({ where: { id_servicio: srv.id_servicio } });
-    if (tarifas.length === 0) {
-      await prisma.tarifas.create({
-        data: {
-          id_servicio: srv.id_servicio,
-          precio: s.precio,
-        }
-      });
-    }
-  }
-  console.log('✅ Servicios y Tarifas creadas.');
-
-  // 5. Sedes
-  const sedes = ['Sede Norte', 'Sede Sur', 'Sede Centro'];
-  for (const nombre of sedes) {
-    const exists = await prisma.sedes.findFirst({ where: { nombre } });
-    if (!exists) {
-      await prisma.sedes.create({ data: { nombre, direccion: `Dirección de ${nombre}` } });
-    }
-  }
-  console.log('✅ Sedes creadas.');
-
-  // 6. Profesionales
-  const profesionales = [
-    { nombres: 'Juan', apellidos: 'Perez', especialidad: 'Ortodoncia' },
-    { nombres: 'Maria', apellidos: 'Gomez', especialidad: 'Odontología General' },
-  ];
-  for (let i = 0; i < profesionales.length; i++) {
-    const p = profesionales[i];
-    const exists = await prisma.profesionales.findFirst({ where: { nombres: p.nombres, apellidos: p.apellidos } });
-    if (!exists) {
-      await prisma.profesionales.create({ data: { nombres: p.nombres, apellidos: p.apellidos, especialidad: p.especialidad } });
-    }
-  }
-  console.log('✅ Profesionales creados.');
-
-  // 7. Disponibilidad de prueba (Para negociación)
-  const sedesList = await prisma.sedes.findMany();
-  const profList = await prisma.profesionales.findMany();
+  // 3. Canales y Fuentes
+  // Usar "WhatsApp" que inserta el script SQL
+  const canalWpp = await prisma.canales.findUniqueOrThrow({
+    where: { nombre: 'WhatsApp' },
+  });
   
-  if (sedesList.length > 0 && profList.length > 0) {
-    const disp = await prisma.disponibilidad.findMany();
-    if (disp.length === 0) {
-      const hoy = new Date();
-      // Crear disponibilidades para los próximos 3 días
-      for (let i = 1; i <= 3; i++) {
-        const fecha = new Date(hoy);
-        fecha.setDate(hoy.getDate() + i);
-        
-        await prisma.disponibilidad.create({
-          data: {
-            id_profesional: profList[0].id_profesional,
-            id_sede: sedesList[0].id_sede,
-            fecha: fecha,
-            hora_inicio: new Date(fecha.setHours(10, 0, 0, 0)),
-            hora_fin: new Date(fecha.setHours(11, 0, 0, 0)),
-            estado: 'Disponible'
-          }
-        });
+  // El script SQL original no inserta Fuentes por defecto, la creamos o buscamos:
+  const fuenteOrg = await prisma.fuentes.upsert({
+    where: { nombre: 'Búsqueda Orgánica' },
+    update: {},
+    create: { nombre: 'Búsqueda Orgánica' },
+  });
 
-        await prisma.disponibilidad.create({
-          data: {
-            id_profesional: profList[1].id_profesional,
-            id_sede: sedesList[1].id_sede,
-            fecha: fecha,
-            hora_inicio: new Date(fecha.setHours(15, 0, 0, 0)),
-            hora_fin: new Date(fecha.setHours(16, 0, 0, 0)),
-            estado: 'Disponible'
-          }
-        });
-      }
-      console.log('✅ Disponibilidad de prueba creada.');
-    }
-  }
+  // 4. Modalidades y Horarios
+  // Usar "Presencial" que inserta el script SQL
+  const modalidadP = await prisma.modalidades.findUniqueOrThrow({
+    where: { nombre: 'Presencial' },
+  });
 
-  console.log('✅ SEED COMPLETADO.');
+  // 5. Infraestructura y Médicos
+  const sedeNorte = await prisma.sedes.create({
+    data: { nombre: 'Sede Norte', direccion: 'Av. Las Palmas 123', zona: 'Norte' },
+  });
+  
+  const sedeSur = await prisma.sedes.create({
+    data: { nombre: 'Sede Sur', direccion: 'Av. El Sol 456', zona: 'Sur' },
+  });
+
+  // Usar los servicios reales insertados por el script SQL
+  const servicioGeneral = await prisma.servicios.findUniqueOrThrow({
+    where: { nombre: 'Evaluación odontológica' },
+  });
+
+  const servicioControl = await prisma.servicios.findUniqueOrThrow({
+    where: { nombre: 'Control odontológico' },
+  });
+
+  const drPerez = await prisma.profesionales.create({
+    data: {
+      nombres: 'Juan',
+      apellidos: 'Pérez',
+      numero_colegiatura: 'COP-12345',
+      especialidad: 'Odontología General',
+    },
+  });
+
+  await prisma.profesionalServicio.create({
+    data: { id_profesional: drPerez.id_profesional, id_servicio: servicioGeneral.id_servicio },
+  });
+
+  // Crear Disponibilidad (Hoy y mañana)
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+
+  const disp1 = await prisma.disponibilidad.create({
+    data: {
+      id_profesional: drPerez.id_profesional,
+      id_sede: sedeNorte.id_sede,
+      fecha: today,
+      hora_inicio: new Date(new Date().setHours(10, 0, 0, 0)),
+      hora_fin: new Date(new Date().setHours(11, 0, 0, 0)),
+    },
+  });
+
+  const disp2 = await prisma.disponibilidad.create({
+    data: {
+      id_profesional: drPerez.id_profesional,
+      id_sede: sedeSur.id_sede,
+      fecha: tomorrow,
+      hora_inicio: new Date(new Date().setHours(15, 0, 0, 0)),
+      hora_fin: new Date(new Date().setHours(16, 0, 0, 0)),
+    },
+  });
+
+  const disp3 = await prisma.disponibilidad.create({
+    data: {
+      id_profesional: drPerez.id_profesional,
+      id_sede: sedeNorte.id_sede,
+      fecha: today,
+      hora_inicio: new Date(new Date().setHours(12, 0, 0, 0)),
+      hora_fin: new Date(new Date().setHours(13, 0, 0, 0)),
+    },
+  });
+
+  const disp4 = await prisma.disponibilidad.create({
+    data: {
+      id_profesional: drPerez.id_profesional,
+      id_sede: sedeSur.id_sede,
+      fecha: tomorrow,
+      hora_inicio: new Date(new Date().setHours(9, 0, 0, 0)),
+      hora_fin: new Date(new Date().setHours(10, 0, 0, 0)),
+    },
+  });
+
+  const nextWeek = new Date();
+  nextWeek.setDate(today.getDate() + 7);
+  
+  const disp5 = await prisma.disponibilidad.create({
+    data: {
+      id_profesional: drPerez.id_profesional,
+      id_sede: sedeNorte.id_sede,
+      fecha: nextWeek,
+      hora_inicio: new Date(new Date().setHours(11, 0, 0, 0)),
+      hora_fin: new Date(new Date().setHours(12, 0, 0, 0)),
+    },
+  });
+
+  // ========================================================
+  // PACIENTES MOCK (Flujo completo)
+  // ========================================================
+
+  // 1. LEAD: Solo información básica
+  const pLead = await prisma.personas.create({
+    data: {
+      nombres: 'Laura',
+      apellidos: 'García',
+      email: 'laura.lead@example.com',
+      numero: '+51999888777',
+      id_etapa_actual: createdEtapas['LEAD'].id_etapa,
+      id_canal_origen: canalWpp.id_canal,
+      Interacciones: {
+        create: [
+          { tipo: 'Consulta Web', mensaje: 'Quiero información sobre brackets', id_canal: canalWpp.id_canal, id_fuente: fuenteOrg.id_fuente },
+        ],
+      },
+    },
+  });
+
+  // 2. BUYER: Tiene una solicitud y una opción de cita
+  const pBuyer = await prisma.personas.create({
+    data: {
+      nombres: 'Carlos',
+      apellidos: 'Díaz',
+      email: 'carlos.buyer@example.com',
+      numero: '+51999666555',
+      id_etapa_actual: createdEtapas['BUYER'].id_etapa,
+      id_canal_origen: canalWpp.id_canal,
+      Solicitudes: {
+        create: [
+          {
+            motivo: 'Evaluación general',
+            id_servicio: servicioGeneral.id_servicio,
+            Opciones: {
+              create: [
+                { id_disponibilidad: disp1.id_disponibilidad, precio_ofrecido: 50.0 },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+
+  // 3. PAYER: Tiene reserva y pago
+  const pPayer = await prisma.personas.create({
+    data: {
+      nombres: 'María',
+      apellidos: 'Gómez',
+      email: 'maria.payer@example.com',
+      numero: '+51999444333',
+      id_etapa_actual: createdEtapas['PAYER'].id_etapa,
+    },
+  });
+
+  const solPayer = await prisma.solicitudes.create({
+    data: {
+      id_persona: pPayer.id_persona,
+      id_servicio: servicioControl.id_servicio,
+      motivo: 'Instalación de brackets',
+    },
+  });
+
+  const opcPayer = await prisma.opciones.create({
+    data: {
+      id_solicitud: solPayer.id_solicitud,
+      id_disponibilidad: disp2.id_disponibilidad,
+      precio_ofrecido: 150.0,
+      seleccionada: true,
+    },
+  });
+
+  const resPayer = await prisma.reservas.create({
+    data: {
+      id_persona: pPayer.id_persona,
+      id_solicitud: solPayer.id_solicitud,
+      id_opcion: opcPayer.id_opcion,
+      estado: 'Confirmada',
+    },
+  });
+
+  await prisma.pagos.create({
+    data: {
+      id_persona: pPayer.id_persona,
+      id_reserva: resPayer.id_reserva,
+      importe: 150.0,
+      estado: 'Confirmado',  // Note: the SQL constraint allows 'Confirmado', not 'Validado'
+      validado_por: usuario1.id_usuario,
+    },
+  });
+
+  // 4. CUSTOMER: Tiene atenciones completadas
+  const pCustomer = await prisma.personas.create({
+    data: {
+      nombres: 'José',
+      apellidos: 'Martínez',
+      email: 'jose.customer@example.com',
+      numero: '+51999222111',
+      id_etapa_actual: createdEtapas['CUSTOMER'].id_etapa,
+    },
+  });
+
+  const solCustomer = await prisma.solicitudes.create({
+    data: { id_persona: pCustomer.id_persona, id_servicio: servicioGeneral.id_servicio, motivo: 'Control anual' },
+  });
+
+  const opcCustomer = await prisma.opciones.create({
+    data: { id_solicitud: solCustomer.id_solicitud, id_disponibilidad: disp1.id_disponibilidad, precio_ofrecido: 0.0, seleccionada: true },
+  });
+
+  const resCustomer = await prisma.reservas.create({
+    data: { id_persona: pCustomer.id_persona, id_solicitud: solCustomer.id_solicitud, id_opcion: opcCustomer.id_opcion, estado: 'Atendida' },
+  });
+
+  await prisma.atenciones.create({
+    data: {
+      id_persona: pCustomer.id_persona,
+      id_reserva: resCustomer.id_reserva,
+      id_servicio: servicioGeneral.id_servicio,
+      id_profesional: drPerez.id_profesional,
+      id_sede: sedeNorte.id_sede,
+      fecha_atencion: today,
+      estado_servicio: 'Realizado',  // SQL CHECK constraint: 'Realizado'
+      resultado: 'Paciente sano, sin caries.',
+    },
+  });
+
+  // 5. TURNED: Paciente que abandonó o terminó
+  await prisma.personas.create({
+    data: {
+      nombres: 'Ana',
+      apellidos: 'López',
+      email: 'ana.turned@example.com',
+      numero: '+51999111000',
+      id_etapa_actual: createdEtapas['TURNED'].id_etapa,
+      Interacciones: {
+        create: [
+          { tipo: 'Reactivación', mensaje: 'No contestó el teléfono.', id_usuario: usuario1.id_usuario },
+        ],
+      },
+    },
+  });
+
+  console.log('Database seeded successfully (Appending to SQL base)!');
 }
 
 main()

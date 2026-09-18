@@ -60,12 +60,6 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const [deletingOptionTarget, setDeletingOptionTarget] = useState<any | null>(null);
   const [isDeletingOption, setIsDeletingOption] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && leadId) {
-      fetchLeadData();
-    }
-  }, [isOpen, leadId]);
-
   const fetchLeadData = () => {
     if (!leadId) return;
     setLoading(true);
@@ -80,6 +74,12 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     .catch(console.error)
     .finally(() => setLoading(false));
   };
+
+  useEffect(() => {
+    if (isOpen && leadId) {
+      fetchLeadData();
+    }
+  }, [isOpen, leadId]);
 
   const handleAddAlternative = async () => {
     const errors: { disponibilidad?: string; precio?: string } = {};

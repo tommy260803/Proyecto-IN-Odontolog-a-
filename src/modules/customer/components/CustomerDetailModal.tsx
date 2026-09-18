@@ -30,8 +30,6 @@ import { Play, CheckSquare, XCircle, UserX, ArrowRight, AlertTriangle, Stethosco
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
-import { LocalRepository } from '@/infrastructure/repositories';
-import type { CustomerJourney } from '@/domain/entities';
 
 interface CustomerDetailModalProps {
   customerId: string | null;
@@ -57,11 +55,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: journeys = [] } = useQuery({ 
-    queryKey: [QUERY_KEYS.JOURNEYS], 
-    queryFn: () => new LocalRepository<CustomerJourney>(QUERY_KEYS.JOURNEYS).getAll(),
-    enabled: isOpen && !!customerId,
-  });
+  const journeys: any[] = [];
 
   const { data: customer, isLoading, isError } = useCustomer(customerId || '');
   const changeState = useChangeCustomerState();
@@ -322,7 +316,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                         <p className="text-[11px] text-slate-400">Sin incidencias de soporte.</p>
                       ) : (
                         <div className="space-y-2">
-                          {customer.incidents.map(inc => (
+                          {customer.incidents.map((inc: any) => (
                             <div key={inc.id} className="border-b border-slate-100 dark:border-slate-700 pb-1.5 last:border-0">
                               <p className="text-[10px] text-slate-400">{new Date(inc.createdAt).toLocaleDateString()}</p>
                               <p className="text-slate-700 dark:text-slate-300">{inc.reason}</p>

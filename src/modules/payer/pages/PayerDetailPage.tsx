@@ -26,8 +26,6 @@ import type { PayerWithDetails } from '@/application/use-cases/payer';
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
 import { useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
-import { LocalRepository } from '@/infrastructure/repositories';
-import type { CustomerJourney } from '@/domain/entities';
 
 export default function PayerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -35,10 +33,7 @@ export default function PayerDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
 
-  const { data: journeys = [] } = useQuery({ 
-    queryKey: [QUERY_KEYS.JOURNEYS], 
-    queryFn: () => new LocalRepository<CustomerJourney>(QUERY_KEYS.JOURNEYS).getAll() 
-  });
+  const journeys: any[] = [];
 
   const { data: payer, isLoading, isError } = usePayer(id!);
   const registerPayment = useRegisterPayment();

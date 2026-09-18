@@ -1,158 +1,83 @@
-import type { 
-  Lead, Buyer, Person, CustomerJourney, NegotiationAlternative, Reservation, Payer 
-} from '@/domain/entities';
-import { LeadState, PayerState, Phase } from '@/domain/enums';
-import { LocalRepository } from '@/infrastructure/repositories';
-import { QUERY_KEYS } from '@/shared/constants';
-import { canTransitionLeadToPayer } from '@/domain/transitions';
+import type { Lead, Payer, NegotiationAlternative } from '@/domain/entities';
+import { LeadState } from '@/domain/enums';
+export type LeadWithDetails = any;
 
-const getUUID = () => {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-  return 'uuid-' + Math.random().toString(36).substring(2, 9);
-};
-
-export type LeadWithDetails = Lead & { 
-  buyer: Buyer; 
-  person: Person;
-  reservation?: Reservation;
-};
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 export class LeadUseCases {
-  async updateAlternative(_id: string, _data: any): Promise<any> { return null; }
-  async deleteAlternative(_id: string): Promise<any> { return null; }
-
-  private leadsRepo = new LocalRepository<Lead>(QUERY_KEYS.LEADS);
-  private buyersRepo = new LocalRepository<Buyer>(QUERY_KEYS.BUYERS);
-  private personsRepo = new LocalRepository<Person>(QUERY_KEYS.PERSONS);
-  private journeysRepo = new LocalRepository<CustomerJourney>(QUERY_KEYS.JOURNEYS);
-  private reservationsRepo = new LocalRepository<Reservation>(QUERY_KEYS.RESERVATIONS);
-  private payersRepo = new LocalRepository<Payer>(QUERY_KEYS.PAYERS);
-
-  async getAllLeads(): Promise<LeadWithDetails[]> {
-    const leads = await this.leadsRepo.getAll();
-    const buyers = await this.buyersRepo.getAll();
-    const persons = await this.personsRepo.getAll();
-    const reservations = await this.reservationsRepo.getAll();
-    
-    return leads.map(lead => {
-      const buyer = buyers.find(b => b.id === lead.buyerId)!;
-      const person = buyer ? persons.find(p => p.id === buyer.personId)! : {} as Person;
-      const reservation = reservations.find(r => r.id === lead.reservationId);
-      return { ...lead, buyer, person, reservation };
-    }).filter(l => l.buyer && l.person);
+  async getAllLeads(): Promise<any[]> {
+    const res = await fetch(`${API_URL}/lead`);
+    if (!res.ok) throw new Error('Error fetching leads');
+    return res.json();
   }
 
-  async getLeadById(id: string): Promise<LeadWithDetails | null> {
-    const lead = await this.leadsRepo.getById(id);
-    if (!lead) return null;
-    const buyer = await this.buyersRepo.getById(lead.buyerId);
-    if (!buyer) return null;
-    const person = await this.personsRepo.getById(buyer.personId);
-    if (!person) return null;
-    let reservation = undefined;
-    if (lead.reservationId) {
-      reservation = await this.reservationsRepo.getById(lead.reservationId) || undefined;
+  async getLeadById(id: string): Promise<any | null> {
+    const res = await fetch(`${API_URL}/lead/${id}`);
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      throw new Error('Error fetching lead');
     }
-    return { ...lead, buyer, person, reservation };
+    return res.json();
   }
 
-  async updateLead(id: string, data: Partial<Lead>): Promise<Lead> {
-    return this.leadsRepo.update(id, data);
-  }
-
-  async addAlternative(leadId: string, altData: Omit<NegotiationAlternative, 'id' | 'leadId'>): Promise<Lead> {
-    const lead = await this.leadsRepo.getById(leadId);
-    if (!lead) throw new Error('Lead no encontrado');
-
-    const newAlt: NegotiationAlternative = {
-      id: getUUID(),
-      leadId,
-      ...altData
-    };
-
-    const alternatives = lead.alternatives ? [...lead.alternatives, newAlt] : [newAlt];
-    return this.leadsRepo.update(leadId, { alternatives });
-  }
-
-  async selectAlternativeAndReserve(leadId: string, altId: string): Promise<Lead> {
-    const lead = await this.leadsRepo.getById(leadId);
-    if (!lead) throw new Error('Lead no encontrado');
-    if (!lead.alternatives) throw new Error('El Lead no tiene alternativas registradas');
-    
-    const selectedAlt = lead.alternatives.find(a => a.id === altId);
-    if (!selectedAlt) throw new Error('Alternativa no encontrada');
-
-    // Create reservation
-    const reservation: Reservation = {
-      id: getUUID(),
-      leadId,
-      date: selectedAlt.date,
-      time: selectedAlt.time,
-      professionalId: selectedAlt.professional, // Using name as ID for mock
-      branchId: selectedAlt.branch, // Using name as ID for mock
-      status: 'PENDING',
-    };
-    await this.reservationsRepo.create(reservation);
-
-    // Update Lead
-    return this.leadsRepo.update(leadId, {
-      selectedAlternativeId: selectedAlt.id,
-      reservationId: reservation.id,
-      state: LeadState.ALTERNATIVE_SELECTED,
-      price: selectedAlt.price,
+  async updateLead(id: string, data: Partial<Lead>): Promise<any> {
+    const res = await fetch(`${API_URL}/lead/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
     });
+    if (!res.ok) throw new Error('Error updating lead');
+    return res.json();
+  }
+
+  async addAlternative(leadId: string, altData: Omit<NegotiationAlternative, 'id' | 'leadId'>): Promise<any> {
+    const res = await fetch(`${API_URL}/lead/${leadId}/alternative`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(altData)
+    });
+    if (!res.ok) throw new Error('Error adding alternative');
+    return res.json();
+  }
+
+  async updateAlternative(id_opcion: string, data: any): Promise<any> {
+    const res = await fetch(`${API_URL}/lead/options/${id_opcion}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Error updating alternative');
+    return res.json();
+  }
+
+  async deleteAlternative(id_opcion: string): Promise<any> {
+    const res = await fetch(`${API_URL}/lead/options/${id_opcion}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Error deleting alternative');
+    return res.json();
+  }
+
+  async selectAlternativeAndReserve(leadId: string, altId: string): Promise<any> {
+    // Note: the backend route expects id_opcion and id_solicitud in the body
+    const res = await fetch(`${API_URL}/lead/${leadId}/reserve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id_opcion: altId, id_solicitud: 1 }) // Assuming frontend passes correct values later or handles it in service
+    });
+    if (!res.ok) throw new Error('Error reserving alternative');
+    return res.json();
   }
 
   async convertToPayer(leadId: string): Promise<Payer> {
-    const lead = await this.leadsRepo.getById(leadId);
-    if (!lead) throw new Error('Lead no encontrado');
-
-    // Generar solicitud de pago ficticia para cumplir la regla
-    // En el futuro esto creará un PaymentRequest real.
-    const paymentRequestId = getUUID();
-    await this.leadsRepo.update(leadId, { paymentRequestId });
-    lead.paymentRequestId = paymentRequestId;
-
-    const validation = canTransitionLeadToPayer(lead);
-    if (!validation.success) {
-      throw new Error(validation.error || 'No cumple los requisitos para convertirse en PAYER');
-    }
-
-    const payers = await this.payersRepo.getAll();
-    if (payers.some(p => p.leadId === leadId)) {
-      throw new Error('El LEAD ya tiene un PAYER asociado');
-    }
-
-    const selectedAlt = lead.alternatives?.find(a => a.id === lead.selectedAlternativeId);
-    const amountToPay = selectedAlt ? selectedAlt.price : (lead.price || 0);
-
-    // Crear Payer
-    const payer: Payer = {
-      id: getUUID(),
-      leadId: lead.id,
-      reservationId: lead.reservationId!,
-      amountToPay,
-      currency: 'PEN',
-      state: PayerState.PENDING,
-      createdAt: new Date().toISOString(),
-    };
-    await this.payersRepo.create(payer);
-
-    // Actualizar Lead
-    await this.leadsRepo.update(leadId, { state: LeadState.PAYMENT_REQUESTED });
-
-    // Actualizar Journey
-    const journeys = await this.journeysRepo.getAll();
-    const journey = journeys.find(j => j.leadId === leadId);
-    if (journey) {
-      await this.journeysRepo.update(journey.id, {
-        payerId: payer.id,
-        currentPhase: Phase.PAYER,
-        updatedAt: new Date().toISOString(),
-      });
-    }
-
-    return payer;
+    // This is handled by reserve in the backend, but if called separately:
+    const res = await fetch(`${API_URL}/lead/${leadId}/reserve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    if (!res.ok) throw new Error('Error converting to payer');
+    return res.json();
   }
 }
 

@@ -45,12 +45,6 @@ export default function LeadNegotiationPage() {
   const [deletingOptionTarget, setDeletingOptionTarget] = useState<any | null>(null);
   const [isDeletingOption, setIsDeletingOption] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-      fetchLeadData();
-    }
-  }, [id]);
-
   const fetchLeadData = () => {
     Promise.all([
       leadService.getLeadDetails(id!),
@@ -63,6 +57,12 @@ export default function LeadNegotiationPage() {
     .catch(console.error)
     .finally(() => setLoading(false));
   };
+
+  useEffect(() => {
+    if (id) {
+      fetchLeadData();
+    }
+  }, [id]);
 
   const handleAddAlternative = async () => {
     if (!selectedDisponibilidad) return;

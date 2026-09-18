@@ -18,7 +18,7 @@ export const leadService = {
           id_solicitud: 1,
           Servicio: { nombre: localLead.requestedServiceId },
           motivo: localLead.buyer.concreteRequest || '',
-          Opciones: (localLead.alternatives || []).map(alt => ({
+          Opciones: (localLead.alternatives || []).map((alt: any) => ({
             id_opcion: alt.id,
             precio_ofrecido: alt.price,
             seleccionada: alt.id === localLead.selectedAlternativeId,

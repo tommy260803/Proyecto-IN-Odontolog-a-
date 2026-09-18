@@ -16,8 +16,7 @@ import { es } from 'date-fns/locale';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
-import { LocalRepository } from '@/infrastructure/repositories';
-import type { CustomerJourney, Payment } from '@/domain/entities';
+import type { Payment } from '@/domain/entities';
 import { calculateP1, calculateP2, calculateP3, calculateP4 } from '@/domain/indicators';
 import { IndicatorCard } from '@/shared/components/data-display/IndicatorCard';
 import { useToast } from '@/shared/hooks/use-toast';
@@ -28,14 +27,8 @@ export default function PayerPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: payers, isLoading, isError } = usePayers();
-  const { data: journeys = [] } = useQuery({ 
-    queryKey: [QUERY_KEYS.JOURNEYS], 
-    queryFn: () => new LocalRepository<CustomerJourney>(QUERY_KEYS.JOURNEYS).getAll() 
-  });
-  const { data: payments = [] } = useQuery({ 
-    queryKey: [QUERY_KEYS.PAYMENTS], 
-    queryFn: () => new LocalRepository<Payment>(QUERY_KEYS.PAYMENTS).getAll() 
-  });
+  const journeys: any[] = [];
+  const payments: any[] = [];
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -52,12 +45,7 @@ export default function PayerPage() {
     setIsProcessing(true);
     try {
       await fetch('http://localhost:3001/api/payer/clear-all', { method: 'POST' });
-      localStorage.removeItem('in_odontologia_payers');
-      localStorage.removeItem('in_odontologia_payments');
-      localStorage.removeItem('payers');
-      localStorage.removeItem('payments');
       await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
-      await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENTS] });
       toast({ title: 'Limpieza Completada', description: 'Todos los registros de cobranza han sido eliminados.' });
       setTimeout(() => window.location.reload(), 500);
     } catch (e) {
@@ -211,10 +199,7 @@ export default function PayerPage() {
     setIsProcessing(true);
     try {
       await fetch(`http://localhost:3001/api/payer/${deleteTarget.id}`, { method: 'DELETE' });
-      const payersRepo = new LocalRepository<any>(QUERY_KEYS.PAYERS);
-      await payersRepo.delete(deleteTarget.id);
-      const paymentsRepo = new LocalRepository<any>(QUERY_KEYS.PAYMENTS);
-      if (deleteTarget.payment?.id) await paymentsRepo.delete(deleteTarget.payment.id);
+
     } catch (e) {}
     await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
     await queryClient.refetchQueries({ queryKey: [QUERY_KEYS.PAYERS] });

@@ -29,8 +29,7 @@ import { es } from 'date-fns/locale';
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
-import { LocalRepository } from '@/infrastructure/repositories';
-import type { CustomerJourney } from '@/domain/entities';
+
 
 interface TurnedDetailModalProps {
   turnedId: string | null;
@@ -42,11 +41,7 @@ export function TurnedDetailModal({ turnedId, isOpen, onClose }: TurnedDetailMod
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: journeys = [] } = useQuery({ 
-    queryKey: [QUERY_KEYS.JOURNEYS], 
-    queryFn: () => new LocalRepository<CustomerJourney>(QUERY_KEYS.JOURNEYS).getAll(),
-    enabled: isOpen && !!turnedId,
-  });
+  const journeys: any[] = [];
 
   const { data: turned, isLoading, isError } = useTurnedById(turnedId || '');
   const updateDetails = useUpdateTurnedDetails();

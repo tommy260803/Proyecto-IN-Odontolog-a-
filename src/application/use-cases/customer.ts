@@ -1,191 +1,80 @@
-import type { 
-  Customer, Payer, Lead, Buyer, Person, Reservation, DentalAttention, CustomerIncident, TurnedRecord, CustomerJourney 
-} from '@/domain/entities';
-import { CustomerState, TurnedState, Phase } from '@/domain/enums';
-import { LocalRepository } from '@/infrastructure/repositories';
-import { QUERY_KEYS } from '@/shared/constants';
-import { canTransitionCustomerToTurned } from '@/domain/transitions';
+import type { Customer } from '@/domain/entities';
+import { CustomerState } from '@/domain/enums';
+export type CustomerWithDetails = any;
 
-const getUUID = () => {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-  return 'uuid-' + Math.random().toString(36).substring(2, 9);
-};
-
-export type CustomerWithDetails = Customer & { 
-  payer: Payer;
-  lead: Lead;
-  buyer: Buyer;
-  person: Person;
-  reservation: Reservation;
-  attention?: DentalAttention;
-  incidents: CustomerIncident[];
-};
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 export class CustomerUseCases {
-  private customersRepo = new LocalRepository<Customer>(QUERY_KEYS.CUSTOMERS);
-  private payersRepo = new LocalRepository<Payer>(QUERY_KEYS.PAYERS);
-  private leadsRepo = new LocalRepository<Lead>(QUERY_KEYS.LEADS);
-  private buyersRepo = new LocalRepository<Buyer>(QUERY_KEYS.BUYERS);
-  private personsRepo = new LocalRepository<Person>(QUERY_KEYS.PERSONS);
-  private reservationsRepo = new LocalRepository<Reservation>(QUERY_KEYS.RESERVATIONS);
-  private attentionsRepo = new LocalRepository<DentalAttention>('dental-attentions');
-  private incidentsRepo = new LocalRepository<CustomerIncident>('customer-incidents');
-  private turnedsRepo = new LocalRepository<TurnedRecord>(QUERY_KEYS.TURNED);
-  private journeysRepo = new LocalRepository<CustomerJourney>(QUERY_KEYS.JOURNEYS);
-
-  async getAllCustomers(): Promise<CustomerWithDetails[]> {
-    const customers = await this.customersRepo.getAll();
-    const payers = await this.payersRepo.getAll();
-    const leads = await this.leadsRepo.getAll();
-    const buyers = await this.buyersRepo.getAll();
-    const persons = await this.personsRepo.getAll();
-    const reservations = await this.reservationsRepo.getAll();
-    const attentions = await this.attentionsRepo.getAll();
-    const incidents = await this.incidentsRepo.getAll();
-    
-    return customers.map(customer => {
-      const payer = payers.find(p => p.id === customer.payerId)!;
-      const lead = payer ? leads.find(l => l.id === payer.leadId)! : {} as Lead;
-      const buyer = lead ? buyers.find(b => b.id === lead.buyerId)! : {} as Buyer;
-      const person = buyer ? persons.find(p => p.id === buyer.personId)! : {} as Person;
-      const reservation = reservations.find(r => r.id === customer.reservationId)!;
-      const attention = attentions.find(a => a.id === customer.attentionId);
-      const customerIncidents = incidents.filter(i => i.customerId === customer.id);
-
-      return { 
-        ...customer, payer, lead, buyer, person, reservation, attention, incidents: customerIncidents 
-      };
-    }).filter(c => c.payer && c.lead && c.buyer && c.person && c.reservation);
+  async getAllCustomers(): Promise<any[]> {
+    const res = await fetch(`${API_URL}/customer`);
+    if (!res.ok) throw new Error('Error fetching customers');
+    return res.json();
   }
 
-  async getCustomerById(id: string): Promise<CustomerWithDetails | null> {
-    const customer = await this.customersRepo.getById(id);
-    if (!customer) return null;
-    
-    const payer = await this.payersRepo.getById(customer.payerId);
-    if (!payer) return null;
-    const lead = await this.leadsRepo.getById(payer.leadId);
-    if (!lead) return null;
-    const buyer = await this.buyersRepo.getById(lead.buyerId);
-    if (!buyer) return null;
-    const person = await this.personsRepo.getById(buyer.personId);
-    if (!person) return null;
-    const reservation = await this.reservationsRepo.getById(customer.reservationId);
-    if (!reservation) return null;
-    
-    const attention = customer.attentionId ? await this.attentionsRepo.getById(customer.attentionId) : undefined;
-    const allIncidents = await this.incidentsRepo.getAll();
-    const incidents = allIncidents.filter(i => i.customerId === customer.id);
-
-    return { 
-      ...customer, payer, lead, buyer, person, reservation, attention: attention || undefined, incidents 
-    };
-  }
-
-  async changeState(id: string, state: CustomerState): Promise<Customer> {
-    const customer = await this.customersRepo.getById(id);
-    if (!customer) throw new Error('Customer no encontrado');
-    return this.customersRepo.update(id, { state });
-  }
-
-  async startAttention(id: string, startTime: string): Promise<Customer> {
-    const customer = await this.customersRepo.getById(id);
-    if (!customer) throw new Error('Customer no encontrado');
-
-    let attentionId = customer.attentionId;
-    if (!attentionId) {
-      attentionId = getUUID();
-      await this.attentionsRepo.create({
-        id: attentionId,
-        customerId: id,
-        startTime,
-      });
-    } else {
-      await this.attentionsRepo.update(attentionId, { startTime });
+  async getCustomerById(id: string): Promise<any | null> {
+    const res = await fetch(`${API_URL}/customer/${id}`);
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      throw new Error('Error fetching customer');
     }
-
-    return this.customersRepo.update(id, { state: CustomerState.IN_ATTENTION, attentionId });
+    return res.json();
   }
 
-  async finishAttention(id: string, endTime: string): Promise<Customer> {
-    const customer = await this.customersRepo.getById(id);
-    if (!customer) throw new Error('Customer no encontrado');
-    if (!customer.attentionId) throw new Error('No hay una atención iniciada');
-
-    await this.attentionsRepo.update(customer.attentionId, { endTime });
-    return this.customersRepo.update(id, { state: CustomerState.ATTENDED });
+  async changeState(customerId: string, newState: CustomerState): Promise<Customer> {
+    const res = await fetch(`${API_URL}/customer/${customerId}/state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state: newState })
+    });
+    if (!res.ok) throw new Error('Error updating customer state');
+    return res.json();
   }
 
-  async registerAttentionDetails(id: string, data: Partial<DentalAttention>): Promise<DentalAttention> {
-    const customer = await this.customersRepo.getById(id);
-    if (!customer) throw new Error('Customer no encontrado');
-    
-    let attentionId = customer.attentionId;
-    if (!attentionId) {
-      attentionId = getUUID();
-      await this.customersRepo.update(id, { attentionId });
-      const newAttention: DentalAttention = {
-        id: attentionId,
-        customerId: id,
-        ...data,
-      };
-      return this.attentionsRepo.create(newAttention);
-    } else {
-      return this.attentionsRepo.update(attentionId, data);
-    }
+  async startAttention(customerId: string, time: string): Promise<Customer> {
+    const res = await fetch(`${API_URL}/customer/${customerId}/start-attention`, {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error('Error starting attention');
+    return res.json();
   }
 
-  async registerIncident(customerId: string, reason: string): Promise<CustomerIncident> {
-    const customer = await this.customersRepo.getById(customerId);
-    if (!customer) throw new Error('Customer no encontrado');
-    
-    const incident: CustomerIncident = {
-      id: getUUID(),
-      customerId,
-      reason,
-      status: 'OPEN',
-      createdAt: new Date().toISOString()
-    };
-    return this.incidentsRepo.create(incident);
+  async finishAttention(customerId: string, time: string): Promise<Customer> {
+    const res = await fetch(`${API_URL}/customer/${customerId}/finish-attention`, {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error('Error finishing attention');
+    return res.json();
   }
 
-  async convertToTurned(customerId: string): Promise<TurnedRecord> {
-    const customer = await this.getCustomerById(customerId);
-    if (!customer) throw new Error('Customer no encontrado');
-    
-    const validation = canTransitionCustomerToTurned(customer, customer.attention);
-    if (!validation.success) {
-      throw new Error(validation.error || 'No cumple los requisitos para convertirse en TURNED');
+  async registerAttentionDetails(customerId: string, details: Partial<any>): Promise<Customer> {
+    const res = await fetch(`${API_URL}/customer/${customerId}/attention-details`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(details)
+    });
+    if (!res.ok) throw new Error('Error updating attention details');
+    return res.json();
+  }
+
+  async registerIncident(customerId: string, reason: string): Promise<any> {
+    const res = await fetch(`${API_URL}/customer/${customerId}/incident`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
+    });
+    if (!res.ok) throw new Error('Error reporting incident');
+    return res.json();
+  }
+
+  async convertToTurned(customerId: string): Promise<any> {
+    const res = await fetch(`${API_URL}/customer/${customerId}/convert-turned`, {
+      method: 'POST'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error converting to turned');
     }
-
-    const turneds = await this.turnedsRepo.getAll();
-    if (turneds.some(t => t.customerId === customerId)) {
-      throw new Error('El CUSTOMER ya tiene un registro TURNED asociado');
-    }
-
-    const turned: TurnedRecord = {
-      id: getUUID(),
-      customerId,
-      state: TurnedState.FOLLOW_UP_PENDING,
-      createdAt: new Date().toISOString(),
-    };
-    await this.turnedsRepo.create(turned);
-    await this.customersRepo.update(customerId, { isTurned: true, currentPhase: Phase.TURNED });
-
-
-    const journeys = await this.journeysRepo.getAll();
-    const journey = journeys.find(j => j.personId === customer.person.id);
-
-    // Actualizar Journey
-    if (journey) {
-      await this.journeysRepo.update(journey.id, {
-        turnedId: turned.id,
-        currentPhase: Phase.TURNED,
-        updatedAt: new Date().toISOString(),
-      });
-    }
-
-    return turned;
+    return res.json();
   }
 }
 

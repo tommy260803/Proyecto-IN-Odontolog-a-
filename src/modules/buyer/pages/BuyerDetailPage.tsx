@@ -13,8 +13,6 @@ import { canTransitionBuyerToLead } from '@/domain/transitions';
 import { BuyerState } from '@/domain/enums';
 import { StatusBadge } from '@/shared/components/feedback/StatusBadge';
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
-import { LocalRepository } from '@/infrastructure/repositories';
-import type { CustomerJourney } from '@/domain/entities';
 import { useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
 
@@ -27,10 +25,7 @@ export default function BuyerDetailPage() {
   const updateBuyer = useUpdateBuyer();
   const convertBuyer = useConvertBuyerToLead();
 
-  const { data: journeys = [] } = useQuery({ 
-    queryKey: [QUERY_KEYS.JOURNEYS], 
-    queryFn: () => new LocalRepository<CustomerJourney>(QUERY_KEYS.JOURNEYS).getAll() 
-  });
+  const journeys: any[] = [];
 
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
 

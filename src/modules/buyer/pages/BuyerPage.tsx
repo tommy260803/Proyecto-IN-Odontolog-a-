@@ -16,8 +16,6 @@ import { es } from 'date-fns/locale';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { leadUseCases } from '@/application/use-cases/lead';
 import { QUERY_KEYS } from '@/shared/constants';
-import { LocalRepository } from '@/infrastructure/repositories';
-import type { CustomerJourney } from '@/domain/entities';
 import { calculateB1, calculateB2, calculateB3 } from '@/domain/indicators';
 import { IndicatorCard } from '@/shared/components/data-display/IndicatorCard';
 import { useToast } from '@/shared/hooks/use-toast';
@@ -32,10 +30,7 @@ export default function BuyerPage() {
   const { toast } = useToast();
   const { data: buyers, isLoading, isError } = useBuyers();
   const { data: leads = [] } = useQuery({ queryKey: [QUERY_KEYS.LEADS], queryFn: () => leadUseCases.getAllLeads() });
-  const { data: journeys = [] } = useQuery({ 
-    queryKey: [QUERY_KEYS.JOURNEYS], 
-    queryFn: () => new LocalRepository<CustomerJourney>(QUERY_KEYS.JOURNEYS).getAll() 
-  });
+  const journeys: any[] = [];
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -169,9 +164,9 @@ export default function BuyerPage() {
     setIsDeleting(true);
     try {
       await fetch(`http://localhost:3001/api/buyer/${deleteTarget.id}`, { method: 'DELETE' });
-      const buyersRepo = new LocalRepository<any>(QUERY_KEYS.BUYERS);
-      await buyersRepo.delete(deleteTarget.id);
-    } catch (e) {}
+    } catch (e) {
+      console.error(e);
+    }
     await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUYERS] });
     await queryClient.refetchQueries({ queryKey: [QUERY_KEYS.BUYERS] });
     toast({ title: 'Eliminado con éxito', description: `El paciente ${deleteTarget.person.firstName} ha sido removido del sistema.` });

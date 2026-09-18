@@ -1,7 +1,7 @@
 const fs = require('fs');
 let code = fs.readFileSync('backend/src/routes/customer.routes.ts', 'utf8');
 code = code.replace('export default router;', '');
-code += \
+code += `
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -175,6 +175,6 @@ router.post('/:id/convert-turned', async (req, res) => {
 });
 
 export default router;
-\;
+`;
 fs.writeFileSync('backend/src/routes/customer.routes.ts', code);
 

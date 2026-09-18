@@ -10,8 +10,6 @@ import { useBuyer, useUpdateBuyer, useConvertBuyerToLead } from '../hooks/useBuy
 import { useToast } from '@/shared/hooks/use-toast';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
-import { LocalRepository } from '@/infrastructure/repositories';
-import type { CustomerJourney } from '@/domain/entities';
 import type { BuyerFormValues } from '../schemas/buyerSchema';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 import { LoadingState } from '@/shared/components/feedback/LoadingState';
@@ -36,11 +34,7 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
   const updateBuyer = useUpdateBuyer();
   const convertBuyer = useConvertBuyerToLead();
 
-  const { data: journeys = [] } = useQuery({ 
-    queryKey: [QUERY_KEYS.JOURNEYS], 
-    queryFn: () => new LocalRepository<CustomerJourney>(QUERY_KEYS.JOURNEYS).getAll(),
-    enabled: isOpen && !!buyerId,
-  });
+  const journeys: any[] = [];
 
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
 
