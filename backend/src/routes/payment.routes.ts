@@ -1,7 +1,101 @@
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
+import { PrismaClient } from '@prisma/client';
 
 const router = Router();
+const prisma = new PrismaClient();
+
+// Función auxiliar para registrar el pago validado en SQL Server y transferir automáticamente a CUSTOMER
+async function validateAndPromotePayer(payerId: number | string, channel: string, ref: string, amount?: number) {
+  const numId = Number(payerId);
+  if (isNaN(numId)) return null;
+
+  try {
+    const reserva = await prisma.reservas.findFirst({
+      where: {
+        OR: [
+          { id_reserva: numId },
+          { id_persona: numId }
+        ]
+      },
+      include: {
+        Opcion: { include: { Disponibilidad: true } },
+        Solicitud: true,
+        Pagos: true
+      }
+    });
+
+    if (!reserva) return null;
+
+    // 1. Confirmar reserva en agenda
+    await prisma.reservas.update({
+      where: { id_reserva: reserva.id_reserva },
+      data: { estado: 'Confirmada', confirmacion_explicita: true, fecha_confirmacion: new Date() }
+    });
+
+    // 2. Registrar o validar pago
+    let pago = reserva.Pagos.length > 0 ? reserva.Pagos[0] : null;
+    if (pago) {
+      pago = await prisma.pagos.update({
+        where: { id_pago: pago.id_pago },
+        data: {
+          estado: 'Validado',
+          fecha_validacion: new Date(),
+          canal_pago: channel,
+          referencia_pago: ref
+        }
+      });
+    } else {
+      pago = await prisma.pagos.create({
+        data: {
+          id_persona: reserva.id_persona,
+          id_reserva: reserva.id_reserva,
+          importe: amount || reserva.Opcion?.precio_ofrecido || 1.00,
+          canal_pago: channel,
+          referencia_pago: ref,
+          estado: 'Validado',
+          fecha_validacion: new Date()
+        }
+      });
+    }
+
+    // 3. Promover a CUSTOMER
+    let etapaCustomer = await prisma.etapas.findFirst({ where: { nombre: 'CUSTOMER' } });
+    if (!etapaCustomer) {
+      etapaCustomer = await prisma.etapas.create({ data: { nombre: 'CUSTOMER', descripcion: 'Atención' } });
+    }
+
+    const persona = await prisma.personas.update({
+      where: { id_persona: reserva.id_persona },
+      data: { id_etapa_actual: etapaCustomer.id_etapa }
+    });
+
+    // 4. Crear atención médica en agenda clínica si no existe
+    const existingAtencion = await prisma.atenciones.findFirst({ where: { id_reserva: reserva.id_reserva } });
+    if (!existingAtencion) {
+      const defaultProf = await prisma.profesionales.findFirst();
+      const defaultSede = await prisma.sedes.findFirst();
+
+      await prisma.atenciones.create({
+        data: {
+          id_persona: persona.id_persona,
+          id_reserva: reserva.id_reserva,
+          id_servicio: reserva.Solicitud?.id_servicio || 1,
+          id_profesional: reserva.Opcion?.Disponibilidad?.id_profesional || defaultProf?.id_profesional || 1,
+          id_sede: reserva.Opcion?.Disponibilidad?.id_sede || defaultSede?.id_sede || 1,
+          fecha_atencion: reserva.Opcion?.Disponibilidad?.fecha || new Date(),
+          estado_servicio: 'Programado',
+          asistencia: 'Pendiente'
+        }
+      });
+    }
+
+    return { reserva, pago, persona };
+  } catch (err) {
+    console.error('[validateAndPromotePayer] Error:', err);
+    return null;
+  }
+}
 
 /**
  * 0. Consultar medios de pago habilitados en la cuenta de Mercado Pago
@@ -105,6 +199,11 @@ router.post('/process-yape', async (req, res) => {
     console.log('[Yape] Respuesta de Mercado Pago /v1/payments:', data);
 
     if (response.ok && (data.status === 'approved' || data.status === 'in_process' || response.status === 201)) {
+      // Registrar automáticamente en SQL Server y transferir a CUSTOMER
+      if (payerId) {
+        await validateAndPromotePayer(payerId, 'YAPE', `MP-${data.id}`, paymentAmount);
+      }
+
       return res.json({
         status: data.status || 'approved',
         id: data.id,
@@ -278,6 +377,13 @@ router.post('/process-checkout-api', async (req, res) => {
       });
     }
 
+    if (data.status === 'approved' || data.status === 'in_process') {
+      // Registrar automáticamente en SQL Server y transferir a CUSTOMER
+      if (payerId) {
+        await validateAndPromotePayer(payerId, 'TARJETA_MP', `MP-${data.id}`, paymentAmount);
+      }
+    }
+
     res.json({
       status: data.status,
       id: data.id,
@@ -286,6 +392,49 @@ router.post('/process-checkout-api', async (req, res) => {
   } catch (error: any) {
     console.error('Error interno procesando Checkout API:', error);
     res.status(500).json({ error: error.message || 'Error interno en Checkout API' });
+  }
+});
+
+/**
+ * 4. Webhook Oficial de Mercado Pago (IPN y Webhook events)
+ * Procesa notificaciones automáticas en background cuando un pago es aprobado
+ */
+router.post('/webhook', async (req, res) => {
+  const { type, data, action } = req.body;
+  const paymentId = data?.id || req.query['data.id'] || req.query.id;
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+
+  console.log(`[Mercado Pago Webhook] Recibido evento: type=${type || action}, paymentId=${paymentId}`);
+
+  // Responder 200 inmediatamente a Mercado Pago
+  res.status(200).send('OK');
+
+  if (!paymentId || !accessToken) return;
+
+  try {
+    const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    if (!mpRes.ok) return;
+
+    const mpPayment = await mpRes.json();
+    console.log(`[Mercado Pago Webhook] Pago ${paymentId} status=${mpPayment.status}, external_reference=${mpPayment.external_reference}`);
+
+    if (mpPayment.status === 'approved') {
+      const payerId = mpPayment.external_reference || (mpPayment.additional_info?.items?.[0]?.id);
+      if (payerId) {
+        await validateAndPromotePayer(
+          payerId,
+          mpPayment.payment_method_id?.toUpperCase() || 'MERCADOPAGO',
+          `MP-${mpPayment.id}`,
+          mpPayment.transaction_amount
+        );
+        console.log(`[Mercado Pago Webhook] Payer ${payerId} validado y promovido a CUSTOMER exitosamente.`);
+      }
+    }
+  } catch (err) {
+    console.error('[Mercado Pago Webhook Error]:', err);
   }
 });
 
