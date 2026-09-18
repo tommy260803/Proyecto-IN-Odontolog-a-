@@ -125,6 +125,8 @@ router.post('/create-preference', async (req, res) => {
       isMock: true,
       message: 'Modo simulación activo.'
     });
+  if (!accessToken) {
+    return res.status(500).json({ error: 'MERCADOPAGO_ACCESS_TOKEN no configurado en backend/.env' });
   }
 
   try {
@@ -133,9 +135,11 @@ router.post('/create-preference', async (req, res) => {
         {
           id: String(payerId || '1'),
           title: title || 'Reserva de Servicio Odontológico (Prueba Yape)',
+          title: title || 'Reserva de Servicio Odontológico',
           quantity: 1,
           currency_id: 'PEN',
           unit_price: Number(amount) || 0.10,
+          unit_price: Number(amount) || 2.00,
         },
       ],
       payer: {
@@ -167,6 +171,10 @@ router.post('/create-preference', async (req, res) => {
     if (!response.ok) {
       console.error('Error desde la API de Mercado Pago:', data);
       return res.status(response.status).json({ error: 'Error generando preferencia en Mercado Pago', details: data });
+      return res.status(response.status).json({
+        error: data.message || (data.cause && data.cause[0]?.description) || 'Error generando preferencia en Mercado Pago',
+        details: data
+      });
     }
 
     res.json({
@@ -176,14 +184,17 @@ router.post('/create-preference', async (req, res) => {
       isMock: false
     });
   } catch (error) {
+  } catch (error: any) {
     console.error('Error en servidor payment.routes:', error);
     res.status(500).json({ error: 'Error interno al procesar pago' });
+    res.status(500).json({ error: error.message || 'Error interno al procesar preferencia' });
   }
 });
 
 /**
  * 3. Procesar Pago vía Checkout API (Payment Brick)
  * Recibe el token y datos generados directamente en el frontend sin redirección ni login forzoso
+ * Recibe el token y datos generados directamente en el frontend y valida estrictamente con Mercado Pago
  */
 router.post('/process-checkout-api', async (req, res) => {
   const { payerId, formData, amount, email } = req.body;
@@ -196,11 +207,14 @@ router.post('/process-checkout-api', async (req, res) => {
       status_detail: 'accredited',
       message: 'Pago simulado aprobado con éxito'
     });
+  if (!accessToken) {
+    return res.status(500).json({ error: 'MERCADOPAGO_ACCESS_TOKEN no configurado en backend/.env' });
   }
 
   try {
     const rawAmount = formData?.transaction_amount ?? amount;
     const paymentAmount = Number(rawAmount) > 0 ? Number(rawAmount) : 1.00;
+    const paymentAmount = Number(rawAmount) > 0 ? Number(rawAmount) : 2.00;
 
     const paymentBody: any = {
       ...formData,
@@ -215,6 +229,7 @@ router.post('/process-checkout-api', async (req, res) => {
     };
 
     console.log('Enviando pago a Mercado Pago /v1/payments:', JSON.stringify(paymentBody, null, 2));
+    console.log('[Tarjeta] Enviando pago a Mercado Pago /v1/payments:', JSON.stringify(paymentBody, null, 2));
 
     const response = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
@@ -227,6 +242,7 @@ router.post('/process-checkout-api', async (req, res) => {
     });
 
     const data = await response.json();
+    console.log('[Tarjeta] Respuesta de Mercado Pago /v1/payments:', data);
 
     if (!response.ok) {
       console.warn('Aviso de Mercado Pago API:', data);
@@ -240,9 +256,30 @@ router.post('/process-checkout-api', async (req, res) => {
           isSandbox: true
         });
       }
+      const errorMsg = data.message ||
+        (data.cause && data.cause[0]?.description) ||
+        'Error al procesar el pago con la tarjeta. Verifica que los datos sean correctos (o usa una tarjeta de prueba de Mercado Pago válida).';
 
       return res.status(response.status).json({
         error: data.message || (data.cause && data.cause[0]?.description) || 'Error al procesar el pago con la API de Mercado Pago.',
+        error: errorMsg,
+        details: data
+      });
+    }
+
+    if (data.status === 'rejected') {
+      const rejectReason = data.status_detail === 'cc_rejected_bad_filled_other'
+        ? 'Datos de la tarjeta incorrectos (número, fecha o código de seguridad).'
+        : data.status_detail === 'cc_rejected_insufficient_amount'
+        ? 'Fondos insuficientes en la tarjeta.'
+        : data.status_detail === 'cc_rejected_other_reason'
+        ? 'Tarjeta rechazada por la pasarela de pago.'
+        : (data.message || 'El pago con tarjeta fue rechazado por el banco emisor.');
+
+      return res.status(400).json({
+        error: rejectReason,
+        status: data.status,
+        status_detail: data.status_detail,
         details: data
       });
     }
@@ -253,8 +290,10 @@ router.post('/process-checkout-api', async (req, res) => {
       status_detail: data.status_detail
     });
   } catch (error) {
+  } catch (error: any) {
     console.error('Error interno procesando Checkout API:', error);
     res.status(500).json({ error: 'Error interno en Checkout API' });
+    res.status(500).json({ error: error.message || 'Error interno en Checkout API' });
   }
 });
 
