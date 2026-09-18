@@ -39,7 +39,6 @@ export default function BuyerDetailPage() {
         channel: data.channel,
         attractionSource: data.attractionSource,
         serviceOfInterestId: data.serviceOfInterestId,
-        preferences: data.preferences,
         contactAuthorization: data.contactAuthorization,
         concreteRequest: data.concreteRequest,
         person: {
@@ -121,7 +120,6 @@ export default function BuyerDetailPage() {
           channel: buyer.channel,
           attractionSource: buyer.attractionSource,
           serviceOfInterestId: buyer.serviceOfInterestId,
-          preferences: buyer.preferences,
           contactAuthorization: buyer.contactAuthorization,
           concreteRequest: buyer.concreteRequest,
         }} 

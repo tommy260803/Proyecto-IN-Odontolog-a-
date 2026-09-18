@@ -67,6 +67,8 @@ interface YapePaymentButtonProps {
   onSuccess?: () => void;
 }
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
 export function YapePaymentButton({
   payerId,
   personName,
@@ -111,7 +113,7 @@ export function YapePaymentButton({
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3001/api/payments/process-yape', {
+      const response = await fetch(`${API_URL}/payments/process-yape`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -130,7 +132,7 @@ export function YapePaymentButton({
       }
 
       // Validar en el backend de SQL Server
-      await fetch(`http://localhost:3001/api/payer/${payerId}/validate`, { method: 'POST' });
+      await fetch(`${API_URL}/payer/${payerId}/validate`, { method: 'POST' });
 
       setIsApproved(true);
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
@@ -163,7 +165,7 @@ export function YapePaymentButton({
     const { formData } = param;
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3001/api/payments/process-checkout-api', {
+      const response = await fetch(`${API_URL}/payments/process-checkout-api`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -182,7 +184,7 @@ export function YapePaymentButton({
       }
 
       // Validar en el backend de SQL Server
-      await fetch(`http://localhost:3001/api/payer/${payerId}/validate`, { method: 'POST' });
+      await fetch(`${API_URL}/payer/${payerId}/validate`, { method: 'POST' });
 
       setIsApproved(true);
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
@@ -214,7 +216,7 @@ export function YapePaymentButton({
   const handleSimulate = async () => {
     setLoading(true);
     try {
-      await fetch(`http://localhost:3001/api/payer/${payerId}/validate`, { method: 'POST' });
+      await fetch(`${API_URL}/payer/${payerId}/validate`, { method: 'POST' });
       setIsApproved(true);
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
       toast({

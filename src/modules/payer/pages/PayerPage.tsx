@@ -23,6 +23,8 @@ import { useToast } from '@/shared/hooks/use-toast';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 import { PayerDetailModal } from '../components/PayerDetailModal';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
 export default function PayerPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -44,7 +46,7 @@ export default function PayerPage() {
   const handleConfirmClearAll = async () => {
     setIsProcessing(true);
     try {
-      await fetch('http://localhost:3001/api/payer/clear-all', { method: 'POST' });
+      await fetch(`${API_URL}/payer/clear-all`, { method: 'POST' });
       await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
       toast({ title: 'Limpieza Completada', description: 'Todos los registros de cobranza han sido eliminados.' });
       setTimeout(() => window.location.reload(), 500);
@@ -198,7 +200,7 @@ export default function PayerPage() {
     if (!deleteTarget) return;
     setIsProcessing(true);
     try {
-      await fetch(`http://localhost:3001/api/payer/${deleteTarget.id}`, { method: 'DELETE' });
+      await fetch(`${API_URL}/payer/${deleteTarget.id}`, { method: 'DELETE' });
 
     } catch (e) {}
     await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });

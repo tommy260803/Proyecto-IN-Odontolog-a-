@@ -165,8 +165,9 @@ export default function LeadPage() {
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
     try {
-      await fetch(`http://localhost:3001/api/lead/${deleteTarget.id}`, { method: 'DELETE' });
+      await fetch(`${API_URL}/lead/${deleteTarget.id}`, { method: 'DELETE' });
     } catch (e) {
       console.error(e);
     }
