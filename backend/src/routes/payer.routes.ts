@@ -329,14 +329,18 @@ router.post('/:id/convert-customer', async (req, res) => {
     
     const existingAtencion = await prisma.atenciones.findFirst({ where: { id_reserva: reserva.id_reserva } });
     if (!existingAtencion) {
+      // Obtener un profesional y sede por defecto si no están definidos
+      const defaultProf = await prisma.profesionales.findFirst();
+      const defaultSede = await prisma.sedes.findFirst();
+
       await prisma.atenciones.create({
         data: {
           id_persona: persona.id_persona,
           id_reserva: reserva.id_reserva,
           id_servicio: reserva.Solicitud?.id_servicio || 1,
-          id_profesional: reserva.Opcion.Disponibilidad.id_profesional,
-          id_sede: reserva.Opcion.Disponibilidad.id_sede,
-          fecha_atencion: reserva.Opcion.Disponibilidad.fecha,
+          id_profesional: reserva.Opcion?.Disponibilidad?.id_profesional || defaultProf?.id_profesional || 1,
+          id_sede: reserva.Opcion?.Disponibilidad?.id_sede || defaultSede?.id_sede || 1,
+          fecha_atencion: reserva.Opcion?.Disponibilidad?.fecha || new Date(),
           estado_servicio: 'Programado',
           asistencia: 'Pendiente'
         }
