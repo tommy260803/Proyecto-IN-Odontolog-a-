@@ -2,7 +2,7 @@ import { customerUseCases, type CustomerWithDetails } from '@/application/use-ca
 import { CustomerState } from '@/domain/enums';
 import type { DentalAttentionFormValues } from '../schemas/customerSchema';
 
-const useApi = import.meta.env.VITE_USE_API === 'true';
+const useApi = import.meta.env.VITE_USE_API !== 'false';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 async function apiError(response: Response, fallback: string) {

@@ -1,7 +1,7 @@
 import { turnedUseCases, type TurnedWithDetails } from '@/application/use-cases/turned';
 import type { NewRequestFormValues } from '../schemas/turnedSchema';
 
-const useApi = import.meta.env.VITE_USE_API === 'true';
+const useApi = import.meta.env.VITE_USE_API !== 'false';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 export const turnedService = {

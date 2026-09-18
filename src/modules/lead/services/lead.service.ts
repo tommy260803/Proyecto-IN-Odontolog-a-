@@ -1,23 +1,23 @@
 import { leadUseCases } from '@/application/use-cases/lead';
 
-const useApi = import.meta.env.VITE_USE_API === 'true';
+const useApi = import.meta.env.VITE_USE_API !== 'false';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 export const leadService = {
   getLeadDetails: async (id: string) => {
     if (!useApi) {
       const localLead = await leadUseCases.getLeadById(id);
-      if (!localLead) return null;
+      if (!localLead || !localLead.person) return null;
       return {
-        nombres: localLead.person.firstName,
-        apellidos: localLead.person.lastName,
-        email: localLead.person.email,
-        numero: localLead.person.phone,
-        Interacciones: [{ Canal: { nombre: localLead.buyer.channel || 'Web' } }],
+        nombres: localLead.person.firstName || '',
+        apellidos: localLead.person.lastName || '',
+        email: localLead.person.email || '',
+        numero: localLead.person.phone || '',
+        Interacciones: [{ Canal: { nombre: localLead.buyer?.channel || 'Web' } }],
         Solicitudes: [{
           id_solicitud: 1,
-          Servicio: { nombre: localLead.requestedServiceId },
-          motivo: localLead.buyer.concreteRequest || '',
+          Servicio: { nombre: localLead.requestedServiceId || 'Evaluación' },
+          motivo: localLead.buyer?.concreteRequest || '',
           Opciones: (localLead.alternatives || []).map((alt: any) => ({
             id_opcion: alt.id,
             precio_ofrecido: alt.price,

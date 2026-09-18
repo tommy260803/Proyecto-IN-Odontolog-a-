@@ -1,6 +1,6 @@
 import { buyerUseCases } from '@/application/use-cases/buyer';
 
-const useApi = import.meta.env.VITE_USE_API === 'true';
+const useApi = import.meta.env.VITE_USE_API !== 'false';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 export const buyerService = {
