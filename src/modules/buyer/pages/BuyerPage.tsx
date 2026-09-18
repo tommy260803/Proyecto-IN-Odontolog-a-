@@ -123,7 +123,7 @@ export default function BuyerPage() {
     },
     { header: 'Canal', cell: (b: BuyerWithPerson) => <span className="text-slate-700 dark:text-slate-300">{b.channel}</span> },
     { header: 'Fuente', cell: (b: BuyerWithPerson) => <span className="text-slate-700 dark:text-slate-300">{b.attractionSource}</span> },
-    { header: 'Servicio', cell: (b: BuyerWithPerson) => <span className="text-slate-700 dark:text-slate-300">{b.serviceOfInterestId || '-'}</span> },
+    { header: 'Servicio', cell: (b: BuyerWithPerson) => <span className="text-slate-700 dark:text-slate-300">{b.serviceOfInterest || '-'}</span> },
     { 
       header: 'Fecha', 
       cell: (b: BuyerWithPerson) => <span className="text-slate-700 dark:text-slate-300">{format(new Date(b.createdAt), 'dd MMM yyyy, HH:mm', { locale: es })}</span>

@@ -132,7 +132,11 @@ router.get('/', async (req, res) => {
       include: {
         Etapa: true,
         Interacciones: { include: { Canal: true, Fuente: true } },
-        Solicitudes: { include: { Servicio: true } }
+        Solicitudes: { include: { Servicio: true } },
+        Preferencias: true,
+        DatosAcademicos: true,
+        DatosLaborales: true,
+        SaludOdontologica: true,
       }
     });
 
@@ -141,16 +145,27 @@ router.get('/', async (req, res) => {
       let state = 'NEW';
       if (p.Etapa.nombre === 'LEAD' || p.Etapa.nombre === 'PAYER') state = 'CONVERTED';
 
-      const canal = p.Interacciones.length > 0 && p.Interacciones[0].Canal
+      const canalName = p.Interacciones.length > 0 && p.Interacciones[0].Canal
         ? p.Interacciones[0].Canal.nombre : 'Web';
+      const canalId = p.Interacciones.length > 0 && p.Interacciones[0].id_canal
+        ? p.Interacciones[0].id_canal.toString() : '';
 
-      const fuente = p.Interacciones.length > 0 && p.Interacciones[0].Fuente
+      const fuenteName = p.Interacciones.length > 0 && p.Interacciones[0].Fuente
         ? p.Interacciones[0].Fuente.nombre : 'Organico';
+      const fuenteId = p.Interacciones.length > 0 && p.Interacciones[0].id_fuente
+        ? p.Interacciones[0].id_fuente.toString() : '';
 
-      const servicio = p.Solicitudes.length > 0 && p.Solicitudes[0].Servicio
+      const servicioName = p.Solicitudes.length > 0 && p.Solicitudes[0].Servicio
         ? p.Solicitudes[0].Servicio.nombre : undefined;
+      const servicioId = p.Solicitudes.length > 0 && p.Solicitudes[0].id_servicio
+        ? p.Solicitudes[0].id_servicio.toString() : undefined;
 
       const motivo = p.Solicitudes.length > 0 ? p.Solicitudes[0].motivo : undefined;
+
+      const prefs = p.Preferencias.length > 0 ? p.Preferencias[0] : null;
+      const aca = p.DatosAcademicos.length > 0 ? p.DatosAcademicos[0] : null;
+      const lab = p.DatosLaborales.length > 0 ? p.DatosLaborales[0] : null;
+      const sal = p.SaludOdontologica.length > 0 ? p.SaludOdontologica[0] : null;
 
       return {
         id: p.id_persona.toString(),
@@ -162,13 +177,43 @@ router.get('/', async (req, res) => {
           phone: p.numero,
           email: p.email,
         },
-        channel: canal,
-        attractionSource: fuente,
-        serviceOfInterestId: servicio,
+        channel: canalName,
+        channelId: canalId,
+        attractionSource: fuenteName,
+        attractionSourceId: fuenteId,
+        serviceOfInterest: servicioName,
+        serviceOfInterestId: servicioId,
         contactAuthorization: p.autoriza_contacto,
         concreteRequest: motivo,
         createdAt: p.fecha_registro,
         state,
+
+        // Nuevos campos
+        pref_id_canal: prefs?.id_canal?.toString() || '',
+        pref_id_horario: prefs?.id_horario?.toString() || '',
+        pref_id_modalidad: prefs?.id_modalidad?.toString() || '',
+        pref_sede_preferida: prefs?.sede_preferida || '',
+        pref_profesional_preferido: prefs?.profesional_preferido || '',
+
+        estudianteAplica: aca?.aplica || false,
+        universidad: aca?.universidad || '',
+        carrera: aca?.carrera || '',
+        ciclo: aca?.ciclo || '',
+
+        laboralAplica: lab?.aplica || false,
+        ocupacion: lab?.ocupacion || '',
+        empresa: lab?.empresa || '',
+        modalidadLaboral: lab?.modalidad || '',
+        disponibilidadLaboral: lab?.disponibilidad || '',
+
+        ultima_visita_odontologica: sal?.ultima_visita_odontologica || '',
+        motivo_consulta_odonto: sal?.motivo_consulta || '',
+        tratamiento_previo: sal?.tratamiento_previo || '',
+        nivel_dolor: sal?.nivel_dolor || '',
+        presenta_sensibilidad: sal?.presenta_sensibilidad || '',
+        sangrado_o_inflamacion: sal?.sangrado_o_inflamacion || '',
+        usa_aparato_o_protesis: sal?.usa_aparato_o_protesis || '',
+        condicion_atencion_especial: sal?.condicion_atencion_especial || '',
       };
     });
 
@@ -181,7 +226,13 @@ router.get('/', async (req, res) => {
 
 // Crear un BUYER (Dashboard)
 router.post('/', async (req, res) => {
-  const { firstName, lastName, email, phone, documentNumber, channel, attractionSource, serviceOfInterestId, contactAuthorization, concreteRequest, id_campana_origen, id_canal_origen, tipo_persona, estado_calidad } = req.body;
+  const { 
+    firstName, lastName, email, phone, documentNumber, channel, attractionSource, serviceOfInterestId, contactAuthorization, concreteRequest, id_campana_origen, id_canal_origen, tipo_persona, estado_calidad,
+    pref_id_canal, pref_id_horario, pref_id_modalidad, pref_sede_preferida, pref_profesional_preferido,
+    estudianteAplica, universidad, carrera, ciclo,
+    laboralAplica, ocupacion, empresa, modalidadLaboral, disponibilidadLaboral,
+    ultima_visita_odontologica, motivo_consulta_odonto, tratamiento_previo, nivel_dolor, presenta_sensibilidad, sangrado_o_inflamacion, usa_aparato_o_protesis, condicion_atencion_especial
+  } = req.body;
   try {
     const dniToSave = documentNumber ? documentNumber.trim() : null;
     if (dniToSave && dniToSave.length > 8) return res.status(400).json({ error: 'El DNI no puede superar los 8 caracteres.' });
@@ -210,12 +261,82 @@ router.post('/', async (req, res) => {
         }
       });
 
+      if (channel || attractionSource) {
+        await tx.interacciones.create({
+          data: {
+            id_persona: persona.id_persona,
+            id_canal: channel ? Number(channel) : null,
+            id_fuente: attractionSource ? Number(attractionSource) : null,
+            tipo: 'Registro Inicial',
+            mensaje: 'Creación de BUYER desde Dashboard'
+          }
+        });
+      }
+
       if (concreteRequest || serviceOfInterestId) {
         await tx.solicitudes.create({
           data: {
             id_persona: persona.id_persona,
             id_servicio: Number(serviceOfInterestId) || null,
             motivo: concreteRequest || 'Solicitud de información general'
+          }
+        });
+      }
+
+      // Gustos y Preferencias
+      if (pref_id_canal || pref_id_horario || pref_id_modalidad || pref_sede_preferida || pref_profesional_preferido) {
+        await tx.personaPreferencias.create({
+          data: {
+            id_persona: persona.id_persona,
+            id_canal: pref_id_canal ? Number(pref_id_canal) : null,
+            id_horario: pref_id_horario ? Number(pref_id_horario) : null,
+            id_modalidad: pref_id_modalidad ? Number(pref_id_modalidad) : null,
+            sede_preferida: pref_sede_preferida || null,
+            profesional_preferido: pref_profesional_preferido || null,
+          }
+        });
+      }
+
+      // Datos Estudiante
+      if (estudianteAplica) {
+        await tx.datosAcademicos.create({
+          data: {
+            id_persona: persona.id_persona,
+            aplica: true,
+            universidad: universidad || null,
+            carrera: carrera || null,
+            ciclo: ciclo || null,
+          }
+        });
+      }
+
+      // Datos Laborales
+      if (laboralAplica) {
+        await tx.datosLaborales.create({
+          data: {
+            id_persona: persona.id_persona,
+            aplica: true,
+            ocupacion: ocupacion || null,
+            empresa: empresa || null,
+            modalidad: modalidadLaboral || null,
+            disponibilidad: disponibilidadLaboral || null,
+          }
+        });
+      }
+
+      // Salud Odontológica
+      if (ultima_visita_odontologica || motivo_consulta_odonto || tratamiento_previo || nivel_dolor || presenta_sensibilidad || sangrado_o_inflamacion || usa_aparato_o_protesis || condicion_atencion_especial) {
+        await tx.personaSaludOdontologica.create({
+          data: {
+            id_persona: persona.id_persona,
+            ultima_visita_odontologica: ultima_visita_odontologica || null,
+            motivo_consulta: motivo_consulta_odonto || null,
+            tratamiento_previo: tratamiento_previo || null,
+            nivel_dolor: nivel_dolor || null,
+            presenta_sensibilidad: presenta_sensibilidad || null,
+            sangrado_o_inflamacion: sangrado_o_inflamacion || null,
+            usa_aparato_o_protesis: usa_aparato_o_protesis || null,
+            condicion_atencion_especial: condicion_atencion_especial || null,
           }
         });
       }
@@ -233,7 +354,15 @@ router.post('/', async (req, res) => {
 // Actualizar un BUYER
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { person, contactAuthorization, concreteRequest, ...data } = req.body;
+  const { 
+    person, contactAuthorization, concreteRequest,
+    channel, attractionSource, serviceOfInterestId,
+    pref_id_canal, pref_id_horario, pref_id_modalidad, pref_sede_preferida, pref_profesional_preferido,
+    estudianteAplica, universidad, carrera, ciclo,
+    laboralAplica, ocupacion, empresa, modalidadLaboral, disponibilidadLaboral,
+    ultima_visita_odontologica, motivo_consulta_odonto, tratamiento_previo, nivel_dolor, presenta_sensibilidad, sangrado_o_inflamacion, usa_aparato_o_protesis, condicion_atencion_especial,
+    ...data 
+  } = req.body;
   try {
     const updateData: any = {};
     if (person?.firstName) updateData.nombres = person.firstName;
@@ -263,24 +392,118 @@ router.put('/:id', async (req, res) => {
         data: updateData
       });
 
-      if (concreteRequest !== undefined) {
+      if (concreteRequest !== undefined || serviceOfInterestId !== undefined) {
         const solicitudExistente = await tx.solicitudes.findFirst({
           where: { id_persona: Number(id) }
         });
 
         if (solicitudExistente) {
+          const dataToUpdate: any = {};
+          if (concreteRequest !== undefined) dataToUpdate.motivo = concreteRequest;
+          if (serviceOfInterestId !== undefined) dataToUpdate.id_servicio = serviceOfInterestId ? Number(serviceOfInterestId) : null;
+
           await tx.solicitudes.update({
             where: { id_solicitud: solicitudExistente.id_solicitud },
-            data: { motivo: concreteRequest }
+            data: dataToUpdate
           });
-        } else if (concreteRequest) {
+        } else if (concreteRequest || serviceOfInterestId) {
           await tx.solicitudes.create({
             data: {
               id_persona: persona.id_persona,
-              motivo: concreteRequest
+              motivo: concreteRequest || 'Solicitud de información general',
+              id_servicio: serviceOfInterestId ? Number(serviceOfInterestId) : null
             }
           });
         }
+      }
+
+      if (channel || attractionSource) {
+        const interaccionExistente = await tx.interacciones.findFirst({
+          where: { id_persona: Number(id) },
+          orderBy: { fecha_hora: 'asc' }
+        });
+        
+        if (interaccionExistente) {
+          await tx.interacciones.update({
+            where: { id_interaccion: interaccionExistente.id_interaccion },
+            data: {
+              id_canal: channel ? Number(channel) : undefined,
+              id_fuente: attractionSource ? Number(attractionSource) : undefined,
+            }
+          });
+        } else {
+          await tx.interacciones.create({
+            data: {
+              id_persona: Number(id),
+              id_canal: channel ? Number(channel) : null,
+              id_fuente: attractionSource ? Number(attractionSource) : null,
+              tipo: 'Actualización',
+              mensaje: 'Actualizado desde Dashboard'
+            }
+          });
+        }
+      }
+
+      // Reemplazar Gustos y Preferencias
+      await tx.personaPreferencias.deleteMany({ where: { id_persona: Number(id) } });
+      if (pref_id_canal || pref_id_horario || pref_id_modalidad || pref_sede_preferida || pref_profesional_preferido) {
+        await tx.personaPreferencias.create({
+          data: {
+            id_persona: Number(id),
+            id_canal: pref_id_canal ? Number(pref_id_canal) : null,
+            id_horario: pref_id_horario ? Number(pref_id_horario) : null,
+            id_modalidad: pref_id_modalidad ? Number(pref_id_modalidad) : null,
+            sede_preferida: pref_sede_preferida || null,
+            profesional_preferido: pref_profesional_preferido || null,
+          }
+        });
+      }
+
+      // Reemplazar Datos Estudiante
+      await tx.datosAcademicos.deleteMany({ where: { id_persona: Number(id) } });
+      if (estudianteAplica) {
+        await tx.datosAcademicos.create({
+          data: {
+            id_persona: Number(id),
+            aplica: true,
+            universidad: universidad || null,
+            carrera: carrera || null,
+            ciclo: ciclo || null,
+          }
+        });
+      }
+
+      // Reemplazar Datos Laborales
+      await tx.datosLaborales.deleteMany({ where: { id_persona: Number(id) } });
+      if (laboralAplica) {
+        await tx.datosLaborales.create({
+          data: {
+            id_persona: Number(id),
+            aplica: true,
+            ocupacion: ocupacion || null,
+            empresa: empresa || null,
+            modalidad: modalidadLaboral || null,
+            disponibilidad: disponibilidadLaboral || null,
+          }
+        });
+      }
+
+      // Reemplazar Salud Odontológica
+      await tx.personaSaludOdontologica.deleteMany({ where: { id_persona: Number(id) } });
+      if (ultima_visita_odontologica || motivo_consulta_odonto || tratamiento_previo || nivel_dolor || presenta_sensibilidad || sangrado_o_inflamacion || usa_aparato_o_protesis || condicion_atencion_especial) {
+        await tx.personaSaludOdontologica.create({
+          data: {
+            id_persona: Number(id),
+            ultima_visita_odontologica: ultima_visita_odontologica || null,
+            motivo_consulta: motivo_consulta_odonto || null,
+            tratamiento_previo: tratamiento_previo || null,
+            nivel_dolor: nivel_dolor || null,
+            presenta_sensibilidad: presenta_sensibilidad || null,
+            sangrado_o_inflamacion: sangrado_o_inflamacion || null,
+            usa_aparato_o_protesis: usa_aparato_o_protesis || null,
+            condicion_atencion_especial: condicion_atencion_especial || null,
+          }
+        });
       }
 
       return persona;

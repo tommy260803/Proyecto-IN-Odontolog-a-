@@ -39,13 +39,43 @@ export interface Buyer {
   id: string;
   personId: string;
   channel: string;
+  channelId?: string;
   attractionSource: string;
+  attractionSourceId?: string;
+  serviceOfInterest?: string;
   serviceOfInterestId?: string;
   preferences?: string;
   contactAuthorization: boolean;
   state: BuyerState;
   createdAt: string;
   concreteRequest?: string; // Requerido para pasar a LEAD
+
+  // Campos adicionales de Mesa de Negociación
+  pref_id_canal?: string;
+  pref_id_horario?: string;
+  pref_id_modalidad?: string;
+  pref_sede_preferida?: string;
+  pref_profesional_preferido?: string;
+  
+  estudianteAplica?: boolean;
+  universidad?: string;
+  carrera?: string;
+  ciclo?: string;
+  
+  laboralAplica?: boolean;
+  ocupacion?: string;
+  empresa?: string;
+  modalidadLaboral?: string;
+  disponibilidadLaboral?: string;
+  
+  ultima_visita_odontologica?: string;
+  motivo_consulta_odonto?: string;
+  tratamiento_previo?: string;
+  nivel_dolor?: string;
+  presenta_sensibilidad?: string;
+  sangrado_o_inflamacion?: string;
+  usa_aparato_o_protesis?: string;
+  condicion_atencion_especial?: string;
 }
 
 export interface NegotiationAlternative {
