@@ -78,7 +78,7 @@ export function YapePaymentButton({
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'yape' | 'card'>('yape');
   const [loading, setLoading] = useState(false);
-  const [phone, setPhone] = useState('970292710');
+  const [phone, setPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [isApproved, setIsApproved] = useState(false);
   const { toast } = useToast();
@@ -315,7 +315,6 @@ export function YapePaymentButton({
                   }`}
                 >
                   <YapeLogoBadge />
-                  <span>Yape (Directo OTP)</span>
                 </button>
                 <button
                   type="button"

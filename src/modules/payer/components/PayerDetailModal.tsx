@@ -25,11 +25,12 @@ import {
 import { PaymentForm } from './PaymentForm';
 import { YapePaymentButton } from './YapePaymentButton';
 import type { PaymentFormValues } from '../schemas/payerSchema';
-import { AlertCircle, FileText, Bot, ArrowRight, XCircle, CreditCard, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, FileText, Bot, ArrowRight, XCircle, CreditCard, CheckCircle2, RefreshCw } from 'lucide-react';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
+import { callGroqAssistant, type PayerContext } from '@/shared/services/groqService';
 
 interface PayerDetailModalProps {
   payerId: string | null;
@@ -58,7 +59,14 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
   const [revertError, setRevertError] = useState('');
   const [isRevertOpen, setIsRevertOpen] = useState(false);
 
+  // Groq AI Agent state
+  const [aiMessage, setAiMessage] = useState<string>('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiCalled, setAiCalled] = useState(false);
+
   if (!isOpen || !payerId) return null;
+
 
   const handleRegisterPayment = (data: PaymentFormValues) => {
     if (!payer) return;
@@ -132,39 +140,94 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
     });
   };
 
-  // Agent Rules Engine Simulation
-  const renderAgentPanel = (p: PayerWithDetails) => {
-    let message = '';
-    const alerts = [];
-    
-    if (p.state === PayerState.PENDING) {
-      message = 'Esperando carga de comprobante o pago en vivo mediante Yape. Recuerde al paciente que su turno se liberará si no abona.';
-      alerts.push('Pago pendiente de registro');
-    } else if (p.state === PayerState.IN_REVIEW) {
-      message = 'El paciente ha enviado un comprobante. Verifique la validez bancaria para aprobar o rechazar.';
-      if (!p.payment?.receiptMetadata) {
-        alerts.push('Comprobante sin adjunto');
-      } else {
-        alerts.push(`Comprobante adjunto: ${p.payment.receiptMetadata.name}`);
-      }
-    } else if (p.state === PayerState.VALIDATED) {
-      message = 'El pago está confirmado y validado. Ya puede agendar definitivamente al paciente en CUSTOMER.';
-    } else if (p.state === PayerState.REJECTED) {
-      message = 'El pago fue rechazado. Debe comunicarse con el paciente para solicitar nuevo comprobante.';
-      alerts.push('Incidencia de cobro abierta');
-    } else if (p.state === PayerState.REVERTED) {
-      message = 'El pago validado fue revertido debido a una observación posterior.';
-      alerts.push('Reversión manual registrada');
+  // Groq AI Agent — llamada real a la API
+  const handleAskAI = async (p: PayerWithDetails) => {
+    setAiLoading(true);
+    setAiError('');
+    setAiCalled(true);
+    try {
+      const ctx: PayerContext = {
+        patientName: `${p.person.firstName} ${p.person.lastName}`,
+        state: p.state,
+        amountToPay: p.amountToPay,
+        reservationDate: p.reservation?.date,
+        reservationTime: p.reservation?.time,
+        branch: p.reservation?.branchId,
+        professional: p.reservation?.professionalId,
+        channel: p.payment?.channel,
+        operationNumber: p.payment?.operationNumber,
+        declaredAmount: p.payment?.amount,
+        hasReceipt: !!p.payment?.receiptMetadata,
+        incidentsCount: p.incidents?.length || 0,
+        lastIncidentReason: p.incidents?.[p.incidents.length - 1]?.reason,
+      };
+      const response = await callGroqAssistant(ctx);
+      setAiMessage(response);
+    } catch (err: any) {
+      setAiError(err.message || 'Error al conectar con el asistente de IA.');
+    } finally {
+      setAiLoading(false);
     }
+  };
 
+  // Alertas estáticas según estado (complementan la IA)
+  const getStaticAlerts = (p: PayerWithDetails) => {
+    const alerts: string[] = [];
+    if (p.state === PayerState.PENDING) alerts.push('Pago pendiente de registro');
+    if (p.state === PayerState.IN_REVIEW && !p.payment?.receiptMetadata) alerts.push('Comprobante sin adjunto');
+    if (p.state === PayerState.IN_REVIEW && p.payment?.receiptMetadata) alerts.push(`Comprobante: ${p.payment.receiptMetadata.name}`);
+    if (p.state === PayerState.REJECTED) alerts.push('Incidencia de cobro abierta');
+    if (p.state === PayerState.REVERTED) alerts.push('Reversión manual registrada');
+    return alerts;
+  };
+
+  const renderAgentPanel = (p: PayerWithDetails) => {
+    const alerts = getStaticAlerts(p);
     return (
       <div className="bg-teal-50/60 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/80 rounded-2xl p-4 flex gap-3.5 items-start">
         <Bot className="text-teal-600 dark:text-teal-400 w-8 h-8 shrink-0 mt-0.5" />
         <div className="flex-1">
-          <h4 className="font-bold text-xs text-teal-900 dark:text-teal-200 flex items-center gap-2">
-            Asistente de Recaudación <StatusBadge status="IA Activa" variant="primary" />
-          </h4>
-          <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">{message}</p>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h4 className="font-bold text-xs text-teal-900 dark:text-teal-200 flex items-center gap-2">
+              Asistente de Recaudación IA
+              <StatusBadge status="Groq AI" variant="primary" />
+            </h4>
+            <button
+              type="button"
+              onClick={() => handleAskAI(p)}
+              disabled={aiLoading}
+              className="flex items-center gap-1 text-[10px] font-semibold text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-100 transition-colors disabled:opacity-50"
+              title="Consultar al asistente de IA"
+            >
+              <RefreshCw className={`w-3 h-3 ${aiLoading ? 'animate-spin' : ''}`} />
+              {aiCalled ? 'Regenerar' : 'Consultar IA'}
+            </button>
+          </div>
+
+          <div className="mt-2 min-h-[2rem]">
+            {aiLoading && (
+              <div className="flex items-center gap-2 text-xs text-teal-700 dark:text-teal-400 animate-pulse">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                Analizando el caso con Groq AI...
+              </div>
+            )}
+            {!aiLoading && aiError && (
+              <p className="text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" /> {aiError}
+              </p>
+            )}
+            {!aiLoading && !aiError && aiMessage && (
+              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed animate-in fade-in duration-300">
+                {aiMessage}
+              </p>
+            )}
+            {!aiLoading && !aiError && !aiMessage && (
+              <p className="text-xs text-slate-400 dark:text-slate-500 italic">
+                Presiona "Consultar IA" para obtener un análisis personalizado de este caso.
+              </p>
+            )}
+          </div>
+
           {alerts.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
               {alerts.map((a, i) => (
