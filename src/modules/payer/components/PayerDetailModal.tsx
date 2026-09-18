@@ -317,21 +317,6 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                 <Mail className="w-3.5 h-3.5" />
                 Enviar Confirmación al Correo
               </Button>
-
-              {/* Botón Ir a Módulo CUSTOMER */}
-              <Button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  navigate('/customer');
-                }}
-                size="sm"
-                className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs h-8 px-3.5 gap-1.5 shadow-sm font-semibold ml-auto"
-                title="Ir al módulo CUSTOMER para gestionar la atención clínica"
-              >
-                Ver en CUSTOMER
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Button>
             </>
           ) : (
             <>
@@ -450,17 +435,6 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
               {payer && (
                 <div className="flex items-center gap-2">
                   <StatusBadge status={payer.state} />
-                  {payer.state === PayerState.VALIDATED && (
-                    <Button 
-                      onClick={() => {
-                        onClose();
-                        navigate('/customer');
-                      }} 
-                      className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-sm text-xs font-semibold px-3 py-2 h-8"
-                    >
-                      Ir a CUSTOMER <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                    </Button>
-                  )}
                 </div>
               )}
             </div>
@@ -694,7 +668,7 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                   navigate('/customer');
                 }}
               >
-                Ir a Módulo CUSTOMER <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                Pasar a CUSTOMER <ArrowRight className="w-3.5 h-3.5 ml-1" />
               </Button>
             )}
           </div>
