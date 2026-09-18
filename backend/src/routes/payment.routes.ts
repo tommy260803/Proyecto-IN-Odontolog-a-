@@ -9,113 +9,104 @@ const router = Router();
  */
 router.post('/process-yape', async (req, res) => {
   const { payerId, amount, phone, otpCode, email } = req.body;
-  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN || '';
-  const isProduction = accessToken.startsWith('APP_USR-');
-  const publicKey = req.body.publicKey || process.env.MERCADOPAGO_PUBLIC_KEY || (isProduction ? 'APP_USR-21a7cc3a-0afb-4ac6-b41e-5d129a9022c5' : 'TEST-2057dc67-b4dd-4efa-972d-5ce965d7ab15');
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN || 'APP_USR-4001730668702458-091700-e25cb8b7b1adb93aed667a28cfa96a3a-3595881654';
+  const publicKey = process.env.MERCADOPAGO_PUBLIC_KEY || 'APP_USR-21a7cc3a-0afb-4ac6-b41e-5d129a9022c5';
 
-  if (!accessToken || accessToken.includes('TU_ACCESS_TOKEN')) {
-    return res.json({
-      status: 'approved',
-      id: `SIMULATED_YAPE_${Date.now()}`,
-      message: 'Pago simulado aprobado con éxito'
+  const rawPhone = String(phone || '').replace(/\D/g, '');
+  const rawOtp = String(otpCode || '').replace(/\D/g, '');
+  const paymentAmount = Math.max(Number(amount) || 2, 2);
+
+  // 1. Validar formato de teléfono y OTP
+  if (!rawPhone || rawPhone.length !== 9 || !rawPhone.startsWith('9')) {
+    return res.status(400).json({
+      error: 'El número de celular de Yape debe tener 9 dígitos y empezar con 9 (ej. 987654321).'
+    });
+  }
+
+  if (!rawOtp || rawOtp.length !== 6) {
+    return res.status(400).json({
+      error: 'El código de aprobación de Yape debe tener exactamente 6 dígitos.'
     });
   }
 
   try {
-    const rawPhone = String(phone || '111111111').replace(/\D/g, '');
-    const rawOtp = String(otpCode || '123456').replace(/\D/g, '');
-    const paymentAmount = Number(amount) >= 2 ? Number(amount) : 5.00;
+    console.log(`[Yape] Solicitando token a Mercado Pago para celular: ${rawPhone}, OTP: ${rawOtp.substring(0, 2)}****`);
 
-    let yapeTokenId = '';
+    // Paso 1: Generar el token oficial en la API de Yape de Mercado Pago
+    const tokenResponse = await fetch(`https://api.mercadopago.com/platforms/pci/yape/v1/payment?public_key=${publicKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phoneNumber: rawPhone,
+        otp: rawOtp,
+        requestId: `yape-req-${payerId}-${Date.now()}`
+      })
+    });
 
-    console.log(`[Yape] Procesando con ambiente: ${isProduction ? 'PRODUCCION (REAL)' : 'SANDBOX (TEST)'}, PublicKey: ${publicKey}`);
+    const tokenData = await tokenResponse.json();
+    console.log('[Yape] Respuesta de tokenización Mercado Pago:', tokenData);
 
-    // Paso 1: Generar el token oficial de Yape
-    try {
-      const tokenResponse = await fetch(`https://api.mercadopago.com/platforms/pci/yape/v1/payment?public_key=${publicKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: rawPhone,
-          otp: rawOtp,
-          requestId: `yape-req-${payerId}-${Date.now()}`
-        })
+    if (!tokenResponse.ok || !tokenData || !tokenData.id) {
+      const errorMsg = tokenData?.message ||
+        (tokenData?.cause && tokenData.cause[0]?.description) ||
+        'Código de aprobación de Yape inválido o expirado. Abre tu app Yape, pulsa en "Código de aprobación" y escribe los 6 dígitos generados (recuerda que dura 90 segundos).';
+
+      return res.status(400).json({
+        error: errorMsg,
+        details: tokenData
       });
-
-      const tokenData = await tokenResponse.json();
-      if (tokenData && tokenData.id) {
-        yapeTokenId = tokenData.id;
-        console.log('[Yape] Token oficial generado con éxito:', yapeTokenId);
-      } else {
-        console.warn('[Yape] Error al generar token:', tokenData);
-        if (isProduction) {
-          const detailMsg = tokenData.message || (tokenData.cause && tokenData.cause[0]?.description) || 'Código de aprobación de Yape inválido o expirado. Genera uno nuevo en tu app Yape.';
-          return res.status(400).json({ error: detailMsg, details: tokenData });
-        }
-      }
-    } catch (tokenErr: any) {
-      console.warn('[Yape] Error de red tokenizando Yape:', tokenErr);
     }
 
-    // Paso 2: Crear el pago con el token obtenido
-    if (yapeTokenId) {
-      const paymentData = {
-        token: yapeTokenId,
-        transaction_amount: paymentAmount,
-        description: 'Reserva Odontológica NexoSalud - Yape',
-        payment_method_id: 'yape',
-        installments: 1,
-        payer: {
-          email: (email && email.includes('@')) ? email : 'paciente_yape@nexosalud.com',
-        }
-      };
+    const yapeTokenId = tokenData.id;
+    console.log('[Yape] Token oficial generado con éxito:', yapeTokenId);
 
-      const response = await fetch('https://api.mercadopago.com/v1/payments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-          'X-Idempotency-Key': `yape-${payerId}-${Date.now()}`
-        },
-        body: JSON.stringify(paymentData)
-      });
-
-      const data = await response.json();
-      console.log('[Yape] Respuesta de Mercado Pago /v1/payments:', data);
-
-      if (response.ok && (data.status === 'approved' || data.status === 'in_process' || response.status === 201)) {
-        return res.json({
-          status: data.status || 'approved',
-          id: data.id,
-          status_detail: data.status_detail
-        });
+    // Paso 2: Crear el cobro en /v1/payments usando el token obtenido
+    const paymentData = {
+      token: yapeTokenId,
+      transaction_amount: paymentAmount,
+      description: 'Reserva Odontológica NexoSalud - Yape',
+      payment_method_id: 'yape',
+      installments: 1,
+      payer: {
+        email: (email && email.includes('@')) ? email : 'paciente_yape@nexosalud.com',
       }
+    };
 
-      if (!response.ok && isProduction) {
-        return res.status(response.status).json({
-          error: data.message || (data.cause && data.cause[0]?.description) || 'No se pudo procesar el pago con Yape. Verifica tu saldo o genera un nuevo código OTP en tu app Yape.',
-          details: data
-        });
-      }
-    }
+    const response = await fetch('https://api.mercadopago.com/v1/payments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        'X-Idempotency-Key': `yape-${payerId}-${Date.now()}`
+      },
+      body: JSON.stringify(paymentData)
+    });
 
-    // Si estamos en modo de prueba (TEST-)
-    if (!isProduction) {
-      console.log('[Yape] Ambiente TEST: Aprobando en Sandbox exitosamente.');
+    const data = await response.json();
+    console.log('[Yape] Respuesta de Mercado Pago /v1/payments:', data);
+
+    if (response.ok && (data.status === 'approved' || data.status === 'in_process' || response.status === 201)) {
       return res.json({
-        status: 'approved',
-        id: `TEST_YAPE_${Date.now()}`,
-        status_detail: 'accredited',
-        isSandbox: true
+        status: data.status || 'approved',
+        id: data.id,
+        status_detail: data.status_detail
       });
     }
+
+    // Si el pago no fue aprobado por Mercado Pago
+    const rejectionReason = data?.message ||
+      (data?.cause && data.cause[0]?.description) ||
+      (data?.status_detail === 'cc_rejected_insufficient_amount' ? 'Saldo insuficiente en tu cuenta Yape.' : 'El pago fue rechazado por la pasarela de Yape. Verifica tu saldo o genera un nuevo código OTP.');
 
     return res.status(400).json({
-      error: 'Código de aprobación de Yape inválido o expirado. Genera uno nuevo en tu app Yape (recuerda que el código dura unos 90 segundos).',
+      error: rejectionReason,
+      status: data.status,
+      details: data
     });
-  } catch (error) {
+
+  } catch (error: any) {
     console.error('Error interno procesando Yape:', error);
-    res.status(500).json({ error: 'Error interno al procesar el pago con Yape' });
+    return res.status(500).json({ error: error.message || 'Error de conexión con la pasarela de Yape' });
   }
 });
 

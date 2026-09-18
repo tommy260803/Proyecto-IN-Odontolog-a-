@@ -1,5 +1,6 @@
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_MODELS = ['groq/compound-mini', 'qwen/qwen3.8-27b', 'openai/gpt-oss-120b'];
+
 
 export interface GroqMessage {
   role: 'system' | 'user' | 'assistant';
@@ -82,27 +83,42 @@ export async function callGroqAssistant(ctx: PayerContext): Promise<string> {
     { role: 'user', content: buildUserPrompt(ctx) },
   ];
 
-  const response = await fetch(GROQ_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      messages,
-      temperature: 0.5,
-      max_tokens: 200,
-      stream: false,
-    }),
-  });
+  let lastError = '';
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Error Groq API: ${response.status}`);
+  for (const model of GROQ_MODELS) {
+    try {
+      const response = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: 0.5,
+          max_tokens: 250,
+          stream: false,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        lastError = err?.error?.message || `Error ${response.status} en modelo ${model}`;
+        console.warn(`[Groq AI] Falló modelo ${model}:`, lastError);
+        continue;
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content?.trim();
+      if (content) {
+        return content;
+      }
+    } catch (e: any) {
+      lastError = e.message || 'Error de conexión';
+    }
   }
 
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content?.trim() || 'Sin respuesta del asistente.';
+  throw new Error(lastError || 'No se pudo obtener respuesta de los modelos de Groq.');
 }
 
