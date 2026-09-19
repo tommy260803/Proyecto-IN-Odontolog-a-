@@ -483,29 +483,37 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                     {/* Servicio, Profesional, Sede */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="space-y-1">
-                        <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Servicio</Label>
+                        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Servicio</Label>
                         <Select onValueChange={(v) => { setAltServicioId(v); }} value={altServicioId}>
-                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"><SelectValue placeholder="Seleccionar servicio..." /></SelectTrigger>
-                          <SelectContent>{catalogs.servicios?.map((s: any) => <SelectItem key={s.id_servicio} value={s.id_servicio.toString()} className="text-xs">{s.nombre}</SelectItem>)}</SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Profesional</Label>
-                        <Select onValueChange={(v) => { setAltProfesionalId(v); setAltDisponibilidadId(''); }} value={altProfesionalId}>
-                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"><SelectValue placeholder="Todos los doctores..." /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ALL_PROFESSIONALS" className="text-xs font-semibold text-teal-600">Todos los doctores</SelectItem>
-                            {catalogs.profesionales?.map((p: any) => <SelectItem key={p.id_profesional} value={p.id_profesional.toString()} className="text-xs">Dr/a. {p.nombres} {p.apellidos}</SelectItem>)}
+                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium [&>span]:text-slate-900 dark:[&>span]:text-slate-100">
+                            <SelectValue placeholder="Seleccionar servicio..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                            {catalogs.servicios?.map((s: any) => <SelectItem key={s.id_servicio} value={s.id_servicio.toString()} className="text-xs text-slate-900 dark:text-slate-100">{s.nombre}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Sede</Label>
+                        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Profesional</Label>
+                        <Select onValueChange={(v) => { setAltProfesionalId(v); setAltDisponibilidadId(''); }} value={altProfesionalId}>
+                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium [&>span]:text-slate-900 dark:[&>span]:text-slate-100">
+                            <SelectValue placeholder="Todos los doctores..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                            <SelectItem value="ALL_PROFESSIONALS" className="text-xs font-semibold text-teal-600 dark:text-teal-400">Todos los doctores</SelectItem>
+                            {catalogs.profesionales?.map((p: any) => <SelectItem key={p.id_profesional} value={p.id_profesional.toString()} className="text-xs text-slate-900 dark:text-slate-100">Dr/a. {p.nombres} {p.apellidos}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Sede</Label>
                         <Select onValueChange={(v) => { setAltSedeId(v); setAltDisponibilidadId(''); }} value={altSedeId}>
-                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"><SelectValue placeholder="Todas las sedes..." /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ALL_SEDES" className="text-xs font-semibold text-teal-600">Todas las sedes</SelectItem>
-                            {catalogs.sedes?.map((s: any) => <SelectItem key={s.id_sede} value={s.id_sede.toString()} className="text-xs">{s.nombre}</SelectItem>)}
+                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium [&>span]:text-slate-900 dark:[&>span]:text-slate-100">
+                            <SelectValue placeholder="Todas las sedes..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                            <SelectItem value="ALL_SEDES" className="text-xs font-semibold text-teal-600 dark:text-teal-400">Todas las sedes</SelectItem>
+                            {catalogs.sedes?.map((s: any) => <SelectItem key={s.id_sede} value={s.id_sede.toString()} className="text-xs text-slate-900 dark:text-slate-100">{s.nombre}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>

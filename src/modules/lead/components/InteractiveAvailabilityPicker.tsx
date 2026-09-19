@@ -86,15 +86,25 @@ export function InteractiveAvailabilityPicker({
 
   const [activeTab, setActiveTab] = useState<'catalog' | 'custom'>(isCustomMode ? 'custom' : 'catalog');
 
-  // Mapa de fechas que tienen turnos disponibles en el catálogo
+  // Mapa de fechas que tienen turnos disponibles en el catálogo (filtrado de horarios de atención válidos)
   const datesWithSlotsMap = useMemo(() => {
     const map = new Map<string, any[]>();
     for (const d of disponibilidades) {
-      if (selectedProfesionalId && d.id_profesional.toString() !== selectedProfesionalId) continue;
-      if (selectedSedeId && d.id_sede.toString() !== selectedSedeId) continue;
+      if (selectedProfesionalId && d.id_profesional?.toString() !== selectedProfesionalId) continue;
+      if (selectedSedeId && d.id_sede?.toString() !== selectedSedeId) continue;
       
       const dateKey = (d.fecha || '').split('T')[0];
       if (!dateKey) continue;
+
+      // Filtrar horarios de madrugada no laborables (ej. 00:00 a 06:00 generados por seeds)
+      const rawStart = typeof d.hora_inicio === 'string' 
+        ? (d.hora_inicio.includes('T') ? d.hora_inicio.substring(11, 16) : d.hora_inicio.substring(0, 5)) 
+        : '';
+      if (rawStart) {
+        const hourNum = parseInt(rawStart.split(':')[0], 10);
+        if (hourNum < 7 || hourNum > 22) continue;
+      }
+
       if (!map.has(dateKey)) {
         map.set(dateKey, []);
       }
@@ -113,10 +123,32 @@ export function InteractiveAvailabilityPicker({
     return eachDayOfInterval({ start: startDate, end: endDate });
   }, [currentMonth]);
 
-  // Turnos disponibles para la fecha actualmente seleccionada
+  // Turnos disponibles únicos y ordenados para la fecha seleccionada
   const availableSlotsForSelectedDate = useMemo(() => {
     if (!selectedDate) return [];
-    return datesWithSlotsMap.get(selectedDate) || [];
+    const rawSlots = datesWithSlotsMap.get(selectedDate) || [];
+    
+    // Deduplicar turnos idénticos de mismo horario, profesional y sede
+    const uniqueMap = new Map<string, any>();
+    for (const slot of rawSlots) {
+      const hInicio = typeof slot.hora_inicio === 'string' 
+        ? (slot.hora_inicio.includes('T') ? slot.hora_inicio.substring(11, 16) : slot.hora_inicio.substring(0, 5))
+        : '09:00';
+      const hFin = typeof slot.hora_fin === 'string' 
+        ? (slot.hora_fin.includes('T') ? slot.hora_fin.substring(11, 16) : slot.hora_fin.substring(0, 5))
+        : '10:00';
+      
+      const key = `${hInicio}_${hFin}_${slot.id_profesional}_${slot.id_sede}`;
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, slot);
+      }
+    }
+
+    return Array.from(uniqueMap.values()).sort((a, b) => {
+      const tA = String(a.hora_inicio || '');
+      const tB = String(b.hora_inicio || '');
+      return tA.localeCompare(tB);
+    });
   }, [datesWithSlotsMap, selectedDate]);
 
   const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
@@ -153,11 +185,8 @@ export function InteractiveAvailabilityPicker({
             <CalendarIcon className="h-4 w-4" />
           </div>
           <div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white">
               Horario y Disponibilidad en Mesa
-              <Badge variant="outline" className="text-[10px] font-semibold text-teal-700 dark:text-teal-300 border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-950/40 py-0 h-4">
-                Interactivo
-              </Badge>
             </h4>
             <p className="text-[10px] text-slate-500 dark:text-slate-400">
               Selecciona el día en el calendario y haz clic sobre el bloque horario que deseas ofertar.
@@ -170,19 +199,19 @@ export function InteractiveAvailabilityPicker({
           <button
             type="button"
             onClick={() => handleTabSwitch('catalog')}
-            className={`px-2.5 py-1 rounded-lg font-semibold text-[11px] transition-all flex items-center gap-1 ${
+            className={`px-2.5 py-1 rounded-lg font-semibold text-[11px] transition-all flex items-center gap-1.5 ${
               activeTab === 'catalog'
                 ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-sm'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Clock className="w-3 h-3" />
-            Turnos en Agenda ({disponibilidades.length})
+            Turnos en Agenda
           </button>
           <button
             type="button"
             onClick={() => handleTabSwitch('custom')}
-            className={`px-2.5 py-1 rounded-lg font-semibold text-[11px] transition-all flex items-center gap-1 ${
+            className={`px-2.5 py-1 rounded-lg font-semibold text-[11px] transition-all flex items-center gap-1.5 ${
               activeTab === 'custom'
                 ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-sm'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -214,15 +243,13 @@ export function InteractiveAvailabilityPicker({
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
                 </Button>
-                <Button
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
                   onClick={handleToday}
-                  className="h-6 text-[10px] px-2 rounded-lg font-semibold border-slate-200 dark:border-slate-700"
+                  className="h-6 text-[10px] px-2.5 rounded-lg font-bold border border-teal-300 dark:border-teal-700/70 bg-teal-50 dark:bg-slate-700/90 text-teal-800 dark:text-teal-200 hover:bg-teal-100 dark:hover:bg-slate-600 transition-colors shadow-xs"
                 >
                   Hoy
-                </Button>
+                </button>
                 <Button
                   type="button"
                   variant="ghost"
@@ -495,3 +522,4 @@ export function InteractiveAvailabilityPicker({
     </div>
   );
 }
+
