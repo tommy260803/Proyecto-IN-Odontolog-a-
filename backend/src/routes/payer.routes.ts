@@ -508,6 +508,20 @@ export function generateBackendPdfBase64(params: {
   channel?: string;
   operationNumber?: string;
   code?: string;
+  isValidated?: boolean | null;
+  patientName?: string | null;
+  documentNumber?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  serviceName?: string | null;
+  reservationDate?: string | null;
+  reservationTime?: string | null;
+  branch?: string | null;
+  professional?: string | null;
+  amount?: number | string | null;
+  channel?: string | null;
+  operationNumber?: string | null;
+  code?: string | null;
 }): string {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -746,6 +760,23 @@ export async function sendPaymentNoticeOrConfirmation(params: {
   code?: string;
   pdfBase64?: string;
   isValidated?: boolean;
+  patientName?: string | null;
+  documentNumber?: string | null;
+  phone?: string | null;
+  subject?: string | null;
+  message?: string | null;
+  amount?: number | string | null;
+  channel?: string | null;
+  operationNumber?: string | null;
+  serviceName?: string | null;
+  reservationDate?: string | null;
+  reservationTime?: string | null;
+  branch?: string | null;
+  professional?: string | null;
+  filename?: string | null;
+  code?: string | null;
+  pdfBase64?: string | null;
+  isValidated?: boolean | null;
 }) {
   const {
     toEmail,
