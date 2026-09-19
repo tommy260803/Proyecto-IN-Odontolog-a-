@@ -500,8 +500,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                             <SelectValue placeholder="Todos los doctores..." />
                           </SelectTrigger>
                           <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                            <SelectItem value="ALL_PROFESSIONALS" className="text-xs font-semibold text-teal-600 dark:text-teal-400">Todos los doctores</SelectItem>
-                            {catalogs.profesionales?.map((p: any) => <SelectItem key={p.id_profesional} value={p.id_profesional.toString()} className="text-xs text-slate-900 dark:text-slate-100">Dr/a. {p.nombres} {p.apellidos}</SelectItem>)}
+                            <SelectItem value="ALL_PROFESSIONALS" className="font-semibold text-slate-900 dark:text-slate-100">Todos los doctores</SelectItem>
+                            {catalogs.profesionales?.map((p: any) => <SelectItem key={p.id_profesional} value={p.id_profesional.toString()} className="text-slate-900 dark:text-slate-100">Dr/a. {p.nombres} {p.apellidos}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
@@ -512,8 +512,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                             <SelectValue placeholder="Todas las sedes..." />
                           </SelectTrigger>
                           <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                            <SelectItem value="ALL_SEDES" className="text-xs font-semibold text-teal-600 dark:text-teal-400">Todas las sedes</SelectItem>
-                            {catalogs.sedes?.map((s: any) => <SelectItem key={s.id_sede} value={s.id_sede.toString()} className="text-xs text-slate-900 dark:text-slate-100">{s.nombre}</SelectItem>)}
+                            <SelectItem value="ALL_SEDES" className="font-semibold text-slate-900 dark:text-slate-100">Todas las sedes</SelectItem>
+                            {catalogs.sedes?.map((s: any) => <SelectItem key={s.id_sede} value={s.id_sede.toString()} className="text-slate-900 dark:text-slate-100">{s.nombre}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
