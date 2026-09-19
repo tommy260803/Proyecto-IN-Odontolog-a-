@@ -346,6 +346,9 @@ export function PaymentNoticePdfModal({
 
       const doc = generatePayerProformaPdf(payer, customMessage);
       const pdfBase64 = doc.output('datauristring');
+      const filename = isValidated
+        ? `Constancia_Pago_${payer.person.lastName.replace(/\s+/g, '_')}_${payer.id}.pdf`
+        : `Proforma_Aviso_Cobro_${payer.person.lastName.replace(/\s+/g, '_')}_${payer.id}.pdf`;
 
       const defaultSubject = isValidated
         ? `Constancia Oficial de Pago y Confirmación de Cita - NexoSalud`
@@ -367,6 +370,7 @@ export function PaymentNoticePdfModal({
         reservationTime: payer.reservation?.time,
         branch: payer.reservation?.branchId,
         professional: payer.reservation?.professionalId,
+        filename,
         pdfBase64,
       };
 

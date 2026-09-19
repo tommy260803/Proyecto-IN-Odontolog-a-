@@ -543,13 +543,27 @@ router.post('/send-notice-email', async (req, res) => {
       </html>
     `;
 
-    // Limpiar prefijo data:application/pdf;base64,... si viene incluido
-    const cleanBase64 = pdfBase64 ? pdfBase64.replace(/^data:application\/pdf;base64,/, '') : '';
-    const attachments: any[] = [];
+    // Limpiar rigurosamente cualquier prefijo de Data URI (ej. "data:application/pdf;filename=generated.pdf;base64,...")
+    let cleanBase64 = '';
+    if (pdfBase64 && typeof pdfBase64 === 'string') {
+      if (pdfBase64.includes('base64,')) {
+        cleanBase64 = pdfBase64.split('base64,')[1].trim();
+      } else {
+        cleanBase64 = pdfBase64.replace(/^data:[^;]+;base64,/, '').trim();
+      }
+      // Remover saltos de línea o espacios accidentales
+      cleanBase64 = cleanBase64.replace(/[\r\n\s]+/g, '');
+    }
 
+    const patientFileSlug = (patientName || 'Paciente').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const pdfFileName = req.body.filename
+      ? (req.body.filename.endsWith('.pdf') ? req.body.filename : `${req.body.filename}.pdf`)
+      : `Documento_${patientFileSlug}.pdf`;
+
+    const attachments: any[] = [];
     if (cleanBase64) {
       attachments.push({
-        filename: `Proforma_Aviso_Cobro_${(patientName || 'Paciente').replace(/\s+/g, '_')}.pdf`,
+        filename: pdfFileName,
         content: Buffer.from(cleanBase64, 'base64'),
         contentType: 'application/pdf'
       });
@@ -558,7 +572,7 @@ router.post('/send-notice-email', async (req, res) => {
     // 1. MÉTODO 100% GARANTIZADO EN RENDER (HTTPS Port 443): Resend API
     const resendApiKey = process.env.RESEND_API_KEY;
     if (resendApiKey) {
-      console.log(`[EMAIL DISPATCHER] Despachando proforma PDF vía RESEND HTTPS API a: ${toEmail}`);
+      console.log(`[EMAIL DISPATCHER] Despachando PDF vía RESEND HTTPS API a: ${toEmail} (Archivo: ${pdfFileName}, Bytes: ${cleanBase64.length})`);
       const resendPayload: any = {
         from: process.env.RESEND_FROM || 'Clínica NexoSalud <onboarding@resend.dev>',
         to: [toEmail],
@@ -569,7 +583,7 @@ router.post('/send-notice-email', async (req, res) => {
       if (cleanBase64) {
         resendPayload.attachments = [
           {
-            filename: `Proforma_Aviso_Cobro_${(patientName || 'Paciente').replace(/\s+/g, '_')}.pdf`,
+            filename: pdfFileName,
             content: cleanBase64
           }
         ];
@@ -613,7 +627,7 @@ router.post('/send-notice-email', async (req, res) => {
       if (cleanBase64) {
         brevoPayload.attachment = [
           {
-            name: `Proforma_Aviso_Cobro_${(patientName || 'Paciente').replace(/\s+/g, '_')}.pdf`,
+            name: pdfFileName,
             content: cleanBase64
           }
         ];
