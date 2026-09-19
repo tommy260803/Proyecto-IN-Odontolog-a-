@@ -137,42 +137,47 @@ export default function CustomerDetailPage() {
             <CardTitle className="text-lg">Registro de Atención Odontológica</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2 mb-6 p-4 bg-muted rounded-lg border">
+            <div className="flex flex-wrap items-center gap-2.5 mb-6 p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800">
               <Button 
-                variant="outline" size="sm" 
+                type="button"
                 disabled={customer.state !== CustomerState.SCHEDULED}
                 onClick={() => handleStateChange(CustomerState.ATTENDANCE_CONFIRMED, 'Asistencia confirmada')}
+                className="bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700 dark:hover:bg-emerald-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
               >
-                <CheckSquare className="w-4 h-4 mr-2 text-green-600" /> Confirmar Asistencia
+                <CheckSquare className="w-3.5 h-3.5" /> Confirmar Asistencia
               </Button>
               <Button 
-                variant="outline" size="sm"
+                type="button"
                 disabled={customer.state !== CustomerState.ATTENDANCE_CONFIRMED}
                 onClick={handleStartAttention}
+                className="bg-teal-50 hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-300 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-700 dark:hover:bg-teal-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
               >
-                <Play className="w-4 h-4 mr-2 text-blue-600" /> Iniciar Atención
+                <Play className="w-3.5 h-3.5" /> Iniciar Atención
               </Button>
               <Button 
-                variant="outline" size="sm"
+                type="button"
                 disabled={customer.state !== CustomerState.IN_ATTENTION}
                 onClick={handleFinishAttention}
+                className="bg-indigo-50 hover:bg-indigo-600 text-indigo-800 hover:text-white border border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-700 dark:hover:bg-indigo-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
               >
-                <CheckSquare className="w-4 h-4 mr-2" /> Finalizar Atención
+                <CheckSquare className="w-3.5 h-3.5" /> Finalizar Atención
               </Button>
               <div className="w-full h-0 md:hidden" />
               <Button 
-                variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10"
+                type="button"
                 disabled={customer.state === CustomerState.ATTENDED || customer.state === CustomerState.IN_ATTENTION}
                 onClick={() => handleStateChange(CustomerState.NO_SHOW, 'Marcado como No Asistió')}
+                className="bg-rose-50/80 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-700 dark:hover:bg-rose-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none md:ml-auto"
               >
-                <UserX className="w-4 h-4 mr-2" /> No Asistió
+                <UserX className="w-3.5 h-3.5 text-rose-500 hover:text-white" /> No Asistió
               </Button>
               <Button 
-                variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10"
+                type="button"
                 disabled={customer.state === CustomerState.ATTENDED || customer.state === CustomerState.IN_ATTENTION}
                 onClick={() => handleStateChange(CustomerState.CANCELED, 'Cita cancelada')}
+                className="bg-slate-100 hover:bg-slate-700 text-slate-700 hover:text-white border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
               >
-                <XCircle className="w-4 h-4 mr-2" /> Cancelar
+                <XCircle className="w-3.5 h-3.5 text-slate-500 hover:text-white" /> Cancelar
               </Button>
             </div>
 

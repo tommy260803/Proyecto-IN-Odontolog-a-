@@ -26,9 +26,27 @@ import {
 } from '../hooks/useCustomerQueries';
 import { DentalAttentionForm } from './DentalAttentionForm';
 import type { DentalAttentionFormValues } from '../schemas/customerSchema';
-import { Play, CheckSquare, XCircle, UserX, ArrowRight, AlertTriangle, Stethoscope } from 'lucide-react';
+import { 
+  Play, 
+  CheckSquare, 
+  XCircle, 
+  UserX, 
+  ArrowRight, 
+  AlertTriangle, 
+  Stethoscope, 
+  User, 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  ShieldAlert,
+  Save,
+  CheckCircle2,
+  Phone,
+  Mail,
+  FileCheck
+} from 'lucide-react';
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
-import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
 
 interface CustomerDetailModalProps {
@@ -51,6 +69,7 @@ const formatPeruTime = (isoString?: string) => {
     return isoString;
   }
 };
+
 export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDetailModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -76,7 +95,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
     if (!customer) return;
     changeState.mutate({ id: customer.id, state }, {
       onSuccess: () => {
-        toast({ title: 'Actualizado', description: successMsg });
+        toast({ title: 'Estado Actualizado', description: successMsg });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
       },
       onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' })
@@ -88,7 +107,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
     const time = new Date().toLocaleTimeString();
     startAttention.mutate({ id: customer.id, time }, {
       onSuccess: () => {
-        toast({ title: 'Iniciada', description: 'Atención odontológica iniciada.' });
+        toast({ title: 'Atención Iniciada', description: 'La consulta odontológica ha comenzado.' });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
       },
       onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' })
@@ -100,7 +119,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
     const time = new Date().toLocaleTimeString();
     finishAttention.mutate({ id: customer.id, time }, {
       onSuccess: () => {
-        toast({ title: 'Finalizada', description: 'Atención odontológica terminada con éxito.' });
+        toast({ title: 'Atención Finalizada', description: 'Atención odontológica concluida con éxito.' });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
       },
       onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' })
@@ -111,7 +130,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
     if (!customer) return;
     registerDetails.mutate({ id: customer.id, data }, {
       onSuccess: () => {
-        toast({ title: 'Guardado', description: 'Registros clínicos actualizados.' });
+        toast({ title: 'Ficha Guardada', description: 'Registros clínicos actualizados en la base de datos.' });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
       },
       onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' })
@@ -127,7 +146,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
     setIncidentError('');
     registerIncident.mutate({ id: customer.id, reason: incidentReason }, {
       onSuccess: () => {
-        toast({ title: 'Incidencia Registrada', description: 'Se guardó el reporte de soporte.' });
+        toast({ title: 'Incidencia Registrada', description: 'Se guardó el reporte de soporte correctamente.' });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
         setIsIncidentOpen(false);
         setIncidentReason('');
@@ -140,7 +159,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
     if (!customer) return;
     convertTurned.mutate(customer.id, {
       onSuccess: () => {
-        toast({ title: 'Convertido', description: 'Paciente transferido al módulo TURNED para seguimiento.' });
+        toast({ title: 'Paciente Transferido', description: 'El paciente fue promovido al módulo TURNED para fidelización.' });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TURNED] });
         setIsConvertOpen(false);
@@ -157,32 +176,38 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl max-h-[85vh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-        {/* Fixed Header */}
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        
+        {/* Encabezado Superior */}
         <div className="p-5 sm:p-6 pb-4 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <DialogHeader>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 ring-4 ring-teal-50/70 dark:ring-teal-950/40 border border-teal-200/60 dark:border-teal-800/60">
-                  <Stethoscope className="h-5 w-5" />
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-50 dark:bg-teal-950/70 text-teal-700 dark:text-teal-300 ring-4 ring-teal-50/70 dark:ring-teal-950/40 border border-teal-200/70 dark:border-teal-800/70 shadow-sm">
+                  <Stethoscope className="h-6 w-6" />
                 </div>
                 <div>
-                  <DialogTitle className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                    Atención Odontológica (CUSTOMER)
-                  </DialogTitle>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                    ID: {customer?.id}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <DialogTitle className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                      Atención Odontológica (CUSTOMER)
+                    </DialogTitle>
+                    <span className="text-xs font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                      ID: #{customer?.id}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Registro clínico, diagnóstico, procedimiento y evolución odontológica
                   </p>
                 </div>
               </div>
 
               {customer && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <StatusBadge status={customer.state} />
                   <Button 
                     disabled={isTurned || !transitionCheck.success || convertTurned.isPending} 
                     onClick={() => setIsConvertOpen(true)}
-                    className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-sm text-xs font-semibold px-3 py-2 h-8"
+                    className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-sm text-xs font-semibold px-3.5 py-2 h-8 transition-all disabled:opacity-40"
                   >
                     Pasar a TURNED <ArrowRight className="w-3.5 h-3.5 ml-1" />
                   </Button>
@@ -192,76 +217,120 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
           </DialogHeader>
         </div>
 
-        {/* Scrollable Body without visible scrollbar */}
-        <div className="p-5 sm:p-6 overflow-y-auto no-scrollbar flex-1 space-y-6">
+        {/* Cuerpo con Scroll Suave */}
+        <div className="p-5 sm:p-6 overflow-y-auto no-scrollbar flex-1 space-y-5 bg-slate-50/40 dark:bg-slate-950/20">
           {isLoading ? (
             <LoadingState />
           ) : isError || !customer ? (
-            <ErrorState message="No se encontró la información del paciente en atención." />
+            <ErrorState message="No se encontró la información del paciente en atención odontológica." />
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-5">
+              
               {!transitionCheck.success && customer.state === CustomerState.ATTENDED && (
-                <div className="text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 p-3 rounded-xl border border-amber-200/80 dark:border-amber-800/80">
-                  <strong>Para transferir a TURNED:</strong> Ingrese el procedimiento realizado y registre las horas de inicio/fin de la atención.
+                <div className="flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/60 p-3.5 rounded-xl border border-amber-200/90 dark:border-amber-800/80 shadow-sm">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="font-semibold">Requisito para transferir a TURNED:</strong> Ingrese el procedimiento odontológico realizado y asegúrese de que estén registrados los tiempos de atención.
+                  </div>
                 </div>
               )}
 
               {journeys.find(j => j.customerId === customer.id) && (
-                <div className="py-2">
+                <div className="py-1">
                   <JourneyStepper journey={journeys.find(j => j.customerId === customer.id)!} />
                 </div>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Formulario y Botones de Flujo */}
-                <div className="lg:col-span-2 space-y-4">
-                  <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-800/70">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Flujo y Registro Clínico</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {/* Botones de Acción de Estado */}
-                      <div className="flex flex-wrap gap-2 mb-5 p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
-                        <Button 
-                          variant="outline" size="sm" 
-                          disabled={isTurned || customer.state !== CustomerState.SCHEDULED}
-                          onClick={() => handleStateChange(CustomerState.ATTENDANCE_CONFIRMED, 'Asistencia confirmada')}
-                          className="rounded-xl text-xs font-semibold bg-white dark:bg-slate-800"
-                        >
-                          <CheckSquare className="w-3.5 h-3.5 mr-1.5 text-emerald-600 dark:text-emerald-400" /> Confirmar Asistencia
-                        </Button>
-                        <Button 
-                          variant="outline" size="sm" 
-                          disabled={isTurned || customer.state !== CustomerState.ATTENDANCE_CONFIRMED}
-                          onClick={handleStartAttention}
-                          className="rounded-xl text-xs font-semibold bg-white dark:bg-slate-800"
-                        >
-                          <Play className="w-3.5 h-3.5 mr-1.5 text-teal-600 dark:text-teal-400" /> Iniciar Atención
-                        </Button>
-                        <Button 
-                          variant="outline" size="sm" 
-                          disabled={isTurned || customer.state !== CustomerState.IN_ATTENTION}
-                          onClick={handleFinishAttention}
-                          className="rounded-xl text-xs font-semibold bg-white dark:bg-slate-800"
-                        >
-                          <CheckSquare className="w-3.5 h-3.5 mr-1.5 text-emerald-600 dark:text-emerald-400" /> Finalizar Atención
-                        </Button>
-                        <Button 
-                          variant="ghost" size="sm" className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl text-xs ml-auto"
-                          disabled={isTurned || customer.state === CustomerState.ATTENDED || customer.state === CustomerState.IN_ATTENTION}
-                          onClick={() => handleStateChange(CustomerState.NO_SHOW, 'Marcado como No Asistió')}
-                        >
-                          <UserX className="w-3.5 h-3.5 mr-1 text-rose-500" /> No Asistió
-                        </Button>
-                        <Button 
-                          variant="ghost" size="sm" className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl text-xs"
-                          disabled={isTurned || customer.state === CustomerState.ATTENDED || customer.state === CustomerState.IN_ATTENTION}
-                          onClick={() => handleStateChange(CustomerState.CANCELED, 'Cita cancelada')}
-                        >
-                          <XCircle className="w-3.5 h-3.5 mr-1 text-rose-500" /> Cancelar
-                        </Button>
-                      </div>
+              {/* Barra de Acciones del Flujo Clínico */}
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <FileCheck className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                    Flujo de Atención Odontológica
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Estado Actual: <strong className="text-slate-800 dark:text-slate-200">{customer.state}</strong>
+                  </span>
+                </div>
 
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Confirmar Asistencia */}
+                  <Button 
+                    type="button"
+                    disabled={isTurned || customer.state !== CustomerState.SCHEDULED}
+                    onClick={() => handleStateChange(CustomerState.ATTENDANCE_CONFIRMED, 'Asistencia confirmada exitosamente')}
+                    className="bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700 dark:hover:bg-emerald-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
+                    title="Confirmar que el paciente se presentó en la clínica"
+                  >
+                    <CheckSquare className="w-3.5 h-3.5" /> Confirmar Asistencia
+                  </Button>
+
+                  {/* Iniciar Atención */}
+                  <Button 
+                    type="button"
+                    disabled={isTurned || customer.state !== CustomerState.ATTENDANCE_CONFIRMED}
+                    onClick={handleStartAttention}
+                    className="bg-teal-50 hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-300 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-700 dark:hover:bg-teal-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
+                    title="Iniciar la consulta odontológica en consultorio"
+                  >
+                    <Play className="w-3.5 h-3.5" /> Iniciar Atención
+                  </Button>
+
+                  {/* Finalizar Atención */}
+                  <Button 
+                    type="button"
+                    disabled={isTurned || customer.state !== CustomerState.IN_ATTENTION}
+                    onClick={handleFinishAttention}
+                    className="bg-indigo-50 hover:bg-indigo-600 text-indigo-800 hover:text-white border border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-700 dark:hover:bg-indigo-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
+                    title="Terminar la consulta odontológica"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Finalizar Atención
+                  </Button>
+
+                  <div className="ml-auto flex items-center gap-2">
+                    {/* No Asistió */}
+                    <Button 
+                      type="button"
+                      disabled={isTurned || customer.state === CustomerState.ATTENDED || customer.state === CustomerState.IN_ATTENTION}
+                      onClick={() => handleStateChange(CustomerState.NO_SHOW, 'Paciente marcado como No Asistió')}
+                      className="bg-rose-50/80 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-700 dark:hover:bg-rose-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
+                      title="Registrar inasistencia del paciente"
+                    >
+                      <UserX className="w-3.5 h-3.5 text-rose-500 hover:text-white" /> No Asistió
+                    </Button>
+
+                    {/* Cancelar */}
+                    <Button 
+                      type="button"
+                      disabled={isTurned || customer.state === CustomerState.ATTENDED || customer.state === CustomerState.IN_ATTENTION}
+                      onClick={() => handleStateChange(CustomerState.CANCELED, 'Cita odontológica cancelada')}
+                      className="bg-slate-100 hover:bg-slate-700 text-slate-700 hover:text-white border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
+                      title="Cancelar cita odontológica"
+                    >
+                      <XCircle className="w-3.5 h-3.5 text-slate-500 hover:text-white" /> Cancelar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Disposición Principal: Ficha Clínica y Resumen Lateral */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                
+                {/* Columna Izquierda: Formulario Clínico Odontológico */}
+                <div className="lg:col-span-2 space-y-4">
+                  <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
+                    <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <Stethoscope className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                          Ficha y Evolución Odontológica
+                        </CardTitle>
+                        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                          {canEditForm ? '✏️ Modo Edición Habilitado' : '🔒 Ficha en Solo Lectura'}
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-4">
                       <DentalAttentionForm 
                         formId="customer-dental-form"
                         initialValues={customer.attention} 
@@ -274,52 +343,135 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                   </Card>
                 </div>
 
-                {/* Columna Derecha: Datos de Cita y Soporte */}
+                {/* Columna Derecha: Resumen del Paciente & Incidencias */}
                 <div className="space-y-4">
-                  <Card className="shadow-sm border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 rounded-xl">
-                    <CardHeader className="border-b border-slate-200/80 dark:border-slate-700/80 pb-3">
-                      <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Datos de la Cita</CardTitle>
+                  
+                  {/* Tarjeta de Datos de Cita & Paciente */}
+                  <Card className="shadow-sm border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+                    <CardHeader className="border-b border-slate-100 dark:border-slate-800 p-4 bg-slate-50/50 dark:bg-slate-800/40">
+                      <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                        <User className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                        Datos del Paciente & Cita
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-4 space-y-3 text-xs">
+                    <CardContent className="p-4 space-y-3.5 text-xs">
+                      
+                      {/* Paciente */}
                       <div>
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Paciente</p>
-                        <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{customer.person.firstName} {customer.person.lastName}</p>
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                          Paciente
+                        </span>
+                        <p className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">
+                          {customer.person.firstName} {customer.person.lastName}
+                        </p>
+                        <div className="flex flex-col gap-1 mt-1 text-[11px] text-slate-600 dark:text-slate-300">
+                          <span className="flex items-center gap-1">
+                            <span className="font-semibold text-slate-400 dark:text-slate-500">DNI:</span> 
+                            {customer.person.documentNumber || 'No registrado'}
+                          </span>
+                          {customer.person.phone && (
+                            <span className="flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-slate-400" /> {customer.person.phone}
+                            </span>
+                          )}
+                          {customer.person.email && (
+                            <span className="flex items-center gap-1">
+                              <Mail className="w-3 h-3 text-slate-400" /> {customer.person.email}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Servicio & Especialista</p>
-                        <p className="text-slate-700 dark:text-slate-300 mt-0.5">{customer.lead.requestedServiceId}</p>
-                        <p className="text-slate-500 dark:text-slate-400">{customer.reservation.professionalId}</p>
+
+                      {/* Servicio y Doctor */}
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                          Servicio & Especialista
+                        </span>
+                        <p className="font-semibold text-teal-700 dark:text-teal-300 mt-0.5">
+                          {customer.lead?.requestedServiceId || 'Consulta Odontológica'}
+                        </p>
+                        <p className="text-slate-600 dark:text-slate-400 mt-0.5">
+                          {customer.reservation?.professionalId || 'Dr. Especialista'}
+                        </p>
                       </div>
-                      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Sede & Horario</p>
-                        <p className="text-slate-700 dark:text-slate-300 mt-0.5">{customer.reservation.branchId}</p>
-                        <p className="text-slate-500 dark:text-slate-400">{formatPeruTime(customer.reservation.date)}</p>
+
+                      {/* Sede y Horario */}
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                          Sede & Fecha Programada
+                        </span>
+                        <div className="flex items-center gap-1.5 mt-0.5 text-slate-800 dark:text-slate-200 font-medium">
+                          <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          <span>{customer.reservation?.branchId || 'Sede Principal'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1 text-slate-600 dark:text-slate-300">
+                          <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                          <span>{formatPeruTime(customer.reservation?.date)}</span>
+                        </div>
                       </div>
-                      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Tiempos de Atención</p>
-                        <p className="text-slate-700 dark:text-slate-300 mt-0.5">Inicio: {formatPeruTime(customer.attention?.startTime)}</p>
-                        <p className="text-slate-700 dark:text-slate-300">Fin: {formatPeruTime(customer.attention?.endTime)}</p>
+
+                      {/* Tiempos de Atención */}
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">
+                          Cronómetro de Consulta
+                        </span>
+                        <div className="bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-1">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-teal-600 dark:text-teal-400" /> Hora Inicio:
+                            </span>
+                            <strong className="text-slate-800 dark:text-slate-200 font-mono">
+                              {formatPeruTime(customer.attention?.startTime)}
+                            </strong>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> Hora Fin:
+                            </span>
+                            <strong className="text-slate-800 dark:text-slate-200 font-mono">
+                              {formatPeruTime(customer.attention?.endTime)}
+                            </strong>
+                          </div>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Soporte e Incidencias */}
-                  <Card className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-800/70">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                      <CardTitle className="text-xs font-bold text-slate-900 dark:text-white">Incidencias de Soporte</CardTitle>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsIncidentOpen(true)}>
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                  {/* Tarjeta de Incidencias de Soporte */}
+                  <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+                    <CardHeader className="flex flex-row items-center justify-between p-4 pb-2 border-b border-slate-100 dark:border-slate-800">
+                      <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
+                        Incidencias de Soporte
+                      </CardTitle>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 px-2 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 rounded-lg"
+                        onClick={() => setIsIncidentOpen(true)}
+                        title="Registrar nueva incidencia"
+                      >
+                        + Reportar
                       </Button>
                     </CardHeader>
-                    <CardContent className="text-xs">
+                    <CardContent className="p-4 text-xs">
                       {customer.incidents.length === 0 ? (
-                        <p className="text-[11px] text-slate-400">Sin incidencias de soporte.</p>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
+                          Sin incidencias reportadas en esta atención.
+                        </p>
                       ) : (
                         <div className="space-y-2">
                           {customer.incidents.map((inc: any) => (
-                            <div key={inc.id} className="border-b border-slate-100 dark:border-slate-700 pb-1.5 last:border-0">
-                              <p className="text-[10px] text-slate-400">{new Date(inc.createdAt).toLocaleDateString()}</p>
-                              <p className="text-slate-700 dark:text-slate-300">{inc.reason}</p>
+                            <div key={inc.id} className="border-b border-slate-100 dark:border-slate-800 pb-2 last:border-0">
+                              <div className="flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500">
+                                <span>{new Date(inc.createdAt).toLocaleDateString()}</span>
+                                <span className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded">
+                                  {inc.status || 'OPEN'}
+                                </span>
+                              </div>
+                              <p className="text-slate-700 dark:text-slate-300 font-medium text-xs mt-1">
+                                {inc.reason}
+                              </p>
                             </div>
                           ))}
                         </div>
@@ -332,12 +484,12 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
           )}
         </div>
 
-        {/* Fixed Footer */}
-        <div className="p-4 sm:p-5 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/80 shrink-0 flex items-center justify-between gap-3 rounded-b-2xl">
+        {/* Barra Inferior (Footer Fijo) */}
+        <div className="p-4 sm:p-5 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 flex items-center justify-between gap-3 rounded-b-2xl">
           <Button 
             variant="outline" 
             size="sm"
-            className="text-amber-600 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950 text-xs rounded-xl h-9"
+            className="text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 hover:bg-amber-600 hover:text-white text-xs rounded-xl h-9 px-3.5 font-semibold transition-all shadow-sm"
             onClick={() => setIsIncidentOpen(true)}
           >
             <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
@@ -349,43 +501,47 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
               type="button"
               variant="outline"
               onClick={onClose}
-              className="rounded-xl border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs h-9 px-4"
+              className="rounded-xl bg-white hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-600 text-xs font-semibold h-9 px-4 shadow-sm transition-all"
             >
               Cerrar
             </Button>
+            
             {canEditForm && (
               <Button
                 form="customer-dental-form"
                 type="submit"
                 disabled={registerDetails.isPending}
-                className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold h-9 px-4 shadow-sm"
+                className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold h-9 px-4.5 gap-1.5 shadow-sm transition-all"
               >
-                {registerDetails.isPending ? 'Guardando...' : 'Guardar Registros'}
+                <Save className="w-3.5 h-3.5" />
+                {registerDetails.isPending ? 'Guardando...' : 'Guardar Ficha Clínica'}
               </Button>
             )}
+
             {(!isTurned && transitionCheck.success) && (
               <Button
                 type="button"
-                className="bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-semibold h-9 px-4 shadow-sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold h-9 px-4.5 gap-1.5 shadow-sm transition-all"
                 onClick={() => setIsConvertOpen(true)}
               >
-                Pasar a TURNED <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                Pasar a TURNED <ArrowRight className="w-3.5 h-3.5" />
               </Button>
             )}
           </div>
         </div>
 
-        {/* Modales de Confirmación */}
+        {/* Modal de Confirmación para pasar a TURNED */}
         <ConfirmationDialog
           isOpen={isConvertOpen}
           onClose={() => setIsConvertOpen(false)}
           onConfirm={handleConvert}
-          title="Finalizar Flujo y Pasar a TURNED"
-          description="La atención ha terminado exitosamente. El paciente será transferido al módulo TURNED para seguimiento postventa y fidelización."
+          title="Finalizar Atención y Pasar a TURNED"
+          description="La atención odontológica ha finalizado exitosamente. El paciente será transferido al módulo TURNED para su seguimiento y fidelización."
           confirmText="Sí, Transferir a TURNED"
           variant="default"
         />
 
+        {/* Modal para Registrar Incidencia */}
         <ConfirmationDialog
           isOpen={isIncidentOpen}
           onClose={() => {
@@ -406,7 +562,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                 setIncidentReason(e.target.value);
                 if (incidentError) setIncidentError('');
               }}
-              className={`rounded-xl bg-slate-50 dark:bg-slate-800 text-xs ${
+              className={`rounded-xl bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white ${
                 incidentError ? '!border-rose-500 !ring-1 !ring-rose-500 text-rose-900 dark:text-rose-100' : 'border-slate-200 dark:border-slate-700'
               }`}
             />
@@ -422,5 +578,3 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
     </Dialog>
   );
 }
-
-

@@ -5,7 +5,18 @@ import type { DentalAttentionFormValues } from '../schemas/customerSchema';
 import { dentalAttentionSchema } from '../schemas/customerSchema';
 import { Button } from '@/shared/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/shared/components/ui/form';
+import { Textarea } from '@/shared/components/ui/textarea';
 import { Input } from '@/shared/components/ui/input';
+import { 
+  FileText, 
+  Activity, 
+  AlertCircle, 
+  Stethoscope, 
+  ClipboardCheck, 
+  Pill, 
+  FileEdit,
+  Sparkles
+} from 'lucide-react';
 
 interface DentalAttentionFormProps {
   initialValues?: Partial<DentalAttentionFormValues>;
@@ -46,92 +57,214 @@ export function DentalAttentionForm({ initialValues, onSubmit, isLoading, disabl
     }
   }, [initialValues, form]);
 
+  const inputStyle = "bg-slate-50/90 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-xs focus-visible:ring-2 focus-visible:ring-teal-500/40 dark:focus-visible:ring-teal-400/40 disabled:opacity-90 disabled:bg-slate-100/80 dark:disabled:bg-slate-950/70 dark:disabled:text-slate-200 dark:disabled:border-slate-700/80 shadow-sm transition-all";
+
   return (
     <Form {...form}>
       <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="reasonForConsultation"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Motivo de Consulta</FormLabel>
-                <FormControl><Input {...field} disabled={disabled} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="relevantBackground"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Antecedentes Relevantes</FormLabel>
-                <FormControl><Input {...field} disabled={disabled} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="allergies"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Alergias</FormLabel>
-                <FormControl><Input {...field} disabled={disabled} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="evaluation"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Evaluación Básico / Diagnóstico</FormLabel>
-                <FormControl><Input {...field} disabled={disabled} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="procedure"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Procedimiento Realizado</FormLabel>
-                <FormControl><Input {...field} disabled={disabled} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="instructions"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Indicaciones</FormLabel>
-                <FormControl><Input {...field} disabled={disabled} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="observations"
-            render={({ field }) => (
-              <FormItem className="md:col-span-2">
-                <FormLabel>Observaciones</FormLabel>
-                <FormControl><Input {...field} disabled={disabled} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        
+        {/* Bloque 1: Anamnesis y Antecedentes */}
+        <div className="bg-slate-50/60 dark:bg-slate-900/50 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3.5">
+          <div className="flex items-center gap-2 pb-1 border-b border-slate-200/60 dark:border-slate-800">
+            <Activity className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              1. Anamnesis & Antecedentes del Paciente
+            </h4>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <FormField
+              control={form.control}
+              name="reasonForConsultation"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    Motivo de Consulta
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      disabled={disabled}
+                      placeholder="Ej. Dolor al masticar en molar superior, molestia térmica..."
+                      className={inputStyle}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[11px]" />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="relevantBackground"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <ClipboardCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    Antecedentes Relevantes
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      disabled={disabled}
+                      placeholder="Ej. Hipertensión controlada, tratamiento previo de endodoncia..."
+                      className={inputStyle}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[11px]" />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="allergies"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" />
+                    Alergias Médicas / Contraindicaciones
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      disabled={disabled}
+                      placeholder="Ej. Alergia a Penicilina, AINEs, Látex (Escribir 'Ninguna' si no registra)..."
+                      className={inputStyle}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[11px]" />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
+
+        {/* Bloque 2: Evaluación Clínica y Procedimiento Realizado */}
+        <div className="bg-slate-50/60 dark:bg-slate-900/50 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3.5">
+          <div className="flex items-center gap-2 pb-1 border-b border-slate-200/60 dark:border-slate-800">
+            <Stethoscope className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              2. Diagnóstico & Procedimiento Clínico
+            </h4>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <FormField
+              control={form.control}
+              name="evaluation"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    Evaluación Básica / Diagnóstico
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      {...field} 
+                      disabled={disabled}
+                      rows={2}
+                      placeholder="Ej. Caries oclusal profunda en pieza 46, inflamación gingival..."
+                      className={inputStyle}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[11px]" />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="procedure"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+                    Procedimiento Realizado <span className="text-rose-500 font-bold">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      {...field} 
+                      disabled={disabled}
+                      rows={2}
+                      placeholder="Ej. Limpieza ultrasónica profiláctica y restauración estética con resina 3M..."
+                      className={inputStyle}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[11px]" />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Bloque 3: Indicaciones Post-Tratamiento y Observaciones */}
+        <div className="bg-slate-50/60 dark:bg-slate-900/50 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3.5">
+          <div className="flex items-center gap-2 pb-1 border-b border-slate-200/60 dark:border-slate-800">
+            <Pill className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              3. Indicaciones & Observaciones de Seguimiento
+            </h4>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <FormField
+              control={form.control}
+              name="instructions"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <Pill className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    Indicaciones / Receta
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      {...field} 
+                      disabled={disabled}
+                      rows={2}
+                      placeholder="Ej. Paracetamol 500mg cada 8h en caso de dolor. Evitar alimentos duros por 24h..."
+                      className={inputStyle}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[11px]" />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="observations"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <FileEdit className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    Observaciones y Próximo Control
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      {...field} 
+                      disabled={disabled}
+                      rows={2}
+                      placeholder="Ej. Paciente colaborador. Se programa control de profilaxis en 6 meses..."
+                      className={inputStyle}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[11px]" />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
         {!disabled && !hideSubmitButton && (
           <div className="flex justify-end pt-2">
-            <Button type="submit" disabled={isLoading}>
-              Guardar Registros
+            <Button 
+              type="submit" 
+              disabled={isLoading}
+              className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold px-4 h-9 shadow-sm"
+            >
+              Guardar Ficha Clínica
             </Button>
           </div>
         )}
