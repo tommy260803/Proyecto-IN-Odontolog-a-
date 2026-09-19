@@ -562,13 +562,17 @@ router.post('/send-notice-email', async (req, res) => {
     }
 
     if (smtpUser && smtpPass) {
+      const cleanPass = smtpPass.replace(/\s+/g, '');
+      const isGmail = smtpHost.toLowerCase().includes('gmail');
+
       const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465,
+        ...(isGmail ? { service: 'gmail' } : { host: smtpHost, port: smtpPort, secure: smtpPort === 465 }),
         auth: {
           user: smtpUser,
-          pass: smtpPass
+          pass: cleanPass
+        },
+        tls: {
+          rejectUnauthorized: false
         }
       });
 
