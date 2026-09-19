@@ -273,39 +273,42 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
     // Estado VALIDADO: Barra compacta, elegante y directa
     if (p.state === PayerState.VALIDATED) {
       return (
-        <div className="bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/90 dark:border-emerald-800/70 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="text-xs font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-100/90 dark:bg-emerald-900/80 border border-emerald-300 dark:border-emerald-700 px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-2xs">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              Pago Validado
-            </span>
-            <span className="text-xs font-medium text-slate-700 dark:text-slate-300 bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-xl flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-              Enviado a {p.person?.email || 'correo'}
-            </span>
+        <div className="bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/90 dark:border-emerald-800/70 rounded-2xl p-4 sm:p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 bg-emerald-100/90 dark:bg-emerald-900/80 border border-emerald-300 dark:border-emerald-700 px-3.5 py-1.5 rounded-xl shadow-2xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
+              <span className="text-xs font-bold text-emerald-900 dark:text-emerald-100">
+                Pago Validado
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-2 bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 px-3.5 py-1.5 rounded-xl shadow-2xs">
+              <Mail className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
+              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                Enviado a {p.person?.email || 'correo'}
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5 shrink-0">
             <Button
               type="button"
               onClick={() => setIsPdfModalOpen(true)}
-              size="sm"
-              className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs h-8.5 px-3.5 gap-1.5 shadow-sm font-semibold transition-all"
+              className="bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 border border-teal-500/40"
               title="Ver constancia oficial de pago en PDF"
             >
-              <FileText className="w-3.5 h-3.5" />
-              Ver Constancia PDF
+              <FileText className="w-4 h-4" />
+              <span>Ver Constancia PDF</span>
             </Button>
 
             <Button
               type="button"
               onClick={() => handleSendEmail(p)}
-              size="sm"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs h-8.5 px-3.5 gap-1.5 shadow-sm font-semibold transition-all"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 border border-indigo-500/40"
               title="Reenviar constancia y confirmación de cita por correo"
             >
-              <Mail className="w-3.5 h-3.5" />
-              Reenviar Correo
+              <Mail className="w-4 h-4" />
+              <span>Reenviar Correo</span>
             </Button>
           </div>
         </div>
