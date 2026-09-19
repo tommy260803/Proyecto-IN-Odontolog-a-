@@ -43,7 +43,10 @@ import {
   CheckCircle2,
   Phone,
   Mail,
-  FileCheck
+  FileCheck,
+  Lock,
+  FileEdit,
+  UserCheck
 } from 'lucide-react';
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
 import { useQueryClient } from '@tanstack/react-query';
@@ -96,7 +99,9 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
     changeState.mutate({ id: customer.id, state }, {
       onSuccess: () => {
         toast({ title: 'Estado Actualizado', description: successMsg });
+        queryClient.setQueryData([QUERY_KEYS.CUSTOMERS, customer.id], (old: any) => old ? { ...old, state } : old);
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
+        queryClient.refetchQueries({ queryKey: [QUERY_KEYS.CUSTOMERS, customer.id] });
       },
       onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' })
     });
@@ -108,7 +113,13 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
     startAttention.mutate({ id: customer.id, time }, {
       onSuccess: () => {
         toast({ title: 'Atención Iniciada', description: 'La consulta odontológica ha comenzado.' });
+        queryClient.setQueryData([QUERY_KEYS.CUSTOMERS, customer.id], (old: any) => old ? { 
+          ...old, 
+          state: CustomerState.IN_ATTENTION,
+          attention: { ...(old.attention || {}), startTime: new Date().toISOString() } 
+        } : old);
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
+        queryClient.refetchQueries({ queryKey: [QUERY_KEYS.CUSTOMERS, customer.id] });
       },
       onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' })
     });
@@ -120,7 +131,13 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
     finishAttention.mutate({ id: customer.id, time }, {
       onSuccess: () => {
         toast({ title: 'Atención Finalizada', description: 'Atención odontológica concluida con éxito.' });
+        queryClient.setQueryData([QUERY_KEYS.CUSTOMERS, customer.id], (old: any) => old ? { 
+          ...old, 
+          state: CustomerState.ATTENDED,
+          attention: { ...(old.attention || {}), endTime: new Date().toISOString() } 
+        } : old);
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
+        queryClient.refetchQueries({ queryKey: [QUERY_KEYS.CUSTOMERS, customer.id] });
       },
       onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' })
     });
@@ -131,7 +148,12 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
     registerDetails.mutate({ id: customer.id, data }, {
       onSuccess: () => {
         toast({ title: 'Ficha Guardada', description: 'Registros clínicos actualizados en la base de datos.' });
+        queryClient.setQueryData([QUERY_KEYS.CUSTOMERS, customer.id], (old: any) => old ? { 
+          ...old, 
+          attention: { ...(old.attention || {}), ...data } 
+        } : old);
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
+        queryClient.refetchQueries({ queryKey: [QUERY_KEYS.CUSTOMERS, customer.id] });
       },
       onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' })
     });
@@ -259,10 +281,10 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                     type="button"
                     disabled={isTurned || customer.state !== CustomerState.SCHEDULED}
                     onClick={() => handleStateChange(CustomerState.ATTENDANCE_CONFIRMED, 'Asistencia confirmada exitosamente')}
-                    className="bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700 dark:hover:bg-emerald-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
+                    className="group bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700 dark:hover:bg-emerald-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
                     title="Confirmar que el paciente se presentó en la clínica"
                   >
-                    <CheckSquare className="w-3.5 h-3.5" /> Confirmar Asistencia
+                    <CheckSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 group-hover:text-white transition-colors" /> Confirmar Asistencia
                   </Button>
 
                   {/* Iniciar Atención */}
@@ -270,10 +292,10 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                     type="button"
                     disabled={isTurned || customer.state !== CustomerState.ATTENDANCE_CONFIRMED}
                     onClick={handleStartAttention}
-                    className="bg-teal-50 hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-300 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-700 dark:hover:bg-teal-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
+                    className="group bg-teal-50 hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-300 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-700 dark:hover:bg-teal-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
                     title="Iniciar la consulta odontológica en consultorio"
                   >
-                    <Play className="w-3.5 h-3.5" /> Iniciar Atención
+                    <Play className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 group-hover:text-white transition-colors" /> Iniciar Atención
                   </Button>
 
                   {/* Finalizar Atención */}
@@ -281,10 +303,10 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                     type="button"
                     disabled={isTurned || customer.state !== CustomerState.IN_ATTENTION}
                     onClick={handleFinishAttention}
-                    className="bg-indigo-50 hover:bg-indigo-600 text-indigo-800 hover:text-white border border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-700 dark:hover:bg-indigo-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
+                    className="group bg-indigo-50 hover:bg-indigo-600 text-indigo-800 hover:text-white border border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-700 dark:hover:bg-indigo-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
                     title="Terminar la consulta odontológica"
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Finalizar Atención
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 group-hover:text-white transition-colors" /> Finalizar Atención
                   </Button>
 
                   <div className="ml-auto flex items-center gap-2">
@@ -293,10 +315,10 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                       type="button"
                       disabled={isTurned || customer.state === CustomerState.ATTENDED || customer.state === CustomerState.IN_ATTENTION}
                       onClick={() => handleStateChange(CustomerState.NO_SHOW, 'Paciente marcado como No Asistió')}
-                      className="bg-rose-50/80 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-700 dark:hover:bg-rose-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
+                      className="group bg-rose-50/80 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-700 dark:hover:bg-rose-600 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
                       title="Registrar inasistencia del paciente"
                     >
-                      <UserX className="w-3.5 h-3.5 text-rose-500 hover:text-white" /> No Asistió
+                      <UserX className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400 group-hover:text-white transition-colors" /> No Asistió
                     </Button>
 
                     {/* Cancelar */}
@@ -304,10 +326,10 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                       type="button"
                       disabled={isTurned || customer.state === CustomerState.ATTENDED || customer.state === CustomerState.IN_ATTENTION}
                       onClick={() => handleStateChange(CustomerState.CANCELED, 'Cita odontológica cancelada')}
-                      className="bg-slate-100 hover:bg-slate-700 text-slate-700 hover:text-white border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
+                      className="group bg-slate-100 hover:bg-slate-700 text-slate-700 hover:text-white border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:text-white font-semibold rounded-xl text-xs h-9 px-3 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
                       title="Cancelar cita odontológica"
                     >
-                      <XCircle className="w-3.5 h-3.5 text-slate-500 hover:text-white" /> Cancelar
+                      <XCircle className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 group-hover:text-white transition-colors" /> Cancelar
                     </Button>
                   </div>
                 </div>
@@ -325,9 +347,17 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                           <Stethoscope className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                           Ficha y Evolución Odontológica
                         </CardTitle>
-                        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                          {canEditForm ? '✏️ Modo Edición Habilitado' : '🔒 Ficha en Solo Lectura'}
-                        </span>
+                        {canEditForm ? (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 px-2.5 py-1 rounded-lg border border-teal-200/80 dark:border-teal-800/80">
+                            <FileEdit className="w-3.5 h-3.5" />
+                            Modo Edición Habilitado
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <Lock className="w-3.5 h-3.5" />
+                            Ficha en Solo Lectura
+                          </span>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="pt-4">
@@ -390,9 +420,16 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                         <p className="font-semibold text-teal-700 dark:text-teal-300 mt-0.5">
                           {customer.lead?.requestedServiceId || 'Consulta Odontológica'}
                         </p>
-                        <p className="text-slate-600 dark:text-slate-400 mt-0.5">
-                          {customer.reservation?.professionalId || 'Dr. Especialista'}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-1 text-slate-700 dark:text-slate-300 font-medium">
+                          <UserCheck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                          <span>
+                            {customer.reservation?.professionalId ? (
+                              customer.reservation.professionalId.toLowerCase().startsWith('esp.') || customer.reservation.professionalId.toLowerCase().startsWith('dr.')
+                                ? `Esp. ${customer.reservation.professionalId.replace(/^(dr\.|esp\.)\s*/i, '')}`
+                                : `Esp. ${customer.reservation.professionalId}`
+                            ) : 'Esp. Especialista de Turno'}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Sede y Horario */}
