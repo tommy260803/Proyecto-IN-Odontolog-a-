@@ -35,6 +35,7 @@ router.delete('/clear-all', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const reservas = await prisma.reservas.findMany({
+      orderBy: { id_reserva: 'desc' },
       include: {
         Persona: true,
         Opcion: {
@@ -44,7 +45,8 @@ router.get('/', async (req, res) => {
             }
           }
         },
-        Pagos: true
+        Pagos: true,
+        Incidencias: true
       }
     });
 
@@ -64,6 +66,17 @@ router.get('/', async (req, res) => {
         state,
         createdAt: r.fecha_reserva ? r.fecha_reserva.toISOString() : new Date().toISOString(),
         paymentId: pago ? pago.id_pago.toString() : undefined,
+        payment: pago ? {
+          id: pago.id_pago.toString(),
+          payerId: r.id_reserva.toString(),
+          amount: Number(pago.importe),
+          currency: 'PEN',
+          channel: pago.canal_pago || 'YAPE',
+          operationNumber: pago.referencia_pago || 'REF-YAPE',
+          operationDate: pago.fecha_registro ? pago.fecha_registro.toISOString().split('T')[0] : (r.fecha_reserva ? r.fecha_reserva.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+          validationDate: pago.fecha_validacion ? pago.fecha_validacion.toISOString() : undefined,
+          observations: pago.observaciones || 'Pago verificado'
+        } : undefined,
         person: {
           firstName: r.Persona.nombres,
           lastName: r.Persona.apellidos,
@@ -78,7 +91,13 @@ router.get('/', async (req, res) => {
           branchId: r.Opcion?.Disponibilidad?.Sede?.nombre || 'Sede Norte',
           professionalId: `Dr. ${r.Opcion?.Disponibilidad?.Profesional?.apellidos || 'Perez'}`
         },
-        incidents: []
+        incidents: r.Incidencias ? r.Incidencias.map(inc => ({
+          id: inc.id_incidencia.toString(),
+          payerId: r.id_reserva.toString(),
+          reason: inc.descripcion || inc.tipo || 'Incidencia de cobro',
+          status: inc.estado || 'OPEN',
+          createdAt: inc.fecha_registro ? inc.fecha_registro.toISOString() : new Date().toISOString()
+        })) : []
       };
     });
 

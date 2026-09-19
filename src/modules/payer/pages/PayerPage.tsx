@@ -29,8 +29,6 @@ export default function PayerPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: payers, isLoading, isError } = usePayers();
-  const journeys: any[] = [];
-  const payments: any[] = [];
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -101,13 +99,14 @@ export default function PayerPage() {
   };
 
   const indicators = useMemo(() => {
+    const paymentsList = filteredPayers.flatMap(p => p.payment ? [p.payment] : []);
     return [
       calculateP1(filteredPayers),
-      calculateP2(filteredPayers, payments),
+      calculateP2(filteredPayers, paymentsList),
       calculateP3(filteredPayers),
-      calculateP4(filteredPayers, journeys)
+      calculateP4(filteredPayers)
     ];
-  }, [filteredPayers, payments, journeys]);
+  }, [filteredPayers]);
 
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState />;
