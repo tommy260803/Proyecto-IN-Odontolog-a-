@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
 export const dentalAttentionSchema = z.object({
-  reasonForConsultation: z.string().min(3, 'El motivo de consulta debe tener al menos 3 caracteres').optional().or(z.literal('')),
+  reasonForConsultation: z.string().optional(),
   relevantBackground: z.string().optional(),
   allergies: z.string().optional(),
-  evaluation: z.string().min(3, 'La evaluación debe tener al menos 3 caracteres').optional().or(z.literal('')),
-  procedure: z.string().min(3, 'El procedimiento debe tener al menos 3 caracteres').optional().or(z.literal('')),
+  evaluation: z.string().optional(),
+  procedure: z.string().optional(),
   instructions: z.string().optional(),
   observations: z.string().optional(),
 });

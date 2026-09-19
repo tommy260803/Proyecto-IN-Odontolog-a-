@@ -191,18 +191,46 @@ router.put('/:id/attention-details', async (req, res) => {
     const person = await findCustomerPerson(Number(req.params.id));
     if (!person) return res.status(404).json({ error: 'Customer no encontrado' });
     if (person.Etapa.nombre !== 'CUSTOMER') return res.status(409).json({ error: 'La atención de un paciente TURNED es de solo lectura' });
-    const attention = person.Atenciones[0];
-    if (!attention) return res.status(404).json({ error: 'No existe una atención asociada' });
+    let attention = person.Atenciones[0];
     const data = req.body || {};
-    await prisma.atenciones.update({
-      where: { id_atencion: attention.id_atencion },
-      data: {
-        motivo_consulta: data.reasonForConsultation || null, antecedentes: data.relevantBackground || null,
-        alergias: data.allergies || null, evaluacion: data.evaluation || null,
-        procedimiento: data.procedure || null, observaciones: data.observations || null,
-        indicaciones_finales: data.instructions || null,
-      },
-    });
+    
+    if (!attention) {
+      const reservation = person.Reservas[0];
+      const defaultProf = await prisma.profesionales.findFirst();
+      const defaultSede = await prisma.sedes.findFirst();
+      attention = await prisma.atenciones.create({
+        data: {
+          id_persona: person.id_persona,
+          id_reserva: reservation?.id_reserva,
+          id_servicio: reservation?.Solicitud?.id_servicio || 1,
+          id_profesional: reservation?.Opcion?.Disponibilidad?.id_profesional || defaultProf?.id_profesional || 1,
+          id_sede: reservation?.Opcion?.Disponibilidad?.id_sede || defaultSede?.id_sede || 1,
+          fecha_atencion: reservation?.Opcion?.Disponibilidad?.fecha || new Date(),
+          estado_servicio: 'En curso',
+          asistencia: 'Confirmada',
+          motivo_consulta: data.reasonForConsultation || null,
+          antecedentes: data.relevantBackground || null,
+          alergias: data.allergies || null,
+          evaluacion: data.evaluation || null,
+          procedimiento: data.procedure || null,
+          observaciones: data.observations || null,
+          indicaciones_finales: data.instructions || null,
+        }
+      });
+    } else {
+      await prisma.atenciones.update({
+        where: { id_atencion: attention.id_atencion },
+        data: {
+          motivo_consulta: data.reasonForConsultation || null,
+          antecedentes: data.relevantBackground || null,
+          alergias: data.allergies || null,
+          evaluacion: data.evaluation || null,
+          procedimiento: data.procedure || null,
+          observaciones: data.observations || null,
+          indicaciones_finales: data.instructions || null,
+        },
+      });
+    }
     res.json({ message: 'Detalles guardados' });
   } catch (error) {
     console.error('Error saving attention:', error);

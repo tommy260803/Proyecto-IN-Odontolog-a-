@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { DentalAttentionFormValues } from '../schemas/customerSchema';
@@ -7,6 +7,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/shared/components/ui/form';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Input } from '@/shared/components/ui/input';
+import { useToast } from '@/shared/hooks/use-toast';
 import { 
   FileText, 
   Activity, 
@@ -18,6 +19,10 @@ import {
   Sparkles
 } from 'lucide-react';
 
+export interface DentalAttentionFormRef {
+  submit: () => void;
+}
+
 interface DentalAttentionFormProps {
   initialValues?: Partial<DentalAttentionFormValues>;
   onSubmit: (data: DentalAttentionFormValues) => void;
@@ -27,7 +32,11 @@ interface DentalAttentionFormProps {
   hideSubmitButton?: boolean;
 }
 
-export function DentalAttentionForm({ initialValues, onSubmit, isLoading, disabled, formId, hideSubmitButton }: DentalAttentionFormProps) {
+export const DentalAttentionForm = forwardRef<DentalAttentionFormRef, DentalAttentionFormProps>(function DentalAttentionForm(
+  { initialValues, onSubmit, isLoading, disabled, formId, hideSubmitButton },
+  ref
+) {
+  const { toast } = useToast();
   const form = useForm<DentalAttentionFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(dentalAttentionSchema) as any,
@@ -42,6 +51,25 @@ export function DentalAttentionForm({ initialValues, onSubmit, isLoading, disabl
       observations: initialValues?.observations || '',
     },
   });
+
+  useImperativeHandle(ref, () => ({
+    submit: () => {
+      form.handleSubmit(
+        (data) => {
+          onSubmit(data);
+        },
+        (errors) => {
+          console.warn('Dental form errors:', errors);
+          const firstErr = Object.values(errors)[0]?.message as string;
+          toast({
+            title: 'Verifique los datos de la ficha',
+            description: firstErr || 'Revise que los campos estén ingresados correctamente.',
+            variant: 'destructive',
+          });
+        }
+      )();
+    },
+  }));
 
   useEffect(() => {
     if (initialValues) {
@@ -271,4 +299,4 @@ export function DentalAttentionForm({ initialValues, onSubmit, isLoading, disabl
       </form>
     </Form>
   );
-}
+});

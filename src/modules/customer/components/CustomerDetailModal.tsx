@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,7 @@ import {
   useRegisterCustomerIncident,
   useConvertCustomerToTurned
 } from '../hooks/useCustomerQueries';
-import { DentalAttentionForm } from './DentalAttentionForm';
+import { DentalAttentionForm, type DentalAttentionFormRef } from './DentalAttentionForm';
 import type { DentalAttentionFormValues } from '../schemas/customerSchema';
 import { 
   Play, 
@@ -91,6 +91,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
   const [incidentReason, setIncidentReason] = useState('');
   const [incidentError, setIncidentError] = useState('');
   const [isIncidentOpen, setIsIncidentOpen] = useState(false);
+  const dentalFormRef = useRef<DentalAttentionFormRef>(null);
 
   if (!isOpen || !customerId) return null;
 
@@ -362,6 +363,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                     </CardHeader>
                     <CardContent className="pt-4">
                       <DentalAttentionForm 
+                        ref={dentalFormRef}
                         formId="customer-dental-form"
                         initialValues={customer.attention} 
                         onSubmit={handleSaveAttentionDetails}
@@ -419,6 +421,9 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                         </span>
                         <p className="font-semibold text-teal-700 dark:text-teal-300 mt-0.5">
                           {customer.lead?.requestedServiceId || 'Consulta Odontológica'}
+                        </p>
+                        <p className="text-slate-600 dark:text-slate-400 mt-0.5">
+                          {customer.reservation?.professionalId || 'Dr. Especialista'}
                         </p>
                         <div className="flex items-center gap-1.5 mt-1 text-slate-700 dark:text-slate-300 font-medium">
                           <UserCheck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
@@ -545,10 +550,10 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
             
             {canEditForm && (
               <Button
-                form="customer-dental-form"
-                type="submit"
+                type="button"
+                onClick={() => dentalFormRef.current?.submit()}
                 disabled={registerDetails.isPending}
-                className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold h-9 px-4.5 gap-1.5 shadow-sm transition-all"
+                className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold h-9 px-4.5 gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50"
               >
                 <Save className="w-3.5 h-3.5" />
                 {registerDetails.isPending ? 'Guardando...' : 'Guardar Ficha Clínica'}
