@@ -26,7 +26,27 @@ import {
 import { PaymentForm } from './PaymentForm';
 import type { PaymentFormValues } from '../schemas/payerSchema';
 import { YapePaymentButton } from './YapePaymentButton';
-import { AlertCircle, FileText, Bot, ArrowRight, XCircle, CreditCard, CheckCircle2, RefreshCw, MessageSquare, Mail, Eye, Send } from 'lucide-react';
+import { 
+  AlertCircle, 
+  FileText, 
+  Bot, 
+  ArrowRight, 
+  XCircle, 
+  CreditCard, 
+  CheckCircle2, 
+  RefreshCw, 
+  MessageSquare, 
+  Mail, 
+  Eye, 
+  Send,
+  Zap,
+  Sparkles,
+  Copy,
+  Check,
+  ShieldAlert,
+  Flame,
+  Clock
+} from 'lucide-react';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -69,6 +89,8 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
   const [aiCalled, setAiCalled] = useState(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [showCopyPreview, setShowCopyPreview] = useState(false);
+  const [selectedStrategy, setSelectedStrategy] = useState<'FRIENDLY' | 'URGENCY' | 'RESCUE_50'>('FRIENDLY');
+  const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
 
   const handleRegisterPayment = (data: PaymentFormValues) => {
     if (!payer) return;
@@ -189,17 +211,35 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
     }
   }, [isOpen, payer?.id]);
 
-  // Abrir WhatsApp con el mensaje generado por la IA
+  // Copiar texto al portapapeles con feedback
+  const handleCopy = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedLabel(label);
+    toast({ title: '¡Copiado!', description: `Texto de ${label} copiado al portapapeles.` });
+    setTimeout(() => setCopiedLabel(null), 2000);
+  };
+
+  // Abrir WhatsApp con el mensaje de la estrategia activa
   const handleSendWhatsApp = (p: PayerWithDetails) => {
     const rawPhone = (p.person.phone || '').replace(/\D/g, '');
     const cleanPhone = rawPhone.length === 9 ? `51${rawPhone}` : rawPhone;
-    const defaultMsg = `Hola ${p.person.firstName}, te saludamos de NexoSalud. Te recordamos que tienes una cita pendiente por confirmar con un abono de S/ ${p.amountToPay.toFixed(2)}.`;
-    const message = aiResult?.whatsappMessage || defaultMsg;
+    
+    let message = '';
+    if (aiResult?.strategies) {
+      if (selectedStrategy === 'FRIENDLY') message = aiResult.strategies.friendly.whatsappMessage;
+      else if (selectedStrategy === 'URGENCY') message = aiResult.strategies.urgency.whatsappMessage;
+      else if (selectedStrategy === 'RESCUE_50') message = aiResult.strategies.rescue.whatsappMessage;
+    }
+    
+    if (!message) {
+      message = aiResult?.whatsappMessage || `Hola ${p.person.firstName}, te saludamos de NexoSalud. Te recordamos que tienes una cita pendiente por confirmar con un abono de S/ ${p.amountToPay.toFixed(2)}.`;
+    }
+
     const url = cleanPhone 
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
       : `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
-    toast({ title: 'WhatsApp Abierto', description: 'Redirigiendo a WhatsApp con el mensaje de cobranza.' });
+    toast({ title: 'WhatsApp Abierto', description: 'Redirigiendo a WhatsApp con la estrategia seleccionada.' });
   };
 
   // Abrir modal de Proforma PDF con opción directa de envío al correo
@@ -224,21 +264,27 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
 
   const renderAgentPanel = (p: PayerWithDetails) => {
     const alerts = getStaticAlerts(p);
+    const activeStrategy = aiResult?.strategies
+      ? (selectedStrategy === 'FRIENDLY' ? aiResult.strategies.friendly : selectedStrategy === 'URGENCY' ? aiResult.strategies.urgency : aiResult.strategies.rescue)
+      : null;
+
     return (
-      <div className="bg-gradient-to-br from-teal-50/80 via-white to-teal-50/40 dark:from-teal-950/40 dark:via-slate-900 dark:to-teal-950/20 border border-teal-200/90 dark:border-teal-800/80 rounded-2xl p-4 sm:p-5 flex flex-col gap-3 shadow-sm">
+      <div className="bg-gradient-to-br from-teal-50/90 via-white to-slate-50 dark:from-teal-950/40 dark:via-slate-900 dark:to-slate-950 border border-teal-200/90 dark:border-teal-800/80 rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-sm">
         {/* Cabecera del Agente */}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-white shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-white shadow-md ring-4 ring-teal-50 dark:ring-teal-950/50">
               <Bot className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                Agente Inteligente de Cobranzas
-                <StatusBadge status="Groq AI Llama" variant="primary" />
-              </h4>
+              <div className="flex items-center gap-2">
+                <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100">
+                  Agente Inteligente de Cobranzas & Recuperación
+                </h4>
+                <StatusBadge status="Groq AI · BI Engine" variant="primary" />
+              </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Análisis predictivo de recaudación y generación de alertas multicanal
+                Scoring predictivo de impago, segmentación de riesgo y generación de estrategias multicanal
               </p>
             </div>
           </div>
@@ -247,31 +293,82 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
             type="button"
             onClick={() => handleAskAI(p)}
             disabled={aiLoading}
-            className="flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-300 bg-teal-100/60 dark:bg-teal-950/80 hover:bg-teal-200/80 dark:hover:bg-teal-900 px-3 py-1.5 rounded-xl transition-all disabled:opacity-50 shadow-sm"
-            title="Analizar caso con IA"
+            className="flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-300 bg-teal-100/70 dark:bg-teal-950/80 hover:bg-teal-200/80 dark:hover:bg-teal-900 px-3.5 py-1.5 rounded-xl transition-all disabled:opacity-50 shadow-sm border border-teal-300/60 dark:border-teal-800/80"
+            title="Recalcular scoring y regenerar estrategias con IA"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${aiLoading ? 'animate-spin' : ''}`} />
-            {aiCalled ? 'Regenerar Análisis' : 'Consultar IA'}
+            {aiCalled ? 'Recalcular Análisis' : 'Consultar IA'}
           </button>
         </div>
 
-        {/* Recomendación Interna */}
-        <div className="bg-white/80 dark:bg-slate-900/80 border border-teal-100 dark:border-teal-900/60 rounded-xl p-3 text-xs leading-relaxed min-h-[2.5rem]">
+        {/* 1. Medidor / Scoring de Riesgo Predictivo (Business Intelligence) */}
+        {aiResult?.risk && (
+          <div className={`p-3.5 sm:p-4 rounded-xl border transition-all ${
+            aiResult.risk.level === 'ALTO'
+              ? 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-200/90 dark:border-rose-800/80 text-rose-950 dark:text-rose-100'
+              : aiResult.risk.level === 'MODERADO'
+              ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200/90 dark:border-amber-800/80 text-amber-950 dark:text-amber-100'
+              : 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200/90 dark:border-emerald-800/80 text-emerald-950 dark:text-emerald-100'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3.5">
+                <div className={`flex flex-col items-center justify-center h-12 w-14 shrink-0 rounded-xl font-mono font-black text-base border shadow-sm ${
+                  aiResult.risk.level === 'ALTO'
+                    ? 'bg-rose-100 dark:bg-rose-900/80 text-rose-700 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+                    : aiResult.risk.level === 'MODERADO'
+                    ? 'bg-amber-100 dark:bg-amber-900/80 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                    : 'bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                }`}>
+                  <span>{aiResult.risk.score}%</span>
+                  <span className="text-[9px] font-sans font-bold tracking-tight uppercase">Riesgo</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider">
+                      Nivel de Riesgo de Impago: {aiResult.risk.level}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-white/80 dark:bg-slate-900/80 border border-current shadow-2xs">
+                      {aiResult.risk.level === 'ALTO' ? 'Prioridad Alta' : aiResult.risk.level === 'MODERADO' ? 'Prioridad Media' : 'Flujo Normal'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] opacity-90 mt-0.5 font-medium">
+                    {aiResult.risk.explanation}
+                  </p>
+                </div>
+              </div>
+
+              {/* Factores analizados */}
+              {aiResult.risk.factors.length > 0 && (
+                <div className="flex flex-wrap gap-1 sm:max-w-xs">
+                  {aiResult.risk.factors.map((f, i) => (
+                    <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300 font-medium">
+                      {f}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Recomendación Interna del Operador */}
+        <div className="bg-white/90 dark:bg-slate-900/90 border border-teal-100 dark:border-teal-900/60 rounded-xl p-3 text-xs leading-relaxed">
           {aiLoading && (
             <div className="flex items-center gap-2 text-teal-700 dark:text-teal-400 font-medium animate-pulse py-1">
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              Groq AI analizando historial del paciente y redactando comunicaciones...
+              Groq AI analizando variables del paciente y formulando 3 estrategias de contacto...
             </div>
           )}
           {!aiLoading && aiError && (
-            <p className="text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+            <p className="text-rose-600 dark:text-rose-400 flex items-center gap-1.5 font-medium">
               <AlertCircle className="w-4 h-4 shrink-0" /> {aiError}
             </p>
           )}
           {!aiLoading && !aiError && aiResult?.internalRecommendation && (
             <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400 block">
-                Recomendación para el Operador:
+              <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-teal-600" />
+                Diagnóstico & Recomendación Operativa:
               </span>
               <p className="text-slate-800 dark:text-slate-200 font-medium">
                 {aiResult.internalRecommendation}
@@ -280,12 +377,115 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
           )}
           {!aiLoading && !aiError && !aiResult && (
             <p className="text-slate-400 dark:text-slate-500 italic">
-              Presiona "Consultar IA" para generar la recomendación estratégica y las comunicaciones automáticas de WhatsApp, Correo y Proforma PDF.
+              Haz clic en "Consultar IA" para activar el scoring de riesgo y las estrategias dinámicas de cobranza.
             </p>
           )}
         </div>
 
-        {/* Barra de Acciones Multicanal según Estado */}
+        {/* 2. Selector Interactivo de las 3 Estrategias Persuasivas (si no está validado) */}
+        {p.state !== PayerState.VALIDATED && aiResult?.strategies && (
+          <div className="space-y-2.5 pt-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-amber-500" />
+                Estrategias de Cobranza con IA (Selecciona el Tono Óptimo):
+              </span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                Alterna para previsualizar el mensaje
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {/* Estrategia 1: Friendly */}
+              <button
+                type="button"
+                onClick={() => setSelectedStrategy('FRIENDLY')}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  selectedStrategy === 'FRIENDLY'
+                    ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-500 ring-2 ring-teal-500/25 shadow-sm'
+                    : 'bg-white dark:bg-slate-900/70 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">1. Preventivo</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-teal-100 dark:bg-teal-900/80 text-teal-800 dark:text-teal-300">
+                    Cordial
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  Confirmación anticipada de rutina
+                </p>
+              </button>
+
+              {/* Estrategia 2: Urgency */}
+              <button
+                type="button"
+                onClick={() => setSelectedStrategy('URGENCY')}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  selectedStrategy === 'URGENCY'
+                    ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-500 ring-2 ring-amber-500/25 shadow-sm'
+                    : 'bg-white dark:bg-slate-900/70 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">2. Urgencia Clínica</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-amber-100 dark:bg-amber-900/80 text-amber-800 dark:text-amber-300">
+                    Sillón Temporal
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  Liberación inminente de horario
+                </p>
+              </button>
+
+              {/* Estrategia 3: Rescue 50% */}
+              <button
+                type="button"
+                onClick={() => setSelectedStrategy('RESCUE_50')}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  selectedStrategy === 'RESCUE_50'
+                    ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-500 ring-2 ring-rose-500/25 shadow-sm'
+                    : 'bg-white dark:bg-slate-900/70 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">3. Rescate (50%)</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-rose-100 dark:bg-rose-900/80 text-rose-800 dark:text-rose-300">
+                    Plan de Rescate
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  Seña fraccionada para no perder cita
+                </p>
+              </button>
+            </div>
+
+            {/* Vista previa en vivo del texto generado */}
+            {activeStrategy && (
+              <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl space-y-2 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
+                    Mensaje de WhatsApp ({activeStrategy.badge}):
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(activeStrategy.whatsappMessage, 'WhatsApp')}
+                    className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-teal-50 dark:hover:bg-teal-950/50"
+                  >
+                    {copiedLabel === 'WhatsApp' ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                    {copiedLabel === 'WhatsApp' ? '¡Copiado!' : 'Copiar texto'}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-line bg-slate-50/70 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200/70 dark:border-slate-700/70 font-sans leading-relaxed">
+                  {activeStrategy.whatsappMessage}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 3. Barra de Acciones con 1 Clic */}
         <div className="pt-1 flex flex-wrap items-center gap-2">
           {p.state === PayerState.VALIDATED ? (
             <div className="flex flex-wrap items-center gap-2 w-full">
@@ -304,7 +504,7 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                 type="button"
                 onClick={() => setIsPdfModalOpen(true)}
                 size="sm"
-                className="bg-white hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-300 dark:bg-slate-800 dark:text-teal-300 dark:border-teal-700 dark:hover:bg-teal-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
+                className="bg-white hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-300 dark:bg-slate-800 dark:text-teal-300 dark:border-teal-700 dark:hover:bg-teal-600 dark:hover:text-white rounded-xl text-xs h-8.5 px-3 gap-1.5 shadow-sm font-semibold transition-all"
                 title="Ver constancia oficial de pago en PDF"
               >
                 <FileText className="w-3.5 h-3.5" />
@@ -316,7 +516,7 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                 type="button"
                 onClick={() => handleSendEmail(p)}
                 size="sm"
-                className="bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
+                className="bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-600 dark:hover:text-white rounded-xl text-xs h-8.5 px-3 gap-1.5 shadow-sm font-semibold transition-all"
                 title="Reenviar constancia y confirmación de cita por correo al paciente"
               >
                 <Mail className="w-3.5 h-3.5" />
@@ -325,16 +525,19 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
             </div>
           ) : (
             <>
-              {/* Botón WhatsApp de Cobro */}
+              {/* Botón WhatsApp con Estrategia Seleccionada */}
               <Button
                 type="button"
                 onClick={() => handleSendWhatsApp(p)}
                 size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
-                title="Enviar mensaje persuasivo por WhatsApp"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-9 px-4 gap-2 shadow-sm font-semibold transition-all"
+                title="Enviar mensaje persuasivo seleccionado por WhatsApp"
               >
-                <MessageSquare className="w-3.5 h-3.5" />
-                Contactar por WhatsApp
+                <MessageSquare className="w-4 h-4" />
+                <span>Contactar por WhatsApp</span>
+                <span className="text-[10px] bg-emerald-800/60 px-1.5 py-0.5 rounded font-normal">
+                  {selectedStrategy === 'FRIENDLY' ? 'Preventivo' : selectedStrategy === 'URGENCY' ? 'Urgencia' : 'Rescate 50%'}
+                </span>
               </Button>
 
               {/* Botón Correo de Cobro */}
@@ -342,11 +545,11 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                 type="button"
                 onClick={() => handleSendEmail(p)}
                 size="sm"
-                className="bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
+                className="bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-600 dark:hover:text-white rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm font-semibold transition-all"
                 title="Enviar proforma y correo formal de cobranza"
               >
                 <Mail className="w-3.5 h-3.5" />
-                Enviar Correo
+                Enviar Proforma Correo
               </Button>
 
               {/* Botón Ver PDF Proforma */}
@@ -354,51 +557,15 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                 type="button"
                 onClick={() => setIsPdfModalOpen(true)}
                 size="sm"
-                className="bg-teal-50 hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800 dark:hover:bg-teal-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
+                className="bg-teal-50 hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800 dark:hover:bg-teal-600 dark:hover:text-white rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm font-semibold transition-all"
                 title="Abrir visor oficial de proforma en PDF"
               >
                 <FileText className="w-3.5 h-3.5" />
                 Ver PDF
               </Button>
-
-              {/* Ver mensaje redactado */}
-              {aiResult?.whatsappMessage && (
-                <button
-                  type="button"
-                  onClick={() => setShowCopyPreview(!showCopyPreview)}
-                  className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 underline ml-auto"
-                >
-                  {showCopyPreview ? 'Ocultar textos de IA' : 'Ver textos redactados por IA'}
-                </button>
-              )}
             </>
           )}
         </div>
-
-        {/* Desplegable con los textos generados */}
-        {showCopyPreview && aiResult && (
-          <div className="mt-1 p-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2.5 text-xs animate-in slide-in-from-top-2 duration-200">
-            <div>
-              <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 uppercase">
-                <MessageSquare className="w-3 h-3" /> Texto para WhatsApp:
-              </p>
-              <p className="text-slate-700 dark:text-slate-300 mt-0.5 bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-800">
-                {aiResult.whatsappMessage}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-1 uppercase">
-                <Mail className="w-3 h-3" /> Asunto y Cuerpo del Correo:
-              </p>
-              <p className="text-slate-600 dark:text-slate-400 font-semibold mt-0.5">
-                {aiResult.emailSubject}
-              </p>
-              <p className="text-slate-700 dark:text-slate-300 mt-1 whitespace-pre-line bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-[11px]">
-                {aiResult.emailBody}
-              </p>
-            </div>
-          </div>
-        )}
 
         {/* Badges de alerta de estado */}
         {alerts.length > 0 && (

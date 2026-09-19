@@ -25,8 +25,34 @@ export interface PayerContext {
   lastIncidentReason?: string;
 }
 
+export interface AiCollectionStrategy {
+  id: 'FRIENDLY' | 'URGENCY' | 'RESCUE_50';
+  title: string;
+  badge: string;
+  description: string;
+  whatsappMessage: string;
+  emailSubject: string;
+  emailBody: string;
+}
+
+export interface RiskAnalysis {
+  score: number; // 0 to 100
+  level: 'BAJO' | 'MODERADO' | 'ALTO';
+  color: 'emerald' | 'amber' | 'rose';
+  explanation: string;
+  factors: string[];
+}
+
 export interface AiCollectionResult {
+  risk: RiskAnalysis;
   internalRecommendation: string;
+  selectedStrategyId: 'FRIENDLY' | 'URGENCY' | 'RESCUE_50';
+  strategies: {
+    friendly: AiCollectionStrategy;
+    urgency: AiCollectionStrategy;
+    rescue: AiCollectionStrategy;
+  };
+  // Retrocompatibilidad
   whatsappMessage: string;
   emailSubject: string;
   emailBody: string;
@@ -40,99 +66,226 @@ const STATE_LABELS: Record<string, string> = {
   REVERTED: 'Pago revertido manualmente',
 };
 
-function buildSystemPrompt(): string {
-  return `Eres el Agente Inteligente de Cobranzas y Comunicaciones de NexoSalud (Clínica Odontológica).
-Tu objetivo es doble:
-1. Asistir al operador interno con una recomendación estratégica según el estado del paciente.
-2. Redactar los mensajes de notificación al paciente (WhatsApp y Correo).
+/**
+ * Motor Heurístico de Scoring de Riesgo de Impago (Business Intelligence)
+ */
+export function calculatePayerRisk(ctx: PayerContext): RiskAnalysis {
+  let score = 20; // Base risk
+  const factors: string[] = [];
 
-Reglas de Negocio según el Estado:
-- Si el estado es PENDING, REJECTED o REVERTED: Redacta recordatorios persuasivos y claros de cobro para regularizar el abono pendiente antes de la cita (indicando Yape y Tarjeta).
-- Si el estado es IN_REVIEW: Sugiere al operador verificar el comprobante adjunto y conciliar con el banco.
-- Si el estado es VALIDATED: ¡El pago ya fue aprobado! Tu recomendación interna debe ser indicar que el paciente está listo para ser pasado a CUSTOMER. Los mensajes de WhatsApp y Correo deben ser de CONFIRMACIÓN DE CITA Y PAGO RECIBIDO (agradecimiento y confirmación de turno), NUNCA de cobro de deuda.
-
-Debes responder ÚNICAMENTE con un objeto JSON válido con la siguiente estructura (sin bloques markdown adicionales ni texto fuera del JSON):
-{
-  "internalRecommendation": "Análisis y recomendación concisa para el operador interno (máximo 2 oraciones).",
-  "whatsappMessage": "Mensaje personalizado para WhatsApp (de cobro persuasivo si está pendiente/rechazado, o de confirmación alegre si está validado).",
-  "emailSubject": "Asunto claro y formal para el correo electrónico.",
-  "emailBody": "Cuerpo del correo formal y detallado con la información correspondiente al estado del paciente."
-}`;
-}
-
-function buildUserPrompt(ctx: PayerContext): string {
-  const stateLabel = STATE_LABELS[ctx.state] || ctx.state;
-  const isValidated = ctx.state === 'VALIDATED';
-  const incidents = ctx.incidentsCount > 0
-    ? `Incidencias previas: ${ctx.incidentsCount} (${ctx.lastIncidentReason || 'Rechazo previo'}).`
-    : 'Sin incidencias.';
-
-  return `Genera las comunicaciones para el siguiente paciente:
-- Paciente: ${ctx.patientName}
-- Teléfono: ${ctx.phone || 'No registrado'}
-- Correo: ${ctx.email || 'No registrado'}
-- Estado actual del Pago: ${stateLabel} ${isValidated ? '(YA PAGADO Y APROBADO)' : ''}
-- Monto: S/ ${ctx.amountToPay.toFixed(2)}
-- Servicio / Tratamiento: ${ctx.serviceName || 'Consulta Odontológica'}
-- Cita: ${ctx.reservationDate || 'Por coordinar'} a las ${ctx.reservationTime || 'hora acordada'}
-- Sede: ${ctx.branch || 'Sede Principal'}
-- Especialista: Dr/a. ${ctx.professional || 'Especialista de Turno'}
-- ${incidents}
-
-${isValidated ? 'IMPORTANTE: El paciente YA PAGÓ. Genera un mensaje de CONFIRMACIÓN DE CITA y agradecimiento, NO le cobres.' : ''}
-
-Genera el JSON con: internalRecommendation, whatsappMessage, emailSubject, emailBody.`;
-}
-
-function parseAiResponse(raw: string, ctx: PayerContext): AiCollectionResult {
-  const isValidated = ctx.state === 'VALIDATED';
-
-  try {
-    const cleanJson = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(cleanJson);
-    if (parsed.internalRecommendation && parsed.whatsappMessage) {
-      return {
-        internalRecommendation: parsed.internalRecommendation,
-        whatsappMessage: parsed.whatsappMessage,
-        emailSubject: parsed.emailSubject || (isValidated ? `Confirmación de Pago y Cita Odontológica - NexoSalud` : `Recordatorio de Pago de Cita Odontológica - NexoSalud`),
-        emailBody: parsed.emailBody || parsed.whatsappMessage,
-      };
-    }
-  } catch (e) {
-    // Si falla el parseo estricto de JSON, extraer por fallback
-  }
-
-  if (isValidated) {
+  if (ctx.state === 'VALIDATED') {
     return {
-      internalRecommendation: `El pago de S/ ${ctx.amountToPay.toFixed(2)} ha sido validado y aprobado exitosamente. El paciente está listo para ser transferido a la etapa CUSTOMER para su atención médica.`,
-      whatsappMessage: `¡Hola ${ctx.patientName}! Te confirmamos que tu pago de S/ ${ctx.amountToPay.toFixed(2)} para tu cita del ${ctx.reservationDate || 'próximo turno'} (${ctx.serviceName || 'Atención Odontológica'}) ha sido validado con éxito. ¡Te esperamos en NexoSalud!`,
-      emailSubject: `Confirmación de Pago y Cita Odontológica - NexoSalud`,
-      emailBody: `Estimado(a) ${ctx.patientName},\n\nLe confirmamos que hemos recibido y validado exitosamente su pago de S/ ${ctx.amountToPay.toFixed(2)} correspondiente a su cita de ${ctx.serviceName || 'Tratamiento Odontológico'}.\n\nSu atención médica está 100% confirmada para el día ${ctx.reservationDate || 'programado'} en nuestra ${ctx.branch || 'Sede Principal'}.\n\n¡Muchas gracias por su confianza!\n\nAtentamente,\nClínica Odontológica NexoSalud`,
+      score: 0,
+      level: 'BAJO',
+      color: 'emerald',
+      explanation: 'El pago ya fue completado y conciliado exitosamente.',
+      factors: ['Pago 100% aprobado y validado'],
     };
   }
 
-  // Fallback estructurado para pagos pendientes
+  // Factor 1: Incidencias previas o rechazos
+  if (ctx.incidentsCount > 0) {
+    score += 35;
+    factors.push(`${ctx.incidentsCount} incidencia(s) previa(s) de pago rechazada(s)`);
+  }
+
+  // Factor 2: Estado del pago
+  if (ctx.state === 'REJECTED') {
+    score += 25;
+    factors.push('Comprobante rechazado pendiente de subsanar');
+  } else if (ctx.state === 'PENDING') {
+    score += 15;
+    factors.push('Sin registro de comprobante preliminar');
+  } else if (ctx.state === 'IN_REVIEW') {
+    score -= 10;
+    factors.push('Comprobante ya enviado por el paciente');
+  }
+
+  // Factor 3: Monto del tratamiento (tickets altos tienen mayor riesgo de desistimiento)
+  if (ctx.amountToPay >= 300) {
+    score += 20;
+    factors.push(`Ticket alto (S/ ${ctx.amountToPay.toFixed(2)}) con mayor elasticidad`);
+  } else if (ctx.amountToPay >= 150) {
+    score += 10;
+    factors.push(`Ticket intermedio (S/ ${ctx.amountToPay.toFixed(2)})`);
+  }
+
+  // Factor 4: Tiempo restante hasta la cita
+  if (ctx.reservationDate) {
+    try {
+      const apptDate = new Date(ctx.reservationDate);
+      const now = new Date();
+      const diffHours = (apptDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      if (diffHours <= 24 && diffHours > 0) {
+        score += 25;
+        factors.push('Cita programada en menos de 24 horas (urgencia crítica)');
+      } else if (diffHours <= 48 && diffHours > 0) {
+        score += 15;
+        factors.push('Cita programada en las próximas 48 horas');
+      }
+    } catch {
+      // Ignore date parse errors
+    }
+  }
+
+  // Normalizar score entre 5 y 98
+  score = Math.max(5, Math.min(98, score));
+
+  let level: 'BAJO' | 'MODERADO' | 'ALTO' = 'BAJO';
+  let color: 'emerald' | 'amber' | 'rose' = 'emerald';
+  let explanation = 'Baja probabilidad de inasistencia. Requiere confirmación de rutina.';
+
+  if (score >= 65) {
+    level = 'ALTO';
+    color = 'rose';
+    explanation = 'Alta probabilidad de inasistencia o fuga. Se recomienda activar estrategia de urgencia o seña fraccionada.';
+  } else if (score >= 35) {
+    level = 'MODERADO';
+    color = 'amber';
+    explanation = 'Riesgo moderado. Requiere recordatorio persuasivo antes de liberar el sillón odontológico.';
+  }
+
   return {
-    internalRecommendation: raw.length > 200 ? raw.substring(0, 200) + '...' : raw,
-    whatsappMessage: `Hola ${ctx.patientName}, te saludamos de la Clínica Odontológica NexoSalud. Te recordamos que tienes una cita programada para el ${ctx.reservationDate || 'próximo turno'} (${ctx.serviceName || 'Tratamiento Odontológico'}). Para confirmar tu atención, puedes abonar los S/ ${ctx.amountToPay.toFixed(2)} pendientes mediante Yape o Tarjeta. ¡Quedamos atentos!`,
-    emailSubject: `Recordatorio de Pago - Cita Odontológica NexoSalud`,
-    emailBody: `Estimado(a) ${ctx.patientName},\n\nLe saludamos cordialmente de la Clínica Odontológica NexoSalud.\n\nNos comunicamos para recordarle que mantiene un saldo pendiente de S/ ${ctx.amountToPay.toFixed(2)} correspondiente a su cita de ${ctx.serviceName || 'Tratamiento Odontológico'} programada para el día ${ctx.reservationDate || 'próximamente'} en nuestra ${ctx.branch || 'Sede'}.\n\nPuede realizar el pago mediante nuestra pasarela en línea con Yape o Tarjeta de Débito/Crédito.\n\nAtentamente,\nEquipo de Recaudación - NexoSalud`,
+    score,
+    level,
+    color,
+    explanation,
+    factors,
   };
 }
 
+/**
+ * Generador de Estrategias Multicanal Heurísticas
+ */
+export function generateHeuristicStrategies(ctx: PayerContext, risk: RiskAnalysis): AiCollectionResult['strategies'] {
+  const halfAmount = (ctx.amountToPay / 2).toFixed(2);
+  const fullAmount = ctx.amountToPay.toFixed(2);
+  const doctor = ctx.professional ? `Esp. ${ctx.professional.replace(/^(Dr\.|Dra\.|Dr\/a\.)\s*/i, '')}` : 'el especialista de turno';
+  const service = ctx.serviceName || 'Atención Odontológica';
+  const branch = ctx.branch || 'Sede Principal';
+  const dateStr = ctx.reservationDate || 'la fecha acordada';
+  const timeStr = ctx.reservationTime || 'la hora indicada';
+
+  // 1. Friendly (Preventivo)
+  const friendly: AiCollectionStrategy = {
+    id: 'FRIENDLY',
+    title: '1. Recordatorio Amigable (Preventivo)',
+    badge: 'Tono Cordial',
+    description: 'Ideal para pacientes en riesgo bajo/medio. Confirma detalles y ofrece medios de pago digitales.',
+    whatsappMessage: `¡Hola ${ctx.patientName}! 👋 Te saludamos de la Clínica Odontológica NexoSalud.\n\nTe recordamos que tienes una cita programada de *${service}* con el *${doctor}* para el *${dateStr}* a las *${timeStr}* en nuestra *${branch}*.\n\nPuedes asegurar tu turno realizando tu abono de *S/ ${fullAmount}* mediante Yape, Plin o Transferencia bancaria.\n\n¿Deseas que te enviemos nuestro código QR de Yape? ¡Quedamos atentos para recibirte! 🦷✨`,
+    emailSubject: `Recordatorio de Cita Odontológica y Pago - NexoSalud (${ctx.patientName})`,
+    emailBody: `Estimado(a) ${ctx.patientName},\n\nEsperamos que se encuentre muy bien. Le saludamos cordialmente de la Clínica Odontológica NexoSalud.\n\nLe recordamos los detalles de su próxima atención odontológica:\n• Tratamiento: ${service}\n• Especialista: ${doctor}\n• Fecha y Hora: ${dateStr} - ${timeStr}\n• Sede: ${branch}\n• Monto por regularizar: S/ ${fullAmount}\n\nPuede realizar el abono a través de nuestros canales autorizados (Yape, Plin o Tarjeta) para garantizar la disponibilidad del sillón clínico.\n\nAtentamente,\nEquipo de Recaudación y Atención - NexoSalud`,
+  };
+
+  // 2. Urgency (Urgencia Clínica)
+  const urgency: AiCollectionStrategy = {
+    id: 'URGENCY',
+    title: '2. Urgencia Clínica (Sillón Reservado)',
+    badge: 'Escasez de Cupo',
+    description: 'Enfatiza el bloqueo temporal del sillón clínico con el especialista antes de liberar el horario.',
+    whatsappMessage: `Hola ${ctx.patientName} ⚠️ Te informamos que el sillón odontológico del *${doctor}* para tu cita de *${service}* (${dateStr} - ${timeStr}) se encuentra *reservado temporalmente*.\n\nPara evitar que el sistema libere automáticamente el cupo a otro paciente en lista de espera, por favor confirma tu abono de *S/ ${fullAmount}* antes de las 5:00 PM.\n\nPuedes abonar al instante por Yape o Tarjeta aquí. ¡Muchas gracias por tu comprensión! ⏱️`,
+    emailSubject: `URGENTE: Confirmación Requerida para su Cita Odontológica - NexoSalud`,
+    emailBody: `Estimado(a) ${ctx.patientName},\n\nLe informamos que su turno para el tratamiento de ${service} con el ${doctor} programado para el día ${dateStr} a las ${timeStr} en nuestra ${branch} se encuentra actualmente en estado de RESERVA TEMPORAL.\n\nCon el objetivo de garantizar la preparación de los materiales y no perjudicar la agenda quirúrgica/clínica, requerimos la validación de su abono de S/ ${fullAmount}.\n\nEn caso de no registrar el abono con anticipación, el sillón odontológico será puesto a disposición de otros pacientes en espera.\n\nAtentamente,\nAdministración Clínica - NexoSalud`,
+  };
+
+  // 3. Rescue (Seña Fraccionada 50%)
+  const rescue: AiCollectionStrategy = {
+    id: 'RESCUE_50',
+    title: '3. Rescate con Facilidad (Seña 50%)',
+    badge: 'Plan de Rescate',
+    description: 'Reduce la fricción de pago ofreciendo congelar el cupo con solo el 50% de anticipo.',
+    whatsappMessage: `Hola ${ctx.patientName} 👋 Queremos asegurarnos de que no pierdas tu atención de *${service}* con el *${doctor}*.\n\nPara brindarte mayor facilidad, puedes *congelar tu cupo hoy abonando únicamente el 50% (S/ ${halfAmount})* por Yape o Plin, y cancelas la diferencia el mismo día en clínica.\n\n¿Te gustaría que te facilitemos los datos bancarios para reservar tu turno ahora mismo? 🌟`,
+    emailSubject: `Facilidad de Pago para su Cita de ${service} - NexoSalud`,
+    emailBody: `Estimado(a) ${ctx.patientName},\n\nEn NexoSalud nos comprometemos con su salud dental. Entendemos que pueden presentarse imprevistos, por lo que queremos ofrecerle una alternativa flexible para mantener su cita de ${service} con el ${doctor}.\n\nPuede congelar formalmente su horario abonando hoy únicamente un anticipo del 50% (S/ ${halfAmount}), pudiendo cancelar el saldo restante el mismo día de su consulta en recepción.\n\nPor favor contáctenos a la brevedad si desea acogerse a esta modalidad.\n\nAtentamente,\nCoordinación de Pagos - NexoSalud`,
+  };
+
+  return { friendly, urgency, rescue };
+}
+
+function buildSystemPrompt(): string {
+  return `Eres el Agente de Inteligencia de Negocios y Cobranzas de NexoSalud (Clínica Odontológica).
+Tu objetivo es analizar la situación del paciente en etapa PAYER y generar:
+1. Recomendación estratégica interna para el cajero/recepcionista.
+2. 3 estrategias persuasivas personalizadas de cobranza:
+   - FRIENDLY: Tono cordial y preventivo.
+   - URGENCY: Tono de urgencia clínica (sillón reservado temporalmente con el especialista).
+   - RESCUE_50: Tono con facilidad de seña al 50% para evitar la pérdida de la cita.
+
+Reglas:
+- Si el estado es VALIDATED, ¡el pago ya está aprobado! Felicita al paciente y confirma su cita con el Esp., NUNCA cobres.
+- Siempre usa "Esp." para referirse al odontólogo/especialista.
+
+Debes responder ÚNICAMENTE con un objeto JSON válido con la siguiente estructura:
+{
+  "internalRecommendation": "Análisis y recomendación concisa para el operador interno.",
+  "strategies": {
+    "friendly": {
+      "whatsappMessage": "Mensaje para WhatsApp",
+      "emailSubject": "Asunto de correo",
+      "emailBody": "Cuerpo de correo"
+    },
+    "urgency": {
+      "whatsappMessage": "Mensaje de urgencia para WhatsApp",
+      "emailSubject": "Asunto de urgencia",
+      "emailBody": "Cuerpo de urgencia"
+    },
+    "rescue": {
+      "whatsappMessage": "Mensaje de rescate con 50% para WhatsApp",
+      "emailSubject": "Asunto de rescate",
+      "emailBody": "Cuerpo de rescate"
+    }
+  }
+}`;
+}
+
+function buildUserPrompt(ctx: PayerContext, risk: RiskAnalysis): string {
+  const stateLabel = STATE_LABELS[ctx.state] || ctx.state;
+  const isValidated = ctx.state === 'VALIDATED';
+
+  return `Analiza y genera comunicaciones para el siguiente paciente:
+- Paciente: ${ctx.patientName}
+- Teléfono: ${ctx.phone || 'No registrado'}
+- Correo: ${ctx.email || 'No registrado'}
+- Estado: ${stateLabel} ${isValidated ? '(PAGO APROBADO)' : ''}
+- Monto Total: S/ ${ctx.amountToPay.toFixed(2)} (50% = S/ ${(ctx.amountToPay / 2).toFixed(2)})
+- Servicio: ${ctx.serviceName || 'Tratamiento Dental'}
+- Cita: ${ctx.reservationDate || 'Fecha próxima'} - ${ctx.reservationTime || 'Hora asignada'}
+- Sede: ${ctx.branch || 'Sede Principal'}
+- Especialista: Esp. ${ctx.professional?.replace(/^(Dr\.|Dra\.|Dr\/a\.)\s*/i, '') || 'de Turno'}
+- Score de Riesgo Calculado: ${risk.score}% (${risk.level})
+- Factores de Riesgo: ${risk.factors.join(', ') || 'Sin factores de riesgo'}
+
+Genera el JSON con: internalRecommendation y el objeto strategies con friendly, urgency y rescue.`;
+}
+
 export async function callGroqAssistant(ctx: PayerContext): Promise<AiCollectionResult> {
+  const risk = calculatePayerRisk(ctx);
+  const fallbackStrategies = generateHeuristicStrategies(ctx, risk);
   const apiKey = import.meta.env.VITE_GROQ_API_KEY;
 
+  const defaultRecommendation = ctx.state === 'VALIDATED'
+    ? `El pago de S/ ${ctx.amountToPay.toFixed(2)} fue validado exitosamente. Paciente listo para transferir a CUSTOMER.`
+    : `Paciente con ${risk.level.toLowerCase()} riesgo de fuga (${risk.score}%). Se sugiere activar la estrategia de ${risk.score >= 65 ? 'Rescate 50% o Urgencia' : 'Recordatorio Preventivo'}.`;
+
+  const fallbackResult: AiCollectionResult = {
+    risk,
+    internalRecommendation: defaultRecommendation,
+    selectedStrategyId: risk.score >= 65 ? 'RESCUE_50' : (risk.score >= 40 ? 'URGENCY' : 'FRIENDLY'),
+    strategies: fallbackStrategies,
+    whatsappMessage: fallbackStrategies.friendly.whatsappMessage,
+    emailSubject: fallbackStrategies.friendly.emailSubject,
+    emailBody: fallbackStrategies.friendly.emailBody,
+  };
+
   if (!apiKey || apiKey === 'tu_groq_api_key_aqui') {
-    throw new Error('GROQ_API_KEY no configurada. Añade tu clave en el archivo .env del proyecto.');
+    return fallbackResult;
   }
 
   const messages: GroqMessage[] = [
     { role: 'system', content: buildSystemPrompt() },
-    { role: 'user', content: buildUserPrompt(ctx) },
+    { role: 'user', content: buildUserPrompt(ctx, risk) },
   ];
-
-  let lastError = '';
 
   for (const model of GROQ_MODELS) {
     try {
@@ -146,27 +299,54 @@ export async function callGroqAssistant(ctx: PayerContext): Promise<AiCollection
           model,
           messages,
           temperature: 0.4,
-          max_tokens: 600,
+          max_tokens: 1000,
           stream: false,
         }),
       });
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        lastError = err?.error?.message || `Error ${response.status} en modelo ${model}`;
-        console.warn(`[Groq AI] Falló modelo ${model}:`, lastError);
-        continue;
-      }
+      if (!response.ok) continue;
 
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content?.trim();
-      if (content) {
-        return parseAiResponse(content, ctx);
+      const rawContent = data.choices?.[0]?.message?.content;
+      if (!rawContent) continue;
+
+      const cleanJson = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
+
+      if (parsed.strategies?.friendly && parsed.strategies?.urgency) {
+        return {
+          risk,
+          internalRecommendation: parsed.internalRecommendation || defaultRecommendation,
+          selectedStrategyId: risk.score >= 65 ? 'RESCUE_50' : (risk.score >= 40 ? 'URGENCY' : 'FRIENDLY'),
+          strategies: {
+            friendly: {
+              ...fallbackStrategies.friendly,
+              whatsappMessage: parsed.strategies.friendly.whatsappMessage || fallbackStrategies.friendly.whatsappMessage,
+              emailSubject: parsed.strategies.friendly.emailSubject || fallbackStrategies.friendly.emailSubject,
+              emailBody: parsed.strategies.friendly.emailBody || fallbackStrategies.friendly.emailBody,
+            },
+            urgency: {
+              ...fallbackStrategies.urgency,
+              whatsappMessage: parsed.strategies.urgency.whatsappMessage || fallbackStrategies.urgency.whatsappMessage,
+              emailSubject: parsed.strategies.urgency.emailSubject || fallbackStrategies.urgency.emailSubject,
+              emailBody: parsed.strategies.urgency.emailBody || fallbackStrategies.urgency.emailBody,
+            },
+            rescue: {
+              ...fallbackStrategies.rescue,
+              whatsappMessage: parsed.strategies.rescue?.whatsappMessage || fallbackStrategies.rescue.whatsappMessage,
+              emailSubject: parsed.strategies.rescue?.emailSubject || fallbackStrategies.rescue.emailSubject,
+              emailBody: parsed.strategies.rescue?.emailBody || fallbackStrategies.rescue.emailBody,
+            },
+          },
+          whatsappMessage: parsed.strategies.friendly.whatsappMessage || fallbackStrategies.friendly.whatsappMessage,
+          emailSubject: parsed.strategies.friendly.emailSubject || fallbackStrategies.friendly.emailSubject,
+          emailBody: parsed.strategies.friendly.emailBody || fallbackStrategies.friendly.emailBody,
+        };
       }
-    } catch (e: any) {
-      lastError = e.message || 'Error de conexión';
+    } catch {
+      // Try next model or fallback
     }
   }
 
-  throw new Error(lastError || 'No se pudo obtener respuesta de los modelos de Groq.');
+  return fallbackResult;
 }
