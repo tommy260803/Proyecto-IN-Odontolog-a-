@@ -494,20 +494,6 @@ router.post('/:id/convert-customer', async (req, res) => {
 
 // Generador de PDF oficial en Backend con jsPDF
 export function generateBackendPdfBase64(params: {
-  isValidated?: boolean;
-  patientName?: string;
-  documentNumber?: string;
-  phone?: string;
-  email?: string;
-  serviceName?: string;
-  reservationDate?: string;
-  reservationTime?: string;
-  branch?: string;
-  professional?: string;
-  amount?: number | string;
-  channel?: string;
-  operationNumber?: string;
-  code?: string;
   isValidated?: boolean | null;
   patientName?: string | null;
   documentNumber?: string | null;
@@ -743,23 +729,6 @@ export function generateBackendPdfBase64(params: {
 // Función reutilizable para envío de Avisos de Cobro y Constancias de Pago
 export async function sendPaymentNoticeOrConfirmation(params: {
   toEmail: string;
-  patientName?: string;
-  documentNumber?: string;
-  phone?: string;
-  subject?: string;
-  message?: string;
-  amount?: number | string;
-  channel?: string;
-  operationNumber?: string;
-  serviceName?: string;
-  reservationDate?: string;
-  reservationTime?: string;
-  branch?: string;
-  professional?: string;
-  filename?: string;
-  code?: string;
-  pdfBase64?: string;
-  isValidated?: boolean;
   patientName?: string | null;
   documentNumber?: string | null;
   phone?: string | null;
