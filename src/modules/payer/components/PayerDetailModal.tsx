@@ -45,7 +45,9 @@ import {
   Check,
   ShieldAlert,
   Flame,
-  Clock
+  Clock,
+  Calendar,
+  User
 } from 'lucide-react';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
@@ -268,13 +270,56 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
       ? (selectedStrategy === 'FRIENDLY' ? aiResult.strategies.friendly : selectedStrategy === 'URGENCY' ? aiResult.strategies.urgency : aiResult.strategies.rescue)
       : null;
 
+    // Estado VALIDADO: Barra compacta, elegante y directa
+    if (p.state === PayerState.VALIDATED) {
+      return (
+        <div className="bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/90 dark:border-emerald-800/70 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="text-xs font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-100/90 dark:bg-emerald-900/80 border border-emerald-300 dark:border-emerald-700 px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-2xs">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              Pago Validado
+            </span>
+            <span className="text-xs font-medium text-slate-700 dark:text-slate-300 bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-xl flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              Enviado a {p.person?.email || 'correo'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              onClick={() => setIsPdfModalOpen(true)}
+              size="sm"
+              className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs h-8.5 px-3.5 gap-1.5 shadow-sm font-semibold transition-all"
+              title="Ver constancia oficial de pago en PDF"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Ver Constancia PDF
+            </Button>
+
+            <Button
+              type="button"
+              onClick={() => handleSendEmail(p)}
+              size="sm"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs h-8.5 px-3.5 gap-1.5 shadow-sm font-semibold transition-all"
+              title="Reenviar constancia y confirmación de cita por correo"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              Reenviar Correo
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    // Estados Pendientes / En Revisión / Rechazados: Copiloto de Cobranzas Compacto
     return (
-      <div className="bg-gradient-to-br from-teal-50/90 via-white to-slate-50 dark:from-teal-950/40 dark:via-slate-900 dark:to-slate-950 border border-teal-200/90 dark:border-teal-800/80 rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-sm">
+      <div className="bg-gradient-to-br from-teal-50/90 via-white to-slate-50 dark:from-teal-950/40 dark:via-slate-900 dark:to-slate-950 border border-teal-200/90 dark:border-teal-800/80 rounded-2xl p-4 sm:p-5 flex flex-col gap-3.5 shadow-sm">
         {/* Cabecera del Agente */}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-white shadow-md ring-4 ring-teal-50 dark:ring-teal-950/50">
-              <Bot className="w-5 h-5" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-white shadow-md ring-4 ring-teal-50 dark:ring-teal-950/50">
+              <Bot className="w-4.5 h-4.5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -301,9 +346,9 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
           </button>
         </div>
 
-        {/* 1. Medidor / Scoring de Riesgo Predictivo (Business Intelligence) */}
+        {/* Medidor / Scoring de Riesgo Predictivo */}
         {aiResult?.risk && (
-          <div className={`p-3.5 sm:p-4 rounded-xl border transition-all ${
+          <div className={`p-3 rounded-xl border transition-all ${
             aiResult.risk.level === 'ALTO'
               ? 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-200/90 dark:border-rose-800/80 text-rose-950 dark:text-rose-100'
               : aiResult.risk.level === 'MODERADO'
@@ -311,8 +356,8 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
               : 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200/90 dark:border-emerald-800/80 text-emerald-950 dark:text-emerald-100'
           }`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3.5">
-                <div className={`flex flex-col items-center justify-center h-12 w-14 shrink-0 rounded-xl font-mono font-black text-base border shadow-sm ${
+              <div className="flex items-center gap-3">
+                <div className={`flex flex-col items-center justify-center h-10 w-12 shrink-0 rounded-xl font-mono font-black text-sm border shadow-sm ${
                   aiResult.risk.level === 'ALTO'
                     ? 'bg-rose-100 dark:bg-rose-900/80 text-rose-700 dark:text-rose-200 border-rose-300 dark:border-rose-700'
                     : aiResult.risk.level === 'MODERADO'
@@ -320,12 +365,12 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                     : 'bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
                 }`}>
                   <span>{aiResult.risk.score}%</span>
-                  <span className="text-[9px] font-sans font-bold tracking-tight uppercase">Riesgo</span>
+                  <span className="text-[8px] font-sans font-bold uppercase">Riesgo</span>
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider">
-                      Nivel de Riesgo de Impago: {aiResult.risk.level}
+                      Riesgo de Impago: {aiResult.risk.level}
                     </span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-white/80 dark:bg-slate-900/80 border border-current shadow-2xs">
                       {aiResult.risk.level === 'ALTO' ? 'Prioridad Alta' : aiResult.risk.level === 'MODERADO' ? 'Prioridad Media' : 'Flujo Normal'}
@@ -337,7 +382,6 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                 </div>
               </div>
 
-              {/* Factores analizados */}
               {aiResult.risk.factors.length > 0 && (
                 <div className="flex flex-wrap gap-1 sm:max-w-xs">
                   {aiResult.risk.factors.map((f, i) => (
@@ -382,25 +426,14 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
           )}
         </div>
 
-        {/* 2. Selector Interactivo de las 3 Estrategias Persuasivas (si no está validado) */}
-        {p.state !== PayerState.VALIDATED && aiResult?.strategies && (
+        {/* Selector de las 3 Estrategias Persuasivas */}
+        {aiResult?.strategies && (
           <div className="space-y-2.5 pt-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-amber-500" />
-                Estrategias de Cobranza con IA (Selecciona el Tono Óptimo):
-              </span>
-              <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                Alterna para previsualizar el mensaje
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              {/* Estrategia 1: Friendly */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setSelectedStrategy('FRIENDLY')}
-                className={`p-3 rounded-xl border text-left transition-all ${
+                className={`p-2.5 rounded-xl border text-left transition-all ${
                   selectedStrategy === 'FRIENDLY'
                     ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-500 ring-2 ring-teal-500/25 shadow-sm'
                     : 'bg-white dark:bg-slate-900/70 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
@@ -412,16 +445,15 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                     Cordial
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                  Confirmación anticipada de rutina
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Confirmación de rutina
                 </p>
               </button>
 
-              {/* Estrategia 2: Urgency */}
               <button
                 type="button"
                 onClick={() => setSelectedStrategy('URGENCY')}
-                className={`p-3 rounded-xl border text-left transition-all ${
+                className={`p-2.5 rounded-xl border text-left transition-all ${
                   selectedStrategy === 'URGENCY'
                     ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-500 ring-2 ring-amber-500/25 shadow-sm'
                     : 'bg-white dark:bg-slate-900/70 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
@@ -433,16 +465,15 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                     Sillón Temporal
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                  Liberación inminente de horario
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Liberación inminente de turno
                 </p>
               </button>
 
-              {/* Estrategia 3: Rescue 50% */}
               <button
                 type="button"
                 onClick={() => setSelectedStrategy('RESCUE_50')}
-                className={`p-3 rounded-xl border text-left transition-all ${
+                className={`p-2.5 rounded-xl border text-left transition-all ${
                   selectedStrategy === 'RESCUE_50'
                     ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-500 ring-2 ring-rose-500/25 shadow-sm'
                     : 'bg-white dark:bg-slate-900/70 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
@@ -451,33 +482,32 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-900 dark:text-white">3. Rescate (50%)</span>
                   <span className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-rose-100 dark:bg-rose-900/80 text-rose-800 dark:text-rose-300">
-                    Plan de Rescate
+                    Facilidad
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                  Seña fraccionada para no perder cita
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Seña fraccionada 50%
                 </p>
               </button>
             </div>
 
-            {/* Vista previa en vivo del texto generado */}
             {activeStrategy && (
-              <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl space-y-2 shadow-2xs">
+              <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl space-y-1.5 shadow-2xs">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                    <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
-                    Mensaje de WhatsApp ({activeStrategy.badge}):
+                    <MessageSquare className="w-3 h-3 text-emerald-500" />
+                    Mensaje para WhatsApp ({activeStrategy.badge}):
                   </span>
                   <button
                     type="button"
                     onClick={() => handleCopy(activeStrategy.whatsappMessage, 'WhatsApp')}
-                    className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-teal-50 dark:hover:bg-teal-950/50"
+                    className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-teal-50 dark:hover:bg-teal-950/50"
                   >
                     {copiedLabel === 'WhatsApp' ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
                     {copiedLabel === 'WhatsApp' ? '¡Copiado!' : 'Copiar texto'}
                   </button>
                 </div>
-                <p className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-line bg-slate-50/70 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200/70 dark:border-slate-700/70 font-sans leading-relaxed">
+                <p className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-line bg-slate-50/70 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-200/70 dark:border-slate-700/70 font-sans leading-relaxed">
                   {activeStrategy.whatsappMessage}
                 </p>
               </div>
@@ -485,86 +515,43 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
           </div>
         )}
 
-        {/* 3. Barra de Acciones con 1 Clic */}
-        <div className="pt-1 flex flex-wrap items-center gap-2">
-          {p.state === PayerState.VALIDATED ? (
-            <div className="flex flex-wrap items-center gap-2 w-full">
-              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                Pago Validado
-              </span>
+        {/* Acciones Rápidas */}
+        <div className="pt-0.5 flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            onClick={() => handleSendWhatsApp(p)}
+            size="sm"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-8.5 px-3.5 gap-2 shadow-sm font-semibold transition-all"
+            title="Enviar mensaje persuasivo seleccionado por WhatsApp"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Contactar por WhatsApp</span>
+            <span className="text-[9px] bg-emerald-800/60 px-1.5 py-0.5 rounded font-normal">
+              {selectedStrategy === 'FRIENDLY' ? 'Preventivo' : selectedStrategy === 'URGENCY' ? 'Urgencia' : 'Rescate 50%'}
+            </span>
+          </Button>
 
-              <span className="text-xs font-medium text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm">
-                <Mail className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                Constancia de Pago enviada automáticamente {p.person?.email ? `a ${p.person.email}` : 'al correo'}
-              </span>
+          <Button
+            type="button"
+            onClick={() => handleSendEmail(p)}
+            size="sm"
+            className="bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-600 dark:hover:text-white rounded-xl text-xs h-8.5 px-3 gap-1.5 shadow-sm font-semibold transition-all"
+            title="Enviar proforma y correo formal de cobranza"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            Enviar Proforma Correo
+          </Button>
 
-              {/* Botón Ver PDF de Constancia */}
-              <Button
-                type="button"
-                onClick={() => setIsPdfModalOpen(true)}
-                size="sm"
-                className="bg-white hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-300 dark:bg-slate-800 dark:text-teal-300 dark:border-teal-700 dark:hover:bg-teal-600 dark:hover:text-white rounded-xl text-xs h-8.5 px-3 gap-1.5 shadow-sm font-semibold transition-all"
-                title="Ver constancia oficial de pago en PDF"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                Ver Constancia PDF
-              </Button>
-
-              {/* Botón Reenviar al Correo */}
-              <Button
-                type="button"
-                onClick={() => handleSendEmail(p)}
-                size="sm"
-                className="bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-600 dark:hover:text-white rounded-xl text-xs h-8.5 px-3 gap-1.5 shadow-sm font-semibold transition-all"
-                title="Reenviar constancia y confirmación de cita por correo al paciente"
-              >
-                <Mail className="w-3.5 h-3.5" />
-                Reenviar al Correo
-              </Button>
-            </div>
-          ) : (
-            <>
-              {/* Botón WhatsApp con Estrategia Seleccionada */}
-              <Button
-                type="button"
-                onClick={() => handleSendWhatsApp(p)}
-                size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-9 px-4 gap-2 shadow-sm font-semibold transition-all"
-                title="Enviar mensaje persuasivo seleccionado por WhatsApp"
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>Contactar por WhatsApp</span>
-                <span className="text-[10px] bg-emerald-800/60 px-1.5 py-0.5 rounded font-normal">
-                  {selectedStrategy === 'FRIENDLY' ? 'Preventivo' : selectedStrategy === 'URGENCY' ? 'Urgencia' : 'Rescate 50%'}
-                </span>
-              </Button>
-
-              {/* Botón Correo de Cobro */}
-              <Button
-                type="button"
-                onClick={() => handleSendEmail(p)}
-                size="sm"
-                className="bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-600 dark:hover:text-white rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm font-semibold transition-all"
-                title="Enviar proforma y correo formal de cobranza"
-              >
-                <Mail className="w-3.5 h-3.5" />
-                Enviar Proforma Correo
-              </Button>
-
-              {/* Botón Ver PDF Proforma */}
-              <Button
-                type="button"
-                onClick={() => setIsPdfModalOpen(true)}
-                size="sm"
-                className="bg-teal-50 hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800 dark:hover:bg-teal-600 dark:hover:text-white rounded-xl text-xs h-9 px-3.5 gap-1.5 shadow-sm font-semibold transition-all"
-                title="Abrir visor oficial de proforma en PDF"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                Ver PDF
-              </Button>
-            </>
-          )}
+          <Button
+            type="button"
+            onClick={() => setIsPdfModalOpen(true)}
+            size="sm"
+            className="bg-teal-50 hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800 dark:hover:bg-teal-600 dark:hover:text-white rounded-xl text-xs h-8.5 px-3 gap-1.5 shadow-sm font-semibold transition-all"
+            title="Abrir visor oficial de proforma en PDF"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Ver PDF
+          </Button>
         </div>
 
         {/* Badges de alerta de estado */}
@@ -585,7 +572,7 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl max-h-[85vh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <DialogContent className="max-w-5xl max-h-[88vh] sm:max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
         {/* Fixed Header */}
         <div className="p-5 sm:p-6 pb-4 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <DialogHeader>
@@ -613,55 +600,103 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
           </DialogHeader>
         </div>
 
-        {/* Scrollable Body without visible scrollbar */}
-        <div className="p-5 sm:p-6 overflow-y-auto no-scrollbar flex-1 space-y-6">
+        {/* Scrollable Body */}
+        <div className="p-5 sm:p-6 overflow-y-auto no-scrollbar flex-1 space-y-5 bg-slate-50/30 dark:bg-slate-950/30">
           {isLoading ? (
             <LoadingState />
           ) : isError || !payer ? (
             <ErrorState message="No se encontró la información del registro de cobro." />
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-5">
               {journeys.find(j => j.payerId === payer.id) && (
                 <div className="py-2">
                   <JourneyStepper journey={journeys.find(j => j.payerId === payer.id)!} />
                 </div>
               )}
 
+              {/* Panel de Agente */}
               {renderAgentPanel(payer)}
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Columna Izquierda: Datos del Paciente y Reserva */}
-                <div className="space-y-4">
-                  <Card className="shadow-sm border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 rounded-xl">
-                    <CardHeader className="border-b border-slate-200/80 dark:border-slate-700/80 pb-3">
-                      <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Datos de la Reserva</CardTitle>
+              {/* Grid Principal: Reserva & Conciliación */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                
+                {/* 1. Columna Izquierda: Datos de la Reserva (4 columnas en LG) */}
+                <div className="lg:col-span-4 space-y-4">
+                  <Card className="shadow-sm border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl overflow-hidden">
+                    <CardHeader className="py-3.5 px-4 bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/60">
+                          <Calendar className="h-4 w-4" />
+                        </div>
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                          Datos de la Reserva
+                        </CardTitle>
+                      </div>
                     </CardHeader>
-                    <CardContent className="p-4 space-y-3 text-xs">
-                      <div>
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Paciente</p>
-                        <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{payer.person.firstName} {payer.person.lastName}</p>
-                        <p className="text-slate-500 dark:text-slate-400">{payer.person.phone} | {payer.person.email}</p>
-                      </div>
-                      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Cita Asignada</p>
-                        <p className="text-slate-700 dark:text-slate-300 mt-0.5">Fecha: {payer.reservation.date} - {payer.reservation.time}</p>
-                        <p className="text-slate-500 dark:text-slate-400">Sede: {payer.reservation.branchId}</p>
-                        <p className="text-slate-500 dark:text-slate-400">Especialista: {payer.reservation.professionalId}</p>
-                      </div>
-                      <div className="pt-3 border-t border-slate-200/80 dark:border-slate-700/80">
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Monto por Recaudar</p>
-                        <p className="font-mono text-2xl font-extrabold text-slate-900 dark:text-white mt-0.5">
-                          S/ {payer.amountToPay.toFixed(2)}
+                    <CardContent className="p-4 space-y-3.5 text-xs">
+                      {/* Paciente */}
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                          <User className="w-3 h-3" /> Paciente
+                        </span>
+                        <p className="font-bold text-slate-900 dark:text-white text-sm">
+                          {payer.person.firstName} {payer.person.lastName}
                         </p>
+                        <div className="flex flex-col gap-0.5 text-slate-600 dark:text-slate-400 text-[11px] pt-0.5">
+                          <span>{payer.person.phone || 'Sin teléfono'}</span>
+                          <span className="truncate">{payer.person.email || 'Sin correo'}</span>
+                        </div>
+                      </div>
+
+                      {/* Cita Asignada */}
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> Cita & Especialista
+                        </span>
+                        
+                        <div className="space-y-1.5 text-slate-700 dark:text-slate-300 text-xs">
+                          <div className="flex items-center gap-2 font-medium">
+                            <Calendar className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                            <span>{payer.reservation.date} · {payer.reservation.time}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400 shrink-0 text-[11px]">Sede:</span>
+                            <span className="font-semibold">{payer.reservation.branchId}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400 shrink-0 text-[11px]">Especialista:</span>
+                            <span className="font-semibold text-teal-700 dark:text-teal-300">
+                              Esp. {payer.reservation.professionalId?.replace(/^(Dr\.|Dra\.|Dr\/a\.)\s*/i, '')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Monto por Recaudar / Abonado */}
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 -mx-4 -mb-4 p-4 rounded-b-xl">
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                          {payer.state === PayerState.VALIDATED ? 'Monto Recaudado y Validado' : 'Monto por Recaudar'}
+                        </span>
+                        <div className="flex items-baseline gap-2 mt-1">
+                          <span className="font-mono text-2xl font-black text-slate-900 dark:text-white">
+                            S/ {payer.amountToPay.toFixed(2)}
+                          </span>
+                          {payer.state === PayerState.VALIDATED && (
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                              ✓ Liquidado
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
 
+                  {/* Incidencias */}
                   {payer.incidents.length > 0 && (
-                    <Card className="border-rose-200 dark:border-rose-900/60 bg-rose-50/30 dark:bg-rose-950/20 rounded-xl">
-                      <CardHeader className="pb-2">
+                    <Card className="border-rose-200 dark:border-rose-900/60 bg-rose-50/30 dark:bg-rose-950/20 rounded-xl overflow-hidden shadow-2xs">
+                      <CardHeader className="py-2.5 px-3.5 bg-rose-100/50 dark:bg-rose-950/50 border-b border-rose-200/60 dark:border-rose-800/60">
                         <CardTitle className="text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
-                          <AlertCircle className="w-3.5 h-3.5" /> Incidencias Registradas
+                          <AlertCircle className="w-3.5 h-3.5" /> Incidencias Registradas ({payer.incidents.length})
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2 p-3 text-xs">
@@ -679,8 +714,8 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                   )}
                 </div>
 
-                {/* Columna Derecha: Pagos Yape y Comprobantes */}
-                <div className="lg:col-span-2 space-y-4">
+                {/* 2. Columna Derecha: Revisión y Conciliación del Pago (8 columnas en LG) */}
+                <div className="lg:col-span-8 space-y-4">
                   {(payer.state === PayerState.PENDING || payer.state === PayerState.REJECTED || (payer.state as string) === 'REVERTED') && (
                     <YapePaymentButton
                       payerId={payer.id}
@@ -692,59 +727,129 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                   )}
 
                   {payer.state === PayerState.PENDING || payer.state === PayerState.REJECTED ? (
-                    <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-800/70">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Registrar Comprobante Manual (Voucher / Transferencia)</CardTitle>
-                        <CardDescription className="text-xs dark:text-slate-400">
+                    <Card className="rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
+                      <CardHeader className="py-3.5 px-4 bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                          Registrar Comprobante Manual (Voucher / Transferencia)
+                        </CardTitle>
+                        <CardDescription className="text-[11px] text-slate-500 dark:text-slate-400">
                           Si el paciente pagó mediante transferencia bancaria o en efectivo, registra aquí los datos.
                         </CardDescription>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="p-4 sm:p-5">
                         <PaymentForm onSubmit={handleRegisterPayment} isLoading={registerPayment.isPending} />
                       </CardContent>
                     </Card>
                   ) : (
-                    <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-800/70">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Revisión y Conciliación del Pago</CardTitle>
+                    <Card className="rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
+                      <CardHeader className="py-3.5 px-4 bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                            <CreditCard className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                              Revisión y Conciliación del Pago
+                            </CardTitle>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                              Información bancaria y auditoría de la transacción
+                            </p>
+                          </div>
+                        </div>
+
+                        {payer.state === PayerState.VALIDATED && (
+                          <Button 
+                            type="button"
+                            variant="outline" 
+                            className="text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/80 bg-rose-50/60 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 font-semibold text-[11px] rounded-xl h-8 px-2.5 gap-1 transition-colors shadow-2xs"
+                            onClick={() => setIsRevertOpen(true)}
+                          >
+                            <XCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                            Revertir
+                          </Button>
+                        )}
                       </CardHeader>
-                      <CardContent>
-                        <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 mb-4 text-xs grid grid-cols-2 gap-3">
-                          <div>
-                            <span className="text-slate-400 dark:text-slate-500">Canal:</span> 
-                            <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{payer.payment?.channel}</p>
+
+                      <CardContent className="p-4 sm:p-5 space-y-4">
+                        {/* 4 Cards de Datos Bancarios */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                          {/* Canal */}
+                          <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60">
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Canal de Pago</span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="px-2.5 py-0.5 rounded-lg bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 font-bold text-xs uppercase tracking-wide">
+                                {payer.payment?.channel || 'YAPE'}
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <span className="text-slate-400 dark:text-slate-500">Nº Operación:</span> 
-                            <p className="font-semibold font-mono text-slate-900 dark:text-white mt-0.5">{payer.payment?.operationNumber || '-'}</p>
+
+                          {/* Nº Operación */}
+                          <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Nº Operación</span>
+                              {payer.payment?.operationNumber && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(payer.payment!.operationNumber, 'Nº Operación')}
+                                  className="text-[10px] text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-0.5"
+                                >
+                                  {copiedLabel === 'Nº Operación' ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : <Copy className="w-2.5 h-2.5" />}
+                                  {copiedLabel === 'Nº Operación' ? 'Copiado' : 'Copiar'}
+                                </button>
+                              )}
+                            </div>
+                            <p className="font-mono font-bold text-slate-900 dark:text-white mt-1 text-xs truncate">
+                              #{payer.payment?.operationNumber || '-'}
+                            </p>
                           </div>
-                          <div>
-                            <span className="text-slate-400 dark:text-slate-500">Fecha Operación:</span> 
-                            <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{payer.payment?.operationDate}</p>
+
+                          {/* Fecha Operación */}
+                          <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60">
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Fecha Operación</span>
+                            <p className="font-semibold text-slate-900 dark:text-white mt-1 text-xs">
+                              {payer.payment?.operationDate || '-'}
+                            </p>
                           </div>
-                          <div>
-                            <span className="text-slate-400 dark:text-slate-500">Monto Declarado:</span> 
-                            <p className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm mt-0.5">S/ {payer.payment?.amount.toFixed(2)}</p>
+
+                          {/* Monto Declarado */}
+                          <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60">
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Monto Declarado</span>
+                            <p className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm mt-0.5">
+                              S/ {payer.payment?.amount.toFixed(2) || '0.00'}
+                            </p>
                           </div>
+
+                          {/* Observaciones si existen */}
                           {payer.payment?.observations && (
-                            <div className="col-span-2">
-                              <span className="text-slate-400 dark:text-slate-500">Observaciones:</span> 
-                              <p className="text-slate-700 dark:text-slate-300 mt-0.5">{payer.payment.observations}</p>
+                            <div className="col-span-1 sm:col-span-2 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60">
+                              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Observaciones de Auditoría</span>
+                              <p className="text-slate-700 dark:text-slate-300 mt-1 font-medium">
+                                {payer.payment.observations}
+                              </p>
                             </div>
                           )}
+
+                          {/* Comprobante Adjunto */}
                           {payer.payment?.receiptMetadata && (
-                            <div className="col-span-2 flex items-center gap-2 mt-1 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
-                              <FileText className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                              <div>
-                                <p className="font-medium text-slate-900 dark:text-white">{payer.payment.receiptMetadata.name}</p>
-                                <p className="text-[10px] text-slate-400">
-                                  {(payer.payment.receiptMetadata.size / 1024).toFixed(1)} KB - {payer.payment.receiptMetadata.type}
-                                </p>
+                            <div className="col-span-1 sm:col-span-2 flex items-center justify-between p-3 bg-teal-50/40 dark:bg-teal-950/30 border border-teal-200/70 dark:border-teal-800/70 rounded-xl">
+                              <div className="flex items-center gap-2.5">
+                                <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300">
+                                  <FileText className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-slate-900 dark:text-white text-xs">
+                                    {payer.payment.receiptMetadata.name}
+                                  </p>
+                                  <p className="text-[10px] text-slate-400">
+                                    {(payer.payment.receiptMetadata.size / 1024).toFixed(1)} KB · {payer.payment.receiptMetadata.type}
+                                  </p>
+                                </div>
                               </div>
                             </div>
                           )}
                         </div>
 
+                        {/* Botones de Validación (si está en revisión) */}
                         {payer.state === PayerState.IN_REVIEW && (
                           <div className="flex gap-3 pt-2">
                             <Button 
@@ -761,20 +866,6 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                               onClick={() => setIsRejectOpen(true)}
                             >
                               Rechazar Pago
-                            </Button>
-                          </div>
-                        )}
-
-                        {payer.state === PayerState.VALIDATED && (
-                          <div className="flex justify-end pt-2">
-                            <Button 
-                              type="button"
-                              variant="outline" 
-                              className="text-rose-600 dark:text-rose-400 border border-rose-300 dark:border-rose-700/80 bg-rose-50/80 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 font-semibold text-xs rounded-xl h-8 px-3 transition-colors shadow-xs"
-                              onClick={() => setIsRevertOpen(true)}
-                            >
-                              <XCircle className="w-3.5 h-3.5 mr-1.5 text-rose-600 dark:text-rose-400" />
-                              Revertir Validación
                             </Button>
                           </div>
                         )}
