@@ -318,11 +318,12 @@ export default function PayerDetailPage() {
                 {payer.state === PayerState.VALIDATED && (
                   <div className="flex justify-end">
                     <Button 
+                      type="button"
                       variant="outline" 
-                      className="text-destructive border-destructive hover:bg-destructive/10"
+                      className="text-rose-600 dark:text-rose-400 border border-rose-300 dark:border-rose-700/80 bg-rose-50/80 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 font-semibold text-xs rounded-xl h-9 px-4 transition-colors shadow-xs"
                       onClick={() => setIsRevertOpen(true)}
                     >
-                      <XCircle className="w-4 h-4 mr-2" />
+                      <XCircle className="w-4 h-4 mr-2 text-rose-600 dark:text-rose-400" />
                       Revertir validación
                     </Button>
                   </div>

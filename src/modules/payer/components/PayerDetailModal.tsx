@@ -596,11 +596,12 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                         {payer.state === PayerState.VALIDATED && (
                           <div className="flex justify-end pt-2">
                             <Button 
+                              type="button"
                               variant="outline" 
-                              className="text-rose-600 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950 text-xs rounded-xl"
+                              className="text-rose-600 dark:text-rose-400 border border-rose-300 dark:border-rose-700/80 bg-rose-50/80 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 font-semibold text-xs rounded-xl h-8 px-3 transition-colors shadow-xs"
                               onClick={() => setIsRevertOpen(true)}
                             >
-                              <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                              <XCircle className="w-3.5 h-3.5 mr-1.5 text-rose-600 dark:text-rose-400" />
                               Revertir Validación
                             </Button>
                           </div>
@@ -619,17 +620,19 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
           <div className="flex items-center gap-2">
             {payer?.state === PayerState.VALIDATED && (
               <Button 
+                type="button"
                 variant="outline" 
                 size="sm"
-                className="text-rose-600 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950 text-xs rounded-xl h-9"
+                className="text-rose-600 dark:text-rose-400 border border-rose-300 dark:border-rose-700/80 bg-rose-50/80 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 font-semibold text-xs rounded-xl h-9 px-3.5 transition-colors shadow-xs"
                 onClick={() => setIsRevertOpen(true)}
               >
-                <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                <XCircle className="w-3.5 h-3.5 mr-1.5 text-rose-600 dark:text-rose-400" />
                 Revertir
               </Button>
             )}
             {payer?.state === PayerState.IN_REVIEW && (
               <Button 
+                type="button"
                 variant="destructive"
                 size="sm"
                 className="rounded-xl text-xs font-semibold h-9"
@@ -644,7 +647,7 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
               type="button"
               variant="outline"
               onClick={onClose}
-              className="rounded-xl border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs h-9 px-4"
+              className="rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold text-xs h-9 px-4 transition-colors shadow-xs"
             >
               Cerrar
             </Button>
