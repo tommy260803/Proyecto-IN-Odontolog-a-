@@ -134,13 +134,13 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
         
         {/* 1. Identificación y Contacto */}
         <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm rounded-xl overflow-hidden">
-          <CardHeader className="py-3.5 px-4 bg-slate-50/80 dark:bg-slate-850 border-b border-slate-100 dark:border-slate-800/80">
+          <CardHeader className="py-3.5 px-4 bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/60">
                 <User className="h-4 w-4" />
               </div>
               <div>
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
                   1. Identificación & Datos de Contacto
                 </CardTitle>
                 <CardDescription className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -291,13 +291,13 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
 
         {/* 2. Canal de Captación & Servicio de Interés */}
         <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm rounded-xl overflow-hidden">
-          <CardHeader className="py-3.5 px-4 bg-slate-50/80 dark:bg-slate-850 border-b border-slate-100 dark:border-slate-800/80">
+          <CardHeader className="py-3.5 px-4 bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
                 <Target className="h-4 w-4" />
               </div>
               <div>
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
                   2. Canal de Captación & Interés Clínico
                 </CardTitle>
                 <CardDescription className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -439,13 +439,13 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
 
         {/* 3. Gustos y Preferencias de Atención (Acordeón) */}
         <details className="group border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 overflow-hidden [&_summary::-webkit-details-marker]:hidden shadow-sm">
-          <summary className="flex items-center justify-between p-3.5 sm:p-4 font-semibold cursor-pointer select-none bg-slate-50/70 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <summary className="flex items-center justify-between p-3.5 sm:p-4 font-semibold cursor-pointer select-none bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800/60">
                 <Compass className="h-4 w-4" />
               </div>
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
                   3. Gustos & Preferencias de Atención
                 </span>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
@@ -587,13 +587,13 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
 
         {/* 4. Perfil de Salud Odontológica (Acordeón) */}
         <details className="group border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 overflow-hidden [&_summary::-webkit-details-marker]:hidden shadow-sm">
-          <summary className="flex items-center justify-between p-3.5 sm:p-4 font-semibold cursor-pointer select-none bg-slate-50/70 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <summary className="flex items-center justify-between p-3.5 sm:p-4 font-semibold cursor-pointer select-none bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60">
                 <HeartPulse className="h-4 w-4" />
               </div>
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
                   4. Perfil de Salud Odontológica
                 </span>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
@@ -791,13 +791,13 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
 
         {/* 5. Perfil Académico & Laboral (Acordeón) */}
         <details className="group border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 overflow-hidden [&_summary::-webkit-details-marker]:hidden shadow-sm">
-          <summary className="flex items-center justify-between p-3.5 sm:p-4 font-semibold cursor-pointer select-none bg-slate-50/70 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <summary className="flex items-center justify-between p-3.5 sm:p-4 font-semibold cursor-pointer select-none bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
                 <GraduationCap className="h-4 w-4" />
               </div>
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
                   5. Perfil Académico & Laboral
                 </span>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
@@ -809,7 +809,7 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
           </summary>
           <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 space-y-5">
             {/* Sub-bloque Estudiante */}
-            <div className="space-y-3 p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50">
+            <div className="space-y-3 p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
               <FormField
                 control={form.control}
                 name="estudianteAplica"
@@ -878,7 +878,7 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
             </div>
 
             {/* Sub-bloque Laboral */}
-            <div className="space-y-3 p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50">
+            <div className="space-y-3 p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
               <FormField
                 control={form.control}
                 name="laboralAplica"
