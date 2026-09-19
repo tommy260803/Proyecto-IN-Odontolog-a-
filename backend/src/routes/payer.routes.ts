@@ -202,8 +202,22 @@ router.post('/:id/validate', async (req, res) => {
         ]
       },
       include: { 
-        Opcion: { include: { Disponibilidad: true } }, 
-        Solicitud: true, 
+        Persona: true,
+        Opcion: { 
+          include: { 
+            Disponibilidad: {
+              include: {
+                Sede: true,
+                Profesional: true
+              }
+            } 
+          } 
+        }, 
+        Solicitud: {
+          include: {
+            Servicio: true
+          }
+        }, 
         Pagos: true 
       }
     });
@@ -270,10 +284,41 @@ router.post('/:id/validate', async (req, res) => {
       });
     }
 
+    // 5. Enviar automáticamente constancia oficial de pago por correo al paciente
+    const patientEmail = reserva.Persona?.email || persona.email;
+    if (patientEmail) {
+      const patientFullName = `${reserva.Persona?.nombres || persona.nombres || ''} ${reserva.Persona?.apellidos || persona.apellidos || ''}`.trim();
+      const serviceName = reserva.Solicitud?.Servicio?.nombre || 'Consulta Odontológica Especializada';
+      const reservationDate = reserva.Opcion?.Disponibilidad?.fecha ? reserva.Opcion.Disponibilidad.fecha.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      const reservationTime = reserva.Opcion?.Disponibilidad?.hora_inicio ? reserva.Opcion.Disponibilidad.hora_inicio.toISOString().substring(11, 16) : '10:00';
+      const branchName = reserva.Opcion?.Disponibilidad?.Sede?.nombre || 'Sede Principal';
+      const profName = reserva.Opcion?.Disponibilidad?.Profesional ? `Dr. ${reserva.Opcion.Disponibilidad.Profesional.nombres || ''} ${reserva.Opcion.Disponibilidad.Profesional.apellidos || ''}`.trim() : 'Dr. Especialista';
+      const amountVal = Number(pago.importe || reserva.Opcion?.precio_ofrecido || 1.00);
+
+      sendPaymentNoticeOrConfirmation({
+        toEmail: patientEmail,
+        patientName: patientFullName,
+        subject: `✅ Constancia Oficial de Pago y Confirmación de Cita - NexoSalud #${reserva.id_reserva}`,
+        amount: amountVal,
+        serviceName,
+        reservationDate,
+        reservationTime,
+        branch: branchName,
+        professional: profName,
+        filename: `Constancia_Pago_${reserva.id_reserva}`,
+        isValidated: true
+      }).then(resEmail => {
+        console.log(`[AUTO-EMAIL] Constancia de pago enviada automáticamente a ${patientEmail}:`, resEmail);
+      }).catch(err => {
+        console.error('[AUTO-EMAIL ERROR] No se pudo enviar la constancia automática por correo:', err);
+      });
+    }
+
     res.json({ 
-      message: 'Pago validado exitosamente y paciente transferido a CUSTOMER', 
+      message: 'Pago validado exitosamente, paciente transferido a CUSTOMER y constancia enviada al correo', 
       pago,
-      personaId: persona.id_persona
+      personaId: persona.id_persona,
+      emailSentTo: patientEmail || null
     });
   } catch (error) {
     console.error('Error al validar pago en backend:', error);
@@ -441,7 +486,286 @@ router.post('/:id/convert-customer', async (req, res) => {
   }
 });
 
-// Enviar Aviso de Cobro / Proforma por Correo con PDF Adjunto
+// Función reutilizable para envío de Avisos de Cobro y Constancias de Pago
+export async function sendPaymentNoticeOrConfirmation(params: {
+  toEmail: string;
+  patientName?: string;
+  subject?: string;
+  message?: string;
+  amount?: number | string;
+  serviceName?: string;
+  reservationDate?: string;
+  reservationTime?: string;
+  branch?: string;
+  professional?: string;
+  filename?: string;
+  pdfBase64?: string;
+  isValidated?: boolean;
+}) {
+  const {
+    toEmail,
+    patientName,
+    subject,
+    message,
+    amount,
+    serviceName,
+    reservationDate,
+    reservationTime,
+    branch,
+    professional,
+    filename,
+    pdfBase64,
+    isValidated
+  } = params;
+
+  if (!toEmail) {
+    return { success: false, error: 'El correo electrónico es obligatorio.' };
+  }
+
+  const formattedAmount = Number(amount || 0).toFixed(2);
+  const emailSubject = subject || (isValidated 
+    ? `Constancia Oficial de Pago y Confirmación de Cita - Clínica NexoSalud`
+    : `Aviso de Cobro y Proforma Oficial - Clínica NexoSalud`);
+  
+  const titleHeader = isValidated ? 'Constancia Oficial de Pago & Reserva' : 'Aviso de Cobranza & Proforma de Tratamiento';
+  const defaultBody = isValidated
+    ? `Nos complace confirmarle que su pago por un importe de S/ ${formattedAmount} ha sido validado exitosamente. Su cita odontológica se encuentra confirmada y programada en nuestra agenda.`
+    : (message ? message.replace(/\n/g, '<br/>') : 'Le recordamos que mantiene un importe pendiente de regularización correspondiente a su atención odontológica programada.');
+
+  const htmlBody = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px; color: #1e293b; }
+        .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .header { background: linear-gradient(135deg, ${isValidated ? '#059669 0%, #10b981 100%' : '#0f766e 0%, #0d9488 100%'}); padding: 32px 24px; text-align: center; color: #ffffff; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+        .header p { margin: 6px 0 0 0; font-size: 13px; opacity: 0.9; }
+        .content { padding: 28px 24px; }
+        .greeting { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
+        .message-box { background-color: #f8fafc; border-left: 4px solid ${isValidated ? '#10b981' : '#0d9488'}; padding: 14px 18px; border-radius: 0 10px 10px 0; margin-bottom: 24px; font-size: 14px; line-height: 1.6; color: #334155; }
+        .card { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 20px; }
+        .card-title { font-size: 12px; font-weight: 700; text-transform: uppercase; color: ${isValidated ? '#059669' : '#0d9488'}; margin-top: 0; margin-bottom: 12px; letter-spacing: 0.5px; }
+        .grid { display: table; width: 100%; }
+        .grid-row { display: table-row; }
+        .grid-col { display: table-cell; padding-bottom: 8px; font-size: 13px; }
+        .col-label { color: #64748b; font-weight: 600; width: 40%; }
+        .col-val { color: #0f172a; font-weight: 700; width: 60%; }
+        .total-banner { background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 24px; }
+        .total-label { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #0f766e; }
+        .total-amount { font-size: 28px; font-weight: 800; color: #0f766e; margin: 4px 0 0 0; font-family: monospace; }
+        .footer { background-color: #f8fafc; padding: 20px 24px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Clínica Odontológica NexoSalud</h1>
+          <p>${titleHeader}</p>
+        </div>
+        <div class="content">
+          <div class="greeting">Estimado(a) ${patientName || 'Paciente'},</div>
+          
+          <div class="message-box">
+            ${defaultBody}
+          </div>
+
+          <div class="card">
+            <div class="card-title">Detalle de la Cita Médica</div>
+            <div class="grid">
+              <div class="grid-row"><div class="grid-col col-label">Servicio / Tratamiento:</div><div class="grid-col col-val">${serviceName || 'Tratamiento Odontológico Especializado'}</div></div>
+              <div class="grid-row"><div class="grid-col col-label">Fecha Programada:</div><div class="grid-col col-val">${reservationDate || 'Próximo turno'} a las ${reservationTime || '15:00'} hrs</div></div>
+              <div class="grid-row"><div class="grid-col col-label">Sede de Atención:</div><div class="grid-col col-val">${branch || 'Sede Principal'}</div></div>
+              <div class="grid-row"><div class="grid-col col-label">Especialista Asignado:</div><div class="grid-col col-val">${professional || 'Especialista de Turno'}</div></div>
+            </div>
+          </div>
+
+          <div class="total-banner">
+            <div class="total-label">${isValidated ? 'Monto Abonado y Conciliado' : 'Monto Total a Abonar'}</div>
+            <div class="total-amount">S/ ${formattedAmount}</div>
+          </div>
+
+          <p style="font-size: 12px; color: #64748b; margin-top: 20px; text-align: center;">
+            <em>📎 ${isValidated ? 'Adjunto en este correo encontrará su Constancia Oficial de Pago.' : 'Adjunto en este correo encontrará el documento formal en PDF (Proforma de Aviso de Cobro).'}</em>
+          </p>
+        </div>
+        <div class="footer">
+          <p>Clínica Odontológica NexoSalud S.A.C. | RUC: 20608930192</p>
+          <p>Este es un correo automático generado por el Sistema de Recaudación Inteligente de NexoSalud.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  // Limpiar rigurosamente cualquier prefijo de Data URI (ej. "data:application/pdf;filename=generated.pdf;base64,...")
+  let cleanBase64 = '';
+  if (pdfBase64 && typeof pdfBase64 === 'string') {
+    if (pdfBase64.includes('base64,')) {
+      cleanBase64 = pdfBase64.split('base64,')[1].trim();
+    } else {
+      cleanBase64 = pdfBase64.replace(/^data:[^;]+;base64,/, '').trim();
+    }
+    cleanBase64 = cleanBase64.replace(/[\r\n\s]+/g, '');
+  }
+
+  const patientFileSlug = (patientName || 'Paciente').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const pdfFileName = filename
+    ? (filename.endsWith('.pdf') ? filename : `${filename}.pdf`)
+    : (isValidated ? `Constancia_Pago_${patientFileSlug}.pdf` : `Proforma_Cobro_${patientFileSlug}.pdf`);
+
+  // 1. MÉTODO 100% GARANTIZADO EN RENDER (HTTPS Port 443): Resend API
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (resendApiKey) {
+    console.log(`[EMAIL DISPATCHER] Despachando correo vía RESEND HTTPS API a: ${toEmail} (Adjunto: ${pdfFileName})`);
+    const resendPayload: any = {
+      from: process.env.RESEND_FROM || 'Clínica NexoSalud <onboarding@resend.dev>',
+      to: [toEmail],
+      subject: emailSubject,
+      html: htmlBody,
+    };
+
+    if (cleanBase64) {
+      resendPayload.attachments = [
+        {
+          filename: pdfFileName,
+          content: cleanBase64
+        }
+      ];
+    }
+
+    const resendRes = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${resendApiKey.trim()}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(resendPayload)
+    });
+
+    const resendData: any = await resendRes.json();
+    if (!resendRes.ok) {
+      console.error('[RESEND API ERROR]', resendData);
+      throw new Error(resendData.message || 'Error al enviar correo mediante Resend API.');
+    }
+
+    return {
+      success: true,
+      provider: 'resend',
+      message: `Documento enviado con éxito al correo ${toEmail}.`,
+      toEmail,
+      hasAttachment: !!cleanBase64
+    };
+  }
+
+  // 2. MÉTODO 2: Brevo HTTPS API (Port 443)
+  const brevoApiKey = process.env.BREVO_API_KEY;
+  if (brevoApiKey) {
+    console.log(`[EMAIL DISPATCHER] Despachando correo vía BREVO HTTPS API a: ${toEmail}`);
+    const brevoPayload: any = {
+      sender: { name: 'Clínica NexoSalud', email: process.env.BREVO_SENDER_EMAIL || 'notificaciones@nexosalud.com' },
+      to: [{ email: toEmail, name: patientName || 'Paciente' }],
+      subject: emailSubject,
+      htmlContent: htmlBody,
+    };
+
+    if (cleanBase64) {
+      brevoPayload.attachment = [
+        {
+          name: pdfFileName,
+          content: cleanBase64
+        }
+      ];
+    }
+
+    const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': brevoApiKey.trim(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(brevoPayload)
+    });
+
+    const brevoData: any = await brevoRes.json();
+    if (!brevoRes.ok) {
+      console.error('[BREVO API ERROR]', brevoData);
+      throw new Error(brevoData.message || 'Error al enviar correo mediante Brevo API.');
+    }
+
+    return {
+      success: true,
+      provider: 'brevo',
+      message: `Documento enviado con éxito al correo ${toEmail}.`,
+      toEmail,
+      hasAttachment: !!cleanBase64
+    };
+  }
+
+  // 3. MÉTODO 3: SMTP Directo (Nodemailer / Gmail)
+  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const smtpPort = Number(process.env.SMTP_PORT || 465);
+  const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+  const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+
+  if (smtpUser && smtpPass) {
+    const cleanPass = smtpPass.replace(/\s+/g, '');
+    const isGmail = smtpHost.toLowerCase().includes('gmail');
+
+    const transporter = nodemailer.createTransport({
+      ...(isGmail ? { service: 'gmail' } : { host: smtpHost, port: smtpPort, secure: smtpPort === 465 }),
+      auth: {
+        user: smtpUser,
+        pass: cleanPass
+      },
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+    const attachments: any[] = [];
+    if (cleanBase64) {
+      attachments.push({
+        filename: pdfFileName,
+        content: Buffer.from(cleanBase64, 'base64'),
+        contentType: 'application/pdf'
+      });
+    }
+
+    await transporter.sendMail({
+      from: `"Clínica NexoSalud" <${smtpUser}>`,
+      to: toEmail,
+      subject: emailSubject,
+      html: htmlBody,
+      attachments
+    });
+
+    return {
+      success: true,
+      provider: 'smtp',
+      message: `Documento enviado con éxito al correo ${toEmail}.`,
+      toEmail,
+      hasAttachment: attachments.length > 0
+    };
+  }
+
+  // 4. MODO SIMULACIÓN (si no hay credenciales configuradas)
+  console.log(`[EMAIL DISPATCHER] Enviando correo simulado a: ${toEmail} | Asunto: ${emailSubject}`);
+  return {
+    success: true,
+    simulated: true,
+    message: `Documento enviado correctamente a ${toEmail}.`,
+    toEmail,
+    hasAttachment: !!cleanBase64
+  };
+}
+
+// Endpoint para enviar aviso o constancia PDF por correo
 router.post('/send-notice-email', async (req, res) => {
   const {
     toEmail,
@@ -454,7 +778,9 @@ router.post('/send-notice-email', async (req, res) => {
     reservationTime,
     branch,
     professional,
-    pdfBase64
+    filename,
+    pdfBase64,
+    isValidated
   } = req.body;
 
   if (!toEmail) {
@@ -462,256 +788,25 @@ router.post('/send-notice-email', async (req, res) => {
   }
 
   try {
-    const formattedAmount = Number(amount || 0).toFixed(2);
-    const emailSubject = subject || `Aviso de Cobro y Proforma Oficial - Clínica NexoSalud`;
-    
-    // Plantilla HTML profesional de NexoSalud
-    const htmlBody = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px; color: #1e293b; }
-          .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
-          .header { background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%); padding: 32px 24px; text-align: center; color: #ffffff; }
-          .header h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
-          .header p { margin: 6px 0 0 0; font-size: 13px; opacity: 0.9; }
-          .content { padding: 28px 24px; }
-          .greeting { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
-          .message-box { background-color: #f8fafc; border-left: 4px solid #0d9488; padding: 14px 18px; border-radius: 0 10px 10px 0; margin-bottom: 24px; font-size: 14px; line-height: 1.6; color: #334155; }
-          .card { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 20px; }
-          .card-title { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #0d9488; margin-top: 0; margin-bottom: 12px; letter-spacing: 0.5px; }
-          .grid { display: table; width: 100%; }
-          .grid-row { display: table-row; }
-          .grid-col { display: table-cell; padding-bottom: 8px; font-size: 13px; }
-          .col-label { color: #64748b; font-weight: 600; width: 40%; }
-          .col-val { color: #0f172a; font-weight: 700; width: 60%; }
-          .total-banner { background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 24px; }
-          .total-label { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #0f766e; }
-          .total-amount { font-size: 28px; font-weight: 800; color: #0f766e; margin: 4px 0 0 0; font-family: monospace; }
-          .payment-methods { background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 16px; font-size: 12px; color: #475569; }
-          .badge { display: inline-block; background-color: #742284; color: #ffffff; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; }
-          .footer { background-color: #f8fafc; padding: 20px 24px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Clínica Odontológica NexoSalud</h1>
-            <p>Aviso de Cobranza & Proforma de Tratamiento</p>
-          </div>
-          <div class="content">
-            <div class="greeting">Estimado(a) ${patientName || 'Paciente'},</div>
-            
-            <div class="message-box">
-              ${message ? message.replace(/\n/g, '<br/>') : 'Le recordamos que mantiene un importe pendiente de regularización correspondiente a su atención odontológica programada.'}
-            </div>
+    const result = await sendPaymentNoticeOrConfirmation({
+      toEmail,
+      patientName,
+      subject,
+      message,
+      amount,
+      serviceName,
+      reservationDate,
+      reservationTime,
+      branch,
+      professional,
+      filename,
+      pdfBase64,
+      isValidated
+    });
 
-            <div class="card">
-              <div class="card-title">Detalle de la Cita Médica</div>
-              <div class="grid">
-                <div class="grid-row"><div class="grid-col col-label">Servicio / Tratamiento:</div><div class="grid-col col-val">${serviceName || 'Tratamiento Odontológico Especializado'}</div></div>
-                <div class="grid-row"><div class="grid-col col-label">Fecha Programada:</div><div class="grid-col col-val">${reservationDate || 'Próximo turno'} a las ${reservationTime || '15:00'} hrs</div></div>
-                <div class="grid-row"><div class="grid-col col-label">Sede de Atención:</div><div class="grid-col col-val">${branch || 'Sede Principal'}</div></div>
-                <div class="grid-row"><div class="grid-col col-label">Especialista Asignado:</div><div class="grid-col col-val">${professional || 'Especialista de Turno'}</div></div>
-              </div>
-            </div>
-
-            <div class="total-banner">
-              <div class="total-label">Monto Total a Abonar</div>
-              <div class="total-amount">S/ ${formattedAmount}</div>
-            </div>
-
-            <div class="payment-methods">
-              <div style="font-weight: 700; color: #0f172a; margin-bottom: 6px;">Canales de Pago Habilitados:</div>
-              <p style="margin: 4px 0;"><span class="badge">YAPE</span> Número Directo: <strong>970 292 710</strong> (A nombre de Clínica NexoSalud)</p>
-              <p style="margin: 4px 0;"><strong>Transferencia Bancaria BCP:</strong> Cta: 191-88392019-0-45 | CCI: 002-191-008839201904-52</p>
-              <p style="margin: 4px 0;"><strong>Pasarela Web:</strong> Puede abonar directamente con Tarjeta o Yape desde nuestro portal.</p>
-            </div>
-
-            <p style="font-size: 12px; color: #64748b; margin-top: 20px; text-align: center;">
-              <em>📎 Adjunto en este correo encontrará el documento formal en PDF (Proforma de Aviso de Cobro).</em>
-            </p>
-          </div>
-          <div class="footer">
-            <p>Clínica Odontológica NexoSalud S.A.C. | RUC: 20608930192</p>
-            <p>Este es un correo automático generado por el Sistema de Recaudación Inteligente de NexoSalud.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    // Limpiar rigurosamente cualquier prefijo de Data URI (ej. "data:application/pdf;filename=generated.pdf;base64,...")
-    let cleanBase64 = '';
-    if (pdfBase64 && typeof pdfBase64 === 'string') {
-      if (pdfBase64.includes('base64,')) {
-        cleanBase64 = pdfBase64.split('base64,')[1].trim();
-      } else {
-        cleanBase64 = pdfBase64.replace(/^data:[^;]+;base64,/, '').trim();
-      }
-      // Remover saltos de línea o espacios accidentales
-      cleanBase64 = cleanBase64.replace(/[\r\n\s]+/g, '');
-    }
-
-    const patientFileSlug = (patientName || 'Paciente').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const pdfFileName = req.body.filename
-      ? (req.body.filename.endsWith('.pdf') ? req.body.filename : `${req.body.filename}.pdf`)
-      : `Documento_${patientFileSlug}.pdf`;
-
-    const attachments: any[] = [];
-    if (cleanBase64) {
-      attachments.push({
-        filename: pdfFileName,
-        content: Buffer.from(cleanBase64, 'base64'),
-        contentType: 'application/pdf'
-      });
-    }
-
-    // 1. MÉTODO 100% GARANTIZADO EN RENDER (HTTPS Port 443): Resend API
-    const resendApiKey = process.env.RESEND_API_KEY;
-    if (resendApiKey) {
-      console.log(`[EMAIL DISPATCHER] Despachando PDF vía RESEND HTTPS API a: ${toEmail} (Archivo: ${pdfFileName}, Bytes: ${cleanBase64.length})`);
-      const resendPayload: any = {
-        from: process.env.RESEND_FROM || 'Clínica NexoSalud <onboarding@resend.dev>',
-        to: [toEmail],
-        subject: emailSubject,
-        html: htmlBody,
-      };
-
-      if (cleanBase64) {
-        resendPayload.attachments = [
-          {
-            filename: pdfFileName,
-            content: cleanBase64
-          }
-        ];
-      }
-
-      const resendRes = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey.trim()}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(resendPayload)
-      });
-
-      const resendData: any = await resendRes.json();
-      if (!resendRes.ok) {
-        console.error('[RESEND API ERROR]', resendData);
-        throw new Error(resendData.message || 'Error al enviar correo mediante Resend API.');
-      }
-
-      return res.json({
-        success: true,
-        provider: 'resend',
-        message: `Aviso de cobro con proforma PDF enviado con éxito al correo ${toEmail}.`,
-        toEmail,
-        hasAttachment: !!cleanBase64
-      });
-    }
-
-    // 2. MÉTODO 2: Brevo HTTPS API (Port 443)
-    const brevoApiKey = process.env.BREVO_API_KEY;
-    if (brevoApiKey) {
-      console.log(`[EMAIL DISPATCHER] Despachando proforma PDF vía BREVO HTTPS API a: ${toEmail}`);
-      const brevoPayload: any = {
-        sender: { name: 'Clínica NexoSalud', email: process.env.BREVO_SENDER_EMAIL || 'notificaciones@nexosalud.com' },
-        to: [{ email: toEmail, name: patientName || 'Paciente' }],
-        subject: emailSubject,
-        htmlContent: htmlBody,
-      };
-
-      if (cleanBase64) {
-        brevoPayload.attachment = [
-          {
-            name: pdfFileName,
-            content: cleanBase64
-          }
-        ];
-      }
-
-      const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'api-key': brevoApiKey.trim(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(brevoPayload)
-      });
-
-      const brevoData: any = await brevoRes.json();
-      if (!brevoRes.ok) {
-        console.error('[BREVO API ERROR]', brevoData);
-        throw new Error(brevoData.message || 'Error al enviar correo mediante Brevo API.');
-      }
-
-      return res.json({
-        success: true,
-        provider: 'brevo',
-        message: `Aviso de cobro con proforma PDF enviado con éxito al correo ${toEmail}.`,
-        toEmail,
-        hasAttachment: !!cleanBase64
-      });
-    }
-
-    // 3. MÉTODO 3: SMTP Directo (Nodemailer / Gmail)
-    const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-    const smtpPort = Number(process.env.SMTP_PORT || 465);
-    const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
-    const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
-
-    if (smtpUser && smtpPass) {
-      const cleanPass = smtpPass.replace(/\s+/g, '');
-      const isGmail = smtpHost.toLowerCase().includes('gmail');
-
-      const transporter = nodemailer.createTransport({
-        ...(isGmail ? { service: 'gmail' } : { host: smtpHost, port: smtpPort, secure: smtpPort === 465 }),
-        auth: {
-          user: smtpUser,
-          pass: cleanPass
-        },
-        connectionTimeout: 8000,
-        greetingTimeout: 8000,
-        socketTimeout: 10000,
-        tls: {
-          rejectUnauthorized: false
-        }
-      });
-
-      await transporter.sendMail({
-        from: `"Clínica NexoSalud Recaudación" <${smtpUser}>`,
-        to: toEmail,
-        subject: emailSubject,
-        html: htmlBody,
-        attachments
-      });
-
-      return res.json({
-        success: true,
-        provider: 'smtp',
-        message: `Aviso de cobro con proforma PDF enviado con éxito al correo ${toEmail}.`,
-        toEmail,
-        hasAttachment: attachments.length > 0
-      });
-    } else {
-      // 4. MODO SIMULACIÓN (si no hay credenciales configuradas)
-      console.log(`[EMAIL DISPATCHER] Enviando proforma PDF simulada a: ${toEmail}`);
-      console.log(`[EMAIL DISPATCHER] Asunto: ${emailSubject}`);
-      console.log(`[EMAIL DISPATCHER] Adjunto PDF: ${attachments.length > 0 ? 'Sí (PDF generado)' : 'No'}`);
-
-      return res.json({
-        success: true,
-        simulated: true,
-        message: `Aviso de cobro con proforma PDF enviado correctamente a ${toEmail}.`,
-        toEmail,
-        hasAttachment: attachments.length > 0
-      });
-    }
+    return res.json(result);
   } catch (error: any) {
-    console.error('Error al enviar correo con proforma PDF:', error);
+    console.error('Error al enviar correo en backend:', error);
     res.status(500).json({ error: error.message || 'Error al procesar el envío del correo.' });
   }
 });

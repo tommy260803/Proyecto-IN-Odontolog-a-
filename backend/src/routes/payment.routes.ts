@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
 import { PrismaClient } from '@prisma/client';
+import { sendPaymentNoticeOrConfirmation } from './payer.routes';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -19,8 +20,22 @@ async function validateAndPromotePayer(payerId: number | string, channel: string
         ]
       },
       include: {
-        Opcion: { include: { Disponibilidad: true } },
-        Solicitud: true,
+        Persona: true,
+        Opcion: { 
+          include: { 
+            Disponibilidad: {
+              include: {
+                Sede: true,
+                Profesional: true
+              }
+            } 
+          } 
+        },
+        Solicitud: {
+          include: {
+            Servicio: true
+          }
+        },
         Pagos: true
       }
     });
@@ -87,6 +102,36 @@ async function validateAndPromotePayer(payerId: number | string, channel: string
           estado_servicio: 'Programado',
           asistencia: 'Pendiente'
         }
+      });
+    }
+
+    // 5. Enviar automáticamente constancia oficial de pago por correo al paciente
+    const patientEmail = reserva.Persona?.email || persona.email;
+    if (patientEmail) {
+      const patientFullName = `${reserva.Persona?.nombres || persona.nombres || ''} ${reserva.Persona?.apellidos || persona.apellidos || ''}`.trim();
+      const serviceName = reserva.Solicitud?.Servicio?.nombre || 'Consulta Odontológica Especializada';
+      const reservationDate = reserva.Opcion?.Disponibilidad?.fecha ? reserva.Opcion.Disponibilidad.fecha.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      const reservationTime = reserva.Opcion?.Disponibilidad?.hora_inicio ? reserva.Opcion.Disponibilidad.hora_inicio.toISOString().substring(11, 16) : '10:00';
+      const branchName = reserva.Opcion?.Disponibilidad?.Sede?.nombre || 'Sede Principal';
+      const profName = reserva.Opcion?.Disponibilidad?.Profesional ? `Dr. ${reserva.Opcion.Disponibilidad.Profesional.nombres || ''} ${reserva.Opcion.Disponibilidad.Profesional.apellidos || ''}`.trim() : 'Dr. Especialista';
+      const amountVal = Number(pago.importe || amount || reserva.Opcion?.precio_ofrecido || 1.00);
+
+      sendPaymentNoticeOrConfirmation({
+        toEmail: patientEmail,
+        patientName: patientFullName,
+        subject: `✅ Constancia Oficial de Pago y Confirmación de Cita - NexoSalud #${reserva.id_reserva}`,
+        amount: amountVal,
+        serviceName,
+        reservationDate,
+        reservationTime,
+        branch: branchName,
+        professional: profName,
+        filename: `Constancia_Pago_${reserva.id_reserva}`,
+        isValidated: true
+      }).then(resEmail => {
+        console.log(`[AUTO-EMAIL PASARELA] Constancia enviada automáticamente a ${patientEmail}:`, resEmail);
+      }).catch(err => {
+        console.error('[AUTO-EMAIL ERROR] Error enviando correo desde pasarela:', err);
       });
     }
 

@@ -288,10 +288,15 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
         {/* Barra de Acciones Multicanal según Estado */}
         <div className="pt-1 flex flex-wrap items-center gap-2">
           {p.state === PayerState.VALIDATED ? (
-            <>
+            <div className="flex flex-wrap items-center gap-2 w-full">
               <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 Pago Validado
+              </span>
+
+              <span className="text-xs font-medium text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm">
+                <Mail className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                Constancia de Pago enviada automáticamente {p.person?.email ? `a ${p.person.email}` : 'al correo'}
               </span>
 
               {/* Botón Ver PDF de Constancia */}
@@ -299,25 +304,25 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                 type="button"
                 onClick={() => setIsPdfModalOpen(true)}
                 size="sm"
-                className="bg-teal-50 hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800 dark:hover:bg-teal-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
+                className="bg-white hover:bg-teal-600 text-teal-800 hover:text-white border border-teal-300 dark:bg-slate-800 dark:text-teal-300 dark:border-teal-700 dark:hover:bg-teal-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
                 title="Ver constancia oficial de pago en PDF"
               >
                 <FileText className="w-3.5 h-3.5" />
                 Ver Constancia PDF
               </Button>
 
-              {/* Botón Enviar Confirmación */}
+              {/* Botón Reenviar al Correo */}
               <Button
                 type="button"
                 onClick={() => handleSendEmail(p)}
                 size="sm"
                 className="bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-600 dark:hover:text-white rounded-xl text-xs h-8 px-3 gap-1.5 shadow-sm font-semibold transition-all"
-                title="Enviar constancia y confirmación de cita por correo al paciente"
+                title="Reenviar constancia y confirmación de cita por correo al paciente"
               >
                 <Mail className="w-3.5 h-3.5" />
-                Enviar Confirmación al Correo
+                Reenviar al Correo
               </Button>
-            </>
+            </div>
           ) : (
             <>
               {/* Botón WhatsApp de Cobro */}
