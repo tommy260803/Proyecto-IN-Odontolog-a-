@@ -543,23 +543,111 @@ router.post('/send-notice-email', async (req, res) => {
       </html>
     `;
 
-    // Configurar transporte de nodemailer
-    const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-    const smtpPort = Number(process.env.SMTP_PORT || 465);
-    const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
-    const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
-
+    // Limpiar prefijo data:application/pdf;base64,... si viene incluido
+    const cleanBase64 = pdfBase64 ? pdfBase64.replace(/^data:application\/pdf;base64,/, '') : '';
     const attachments: any[] = [];
 
-    if (pdfBase64) {
-      // Limpiar prefijo data:application/pdf;base64,... si viene incluido
-      const cleanBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, '');
+    if (cleanBase64) {
       attachments.push({
         filename: `Proforma_Aviso_Cobro_${(patientName || 'Paciente').replace(/\s+/g, '_')}.pdf`,
         content: Buffer.from(cleanBase64, 'base64'),
         contentType: 'application/pdf'
       });
     }
+
+    // 1. MÉTODO 100% GARANTIZADO EN RENDER (HTTPS Port 443): Resend API
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (resendApiKey) {
+      console.log(`[EMAIL DISPATCHER] Despachando proforma PDF vía RESEND HTTPS API a: ${toEmail}`);
+      const resendPayload: any = {
+        from: process.env.RESEND_FROM || 'Clínica NexoSalud <onboarding@resend.dev>',
+        to: [toEmail],
+        subject: emailSubject,
+        html: htmlBody,
+      };
+
+      if (cleanBase64) {
+        resendPayload.attachments = [
+          {
+            filename: `Proforma_Aviso_Cobro_${(patientName || 'Paciente').replace(/\s+/g, '_')}.pdf`,
+            content: cleanBase64
+          }
+        ];
+      }
+
+      const resendRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey.trim()}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(resendPayload)
+      });
+
+      const resendData: any = await resendRes.json();
+      if (!resendRes.ok) {
+        console.error('[RESEND API ERROR]', resendData);
+        throw new Error(resendData.message || 'Error al enviar correo mediante Resend API.');
+      }
+
+      return res.json({
+        success: true,
+        provider: 'resend',
+        message: `Aviso de cobro con proforma PDF enviado con éxito al correo ${toEmail}.`,
+        toEmail,
+        hasAttachment: !!cleanBase64
+      });
+    }
+
+    // 2. MÉTODO 2: Brevo HTTPS API (Port 443)
+    const brevoApiKey = process.env.BREVO_API_KEY;
+    if (brevoApiKey) {
+      console.log(`[EMAIL DISPATCHER] Despachando proforma PDF vía BREVO HTTPS API a: ${toEmail}`);
+      const brevoPayload: any = {
+        sender: { name: 'Clínica NexoSalud', email: process.env.BREVO_SENDER_EMAIL || 'notificaciones@nexosalud.com' },
+        to: [{ email: toEmail, name: patientName || 'Paciente' }],
+        subject: emailSubject,
+        htmlContent: htmlBody,
+      };
+
+      if (cleanBase64) {
+        brevoPayload.attachment = [
+          {
+            name: `Proforma_Aviso_Cobro_${(patientName || 'Paciente').replace(/\s+/g, '_')}.pdf`,
+            content: cleanBase64
+          }
+        ];
+      }
+
+      const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': brevoApiKey.trim(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(brevoPayload)
+      });
+
+      const brevoData: any = await brevoRes.json();
+      if (!brevoRes.ok) {
+        console.error('[BREVO API ERROR]', brevoData);
+        throw new Error(brevoData.message || 'Error al enviar correo mediante Brevo API.');
+      }
+
+      return res.json({
+        success: true,
+        provider: 'brevo',
+        message: `Aviso de cobro con proforma PDF enviado con éxito al correo ${toEmail}.`,
+        toEmail,
+        hasAttachment: !!cleanBase64
+      });
+    }
+
+    // 3. MÉTODO 3: SMTP Directo (Nodemailer / Gmail)
+    const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const smtpPort = Number(process.env.SMTP_PORT || 465);
+    const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+    const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
 
     if (smtpUser && smtpPass) {
       const cleanPass = smtpPass.replace(/\s+/g, '');
@@ -571,6 +659,9 @@ router.post('/send-notice-email', async (req, res) => {
           user: smtpUser,
           pass: cleanPass
         },
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+        socketTimeout: 10000,
         tls: {
           rejectUnauthorized: false
         }
@@ -586,12 +677,13 @@ router.post('/send-notice-email', async (req, res) => {
 
       return res.json({
         success: true,
+        provider: 'smtp',
         message: `Aviso de cobro con proforma PDF enviado con éxito al correo ${toEmail}.`,
         toEmail,
         hasAttachment: attachments.length > 0
       });
     } else {
-      // Si aún no han configurado variables SMTP en Render, simular entrega exitosa y registrar en logs
+      // 4. MODO SIMULACIÓN (si no hay credenciales configuradas)
       console.log(`[EMAIL DISPATCHER] Enviando proforma PDF simulada a: ${toEmail}`);
       console.log(`[EMAIL DISPATCHER] Asunto: ${emailSubject}`);
       console.log(`[EMAIL DISPATCHER] Adjunto PDF: ${attachments.length > 0 ? 'Sí (PDF generado)' : 'No'}`);
