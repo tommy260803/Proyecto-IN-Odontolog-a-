@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import nodemailer from 'nodemailer';
+import jsPDF from 'jspdf';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -298,14 +299,19 @@ router.post('/:id/validate', async (req, res) => {
       sendPaymentNoticeOrConfirmation({
         toEmail: patientEmail,
         patientName: patientFullName,
+        documentNumber: reserva.Persona?.dni || persona.dni,
+        phone: reserva.Persona?.numero || persona.numero,
         subject: `✅ Constancia Oficial de Pago y Confirmación de Cita - NexoSalud #${reserva.id_reserva}`,
         amount: amountVal,
+        channel: pago.canal_pago || 'YAPE',
+        operationNumber: pago.referencia_pago || `REF-${reserva.id_reserva}`,
         serviceName,
         reservationDate,
         reservationTime,
         branch: branchName,
         professional: profName,
         filename: `Constancia_Pago_${reserva.id_reserva}`,
+        code: `CONST-${String(reserva.id_reserva).padStart(5, '0')}-${new Date().getFullYear()}`,
         isValidated: true
       }).then(resEmail => {
         console.log(`[AUTO-EMAIL] Constancia de pago enviada automáticamente a ${patientEmail}:`, resEmail);
@@ -486,34 +492,278 @@ router.post('/:id/convert-customer', async (req, res) => {
   }
 });
 
+// Generador de PDF oficial en Backend con jsPDF
+export function generateBackendPdfBase64(params: {
+  isValidated?: boolean;
+  patientName?: string;
+  documentNumber?: string;
+  phone?: string;
+  email?: string;
+  serviceName?: string;
+  reservationDate?: string;
+  reservationTime?: string;
+  branch?: string;
+  professional?: string;
+  amount?: number | string;
+  channel?: string;
+  operationNumber?: string;
+  code?: string;
+}): string {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const isValidated = !!params.isValidated;
+  const pageWidth = doc.internal.pageSize.getWidth(); // 210mm
+  const margin = 15;
+  let y = 18;
+
+  const primaryColor = isValidated ? [16, 185, 129] : [13, 148, 136];
+  const darkColor = [15, 23, 42];
+  const grayColor = [100, 116, 139];
+  const lightBg = [248, 250, 252];
+  const formattedAmount = Number(params.amount || 0).toFixed(2);
+
+  // Cabecera Institucional
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.text('NEXOSALUD', margin, y);
+
+  const docCode = params.code || (isValidated
+    ? `CONST-${Math.floor(1000 + Math.random() * 9000)}-${new Date().getFullYear()}`
+    : `PRF-${Math.floor(1000 + Math.random() * 9000)}-${new Date().getFullYear()}`);
+
+  const tagTitle = isValidated ? 'CONSTANCIA DE PAGO' : 'ESTADO DE COBRO';
+  const tagWidth = isValidated ? 52 : 45;
+
+  doc.setFontSize(8.5);
+  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setFillColor(isValidated ? 236 : 240, isValidated ? 253 : 253, isValidated ? 245 : 250);
+  doc.roundedRect(pageWidth - margin - tagWidth, y - 6, tagWidth, 8, 2, 2, 'F');
+  doc.text(tagTitle, pageWidth - margin - (tagWidth / 2), y - 1, { align: 'center' });
+
+  y += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+  doc.text('Clínica Odontológica Especializada', margin, y);
+  doc.text(docCode, pageWidth - margin, y, { align: 'right' });
+
+  y += 4;
+  doc.text('RUC: 20608945123 • Trujillo / Lima, Perú', margin, y);
+  const currentDate = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' });
+  doc.text(`Emisión: ${currentDate}`, pageWidth - margin, y, { align: 'right' });
+
+  // Línea Divisoria
+  y += 5;
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setLineWidth(0.8);
+  doc.line(margin, y, pageWidth - margin, y);
+
+  // 1. Datos del Paciente
+  y += 7;
+  doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(margin, y, pageWidth - (margin * 2), 26, 3, 3, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.text('DATOS DEL PACIENTE', margin + 4, y + 6);
+
+  doc.setFontSize(8);
+  doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+  doc.text('Nombre Completo:', margin + 4, y + 13);
+  doc.text('Documento:', margin + 95, y + 13);
+  doc.text('Teléfono:', margin + 4, y + 20);
+  doc.text('Correo:', margin + 95, y + 20);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+  doc.text(params.patientName || 'Paciente Registrado', margin + 32, y + 13);
+  doc.text(params.documentNumber || 'DNI Registrado', margin + 115, y + 13);
+  doc.text(params.phone || 'No registrado', margin + 32, y + 20);
+  doc.text(params.email || 'No registrado', margin + 115, y + 20);
+
+  // 2. Detalle de Cita Odontológica
+  y += 31;
+  doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+  doc.roundedRect(margin, y, pageWidth - (margin * 2), 26, 3, 3, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.text('DETALLE DE CITA Y TRATAMIENTO ODONTOLÓGICO', margin + 4, y + 6);
+
+  doc.setFontSize(8);
+  doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+  doc.text('Servicio:', margin + 4, y + 13);
+  doc.text('Sede:', margin + 95, y + 13);
+  doc.text('Fecha Programada:', margin + 4, y + 20);
+  doc.text('Hora:', margin + 95, y + 20);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+  doc.text(params.serviceName || 'Consulta y Tratamiento Odontológico Especializado', margin + 20, y + 13);
+  doc.text(params.branch || 'Sede Principal', margin + 106, y + 13);
+  doc.text(params.reservationDate || 'Por coordinar', margin + 34, y + 20);
+  doc.text(params.reservationTime || 'Turno asignado', margin + 106, y + 20);
+
+  // 3. Tabla de Conceptos
+  y += 32;
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.roundedRect(margin, y, pageWidth - (margin * 2), 8, 2, 2, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text('Descripción del Concepto', margin + 4, y + 5.5);
+  doc.text('Cant.', margin + 120, y + 5.5, { align: 'center' });
+  doc.text('Importe', pageWidth - margin - 4, y + 5.5, { align: 'right' });
+
+  y += 8;
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(226, 232, 240);
+  doc.rect(margin, y, pageWidth - (margin * 2), 12, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+  doc.text(
+    isValidated
+      ? 'Abono Validado de Consulta Odontológica'
+      : 'Abono / Reserva de Consulta Odontológica',
+    margin + 4,
+    y + 5
+  );
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+  doc.text(
+    isValidated
+      ? 'Reserva asegurada y confirmada en agenda clínica'
+      : 'Garantía de turno en agenda clínica',
+    margin + 4,
+    y + 9
+  );
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+  doc.text('1', margin + 120, y + 6, { align: 'center' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.text(`S/ ${formattedAmount}`, pageWidth - margin - 4, y + 6, { align: 'right' });
+
+  // 4. Banner Total
+  y += 16;
+  const bannerWidth = 76;
+  const bannerX = pageWidth - margin - bannerWidth;
+  doc.setFillColor(isValidated ? 236 : 240, isValidated ? 253 : 253, isValidated ? 245 : 250);
+  doc.setDrawColor(isValidated ? 167 : 153, isValidated ? 243 : 246, isValidated ? 208 : 228);
+  doc.roundedRect(bannerX, y, bannerWidth, 16, 3, 3, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(isValidated ? 5 : 15, isValidated ? 150 : 118, isValidated ? 105 : 110);
+  doc.text(
+    isValidated ? 'TOTAL ABONADO / CANCELADO' : 'TOTAL PENDIENTE DE ABONO',
+    bannerX + (bannerWidth / 2),
+    y + 5,
+    { align: 'center' }
+  );
+
+  doc.setFontSize(14);
+  doc.text(`S/ ${formattedAmount}`, bannerX + (bannerWidth / 2), y + 12.5, { align: 'center' });
+
+  // 5. Estado de Conciliación
+  y += 20;
+  if (isValidated) {
+    doc.setFillColor(236, 253, 245);
+    doc.setDrawColor(167, 243, 208);
+    doc.roundedRect(margin, y, pageWidth - (margin * 2), 22, 3, 3, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(5, 150, 105);
+    doc.text('✓ ESTADO DEL PAGO: VALIDADO Y CONCILIADO', margin + 4, y + 5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+    doc.text(`• Canal / Medio de Pago: ${params.channel || 'Pasarela / Yape / Transferencia Bancaria'}`, margin + 4, y + 10);
+    doc.text(`• N° de Operación / Ref: ${params.operationNumber || 'CONCILIADO-OK'}`, margin + 4, y + 14.5);
+    doc.text(`• Estado en Agenda: Cita Confirmada y Programada (${params.reservationDate || 'Fecha coordinada'} - ${params.reservationTime || 'Hora asignada'})`, margin + 4, y + 19);
+  } else {
+    doc.setFillColor(255, 251, 235);
+    doc.setDrawColor(253, 230, 138);
+    doc.roundedRect(margin, y, pageWidth - (margin * 2), 22, 3, 3, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(146, 64, 14);
+    doc.text('✓ CANALES DE PAGO HABILITADOS:', margin + 4, y + 5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text('• Yape Oficial: Pagos directos desde la app con código de aprobación al 970 292 710 (Clínica NexoSalud)', margin + 4, y + 10);
+    doc.text('• Tarjeta de Débito / Crédito: Visa, Mastercard, American Express mediante pasarela web integrada', margin + 4, y + 14.5);
+    doc.text('• Transferencia Bancaria BCP: Cta Cte 191-2345678-0-12 (CCI: 002-191002345678012-54)', margin + 4, y + 19);
+  }
+
+  // Pie de Página
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+  doc.text('Este documento es una constancia emitida electrónicamente por el Sistema de Gestión Clínica NexoSalud.', margin, 280);
+  doc.text('Para cualquier duda o reprogramación comuníquese con nuestra central de atención al paciente.', margin, 284);
+
+  const outputDataUri = doc.output('datauristring');
+  return outputDataUri.split('base64,')[1] || outputDataUri;
+}
+
 // Función reutilizable para envío de Avisos de Cobro y Constancias de Pago
 export async function sendPaymentNoticeOrConfirmation(params: {
   toEmail: string;
   patientName?: string;
+  documentNumber?: string;
+  phone?: string;
   subject?: string;
   message?: string;
   amount?: number | string;
+  channel?: string;
+  operationNumber?: string;
   serviceName?: string;
   reservationDate?: string;
   reservationTime?: string;
   branch?: string;
   professional?: string;
   filename?: string;
+  code?: string;
   pdfBase64?: string;
   isValidated?: boolean;
 }) {
   const {
     toEmail,
     patientName,
+    documentNumber,
+    phone,
     subject,
     message,
     amount,
+    channel,
+    operationNumber,
     serviceName,
     reservationDate,
     reservationTime,
     branch,
     professional,
     filename,
+    code,
     pdfBase64,
     isValidated
   } = params;
@@ -588,7 +838,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
           </div>
 
           <p style="font-size: 12px; color: #64748b; margin-top: 20px; text-align: center;">
-            <em>📎 ${isValidated ? 'Adjunto en este correo encontrará su Constancia Oficial de Pago.' : 'Adjunto en este correo encontrará el documento formal en PDF (Proforma de Aviso de Cobro).'}</em>
+            <em>📎 ${isValidated ? 'Adjunto en este correo encontrará su Constancia Oficial de Pago en PDF.' : 'Adjunto en este correo encontrará el documento formal en PDF (Proforma de Aviso de Cobro).'}</em>
           </p>
         </div>
         <div class="footer">
@@ -600,7 +850,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
     </html>
   `;
 
-  // Limpiar rigurosamente cualquier prefijo de Data URI (ej. "data:application/pdf;filename=generated.pdf;base64,...")
+  // Limpiar rigurosamente cualquier prefijo de Data URI o generar PDF si no se proporcionó
   let cleanBase64 = '';
   if (pdfBase64 && typeof pdfBase64 === 'string') {
     if (pdfBase64.includes('base64,')) {
@@ -609,6 +859,31 @@ export async function sendPaymentNoticeOrConfirmation(params: {
       cleanBase64 = pdfBase64.replace(/^data:[^;]+;base64,/, '').trim();
     }
     cleanBase64 = cleanBase64.replace(/[\r\n\s]+/g, '');
+  }
+
+  // Si no se proveyó PDF pre-generado, crearlo automáticamente con jsPDF
+  if (!cleanBase64) {
+    try {
+      cleanBase64 = generateBackendPdfBase64({
+        isValidated,
+        patientName,
+        documentNumber,
+        phone,
+        email: toEmail,
+        serviceName,
+        reservationDate,
+        reservationTime,
+        branch,
+        professional,
+        amount,
+        channel,
+        operationNumber,
+        code
+      });
+      console.log(`[PDF GENERATOR] PDF ${isValidated ? 'Constancia' : 'Proforma'} generado automáticamente para ${toEmail}`);
+    } catch (pdfErr) {
+      console.error('[PDF GENERATOR ERROR] Error generando PDF en backend:', pdfErr);
+    }
   }
 
   const patientFileSlug = (patientName || 'Paciente').replace(/[^a-zA-Z0-9_-]/g, '_');

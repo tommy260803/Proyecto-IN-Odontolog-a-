@@ -119,14 +119,19 @@ async function validateAndPromotePayer(payerId: number | string, channel: string
       sendPaymentNoticeOrConfirmation({
         toEmail: patientEmail,
         patientName: patientFullName,
+        documentNumber: reserva.Persona?.dni || persona.dni,
+        phone: reserva.Persona?.numero || persona.numero,
         subject: `✅ Constancia Oficial de Pago y Confirmación de Cita - NexoSalud #${reserva.id_reserva}`,
         amount: amountVal,
+        channel: channel || pago.canal_pago || 'YAPE',
+        operationNumber: ref || pago.referencia_pago || `REF-${reserva.id_reserva}`,
         serviceName,
         reservationDate,
         reservationTime,
         branch: branchName,
         professional: profName,
         filename: `Constancia_Pago_${reserva.id_reserva}`,
+        code: `CONST-${String(reserva.id_reserva).padStart(5, '0')}-${new Date().getFullYear()}`,
         isValidated: true
       }).then(resEmail => {
         console.log(`[AUTO-EMAIL PASARELA] Constancia enviada automáticamente a ${patientEmail}:`, resEmail);
