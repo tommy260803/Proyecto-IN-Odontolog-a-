@@ -282,9 +282,14 @@ export async function callGroqAssistant(ctx: PayerContext): Promise<AiCollection
   const fallbackStrategies = generateHeuristicStrategies(ctx, risk);
   const apiKey = import.meta.env.VITE_GROQ_API_KEY;
 
-  const defaultRecommendation = ctx.state === 'VALIDATED'
-    ? `El pago de S/ ${ctx.amountToPay.toFixed(2)} fue validado exitosamente. Paciente listo para transferir a CUSTOMER.`
-    : `Paciente con ${risk.level.toLowerCase()} riesgo de fuga (${risk.score}%). Se sugiere activar la estrategia de ${risk.score >= 65 ? 'Rescate 50% o Urgencia' : 'Recordatorio Preventivo'}.`;
+  let defaultRecommendation = '';
+  if (ctx.state === 'VALIDATED') {
+    defaultRecommendation = `El pago de S/ ${ctx.amountToPay.toFixed(2)} fue validado exitosamente. Paciente listo para transferir a CUSTOMER.`;
+  } else if (risk.score === 0) {
+    defaultRecommendation = `La cita se encuentra cancelada por vencimiento del plazo límite (00:00 hrs). El sillón fue liberado en la agenda clínica. No aplica cobranza ni recordatorio de pago.`;
+  } else {
+    defaultRecommendation = `Paciente con ${risk.level.toLowerCase()} riesgo de fuga (${risk.score}%). Se sugiere activar la estrategia de ${risk.score >= 65 ? 'Rescate 50% o Urgencia' : 'Recordatorio Preventivo'}.`;
+  }
 
   const fallbackResult: AiCollectionResult = {
     risk,

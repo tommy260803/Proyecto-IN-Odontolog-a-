@@ -468,8 +468,8 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
               )}
             </div>
 
-            {/* Selector de las 3 Estrategias Persuasivas */}
-            {aiResult?.strategies && (
+            {/* Selector de las 3 Estrategias Persuasivas (Solo para citas activas con riesgo > 0) */}
+            {aiResult?.risk && aiResult.risk.score > 0 && aiResult.strategies && (
               <div className="space-y-2.5 pt-1">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
@@ -557,36 +557,64 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
               </div>
             )}
 
+            {/* Panel Informativo de Cierre para Citas Vencidas / Expiradas */}
+            {aiResult?.risk && aiResult.risk.score === 0 && (
+              <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                  <ShieldAlert className="w-4 h-4 text-slate-500 shrink-0" />
+                  <span>Proceso de Cobranza Finalizado: Cita Cancelada por Expiración</span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  El plazo de pago de esta reserva venció a las <strong>00:00 hrs del día programado</strong> sin registro de abono. El cron job ejecutó la <strong>cancelación automática</strong>, liberó el sillón odontológico en la agenda y despachó la notificación formal por correo.
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                    ✓ Sillón Odontológico Disponible
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800">
+                    ✓ Correo de Cancelación Despachado
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
+                    ✓ Sin Acciones de Cobro Activas
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Acciones Rápidas con Botones Elevados y Sólidos */}
             <div className="pt-1 flex flex-wrap items-center gap-2.5">
-              <Button
-                type="button"
-                onClick={() => handleSendWhatsApp(p)}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs h-9.5 px-4 font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 border border-emerald-500/40"
-                title="Enviar mensaje persuasivo seleccionado por WhatsApp"
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>Contactar por WhatsApp</span>
-                <span className="text-[10px] bg-emerald-700/80 px-2 py-0.5 rounded-md font-medium">
-                  {selectedStrategy === 'FRIENDLY' ? 'Preventivo' : selectedStrategy === 'URGENCY' ? 'Urgencia' : 'Rescate 50%'}
-                </span>
-              </Button>
+              {aiResult?.risk && aiResult.risk.score > 0 && (
+                <>
+                  <Button
+                    type="button"
+                    onClick={() => handleSendWhatsApp(p)}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs h-9.5 px-4 font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 border border-emerald-500/40"
+                    title="Enviar mensaje persuasivo seleccionado por WhatsApp"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Contactar por WhatsApp</span>
+                    <span className="text-[10px] bg-emerald-700/80 px-2 py-0.5 rounded-md font-medium">
+                      {selectedStrategy === 'FRIENDLY' ? 'Preventivo' : selectedStrategy === 'URGENCY' ? 'Urgencia' : 'Rescate 50%'}
+                    </span>
+                  </Button>
 
-              <Button
-                type="button"
-                onClick={() => handleSendEmail(p)}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-9.5 px-4 font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 border border-indigo-500/40"
-                title="Enviar proforma y correo formal de cobranza"
-              >
-                <Mail className="w-4 h-4" />
-                <span>Enviar Proforma Correo</span>
-              </Button>
+                  <Button
+                    type="button"
+                    onClick={() => handleSendEmail(p)}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-9.5 px-4 font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 border border-indigo-500/40"
+                    title="Enviar proforma y correo formal de cobranza"
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>Enviar Proforma Correo</span>
+                  </Button>
+                </>
+              )}
 
               <Button
                 type="button"
                 onClick={() => setIsPdfModalOpen(true)}
                 className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-xl text-xs h-9.5 px-4 font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 border border-slate-300/80 dark:border-slate-700"
-                title="Abrir visor oficial de proforma en PDF"
+                title="Abrir visor oficial de proforma / constancia en PDF"
               >
                 <FileText className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                 <span>Ver PDF</span>
