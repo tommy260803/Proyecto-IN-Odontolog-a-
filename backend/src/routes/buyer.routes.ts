@@ -4,6 +4,69 @@ import { PrismaClient } from '@prisma/client';
 const router = Router();
 const prisma = new PrismaClient();
 
+// Helper functions to safely resolve foreign keys
+async function getValidCanalId(tx: any, id: any): Promise<number | null> {
+  if (!id || isNaN(Number(id))) return null;
+  try {
+    const item = await tx.canales.findUnique({ where: { id_canal: Number(id) } });
+    return item ? item.id_canal : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getValidFuenteId(tx: any, id: any): Promise<number | null> {
+  if (!id || isNaN(Number(id))) return null;
+  try {
+    const item = await tx.fuentes.findUnique({ where: { id_fuente: Number(id) } });
+    return item ? item.id_fuente : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getValidServicioId(tx: any, id: any): Promise<number | null> {
+  if (!id || isNaN(Number(id))) return null;
+  try {
+    const item = await tx.servicios.findUnique({ where: { id_servicio: Number(id) } });
+    return item ? item.id_servicio : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getValidCampanaId(tx: any, id: any): Promise<number | null> {
+  if (!id || isNaN(Number(id))) return null;
+  try {
+    const item = await tx.campanas.findUnique({ where: { id_campana: Number(id) } });
+    return item ? item.id_campana : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getValidHorarioId(tx: any, id: any): Promise<number | null> {
+  if (!id || isNaN(Number(id))) return null;
+  try {
+    const item = await tx.horarios.findUnique({ where: { id_horario: Number(id) } });
+    return item ? item.id_horario : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getValidModalidadId(tx: any, id: any): Promise<number | null> {
+  if (!id || isNaN(Number(id))) return null;
+  try {
+    const item = await tx.modalidades.findUnique({ where: { id_modalidad: Number(id) } });
+    if (item) return item.id_modalidad;
+    const first = await tx.modalidades.findFirst();
+    return first ? first.id_modalidad : null;
+  } catch {
+    return null;
+  }
+}
+
 // Obtener catálogos para el formulario
 router.get('/catalogs', async (req, res) => {
   try {
@@ -11,8 +74,29 @@ router.get('/catalogs', async (req, res) => {
     const fuentes = await prisma.fuentes.findMany({ where: { activo: true } });
     const servicios = await prisma.servicios.findMany({ where: { activo: true } });
     const sedes = await prisma.sedes.findMany({ where: { activo: true } });
-    res.json({ canales, fuentes, servicios, sedes });
+    
+    // Asegurar modalidades si están vacías
+    let modalidades = await prisma.modalidades.findMany();
+    if (modalidades.length === 0) {
+      try {
+        await prisma.modalidades.createMany({
+          data: [
+            { nombre: 'Presencial' },
+            { nombre: 'Virtual' },
+            { nombre: 'Teleconsulta' },
+            { nombre: 'Domiciliaria' }
+          ]
+        });
+        modalidades = await prisma.modalidades.findMany();
+      } catch (e) {
+        console.warn('Could not auto-seed modalidades:', e);
+      }
+    }
+
+    const horarios = await prisma.horarios.findMany();
+    res.json({ canales, fuentes, servicios, sedes, modalidades, horarios });
   } catch (error) {
+    console.error('Error al obtener catálogos:', error);
     res.status(500).json({ error: 'Error al obtener catálogos' });
   }
 });
@@ -44,11 +128,14 @@ router.post('/register', async (req, res) => {
     let etapaLead = await prisma.etapas.findFirst({ where: { nombre: 'LEAD' } });
     if (!etapaLead) etapaLead = await prisma.etapas.create({ data: { nombre: 'LEAD', descripcion: 'Intención concreta' } });
 
-    // 2. Transacción para asegurar la creación completa
+    // 2. Transacción para asegurar la creación completa con FK sanitizadas
     const result = await prisma.$transaction(async (tx) => {
-      // Crear persona como BUYER inicialmente (y la cambiamos a LEAD inmediatamente por la solicitud de info)
-      // Nota: Aquí lo haremos directo a LEAD si ya están solicitando info, 
-      // pero para respetar el flujo BUYER -> LEAD, la creamos y generamos un evento.
+      const validCampana = await getValidCampanaId(tx, id_campana_origen);
+      const validCanalOrigen = await getValidCanalId(tx, id_canal_origen);
+      const validCanal = await getValidCanalId(tx, id_canal);
+      const validFuente = await getValidFuenteId(tx, id_fuente);
+      const validServicio = await getValidServicioId(tx, id_servicio);
+      const validServicioInteres = await getValidServicioId(tx, id_servicio_interes);
 
       const persona = await tx.personas.create({
         data: {
@@ -58,8 +145,8 @@ router.post('/register', async (req, res) => {
           numero,
           autoriza_contacto: autoriza_contacto || false,
           fecha_autorizacion: autoriza_contacto ? new Date() : null,
-          id_campana_origen: id_campana_origen ? Number(id_campana_origen) : null,
-          id_canal_origen: id_canal_origen ? Number(id_canal_origen) : null,
+          id_campana_origen: validCampana,
+          id_canal_origen: validCanalOrigen,
           tipo_persona: tipo_persona || 'Adulto General',
           estado_calidad: estado_calidad || 'Valido',
           id_etapa_actual: etapaLead.id_etapa,
@@ -70,20 +157,20 @@ router.post('/register', async (req, res) => {
       await tx.interacciones.create({
         data: {
           id_persona: persona.id_persona,
-          id_canal: id_canal || null,
-          id_fuente: id_fuente || null,
+          id_canal: validCanal,
+          id_fuente: validFuente,
           tipo: 'Registro y Solicitud de Info',
           mensaje: 'El usuario llenó el formulario público de solicitud de información.'
         }
       });
 
       // Guardar preferencias si existen
-      if (sede_preferida || id_canal || id_servicio_interes) {
+      if (sede_preferida || validCanal || validServicioInteres) {
         await tx.personaPreferencias.create({
           data: {
             id_persona: persona.id_persona,
-            id_canal: id_canal || null,
-            id_servicio_interes: id_servicio_interes ? Number(id_servicio_interes) : null,
+            id_canal: validCanal,
+            id_servicio_interes: validServicioInteres,
             sede_preferida: sede_preferida || null,
           }
         });
@@ -93,7 +180,7 @@ router.post('/register', async (req, res) => {
       const solicitud = await tx.solicitudes.create({
         data: {
           id_persona: persona.id_persona,
-          id_servicio: id_servicio || null,
+          id_servicio: validServicio,
           motivo: 'Solicitud de información desde formulario web',
         }
       });
@@ -244,6 +331,15 @@ router.post('/', async (req, res) => {
     if (!etapaBuyer) etapaBuyer = await prisma.etapas.create({ data: { nombre: 'BUYER', descripcion: 'Contacto inicial' } });
 
     const result = await prisma.$transaction(async (tx) => {
+      const validCampana = await getValidCampanaId(tx, id_campana_origen);
+      const validCanalOrigen = await getValidCanalId(tx, id_canal_origen);
+      const validChannel = await getValidCanalId(tx, channel);
+      const validAttractionSource = await getValidFuenteId(tx, attractionSource);
+      const validService = await getValidServicioId(tx, serviceOfInterestId);
+      const validPrefCanal = await getValidCanalId(tx, pref_id_canal);
+      const validPrefHorario = await getValidHorarioId(tx, pref_id_horario);
+      const validPrefModalidad = await getValidModalidadId(tx, pref_id_modalidad);
+
       const persona = await tx.personas.create({
         data: {
           nombres: firstName,
@@ -253,44 +349,44 @@ router.post('/', async (req, res) => {
           dni: dniToSave,
           autoriza_contacto: contactAuthorization || false,
           fecha_autorizacion: contactAuthorization ? new Date() : null,
-          id_campana_origen: id_campana_origen ? Number(id_campana_origen) : null,
-          id_canal_origen: id_canal_origen ? Number(id_canal_origen) : null,
+          id_campana_origen: validCampana,
+          id_canal_origen: validCanalOrigen,
           tipo_persona: tipo_persona || 'Adulto General',
           estado_calidad: estado_calidad || 'Valido',
           id_etapa_actual: etapaBuyer.id_etapa,
         }
       });
 
-      if (channel || attractionSource) {
+      if (validChannel || validAttractionSource) {
         await tx.interacciones.create({
           data: {
             id_persona: persona.id_persona,
-            id_canal: channel ? Number(channel) : null,
-            id_fuente: attractionSource ? Number(attractionSource) : null,
+            id_canal: validChannel,
+            id_fuente: validAttractionSource,
             tipo: 'Registro Inicial',
             mensaje: 'Creación de BUYER desde Dashboard'
           }
         });
       }
 
-      if (concreteRequest || serviceOfInterestId) {
+      if (concreteRequest || validService) {
         await tx.solicitudes.create({
           data: {
             id_persona: persona.id_persona,
-            id_servicio: Number(serviceOfInterestId) || null,
+            id_servicio: validService,
             motivo: concreteRequest || 'Solicitud de información general'
           }
         });
       }
 
       // Gustos y Preferencias
-      if (pref_id_canal || pref_id_horario || pref_id_modalidad || pref_sede_preferida || pref_profesional_preferido) {
+      if (validPrefCanal || validPrefHorario || validPrefModalidad || pref_sede_preferida || pref_profesional_preferido) {
         await tx.personaPreferencias.create({
           data: {
             id_persona: persona.id_persona,
-            id_canal: pref_id_canal ? Number(pref_id_canal) : null,
-            id_horario: pref_id_horario ? Number(pref_id_horario) : null,
-            id_modalidad: pref_id_modalidad ? Number(pref_id_modalidad) : null,
+            id_canal: validPrefCanal,
+            id_horario: validPrefHorario,
+            id_modalidad: validPrefModalidad,
             sede_preferida: pref_sede_preferida || null,
             profesional_preferido: pref_profesional_preferido || null,
           }
@@ -392,6 +488,13 @@ router.put('/:id', async (req, res) => {
         data: updateData
       });
 
+      const validService = await getValidServicioId(tx, serviceOfInterestId);
+      const validChannel = await getValidCanalId(tx, channel);
+      const validAttractionSource = await getValidFuenteId(tx, attractionSource);
+      const validPrefCanal = await getValidCanalId(tx, pref_id_canal);
+      const validPrefHorario = await getValidHorarioId(tx, pref_id_horario);
+      const validPrefModalidad = await getValidModalidadId(tx, pref_id_modalidad);
+
       if (concreteRequest !== undefined || serviceOfInterestId !== undefined) {
         const solicitudExistente = await tx.solicitudes.findFirst({
           where: { id_persona: Number(id) }
@@ -400,24 +503,24 @@ router.put('/:id', async (req, res) => {
         if (solicitudExistente) {
           const dataToUpdate: any = {};
           if (concreteRequest !== undefined) dataToUpdate.motivo = concreteRequest;
-          if (serviceOfInterestId !== undefined) dataToUpdate.id_servicio = serviceOfInterestId ? Number(serviceOfInterestId) : null;
+          if (serviceOfInterestId !== undefined) dataToUpdate.id_servicio = validService;
 
           await tx.solicitudes.update({
             where: { id_solicitud: solicitudExistente.id_solicitud },
             data: dataToUpdate
           });
-        } else if (concreteRequest || serviceOfInterestId) {
+        } else if (concreteRequest || validService) {
           await tx.solicitudes.create({
             data: {
               id_persona: persona.id_persona,
               motivo: concreteRequest || 'Solicitud de información general',
-              id_servicio: serviceOfInterestId ? Number(serviceOfInterestId) : null
+              id_servicio: validService
             }
           });
         }
       }
 
-      if (channel || attractionSource) {
+      if (validChannel !== null || validAttractionSource !== null || channel || attractionSource) {
         const interaccionExistente = await tx.interacciones.findFirst({
           where: { id_persona: Number(id) },
           orderBy: { fecha_hora: 'asc' }
@@ -427,16 +530,16 @@ router.put('/:id', async (req, res) => {
           await tx.interacciones.update({
             where: { id_interaccion: interaccionExistente.id_interaccion },
             data: {
-              id_canal: channel ? Number(channel) : undefined,
-              id_fuente: attractionSource ? Number(attractionSource) : undefined,
+              id_canal: validChannel,
+              id_fuente: validAttractionSource,
             }
           });
-        } else {
+        } else if (validChannel || validAttractionSource) {
           await tx.interacciones.create({
             data: {
               id_persona: Number(id),
-              id_canal: channel ? Number(channel) : null,
-              id_fuente: attractionSource ? Number(attractionSource) : null,
+              id_canal: validChannel,
+              id_fuente: validAttractionSource,
               tipo: 'Actualización',
               mensaje: 'Actualizado desde Dashboard'
             }
@@ -446,13 +549,13 @@ router.put('/:id', async (req, res) => {
 
       // Reemplazar Gustos y Preferencias
       await tx.personaPreferencias.deleteMany({ where: { id_persona: Number(id) } });
-      if (pref_id_canal || pref_id_horario || pref_id_modalidad || pref_sede_preferida || pref_profesional_preferido) {
+      if (validPrefCanal || validPrefHorario || validPrefModalidad || pref_sede_preferida || pref_profesional_preferido) {
         await tx.personaPreferencias.create({
           data: {
             id_persona: Number(id),
-            id_canal: pref_id_canal ? Number(pref_id_canal) : null,
-            id_horario: pref_id_horario ? Number(pref_id_horario) : null,
-            id_modalidad: pref_id_modalidad ? Number(pref_id_modalidad) : null,
+            id_canal: validPrefCanal,
+            id_horario: validPrefHorario,
+            id_modalidad: validPrefModalidad,
             sede_preferida: pref_sede_preferida || null,
             profesional_preferido: pref_profesional_preferido || null,
           }

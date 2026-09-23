@@ -28,7 +28,14 @@ export const buyerService = {
           { id_sede: 1, nombre: 'Sede Norte' },
           { id_sede: 2, nombre: 'Sede Sur' },
           { id_sede: 3, nombre: 'Sede Centro' }
-        ]
+        ],
+        modalidades: [
+          { id_modalidad: 1, nombre: 'Presencial' },
+          { id_modalidad: 2, nombre: 'Virtual' },
+          { id_modalidad: 3, nombre: 'Teleconsulta' },
+          { id_modalidad: 4, nombre: 'Domiciliaria' }
+        ],
+        horarios: []
       };
     }
     const res = await fetch(`${API_URL}/buyer/catalogs`);

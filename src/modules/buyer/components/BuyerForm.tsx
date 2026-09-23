@@ -57,7 +57,9 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
     fuentes: any[];
     servicios: any[];
     sedes: any[];
-  }>({ canales: [], fuentes: [], servicios: [], sedes: [] });
+    modalidades?: any[];
+    horarios?: any[];
+  }>({ canales: [], fuentes: [], servicios: [], sedes: [], modalidades: [], horarios: [] });
 
   useEffect(() => {
     buyerService.getCatalogs()
@@ -524,9 +526,20 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                      <SelectItem value="1" className="text-xs text-slate-900 dark:text-slate-100">Presencial</SelectItem>
-                      <SelectItem value="3" className="text-xs text-slate-900 dark:text-slate-100">Teleconsulta</SelectItem>
-                      <SelectItem value="4" className="text-xs text-slate-900 dark:text-slate-100">Domiciliaria</SelectItem>
+                      {catalogs.modalidades && catalogs.modalidades.length > 0 ? (
+                        catalogs.modalidades.map((m: any) => (
+                          <SelectItem key={m.id_modalidad} value={m.id_modalidad.toString()} className="text-xs text-slate-900 dark:text-slate-100">
+                            {m.nombre}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <>
+                          <SelectItem value="1" className="text-xs text-slate-900 dark:text-slate-100">Presencial</SelectItem>
+                          <SelectItem value="2" className="text-xs text-slate-900 dark:text-slate-100">Virtual</SelectItem>
+                          <SelectItem value="3" className="text-xs text-slate-900 dark:text-slate-100">Teleconsulta</SelectItem>
+                          <SelectItem value="4" className="text-xs text-slate-900 dark:text-slate-100">Domiciliaria</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage className="text-[11px]" />
