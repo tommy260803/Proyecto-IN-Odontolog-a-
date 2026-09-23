@@ -8,6 +8,7 @@ import payerRoutes from './routes/payer.routes';
 import paymentRoutes from './routes/payment.routes';
 import customerRoutes from './routes/customer.routes';
 import turnedRoutes from './routes/turned.routes';
+import { startDunningScheduler } from './services/dunningScheduler';
 
 dotenv.config();
 
@@ -50,4 +51,5 @@ app.get('/api/etapas', async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Servidor backend corriendo en http://localhost:${port}`);
+  startDunningScheduler();
 });

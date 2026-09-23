@@ -10,7 +10,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { usePayers } from '../hooks/usePayerQueries';
 import { PayerState } from '@/domain/enums';
-import { Search, Eye, AlertTriangle, Trash2, X, RotateCcw, Zap } from 'lucide-react';
+import { Search, Eye, AlertTriangle, Trash2, X, RotateCcw, Zap, Bot, Sparkles, CheckCircle2, Clock, Mail, ShieldCheck, RefreshCw } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
@@ -23,6 +23,7 @@ import { useToast } from '@/shared/hooks/use-toast';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 import { PayerDetailModal } from '../components/PayerDetailModal';
 import { calculatePayerRisk } from '@/shared/services/groqService';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -40,6 +41,32 @@ export default function PayerPage() {
   const [selectedPayerId, setSelectedPayerId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PayerWithDetails | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDunningRunning, setIsDunningRunning] = useState(false);
+  const [dunningStats, setDunningStats] = useState<any | null>(null);
+
+  const handleRunDunningCycle = async () => {
+    setIsDunningRunning(true);
+    try {
+      const res = await fetch(`${API_URL}/payer/run-dunning-cycle`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al ejecutar ciclo');
+      
+      setDunningStats(data.stats);
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
+      toast({
+        title: 'Ciclo de Cobranza Ejecutado',
+        description: `Se procesaron ${data.stats.evaluatedReservations} reservas. ${data.stats.stage3CancellationsProcessed} citas vencidas canceladas y ${data.stats.freedSlots} sillones liberados.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'No se pudo ejecutar el ciclo de cobranza.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDunningRunning(false);
+    }
+  };
 
   const filteredPayers = useMemo(() => {
     return payers?.filter((p: any) => {
@@ -165,6 +192,14 @@ export default function PayerPage() {
           );
         }
 
+        if (risk.score === 0) {
+          return (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 flex items-center gap-1 w-fit" title={risk.explanation}>
+              🚫 Cita Expirada (00:00)
+            </span>
+          );
+        }
+
         return (
           <div className="flex items-center gap-1.5" title={risk.explanation}>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
@@ -209,37 +244,36 @@ export default function PayerPage() {
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg"
             onClick={() => setDeleteTarget(p)}
+            className="text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50"
+            title="Eliminar este cobro"
           >
-            <Trash2 className="w-4 h-4 text-rose-500" />
+            <Trash2 className="w-4 h-4" />
           </Button>
         </div>
-      )
-    },
+      ) 
+    }
   ];
 
   const handleConfirmSingleDelete = async () => {
     if (!deleteTarget) return;
     setIsProcessing(true);
     try {
-      const res = await fetch(`${API_URL}/payer/${deleteTarget.id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'No se pudo eliminar el cobro.');
-      }
-
-      toast({ 
-        title: 'Cobro Eliminado', 
-        description: `El registro de cobro de ${deleteTarget.person.firstName} ${deleteTarget.person.lastName} ha sido eliminado exitosamente.` 
+      const response = await fetch(`${API_URL}/payer/${deleteTarget.id}`, {
+        method: 'DELETE',
       });
-      setDeleteTarget(null);
-    } catch (e: any) {
-      console.error(e);
-      toast({ 
-        title: 'Error al eliminar', 
-        description: e.message || 'Ocurrió un error al intentar eliminar el registro de cobranza.', 
-        variant: 'destructive' 
+      if (!response.ok) {
+        throw new Error('No se pudo eliminar el cobro');
+      }
+      toast({
+        title: 'Cobro eliminado',
+        description: `El cobro del paciente ${deleteTarget.person.firstName} ${deleteTarget.person.lastName} ha sido eliminado.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error al eliminar',
+        description: error.message || 'Ocurrió un error inesperado al eliminar el cobro.',
+        variant: 'destructive',
       });
     } finally {
       await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
@@ -252,10 +286,25 @@ export default function PayerPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader 
-        title="Módulo PAYER" 
-        description="Gestión de pagos, validaciones e incidencias de recaudación."
-      />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <PageHeader 
+          title="Módulo PAYER" 
+          description="Gestión de pagos, cadencia de cobranza en 3 etapas y validación oficial."
+        />
+
+        <div className="flex items-center gap-2.5 shrink-0">
+          <Button
+            type="button"
+            onClick={handleRunDunningCycle}
+            disabled={isDunningRunning}
+            className="bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs h-9.5 px-4 font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 border border-teal-500/40"
+            title="Disparar escaneo y ciclo de cobranza en 3 etapas (T-48h, T-24h y 00:00 hrs)"
+          >
+            <RefreshCw className={`w-4 h-4 ${isDunningRunning ? 'animate-spin' : ''}`} />
+            <span>{isDunningRunning ? 'Ejecutando Cron...' : 'Ejecutar Cron Cobranza (3 Etapas)'}</span>
+          </Button>
+        </div>
+      </div>
 
       <div className="flex flex-col gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
         <div className="flex flex-col sm:flex-row gap-4 items-end">
@@ -350,6 +399,78 @@ export default function PayerPage() {
         isOpen={!!selectedPayerId} 
         onClose={() => setSelectedPayerId(null)} 
       />
+
+      {/* Modal Estadísticas de Ejecución del Cron de Cobranza */}
+      {dunningStats && (
+        <Dialog open={!!dunningStats} onOpenChange={(open) => !open && setDunningStats(null)}>
+          <DialogContent className="max-w-2xl p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
+                <Bot className="w-5 h-5 text-teal-600" />
+                Reporte de Ejecución: Cron de Cobranza (3 Etapas)
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-2">
+              {/* Tarjetas de Resumen */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-slate-50 dark:bg-slate-800/70 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
+                  <div className="text-xl font-bold font-mono text-slate-900 dark:text-white">{dunningStats.evaluatedReservations}</div>
+                  <div className="text-[10px] font-semibold text-slate-500 uppercase">Evaluadas</div>
+                </div>
+                <div className="bg-teal-50 dark:bg-teal-950/50 p-3 rounded-xl border border-teal-200 dark:border-teal-800 text-center">
+                  <div className="text-xl font-bold font-mono text-teal-700 dark:text-teal-300">{dunningStats.stage1RemindersSent}</div>
+                  <div className="text-[10px] font-semibold text-teal-600 uppercase">Etapa 1 (T-48h)</div>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-950/50 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-center">
+                  <div className="text-xl font-bold font-mono text-amber-700 dark:text-amber-300">{dunningStats.stage2UrgenciesSent}</div>
+                  <div className="text-[10px] font-semibold text-amber-600 uppercase">Etapa 2 (T-24h)</div>
+                </div>
+                <div className="bg-rose-50 dark:bg-rose-950/50 p-3 rounded-xl border border-rose-200 dark:border-rose-800 text-center">
+                  <div className="text-xl font-bold font-mono text-rose-700 dark:text-rose-300">{dunningStats.stage3CancellationsProcessed}</div>
+                  <div className="text-[10px] font-semibold text-rose-600 uppercase">Canceladas (00:00)</div>
+                </div>
+              </div>
+
+              {/* Registro de Auditoría Detallado */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700 space-y-2 max-h-60 overflow-y-auto">
+                <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-teal-600" />
+                  Trazabilidad de Notificaciones & Acciones:
+                </div>
+                {dunningStats.logs && dunningStats.logs.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {dunningStats.logs.map((log: any, i: number) => (
+                      <div key={i} className="text-xs p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-start justify-between gap-2">
+                        <div>
+                          <span className="font-bold text-slate-900 dark:text-white">{log.patientName}</span>: {log.details}
+                        </div>
+                        {log.emailSent && (
+                          <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200">
+                            Correo Enviado ✅
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 italic">No hubo acciones pendientes en este ciclo.</p>
+                )}
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button
+                  type="button"
+                  onClick={() => setDunningStats(null)}
+                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs px-4"
+                >
+                  Cerrar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Modal Confirmación Eliminación Individual */}
       <ConfirmationDialog

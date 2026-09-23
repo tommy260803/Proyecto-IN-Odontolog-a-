@@ -339,13 +339,15 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                 
                 {aiResult?.risk && (
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
-                    aiResult.risk.level === 'ALTO'
+                    aiResult.risk.score === 0
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                      : aiResult.risk.level === 'ALTO'
                       ? 'bg-rose-100 dark:bg-rose-900/80 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700'
                       : aiResult.risk.level === 'MODERADO'
                       ? 'bg-amber-100 dark:bg-amber-900/80 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700'
                       : 'bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
                   }`}>
-                    Riesgo {aiResult.risk.score}% ({aiResult.risk.level})
+                    {aiResult.risk.score === 0 ? '🚫 Cita Expirada (00:00 hrs)' : `Riesgo ${aiResult.risk.score}% (${aiResult.risk.level})`}
                   </span>
                 )}
               </div>
@@ -385,7 +387,9 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
             {/* Medidor / Scoring de Riesgo Predictivo */}
             {aiResult?.risk && (
               <div className={`p-3 rounded-xl border transition-all ${
-                aiResult.risk.level === 'ALTO'
+                aiResult.risk.score === 0
+                  ? 'bg-slate-50/80 dark:bg-slate-900/60 border-slate-200/90 dark:border-slate-700/80 text-slate-800 dark:text-slate-200'
+                  : aiResult.risk.level === 'ALTO'
                   ? 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-200/90 dark:border-rose-800/80 text-rose-950 dark:text-rose-100'
                   : aiResult.risk.level === 'MODERADO'
                   ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200/90 dark:border-amber-800/80 text-amber-950 dark:text-amber-100'
@@ -394,22 +398,24 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className={`flex flex-col items-center justify-center h-10 w-12 shrink-0 rounded-xl font-mono font-black text-sm border shadow-sm ${
-                      aiResult.risk.level === 'ALTO'
+                      aiResult.risk.score === 0
+                        ? 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600'
+                        : aiResult.risk.level === 'ALTO'
                         ? 'bg-rose-100 dark:bg-rose-900/80 text-rose-700 dark:text-rose-200 border-rose-300 dark:border-rose-700'
                         : aiResult.risk.level === 'MODERADO'
                         ? 'bg-amber-100 dark:bg-amber-900/80 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700'
                         : 'bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
                     }`}>
                       <span>{aiResult.risk.score}%</span>
-                      <span className="text-[8px] font-sans font-bold uppercase">Riesgo</span>
+                      <span className="text-[8px] font-sans font-bold uppercase">{aiResult.risk.score === 0 ? 'Expirada' : 'Riesgo'}</span>
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold uppercase tracking-wider">
-                          Riesgo de Impago: {aiResult.risk.level}
+                          {aiResult.risk.score === 0 ? 'Estado de Cita: Vencida / Cancelada' : `Riesgo de Impago: ${aiResult.risk.level}`}
                         </span>
                         <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-white/80 dark:bg-slate-900/80 border border-current shadow-2xs">
-                          {aiResult.risk.level === 'ALTO' ? 'Prioridad Alta' : aiResult.risk.level === 'MODERADO' ? 'Prioridad Media' : 'Flujo Normal'}
+                          {aiResult.risk.score === 0 ? 'Sillón Liberado (00:00 hrs)' : aiResult.risk.level === 'ALTO' ? 'Prioridad Alta' : aiResult.risk.level === 'MODERADO' ? 'Prioridad Media' : 'Flujo Normal'}
                         </span>
                       </div>
                       <p className="text-[11px] opacity-90 mt-0.5 font-medium">

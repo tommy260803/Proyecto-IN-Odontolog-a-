@@ -68,6 +68,7 @@ const STATE_LABELS: Record<string, string> = {
 
 /**
  * Motor Heurístico de Scoring de Riesgo de Impago (Business Intelligence)
+ * Política de Cierre: 00:00 hrs del día de la cita (Cancelación y Liberación)
  */
 export function calculatePayerRisk(ctx: PayerContext): RiskAnalysis {
   let score = 20; // Base risk
@@ -81,6 +82,42 @@ export function calculatePayerRisk(ctx: PayerContext): RiskAnalysis {
       explanation: 'El pago ya fue completado y conciliado exitosamente.',
       factors: ['Pago 100% aprobado y validado'],
     };
+  }
+
+  // Factor 0: Citas vencidas o pasadas de las 00:00 hrs del día de la cita
+  if (ctx.reservationDate) {
+    try {
+      const apptDate = new Date(ctx.reservationDate);
+      const appointmentDayStart = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate(), 0, 0, 0, 0);
+      const now = new Date();
+      const hoursUntilMidnight = (appointmentDayStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      // Si ya son las 00:00 hrs del día de la cita o ya pasó la fecha
+      if (now >= appointmentDayStart || hoursUntilMidnight <= 0 || ctx.state === 'REJECTED' && ctx.lastIncidentReason?.includes('AUTO_CANCELACION')) {
+        return {
+          score: 0,
+          level: 'BAJO',
+          color: 'emerald',
+          explanation: 'Cita vencida y cancelada automáticamente por el cron job al llegar a las 00:00 hrs. El sillón fue liberado.',
+          factors: [
+            'Plazo límite superado (00:00 hrs del día de la cita)',
+            'Sillón clínico liberado automáticamente en sistema',
+            'Sin deuda activa por cobrar'
+          ],
+        };
+      }
+
+      // Factor de Tiempo hasta la medianoche límite
+      if (hoursUntilMidnight <= 24 && hoursUntilMidnight > 0) {
+        score += 30;
+        factors.push('Cita de mañana: plazo límite de abono vence hoy a las 23:59 (urgencia crítica)');
+      } else if (hoursUntilMidnight <= 48 && hoursUntilMidnight > 24) {
+        score += 15;
+        factors.push('Cita programada en 2 días (etapa preventiva)');
+      }
+    } catch {
+      // Ignore date parse errors
+    }
   }
 
   // Factor 1: Incidencias previas o rechazos
@@ -110,25 +147,6 @@ export function calculatePayerRisk(ctx: PayerContext): RiskAnalysis {
     factors.push(`Ticket intermedio (S/ ${ctx.amountToPay.toFixed(2)})`);
   }
 
-  // Factor 4: Tiempo restante hasta la cita
-  if (ctx.reservationDate) {
-    try {
-      const apptDate = new Date(ctx.reservationDate);
-      const now = new Date();
-      const diffHours = (apptDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-      if (diffHours <= 24 && diffHours > 0) {
-        score += 25;
-        factors.push('Cita programada en menos de 24 horas (urgencia crítica)');
-      } else if (diffHours <= 48 && diffHours > 0) {
-        score += 15;
-        factors.push('Cita programada en las próximas 48 horas');
-      }
-    } catch {
-      // Ignore date parse errors
-    }
-  }
-
   // Normalizar score entre 5 y 98
   score = Math.max(5, Math.min(98, score));
 
@@ -143,7 +161,7 @@ export function calculatePayerRisk(ctx: PayerContext): RiskAnalysis {
   } else if (score >= 35) {
     level = 'MODERADO';
     color = 'amber';
-    explanation = 'Riesgo moderado. Requiere recordatorio persuasivo antes de liberar el sillón odontológico.';
+    explanation = 'Riesgo moderado. Requiere recordatorio persuasivo antes de liberar el sillón odontológico a las 00:00.';
   }
 
   return {

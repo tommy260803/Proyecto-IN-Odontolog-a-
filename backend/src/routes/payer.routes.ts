@@ -2,9 +2,38 @@ import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import nodemailer from 'nodemailer';
 import jsPDF from 'jspdf';
+import { runDunningCycle, getLastExecutionStats } from '../services/dunningScheduler';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// Ejecutar manualmente el ciclo de cobranza en 3 etapas (Dunning Cron)
+router.post('/run-dunning-cycle', async (req, res) => {
+  try {
+    const stats = await runDunningCycle();
+    res.json({
+      success: true,
+      message: 'Ciclo de cobranza en 3 etapas ejecutado exitosamente.',
+      stats
+    });
+  } catch (error: any) {
+    console.error('Error ejecutando ciclo de dunning manual:', error);
+    res.status(500).json({ error: error.message || 'Error al ejecutar ciclo de cobranza' });
+  }
+});
+
+// Obtener estadísticas y políticas del ciclo de cobranza
+router.get('/dunning-stats', (req, res) => {
+  const stats = getLastExecutionStats();
+  res.json({
+    activePolicy: 'CADENCIA_3_ETAPAS',
+    stage1Timing: 'T - 48h (Recordatorio Preventivo + PDF)',
+    stage2Timing: 'T - 24h (Urgencia Clínica + Advertencia a medianoche)',
+    stage3Timing: 'T = 00:00 hrs del día de la cita (Cancelación & Liberación de Sillón)',
+    minimumBookingAdvance: '72 horas mínimas requeridas',
+    lastExecution: stats
+  });
+});
 
 // Limpiar todos los PAYERS / Reservas de prueba
 router.post('/clear-all', async (req, res) => {
@@ -55,6 +84,8 @@ router.get('/', async (req, res) => {
       let state = 'PENDING';
       if (pago) {
         state = pago.estado === 'Validado' ? 'VALIDATED' : pago.estado === 'Rechazado' ? 'REJECTED' : 'IN_REVIEW';
+      } else if (r.estado === 'Vencida' || r.estado === 'Cancelada') {
+        state = 'REJECTED'; // O Vencida
       }
 
       return {
@@ -163,6 +194,8 @@ router.get('/:id', async (req, res) => {
     let state = 'PENDING';
     if (pago) {
       state = pago.estado === 'Validado' ? 'VALIDATED' : pago.estado === 'Rechazado' ? 'REJECTED' : 'IN_REVIEW';
+    } else if (reserva.estado === 'Vencida' || reserva.estado === 'Cancelada') {
+      state = 'REJECTED'; // O Vencida
     }
 
     const payerDetails = {
