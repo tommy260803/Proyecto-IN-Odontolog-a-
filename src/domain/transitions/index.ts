@@ -14,17 +14,11 @@ export interface TransitionResult {
 }
 
 export function canTransitionBuyerToLead(buyer: Buyer): TransitionResult {
-  if (!buyer.concreteRequest) {
-    return { success: false, error: 'Debe existir una solicitud concreta.' };
-  }
-  if (!buyer.contactAuthorization) {
-    return { success: false, error: 'Debe existir autorización de contacto.' };
-  }
-  // Se requiere un ID de persona asociado
-  if (!buyer.personId) {
+  // Se requiere un ID de persona o ID de buyer asociado
+  if (!buyer.personId && !buyer.id) {
     return {
       success: false,
-      error: 'Faltan datos mínimos (persona asociada).',
+      error: 'Faltan datos mínimos del prospecto.',
     };
   }
   return { success: true };

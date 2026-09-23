@@ -108,8 +108,7 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
 
   if (!isOpen || !buyerId) return null;
 
-  const transitionCheck = buyer ? canTransitionBuyerToLead(buyer) : { success: false, error: '' };
-  const canConvert = buyer && transitionCheck.success && buyer.state !== BuyerState.CONVERTED;
+  const isConverted = buyer?.state === BuyerState.CONVERTED;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -136,16 +135,31 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
                 <div className="flex items-center gap-2">
                   <StatusBadge 
                     status={buyer.state} 
-                    variant={buyer.state === BuyerState.CONVERTED ? 'success' : 'neutral'} 
+                    variant={isConverted ? 'success' : 'neutral'} 
                   />
-                  <Button 
-                    disabled={!canConvert || convertBuyer.isPending} 
-                    onClick={() => setIsConvertDialogOpen(true)}
-                    className="bg-teal-600 hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-xl shadow-sm text-xs font-semibold px-3.5 py-2 h-9 flex items-center gap-1.5 transition-colors"
-                  >
-                    <span>Convertir a LEAD</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Button>
+                  {!isConverted ? (
+                    <Button 
+                      disabled={convertBuyer.isPending} 
+                      onClick={() => setIsConvertDialogOpen(true)}
+                      className="bg-teal-600 hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-xl shadow-sm text-xs font-semibold px-3.5 py-2 h-9 flex items-center gap-1.5 transition-colors"
+                    >
+                      {convertBuyer.isPending ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Convirtiendo...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Convertir a LEAD</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                      ✓ En Etapa LEAD
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -160,11 +174,6 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
             <ErrorState message="No se pudo cargar la información del Buyer." />
           ) : (
             <div className="space-y-6">
-              {!transitionCheck.success && buyer.state !== BuyerState.CONVERTED && (
-                <div className="text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 p-3.5 rounded-xl border border-amber-200/80 dark:border-amber-800/80 shadow-sm">
-                  <strong>Requisito para convertir a LEAD:</strong> {transitionCheck.error}
-                </div>
-              )}
 
               {journeys.find(j => j.buyerId === buyer.id) && (
                 <div className="py-2">

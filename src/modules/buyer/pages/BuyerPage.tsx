@@ -8,9 +8,9 @@ import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
-import { useBuyers } from '../hooks/useBuyerQueries';
+import { useBuyers, useConvertBuyerToLead } from '../hooks/useBuyerQueries';
 import { BuyerState } from '@/domain/enums';
-import { Plus, Search, Eye, Trash2, X, RotateCcw } from 'lucide-react';
+import { Plus, Search, Eye, Trash2, X, RotateCcw, ArrowRight, Loader2 } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -29,6 +29,7 @@ export default function BuyerPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: buyers, isLoading, isError } = useBuyers();
+  const convertBuyer = useConvertBuyerToLead();
   const { data: leads = [] } = useQuery({ queryKey: [QUERY_KEYS.LEADS], queryFn: () => leadUseCases.getAllLeads() });
   const journeys: any[] = [];
 
@@ -42,6 +43,7 @@ export default function BuyerPage() {
   const [selectedBuyerId, setSelectedBuyerId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BuyerWithPerson | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [convertTarget, setConvertTarget] = useState<BuyerWithPerson | null>(null);
 
   const filteredBuyers = useMemo(() => {
     return buyers?.filter((b: any) => {
@@ -142,6 +144,19 @@ export default function BuyerPage() {
       header: 'Acciones', 
       cell: (b: BuyerWithPerson) => (
         <div className="flex items-center gap-1">
+          {b.state !== BuyerState.CONVERTED && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setConvertTarget(b)}
+              disabled={convertBuyer.isPending}
+              className="text-teal-700 dark:text-teal-400 hover:text-teal-800 hover:bg-teal-50 dark:hover:bg-teal-950/40 rounded-lg text-xs font-semibold px-2 py-1 h-8 flex items-center gap-1"
+              title="Convertir a LEAD"
+            >
+              <ArrowRight className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">A LEAD</span>
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={() => setSelectedBuyerId(b.id)} className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800">
             <Eye className="w-4 h-4 mr-1" />
             Ver
@@ -158,6 +173,21 @@ export default function BuyerPage() {
       )
     },
   ];
+
+  const handleConfirmConvert = () => {
+    if (!convertTarget) return;
+    convertBuyer.mutate(convertTarget.id, {
+      onSuccess: () => {
+        toast({ title: '¡Éxito!', description: `El paciente ${convertTarget.person.firstName} ha sido transferido a la etapa LEAD.` });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUYERS] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
+        setConvertTarget(null);
+      },
+      onError: (err) => {
+        toast({ title: 'Error al convertir', description: err.message, variant: 'destructive' });
+      }
+    });
+  };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
@@ -285,6 +315,19 @@ export default function BuyerPage() {
         buyerId={selectedBuyerId} 
         isOpen={!!selectedBuyerId} 
         onClose={() => setSelectedBuyerId(null)} 
+      />
+
+      {/* Modal Elegante de Confirmación de Conversión Rápida */}
+      <ConfirmationDialog
+        isOpen={!!convertTarget}
+        onClose={() => setConvertTarget(null)}
+        onConfirm={handleConfirmConvert}
+        isLoading={convertBuyer.isPending}
+        title="¿Convertir Prospecto a LEAD?"
+        description={`Esta acción transferirá a ${convertTarget?.person.firstName} ${convertTarget?.person.lastName} al módulo de LEAD para abrir la mesa de negociación.`}
+        confirmText="Sí, Convertir a LEAD"
+        cancelText="Cancelar"
+        variant="default"
       />
 
       {/* Modal Elegante de Confirmación de Eliminación */}

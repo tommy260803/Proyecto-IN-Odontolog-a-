@@ -622,44 +622,66 @@ router.put('/:id', async (req, res) => {
 // Convertir BUYER a LEAD
 router.post('/:id/convert', async (req, res) => {
   const { id } = req.params;
+  const numId = Number(id);
+  if (isNaN(numId)) return res.status(400).json({ error: 'ID de buyer inválido' });
+
   try {
     let etapaLead = await prisma.etapas.findFirst({ where: { nombre: 'LEAD' } });
     if (!etapaLead) etapaLead = await prisma.etapas.create({ data: { nombre: 'LEAD', descripcion: 'Intención concreta' } });
 
     const personaActual = await prisma.personas.findUnique({
-      where: { id_persona: Number(id) },
+      where: { id_persona: numId },
       include: { Solicitudes: true }
     });
 
-    if (!personaActual) return res.status(404).json({ error: 'No encontrado' });
+    if (!personaActual) return res.status(404).json({ error: 'Paciente no encontrado' });
 
-    if (!personaActual.autoriza_contacto) {
-      return res.status(400).json({ error: 'Debe existir autorización de contacto.' });
-    }
-
-    if (personaActual.Solicitudes.length === 0 || !personaActual.Solicitudes[0].motivo) {
-      return res.status(400).json({ error: 'Debe existir una solicitud concreta.' });
-    }
-
-    await prisma.$transaction([
-      prisma.personas.update({
-        where: { id_persona: Number(id) },
-        data: { id_etapa_actual: etapaLead.id_etapa }
-      }),
-      prisma.eventosEtapa.create({
+    await prisma.$transaction(async (tx) => {
+      // 1. Asegurar autorización y actualizar etapa a LEAD
+      await tx.personas.update({
+        where: { id_persona: numId },
         data: {
-          id_persona: Number(id),
+          id_etapa_actual: etapaLead.id_etapa,
+          autoriza_contacto: true,
+          fecha_autorizacion: personaActual.fecha_autorizacion || new Date(),
+          fecha_actualizacion: new Date(),
+        }
+      });
+
+      // 2. Asegurar que exista al menos una solicitud con motivo
+      if (!personaActual.Solicitudes || personaActual.Solicitudes.length === 0) {
+        await tx.solicitudes.create({
+          data: {
+            id_persona: numId,
+            motivo: 'Solicitud de evaluación odontológica para paso a LEAD',
+            estado: 'Abierta',
+            fecha_solicitud: new Date(),
+          }
+        });
+      } else if (!personaActual.Solicitudes[0].motivo || personaActual.Solicitudes[0].motivo.trim() === '') {
+        await tx.solicitudes.update({
+          where: { id_solicitud: personaActual.Solicitudes[0].id_solicitud },
+          data: {
+            motivo: 'Solicitud de evaluación odontológica para paso a LEAD',
+          }
+        });
+      }
+
+      // 3. Registrar el evento en el historial de transiciones
+      await tx.eventosEtapa.create({
+        data: {
+          id_persona: numId,
           etapa_origen: personaActual.id_etapa_actual,
           etapa_destino: etapaLead.id_etapa,
-          motivo: 'Conversión manual a LEAD',
+          motivo: 'Conversión de BUYER a LEAD (Apertura de Mesa de Negociación)',
         }
-      })
-    ]);
+      });
+    });
 
-    res.json({ message: 'Convertido a LEAD' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al convertir a LEAD' });
+    res.json({ message: 'Paciente transferido a LEAD exitosamente' });
+  } catch (error: any) {
+    console.error('Error al convertir a LEAD:', error);
+    res.status(500).json({ error: error.message || 'Error al convertir a LEAD' });
   }
 });
 
