@@ -530,77 +530,86 @@ export default function PayerPage() {
               </div>
 
               {/* Barra de Filtros en Tiempo Real para Notificaciones */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 bg-slate-100/90 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                <div className="relative w-full sm:w-60">
-                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+              <div className="flex flex-col gap-2.5 bg-slate-100/90 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
                   <Input
-                    placeholder="Filtrar por paciente, detalle o correo..."
+                    placeholder="Filtrar eventos por paciente, detalle, ID de reserva o correo..."
                     value={logSearchTerm}
                     onChange={(e) => setLogSearchTerm(e.target.value)}
-                    className="h-8 pl-8 pr-7 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                    className="h-8.5 pl-9 pr-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white shadow-2xs"
                   />
                   {logSearchTerm && (
-                    <button onClick={() => setLogSearchTerm('')} className="absolute right-2 top-2 text-slate-400 hover:text-slate-600">
+                    <button onClick={() => setLogSearchTerm('')} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto">
+                <div className="flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={() => setLogFilterStage('ALL')}
-                    className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                    className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
                       logFilterStage === 'ALL'
                         ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900'
-                        : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                        : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
-                    Todos ({dunningStats.logs?.length || 0})
+                    <Terminal className="w-3 h-3" />
+                    <span>Todos ({dunningStats.logs?.length || 0})</span>
                   </button>
+
                   <button
                     type="button"
                     onClick={() => setLogFilterStage('ETAPA_1_PREVENTIVO')}
-                    className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                    className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
                       logFilterStage === 'ETAPA_1_PREVENTIVO'
                         ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 border-teal-200 dark:border-teal-800 hover:bg-teal-50'
+                        : 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800/80 hover:bg-teal-50 dark:hover:bg-teal-950/60'
                     }`}
                   >
-                    T-48h Preventivo
+                    <Clock className="w-3 h-3 text-teal-500" />
+                    <span>T-48h Preventivo</span>
                   </button>
+
                   <button
                     type="button"
                     onClick={() => setLogFilterStage('ETAPA_2_URGENCIA')}
-                    className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                    className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
                       logFilterStage === 'ETAPA_2_URGENCIA'
                         ? 'bg-amber-600 text-white border-amber-600'
-                        : 'bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-50'
+                        : 'bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/80 hover:bg-amber-50 dark:hover:bg-amber-950/60'
                     }`}
                   >
-                    T-24h Urgencia
+                    <AlertTriangle className="w-3 h-3 text-amber-500" />
+                    <span>T-24h Urgencia</span>
                   </button>
+
                   <button
                     type="button"
                     onClick={() => setLogFilterStage('ETAPA_3_CANCELACION')}
-                    className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                    className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
                       logFilterStage === 'ETAPA_3_CANCELACION'
                         ? 'bg-rose-600 text-white border-rose-600'
-                        : 'bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-50'
+                        : 'bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/80 hover:bg-rose-50 dark:hover:bg-rose-950/60'
                     }`}
                   >
-                    00:00 hrs Canceladas
+                    <X className="w-3 h-3 text-rose-500" />
+                    <span>00:00 hrs Canceladas</span>
                   </button>
+
                   <button
                     type="button"
                     onClick={() => setLogFilterStage('EMAIL_SENT')}
-                    className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                    className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
                       logFilterStage === 'EMAIL_SENT'
                         ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50'
+                        : 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/60'
                     }`}
                   >
-                    Correos Enviados ✅
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Correos Despachados</span>
                   </button>
                 </div>
               </div>
@@ -646,36 +655,34 @@ export default function PayerPage() {
                           )}
                         </div>
                         {log.emailSent && (
-                          <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-sans">
-                            Correo Despachado ✅
+                          <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-sans flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            <span>Correo Despachado</span>
                           </span>
                         )}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 italic py-3 text-center font-sans">
+                  <p className="text-xs text-slate-400 italic py-4 text-center font-sans">
                     No se encontraron registros con los filtros seleccionados.
                   </p>
                 )}
               </div>
 
               <div className="flex items-center justify-between pt-2">
-                <Button
-                  type="button"
-                  onClick={() => handleOpenDunningAudit(true)}
-                  disabled={isDunningRunning}
-                  className="rounded-xl text-xs h-9.5 px-4 font-bold text-teal-800 dark:text-teal-200 bg-teal-50 dark:bg-teal-950/80 border border-teal-300 dark:border-teal-700 hover:bg-teal-600 hover:text-white dark:hover:bg-teal-600 dark:hover:text-white transition-all flex items-center gap-2 shadow-2xs cursor-pointer"
-                  title="Forzar un re-escaneo inmediato en el servidor"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isDunningRunning ? 'animate-spin' : ''}`} />
-                  <span>{isDunningRunning ? 'Escaneando...' : 'Re-escanear Ahora (En Vivo)'}</span>
-                </Button>
+                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span>Live Tail activo · Sincronizando eventos en tiempo real (cada 4s)</span>
+                </div>
 
                 <Button
                   type="button"
                   onClick={() => setDunningStats(null)}
-                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs px-5 h-9.5 font-semibold cursor-pointer"
+                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs px-6 h-9.5 font-semibold cursor-pointer shadow-sm hover:shadow transition-all"
                 >
                   Cerrar
                 </Button>
