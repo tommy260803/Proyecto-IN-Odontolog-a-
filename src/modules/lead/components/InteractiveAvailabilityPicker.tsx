@@ -29,7 +29,6 @@ import {
   PlusCircle,
   ShieldCheck,
   Star,
-  Check,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -85,9 +84,6 @@ function calculateSlotMatch(disp: any, dateStr: string, prefs?: PatientPreferenc
       matchesDoctor: false,
       matchesSede: false,
       matchesHorario: false,
-      label: '',
-      badgeType: 'none' as const,
-      detail: '',
     };
   }
 
@@ -139,35 +135,15 @@ function calculateSlotMatch(disp: any, dateStr: string, prefs?: PatientPreferenc
   }
 
   let matchCount = 0;
-  const matchItems: string[] = [];
-  if (matchesDoctor) { matchCount++; matchItems.push('Especialista'); }
-  if (matchesSede) { matchCount++; matchItems.push('Sede'); }
-  if (matchesHorario) { matchCount++; matchItems.push('Horario'); }
-
-  let label = '';
-  let badgeType: 'perfect' | 'high' | 'partial' | 'none' = 'none';
-
-  if (matchCount === 3) {
-    label = '100% Match Total ⭐';
-    badgeType = 'perfect';
-  } else if (matchCount === 2) {
-    label = 'Match Alto (2/3) ✨';
-    badgeType = 'high';
-  } else if (matchCount === 1) {
-    label = 'Match Parcial (1/3)';
-    badgeType = 'partial';
-  } else {
-    badgeType = 'none';
-  }
+  if (matchesDoctor) matchCount++;
+  if (matchesSede) matchCount++;
+  if (matchesHorario) matchCount++;
 
   return {
     matchCount,
     matchesDoctor,
     matchesSede,
     matchesHorario,
-    label,
-    badgeType,
-    detail: matchItems.join(' + '),
   };
 }
 
@@ -204,6 +180,7 @@ export function InteractiveAvailabilityPicker({
   });
 
   const [activeTab, setActiveTab] = useState<'catalog' | 'custom'>(isCustomMode ? 'custom' : 'catalog');
+  const [matchFilter, setMatchFilter] = useState<'ALL' | '3' | '2' | '1'>('ALL');
 
   // Mapa de fechas que tienen turnos disponibles en el catálogo (filtrado de horarios de atención válidos)
   const datesWithSlotsMap = useMemo(() => {
@@ -248,7 +225,7 @@ export function InteractiveAvailabilityPicker({
   }, [currentMonth]);
 
   // Turnos disponibles únicos y ordenados por nivel de Match descendente y luego por hora
-  const availableSlotsForSelectedDate = useMemo(() => {
+  const allSlotsForSelectedDate = useMemo(() => {
     if (!selectedDate) return [];
     const rawSlots = datesWithSlotsMap.get(selectedDate) || [];
     
@@ -283,6 +260,24 @@ export function InteractiveAvailabilityPicker({
       return tA.localeCompare(tB);
     });
   }, [datesWithSlotsMap, selectedDate, patientPreferences]);
+
+  // Conteo de turnos según coincidencias para los filtros
+  const matchCounts = useMemo(() => {
+    const counts = { total: 0, 3: 0, 2: 0, 1: 0, 0: 0 };
+    for (const slot of allSlotsForSelectedDate) {
+      counts.total++;
+      const c = slot.matchInfo.matchCount as 0 | 1 | 2 | 3;
+      if (counts[c] !== undefined) counts[c]++;
+    }
+    return counts;
+  }, [allSlotsForSelectedDate]);
+
+  // Turnos filtrados según el filtro de coincidencias seleccionado
+  const availableSlotsForSelectedDate = useMemo(() => {
+    if (matchFilter === 'ALL') return allSlotsForSelectedDate;
+    const num = parseInt(matchFilter, 10);
+    return allSlotsForSelectedDate.filter(s => s.matchInfo.matchCount === num);
+  }, [allSlotsForSelectedDate, matchFilter]);
 
   const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
@@ -474,7 +469,7 @@ export function InteractiveAvailabilityPicker({
         </div>
 
         {/* COLUMNA 2: Horarios / Bloques de Horas Disponibles */}
-        <div className="space-y-3 flex flex-col justify-between">
+        <div className="space-y-2.5 flex flex-col justify-between">
           {activeTab === 'catalog' ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -489,9 +484,70 @@ export function InteractiveAvailabilityPicker({
                   )}
                 </span>
                 <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                  {availableSlotsForSelectedDate.length} {availableSlotsForSelectedDate.length === 1 ? 'turno disponible' : 'turnos disponibles'}
+                  {allSlotsForSelectedDate.length} {allSlotsForSelectedDate.length === 1 ? 'turno disponible' : 'turnos disponibles'}
                 </span>
               </div>
+
+              {/* Barra de Filtros por Nivel de Coincidencias */}
+              {allSlotsForSelectedDate.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap p-1.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/70">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1 mr-0.5">
+                    Coincidencias:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setMatchFilter('ALL')}
+                    className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all ${
+                      matchFilter === 'ALL'
+                        ? 'bg-teal-600 text-white shadow-xs'
+                        : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    Todos ({matchCounts.total})
+                  </button>
+                  {matchCounts[3] > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setMatchFilter('3')}
+                      className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
+                        matchFilter === '3'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100'
+                      }`}
+                    >
+                      <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                      3/3 ({matchCounts[3]})
+                    </button>
+                  )}
+                  {matchCounts[2] > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setMatchFilter('2')}
+                      className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
+                        matchFilter === '2'
+                          ? 'bg-teal-700 text-white shadow-xs'
+                          : 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-300 dark:border-teal-700 hover:bg-teal-100'
+                      }`}
+                    >
+                      <Sparkles className="w-2.5 h-2.5" />
+                      2/3 ({matchCounts[2]})
+                    </button>
+                  )}
+                  {matchCounts[1] > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setMatchFilter('1')}
+                      className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all ${
+                        matchFilter === '1'
+                          ? 'bg-slate-700 text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      1/3 ({matchCounts[1]})
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Lista / Grid de Turnos */}
               {!selectedDate ? (
@@ -503,21 +559,32 @@ export function InteractiveAvailabilityPicker({
               ) : availableSlotsForSelectedDate.length === 0 ? (
                 <div className="p-6 text-center border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-800/40 space-y-2">
                   <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                    No hay turnos registrados en agenda para esta fecha.
+                    {allSlotsForSelectedDate.length > 0 
+                      ? 'No hay turnos con el nivel de coincidencia seleccionado.'
+                      : 'No hay turnos registrados en agenda para esta fecha.'}
                   </p>
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                    Puedes cambiar a la pestaña <strong>"Horario Personalizado"</strong> para proponer un horario específico.
-                  </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleTabSwitch('custom')}
-                    className="text-xs rounded-xl h-8 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800 hover:bg-teal-50"
-                  >
-                    <PlusCircle className="w-3.5 h-3.5 mr-1 text-teal-600" />
-                    Proponer Horario para este día
-                  </Button>
+                  {allSlotsForSelectedDate.length > 0 ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setMatchFilter('ALL')}
+                      className="text-xs rounded-xl h-8"
+                    >
+                      Ver todos los turnos disponibles
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleTabSwitch('custom')}
+                      className="text-xs rounded-xl h-8 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800 hover:bg-teal-50"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5 mr-1 text-teal-600" />
+                      Proponer Horario para este día
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[220px] overflow-y-auto no-scrollbar p-0.5">
@@ -528,7 +595,7 @@ export function InteractiveAvailabilityPicker({
                     const profApellidos = disp.Profesional?.apellidos || 'General';
                     const profNombres = disp.Profesional?.nombres || '';
                     const sedeNombre = disp.Sede?.nombre || 'Sede';
-                    const { matchCount, matchesDoctor, matchesSede, matchesHorario, label, badgeType, detail } = disp.matchInfo;
+                    const { matchCount, matchesDoctor, matchesSede, matchesHorario } = disp.matchInfo;
 
                     return (
                       <div
@@ -537,69 +604,66 @@ export function InteractiveAvailabilityPicker({
                         className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between gap-2 text-left relative ${
                           isSelected
                             ? 'bg-teal-50 dark:bg-teal-950/70 border-teal-600 dark:border-teal-500 shadow-md ring-2 ring-teal-500/20'
-                            : badgeType === 'perfect'
+                            : matchCount === 3
                             ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-400/80 dark:border-emerald-600/70 hover:border-emerald-500 hover:shadow-sm'
                             : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-teal-400 dark:hover:border-teal-600'
                         }`}
                       >
-                        {/* Fila Superior: Hora y Badge de Match */}
+                        {/* Fila Superior: Hora y Pill simple N/3 */}
                         <div className="flex items-center justify-between gap-1 border-b border-slate-100 dark:border-slate-700/80 pb-1.5">
                           <div className="flex items-center gap-1.5">
-                            <Clock className={`w-3.5 h-3.5 ${matchesHorario ? 'text-emerald-600 dark:text-emerald-400' : isSelected ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'}`} />
+                            {matchesHorario ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            ) : (
+                              <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'} shrink-0`} />
+                            )}
                             <span className={`text-xs font-bold ${isSelected ? 'text-teal-900 dark:text-teal-100' : 'text-slate-900 dark:text-white'}`}>
                               {horaInicio} – {horaFin}
                             </span>
-                            {matchesHorario && (
-                              <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 px-1 py-0.2 rounded" title="Coincide con horario preferido">
-                                ✓
-                              </span>
-                            )}
                           </div>
 
-                          {/* Etiqueta de Match según nivel de coincidencia (3=Total, 2=Alto, 1=Parcial, 0=Sin etiqueta) */}
+                          {/* Badge limpio N/3 sin palabra MATCH ni check extra */}
                           {matchCount === 3 && (
-                            <span className="text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/90 border border-emerald-300 dark:border-emerald-700 px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-xs animate-pulse">
-                              <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                              100% Match Total
+                            <span className="text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/90 border border-emerald-300 dark:border-emerald-700 px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-xs">
+                              <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
+                              3/3
                             </span>
                           )}
                           {matchCount === 2 && (
-                            <span className="text-[10px] font-bold text-teal-800 dark:text-teal-300 bg-teal-100 dark:bg-teal-950/80 border border-teal-300 dark:border-teal-700 px-1.5 py-0.5 rounded-lg flex items-center gap-1">
+                            <span className="text-[10px] font-bold text-teal-800 dark:text-teal-300 bg-teal-100 dark:bg-teal-950/80 border border-teal-300 dark:border-teal-700 px-2 py-0.5 rounded-lg flex items-center gap-1">
                               <Sparkles className="w-2.5 h-2.5 text-teal-600 dark:text-teal-400" />
-                              Match 2/3
+                              2/3
                             </span>
                           )}
                           {matchCount === 1 && (
-                            <span className="text-[9px] font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded-md">
-                              Coincide 1/3
+                            <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-md">
+                              1/3
                             </span>
                           )}
                         </div>
 
-                        {/* Fila Intermedia: Especialista y Sede con indicadores individuales */}
-                        <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
-                          <div className="flex items-center justify-between gap-1">
-                            <div className="flex items-center gap-1.5 truncate">
-                              <User className="w-3 h-3 text-slate-400 shrink-0" />
-                              <span className="truncate font-medium">Esp. {profNombres} {profApellidos}</span>
-                            </div>
-                            {matchesDoctor && (
-                              <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/80 px-1.5 py-0.5 rounded shrink-0 flex items-center gap-0.5">
-                                <Check className="w-2.5 h-2.5 text-emerald-600" /> Médico preferido
-                              </span>
+                        {/* Fila Intermedia: Especialista y Sede con check directo en el icono */}
+                        <div className="space-y-1 text-xs">
+                          <div className="flex items-center gap-1.5 truncate">
+                            {matchesDoctor ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            ) : (
+                              <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                             )}
+                            <span className={`truncate font-medium ${matchesDoctor ? 'text-emerald-700 dark:text-emerald-300 font-semibold' : 'text-slate-700 dark:text-slate-300'}`}>
+                              Esp. {profNombres} {profApellidos}
+                            </span>
                           </div>
 
-                          <div className="flex items-center justify-between gap-1">
-                            <div className="flex items-center gap-1.5 truncate">
-                              <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                              <span className="truncate text-[11px] text-slate-500 dark:text-slate-400">{sedeNombre}</span>
-                            </div>
-                            {matchesSede && (
-                              <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/80 px-1.5 py-0.5 rounded shrink-0 flex items-center gap-0.5">
-                                <Check className="w-2.5 h-2.5 text-emerald-600" /> Sede preferida
-                              </span>
+                          <div className="flex items-center gap-1.5 truncate">
+                            {matchesSede ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            ) : (
+                              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                             )}
+                            <span className={`truncate ${matchesSede ? 'text-emerald-700 dark:text-emerald-300 font-semibold' : 'text-slate-500 dark:text-slate-400'}`}>
+                              {sedeNombre}
+                            </span>
                           </div>
                         </div>
 
