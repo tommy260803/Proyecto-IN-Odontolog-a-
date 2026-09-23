@@ -44,23 +44,34 @@ export default function PayerPage() {
   const [isDunningRunning, setIsDunningRunning] = useState(false);
   const [dunningStats, setDunningStats] = useState<any | null>(null);
 
-  const handleRunDunningCycle = async () => {
+  const handleOpenDunningAudit = async (forceRescan = false) => {
     setIsDunningRunning(true);
     try {
-      const res = await fetch(`${API_URL}/payer/run-dunning-cycle`, { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al ejecutar ciclo');
-      
-      setDunningStats(data.stats);
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
-      toast({
-        title: 'Ciclo de Cobranza Ejecutado',
-        description: `Se procesaron ${data.stats.evaluatedReservations} reservas. ${data.stats.stage3CancellationsProcessed} citas vencidas canceladas y ${data.stats.freedSlots} sillones liberados.`,
-      });
+      if (forceRescan) {
+        const res = await fetch(`${API_URL}/payer/run-dunning-cycle`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al ejecutar ciclo');
+        setDunningStats(data.stats);
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
+        toast({
+          title: 'Re-escaneo del Cron Job Completado',
+          description: `Evaluadas ${data.stats.evaluatedReservations} reservas. ${data.stats.stage3CancellationsProcessed} citas canceladas y ${data.stats.freedSlots} sillones liberados.`,
+        });
+      } else {
+        const res = await fetch(`${API_URL}/payer/dunning-stats`);
+        const data = await res.json();
+        if (data.lastExecution) {
+          setDunningStats(data.lastExecution);
+        } else {
+          const runRes = await fetch(`${API_URL}/payer/run-dunning-cycle`, { method: 'POST' });
+          const runData = await runRes.json();
+          setDunningStats(runData.stats);
+        }
+      }
     } catch (err: any) {
       toast({
-        title: 'Error',
-        description: err.message || 'No se pudo ejecutar el ciclo de cobranza.',
+        title: 'Error al consultar auditoría',
+        description: err.message || 'No se pudo obtener el reporte del cron job.',
         variant: 'destructive',
       });
     } finally {
@@ -293,16 +304,19 @@ export default function PayerPage() {
         />
 
         <div className="flex items-center gap-2.5 shrink-0">
-          <Button
+          <button
             type="button"
-            onClick={handleRunDunningCycle}
+            onClick={() => handleOpenDunningAudit(false)}
             disabled={isDunningRunning}
-            className="bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs h-9.5 px-4 font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 border border-teal-500/40"
-            title="Disparar escaneo y ciclo de cobranza en 3 etapas (T-48h, T-24h y 00:00 hrs)"
+            className="bg-emerald-50/90 dark:bg-emerald-950/60 border border-emerald-300/90 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100 rounded-xl text-xs h-9.5 px-3.5 font-semibold shadow-2xs hover:shadow-sm hover:bg-emerald-100/90 dark:hover:bg-emerald-900/80 transition-all flex items-center gap-2.5 cursor-pointer"
+            title="Ver estado del Cron Job en segundo plano y auditoría de notificaciones"
           >
-            <RefreshCw className={`w-4 h-4 ${isDunningRunning ? 'animate-spin' : ''}`} />
-            <span>{isDunningRunning ? 'Ejecutando Cron...' : 'Ejecutar Cron Cobranza (3 Etapas)'}</span>
-          </Button>
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span>{isDunningRunning ? 'Consultando Cron...' : '🟢 Cron Job Autónomo Activo · Ver Auditoría'}</span>
+          </button>
         </div>
       </div>
 
@@ -400,19 +414,30 @@ export default function PayerPage() {
         onClose={() => setSelectedPayerId(null)} 
       />
 
-      {/* Modal Estadísticas de Ejecución del Cron de Cobranza */}
+      {/* Modal Centro de Auditoría y Monitoreo del Cron Job */}
       {dunningStats && (
         <Dialog open={!!dunningStats} onOpenChange={(open) => !open && setDunningStats(null)}>
-          <DialogContent className="max-w-2xl p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl">
+          <DialogContent className="max-w-3xl p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
-                <Bot className="w-5 h-5 text-teal-600" />
-                Reporte de Ejecución: Cron de Cobranza (3 Etapas)
-              </DialogTitle>
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <DialogTitle className="flex items-center gap-2 text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
+                    <Bot className="w-5 h-5 text-teal-600" />
+                    Monitor & Auditoría del Cron Job (Cobranza 3 Etapas)
+                  </DialogTitle>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Servicio autónomo en segundo plano ejecutándose en el servidor Node.js sin intervención manual.
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Worker Activo (24/7)
+                </span>
+              </div>
             </DialogHeader>
 
             <div className="space-y-4 pt-2">
-              {/* Tarjetas de Resumen */}
+              {/* Tarjetas de Métricas de Auditoría */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-slate-50 dark:bg-slate-800/70 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
                   <div className="text-xl font-bold font-mono text-slate-900 dark:text-white">{dunningStats.evaluatedReservations}</div>
@@ -432,11 +457,35 @@ export default function PayerPage() {
                 </div>
               </div>
 
+              {/* Políticas de Negocio del Cron Job */}
+              <div className="bg-gradient-to-r from-teal-50/70 to-slate-50 dark:from-teal-950/30 dark:to-slate-900 p-3 rounded-xl border border-teal-200/70 dark:border-teal-900/60 text-xs space-y-1.5">
+                <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0" />
+                  Políticas Automáticas de Recaudación en Servidor:
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                  <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                    <span className="font-bold text-teal-700 dark:text-teal-400">1. T-48h Preventivo:</span> Correo cordial con proforma PDF adjunta.
+                  </div>
+                  <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                    <span className="font-bold text-amber-700 dark:text-amber-400">2. T-24h Urgencia:</span> Alerta de plazo límite a medianoche (23:59).
+                  </div>
+                  <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                    <span className="font-bold text-rose-700 dark:text-rose-400">3. 00:00 hrs Cierre:</span> Cancelación en BD y liberación de sillón.
+                  </div>
+                </div>
+              </div>
+
               {/* Registro de Auditoría Detallado */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700 space-y-2 max-h-60 overflow-y-auto">
-                <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-teal-600" />
-                  Trazabilidad de Notificaciones & Acciones:
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700 space-y-2 max-h-56 overflow-y-auto">
+                <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-teal-600" />
+                    Trazabilidad de Notificaciones & Acciones del Servidor:
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-normal">
+                    {dunningStats.timestamp ? new Date(dunningStats.timestamp).toLocaleTimeString() : ''}
+                  </span>
                 </div>
                 {dunningStats.logs && dunningStats.logs.length > 0 ? (
                   <div className="space-y-1.5">
@@ -447,22 +496,35 @@ export default function PayerPage() {
                         </div>
                         {log.emailSent && (
                           <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200">
-                            Correo Enviado ✅
+                            Correo Despachado ✅
                           </span>
                         )}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-500 italic">No hubo acciones pendientes en este ciclo.</p>
+                  <p className="text-xs text-slate-500 italic">No hubo acciones pendientes en el último ciclo de escaneo.</p>
                 )}
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className="flex items-center justify-between pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleOpenDunningAudit(true)}
+                  disabled={isDunningRunning}
+                  className="rounded-xl text-xs h-9 px-3.5 text-teal-700 dark:text-teal-300 border-teal-300 dark:border-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950"
+                  title="Forzar un re-escaneo inmediato en el servidor"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isDunningRunning ? 'animate-spin' : ''}`} />
+                  Re-escanear Ahora (En Vivo)
+                </Button>
+
                 <Button
                   type="button"
                   onClick={() => setDunningStats(null)}
-                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs px-4"
+                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs px-4 h-9"
                 >
                   Cerrar
                 </Button>
