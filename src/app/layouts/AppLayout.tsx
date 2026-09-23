@@ -16,17 +16,17 @@ export default function AppLayout() {
     <div className="flex h-screen w-full overflow-hidden bg-[#f8fafc] dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* Sidebar Desktop Fijo / Expandible */}
       <aside 
-        className={`hidden md:flex flex-col shrink-0 h-screen border-r border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[1px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out z-30 select-none ${
+        className={`hidden md:flex flex-col shrink-0 h-screen border-r border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[1px_0_10px_rgba(0,0,0,0.02)] transition-[width] duration-300 ease-in-out z-30 select-none ${
           isCollapsed ? 'w-20' : 'w-72'
         }`}
       >
         <div className="flex flex-col h-full overflow-hidden">
           {/* Brand Header & Fixed Toggle */}
-          <div className={`flex h-20 items-center border-b border-slate-200/80 dark:border-slate-800 shrink-0 transition-all ${
+          <div className={`flex h-20 items-center border-b border-slate-200/80 dark:border-slate-800 shrink-0 transition-all duration-300 ease-in-out ${
             isCollapsed ? 'justify-center px-2' : 'justify-between px-4'
           }`}>
             {!isCollapsed ? (
-              <>
+              <div className="flex items-center justify-between w-full animate-in fade-in duration-300">
                 <div className="flex items-center gap-3 overflow-hidden">
                   <img 
                     src={logoSrc} 
@@ -46,17 +46,17 @@ export default function AppLayout() {
                   type="button"
                   onClick={toggleSidebar}
                   title="Colapsar barra lateral"
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
                 >
                   <PanelLeftClose className="h-4 w-4" />
                 </button>
-              </>
+              </div>
             ) : (
               <button
                 type="button"
                 onClick={toggleSidebar}
                 title="Expandir barra lateral"
-                className="group relative p-1 rounded-xl transition-all hover:scale-105"
+                className="group relative p-1 rounded-xl transition-all hover:scale-105 animate-in fade-in duration-300"
               >
                 <img 
                   src={logoSrc} 
