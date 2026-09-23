@@ -12,6 +12,9 @@ import {
   isSameDay,
   isToday,
   parseISO,
+  addDays,
+  isBefore,
+  startOfDay,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -24,7 +27,9 @@ import {
   CheckCircle2,
   Sparkles,
   PlusCircle,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck,
+  Star
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -39,6 +44,12 @@ export interface InteractiveAvailabilityPickerProps {
   selectedDisponibilidadId: string;
   customTime?: { startTime: string; endTime: string };
   isCustomMode?: boolean;
+  patientPreferences?: {
+    sede?: string;
+    profesional?: string;
+    horarioId?: string;
+    horarioNombre?: string;
+  };
   onSelectDate: (dateStr: string) => void;
   onSelectDisponibilidad: (dispId: string, dispObj?: any) => void;
   onCustomTimeChange?: (custom: { startTime: string; endTime: string }) => void;
@@ -69,19 +80,26 @@ export function InteractiveAvailabilityPicker({
   selectedDisponibilidadId,
   customTime = { startTime: '09:00', endTime: '10:00' },
   isCustomMode = false,
+  patientPreferences,
   onSelectDate,
   onSelectDisponibilidad,
   onCustomTimeChange,
   onToggleCustomMode,
   errorMessage,
 }: InteractiveAvailabilityPickerProps) {
+  // Política de anticipación mínima de 3 días (72 horas)
+  const minAllowedDate = useMemo(() => addDays(startOfDay(new Date()), 3), []);
+
   const [currentMonth, setCurrentMonth] = useState<Date>(() => {
     if (selectedDate) {
       try {
-        return parseISO(selectedDate);
+        const parsed = parseISO(selectedDate);
+        if (!isBefore(startOfDay(parsed), minAllowedDate)) {
+          return parsed;
+        }
       } catch (e) {}
     }
-    return new Date();
+    return minAllowedDate;
   });
 
   const [activeTab, setActiveTab] = useState<'catalog' | 'custom'>(isCustomMode ? 'custom' : 'catalog');
@@ -95,6 +113,11 @@ export function InteractiveAvailabilityPicker({
       
       const dateKey = (d.fecha || '').split('T')[0];
       if (!dateKey) continue;
+
+      // Filtrar días anteriores a la política de 72 horas
+      try {
+        if (isBefore(startOfDay(parseISO(dateKey)), minAllowedDate)) continue;
+      } catch {}
 
       // Filtrar horarios de madrugada no laborables (ej. 00:00 a 06:00 generados por seeds)
       const rawStart = typeof d.hora_inicio === 'string' 
@@ -111,7 +134,7 @@ export function InteractiveAvailabilityPicker({
       map.get(dateKey)!.push(d);
     }
     return map;
-  }, [disponibilidades, selectedProfesionalId, selectedSedeId]);
+  }, [disponibilidades, selectedProfesionalId, selectedSedeId, minAllowedDate]);
 
   // Días para renderizar la cuadrícula del mes
   const calendarDays = useMemo(() => {
@@ -153,14 +176,14 @@ export function InteractiveAvailabilityPicker({
 
   const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
-  const handleToday = () => {
-    const today = new Date();
-    setCurrentMonth(today);
-    const dateStr = format(today, 'yyyy-MM-dd');
+  const handleSelectMinDate = () => {
+    setCurrentMonth(minAllowedDate);
+    const dateStr = format(minAllowedDate, 'yyyy-MM-dd');
     onSelectDate(dateStr);
   };
 
   const handleDayClick = (day: Date) => {
+    if (isBefore(startOfDay(day), minAllowedDate)) return;
     const dateStr = format(day, 'yyyy-MM-dd');
     onSelectDate(dateStr);
   };
@@ -185,11 +208,17 @@ export function InteractiveAvailabilityPicker({
             <CalendarIcon className="h-4 w-4" />
           </div>
           <div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-              Horario y Disponibilidad en Mesa
-            </h4>
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                Horario y Disponibilidad en Mesa
+              </h4>
+              <Badge variant="outline" className="bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800 text-[10px] py-0 px-1.5 font-medium flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                Mín. 72h Margen
+              </Badge>
+            </div>
             <p className="text-[10px] text-slate-500 dark:text-slate-400">
-              Selecciona el día en el calendario y haz clic sobre el bloque horario que deseas ofertar.
+              Selecciona una fecha válida (mínimo 3 días de anticipación para política de cobranza).
             </p>
           </div>
         </div>
@@ -245,10 +274,11 @@ export function InteractiveAvailabilityPicker({
                 </Button>
                 <button
                   type="button"
-                  onClick={handleToday}
-                  className="h-6 text-[10px] px-2.5 rounded-lg font-bold border border-teal-300 dark:border-teal-700/70 bg-teal-50 dark:bg-slate-700/90 text-teal-800 dark:text-teal-200 hover:bg-teal-100 dark:hover:bg-slate-600 transition-colors shadow-xs"
+                  onClick={handleSelectMinDate}
+                  className="h-6 text-[10px] px-2 rounded-lg font-bold border border-teal-300 dark:border-teal-700/70 bg-teal-50 dark:bg-slate-700/90 text-teal-800 dark:text-teal-200 hover:bg-teal-100 dark:hover:bg-slate-600 transition-colors shadow-xs flex items-center gap-1"
+                  title="Seleccionar el primer día hábil con 72h de anticipación"
                 >
-                  Hoy
+                  <span>Mín. 72h</span>
                 </button>
                 <Button
                   type="button"
@@ -281,19 +311,20 @@ export function InteractiveAvailabilityPicker({
                 const isSelected = selectedDate === dayKey;
                 const isCurrentMonth = isSameMonth(day, currentMonth);
                 const hasSlots = (datesWithSlotsMap.get(dayKey) || []).length > 0;
-                const slotsCount = (datesWithSlotsMap.get(dayKey) || []).length;
-                const isTodayDate = isToday(day);
+                const isDayDisabled = isBefore(startOfDay(day), minAllowedDate);
 
                 return (
                   <button
                     key={idx}
                     type="button"
+                    disabled={isDayDisabled}
                     onClick={() => handleDayClick(day)}
+                    title={isDayDisabled ? "Bloqueado: Requiere 3 días de margen mínimo (política de cobranza 72h)" : undefined}
                     className={`relative h-8 w-full rounded-lg text-xs font-semibold flex flex-col items-center justify-center transition-all ${
-                      isSelected
+                      isDayDisabled
+                        ? 'opacity-30 cursor-not-allowed bg-slate-100/50 dark:bg-slate-800/20 text-slate-400 dark:text-slate-600 line-through select-none'
+                        : isSelected
                         ? 'bg-teal-600 text-white shadow-sm font-bold scale-105 z-10'
-                        : isTodayDate
-                        ? 'ring-1 ring-teal-500 text-teal-700 dark:text-teal-300 bg-teal-50/50 dark:bg-teal-950/40 hover:bg-teal-100'
                         : !isCurrentMonth
                         ? 'text-slate-300 dark:text-slate-600 hover:text-slate-500'
                         : hasSlots
@@ -304,10 +335,10 @@ export function InteractiveAvailabilityPicker({
                     <span>{format(day, 'd')}</span>
 
                     {/* Indicador de turnos disponibles */}
-                    {hasSlots && !isSelected && (
+                    {!isDayDisabled && hasSlots && !isSelected && (
                       <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-emerald-500" />
                     )}
-                    {hasSlots && isSelected && (
+                    {!isDayDisabled && hasSlots && isSelected && (
                       <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-white" />
                     )}
                   </button>
@@ -317,7 +348,7 @@ export function InteractiveAvailabilityPicker({
           </div>
 
           {/* Leyenda del Calendario */}
-          <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+          <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-[9px] text-slate-500 dark:text-slate-400 flex-wrap gap-1">
             <span className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" />
               Con cupos
@@ -325,6 +356,10 @@ export function InteractiveAvailabilityPicker({
             <span className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-teal-600 inline-block" />
               Seleccionado
+            </span>
+            <span className="flex items-center gap-1 line-through text-slate-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-300 dark:bg-slate-600 inline-block" />
+              &lt;72h Bloqueado
             </span>
           </div>
         </div>
@@ -354,7 +389,7 @@ export function InteractiveAvailabilityPicker({
                 <div className="p-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-800/40">
                   <CalendarIcon className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
                   <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Selecciona una fecha</p>
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Haz clic en cualquier día del calendario para ver los horarios.</p>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Haz clic en cualquier día habilitado del calendario para ver los horarios.</p>
                 </div>
               ) : availableSlotsForSelectedDate.length === 0 ? (
                 <div className="p-6 text-center border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-800/40 space-y-2">
@@ -381,6 +416,14 @@ export function InteractiveAvailabilityPicker({
                     const isSelected = selectedDisponibilidadId === disp.id_disponibilidad.toString();
                     const horaInicio = String(disp.hora_inicio || '').substring(11, 16) || '09:00';
                     const horaFin = String(disp.hora_fin || '').substring(11, 16) || '10:00';
+                    const profApellidos = disp.Profesional?.apellidos || 'General';
+                    const profFullName = `Esp. ${disp.Profesional?.nombres || ''} ${profApellidos}`.trim();
+                    const sedeNombre = disp.Sede?.nombre || 'Sede';
+
+                    // Coincidencia con preferencias del paciente
+                    const matchesDoctor = Boolean(patientPreferences?.profesional && profFullName.toLowerCase().includes(patientPreferences.profesional.toLowerCase()));
+                    const matchesSede = Boolean(patientPreferences?.sede && sedeNombre.toLowerCase().includes(patientPreferences.sede.toLowerCase()));
+                    const isPreferred = matchesDoctor || matchesSede;
 
                     return (
                       <div
@@ -392,25 +435,33 @@ export function InteractiveAvailabilityPicker({
                             : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-teal-400 dark:hover:border-teal-600'
                         }`}
                       >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'}`} />
-                            <span className={`text-xs font-bold ${isSelected ? 'text-teal-900 dark:text-teal-100' : 'text-slate-900 dark:text-white'}`}>
-                              {horaInicio} – {horaFin}
-                            </span>
+                        <div className="space-y-1 w-full">
+                          <div className="flex items-center justify-between gap-1">
+                            <div className="flex items-center gap-1.5">
+                              <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'}`} />
+                              <span className={`text-xs font-bold ${isSelected ? 'text-teal-900 dark:text-teal-100' : 'text-slate-900 dark:text-white'}`}>
+                                {horaInicio} – {horaFin}
+                              </span>
+                            </div>
+                            {isPreferred && (
+                              <span className="text-[9px] font-bold text-teal-700 dark:text-teal-300 bg-teal-100/90 dark:bg-teal-900/60 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
+                                <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
+                                Preferido
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
                             <User className="w-3 h-3 shrink-0" />
-                            <span className="truncate">Dr/a. {disp.Profesional?.apellidos || 'General'}</span>
+                            <span className="truncate">Esp. {profApellidos}</span>
                           </div>
                           <div className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500">
                             <MapPin className="w-3 h-3 shrink-0" />
-                            <span className="truncate">{disp.Sede?.nombre || 'Sede'}</span>
+                            <span className="truncate">{sedeNombre}</span>
                           </div>
                         </div>
 
                         {isSelected && (
-                          <div className="h-5 w-5 rounded-full bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                          <div className="h-5 w-5 rounded-full bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                           </div>
                         )}

@@ -9,7 +9,16 @@ router.get('/options/availability', async (req, res) => {
   try {
     const profesionales = await prisma.profesionales.findMany({ where: { activo: true } });
     const sedes = await prisma.sedes.findMany({ where: { activo: true } });
-    const servicios = await prisma.servicios.findMany({ where: { activo: true } });
+    const servicios = await prisma.servicios.findMany({
+      where: { activo: true },
+      include: {
+        Tarifas: {
+          where: { activo: true },
+          orderBy: { fecha_inicio: 'desc' },
+          take: 1,
+        }
+      }
+    });
     const disponibilidades = await prisma.disponibilidad.findMany({
       where: { estado: 'Disponible' },
       include: { Profesional: true, Sede: true },
