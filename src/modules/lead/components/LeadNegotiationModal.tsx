@@ -52,7 +52,6 @@ import {
   Sparkles,
   ShieldCheck,
   Tag,
-  Percent,
   TrendingDown,
   Award,
   Zap,
@@ -282,7 +281,6 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
     if (altPrecio === '150.00' || !altPrecio) {
       if (isStudent) {
-        // Descuento automático de convenio universitario -15%
         setAltPrecio(Math.round(officialPrice * 0.85).toFixed(2));
       } else {
         setAltPrecio(officialPrice.toFixed(2));
@@ -623,33 +621,34 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
               <div className="p-5 space-y-5 overflow-y-auto no-scrollbar">
 
                 {/* ── Tarjeta de Inteligencia & Scoring Comercial (Estrategia Recomendada) ── */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-900/90 via-teal-800/90 to-slate-900 text-white shadow-md border border-teal-700/40 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                    <Sparkles className="w-24 h-24 text-white" />
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-950/95 via-slate-900 to-teal-950/95 text-white shadow-lg border border-teal-500/30 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                    <Sparkles className="w-28 h-28 text-white" />
                   </div>
                   <div className="relative z-10 space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-700/50 pb-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-800/60 pb-2.5">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-500/30 text-teal-200 border border-teal-400/30">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-500/20 text-teal-300 border border-teal-400/30">
                           <Zap className="h-3.5 w-3.5" />
                         </span>
                         <h4 className="text-xs font-bold uppercase tracking-wider text-teal-200">
                           Estrategia Comercial Recomendada & Matching
                         </h4>
                       </div>
-                      <Badge className="bg-teal-500/20 text-teal-200 border border-teal-400/40 text-[10px] py-0.5 px-2 font-medium">
-                        Inteligencia BUYER → LEAD
-                      </Badge>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide bg-teal-900/80 text-teal-200 border border-teal-500/40 shadow-sm select-none">
+                        <Sparkles className="w-3 h-3 text-teal-300" />
+                        <span>Inteligencia BUYER → LEAD</span>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                       {/* Factor 1: Convenio Académico */}
-                      <div className="p-2.5 rounded-xl bg-teal-950/40 border border-teal-600/30 space-y-1">
+                      <div className="p-2.5 rounded-xl bg-slate-900/80 border border-teal-800/50 hover:border-teal-500/60 transition-colors space-y-1">
                         <div className="flex items-center gap-1.5 text-teal-300 font-bold text-[11px]">
-                          <GraduationCap className="h-3.5 w-3.5" />
+                          <GraduationCap className="h-3.5 w-3.5 text-teal-400" />
                           <span>Perfil Universitario</span>
                         </div>
-                        <p className="text-[11px] text-teal-100/90 leading-tight">
+                        <p className="text-[11px] text-slate-200 leading-tight">
                           {isStudent
                             ? `Convenio activo (${datAcad?.universidad || 'Universidad'}). Se sugiere aplicar -15% desc.`
                             : 'No aplica tarifa universitaria (Tarifa regular sugerida).'}
@@ -657,12 +656,12 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                       </div>
 
                       {/* Factor 2: Urgencia / Salud */}
-                      <div className="p-2.5 rounded-xl bg-teal-950/40 border border-teal-600/30 space-y-1">
+                      <div className="p-2.5 rounded-xl bg-slate-900/80 border border-teal-800/50 hover:border-teal-500/60 transition-colors space-y-1">
                         <div className="flex items-center gap-1.5 text-teal-300 font-bold text-[11px]">
-                          <HeartPulse className="h-3.5 w-3.5" />
+                          <HeartPulse className="h-3.5 w-3.5 text-teal-400" />
                           <span>Prioridad Clínica</span>
                         </div>
-                        <p className="text-[11px] text-teal-100/90 leading-tight">
+                        <p className="text-[11px] text-slate-200 leading-tight">
                           {hasUrgentPain
                             ? `Dolor ${saludOdonto?.nivel_dolor}. Priorizar turno más cercano (mín. 72h).`
                             : 'Chequeo preventivo o estético estándar.'}
@@ -670,12 +669,12 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                       </div>
 
                       {/* Factor 3: Preferencias */}
-                      <div className="p-2.5 rounded-xl bg-teal-950/40 border border-teal-600/30 space-y-1">
+                      <div className="p-2.5 rounded-xl bg-slate-900/80 border border-teal-800/50 hover:border-teal-500/60 transition-colors space-y-1">
                         <div className="flex items-center gap-1.5 text-teal-300 font-bold text-[11px]">
-                          <MapPin className="h-3.5 w-3.5" />
+                          <MapPin className="h-3.5 w-3.5 text-teal-400" />
                           <span>Preferencias de Atención</span>
                         </div>
-                        <p className="text-[11px] text-teal-100/90 leading-tight">
+                        <p className="text-[11px] text-slate-200 leading-tight">
                           {pref?.sede_preferida || pref?.profesional_preferido
                             ? `Prefiere Sede ${pref?.sede_preferida || 'Indiferente'} / Esp. ${pref?.profesional_preferido || 'Indiferente'}.`
                             : 'Sin restricciones de sede o especialista.'}
@@ -782,7 +781,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                       </div>
                     </div>
 
-                    {/* Selector interactivo de calendario y horarios con regla de 72h */}
+                    {/* Selector interactivo de calendario y horarios con Match Scoring */}
                     <div className="pt-1">
                       <InteractiveAvailabilityPicker
                         disponibilidades={catalogs.disponibilidades || []}
@@ -797,6 +796,15 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                         patientPreferences={{
                           sede: pref?.sede_preferida,
                           profesional: pref?.profesional_preferido,
+                          horario: pref?.Horario ? {
+                            dia_semana: pref.Horario.dia_semana,
+                            hora_inicio: typeof pref.Horario.hora_inicio === 'string'
+                              ? (pref.Horario.hora_inicio.includes('T') ? pref.Horario.hora_inicio.substring(11, 16) : pref.Horario.hora_inicio.substring(0, 5))
+                              : undefined,
+                            hora_fin: typeof pref.Horario.hora_fin === 'string'
+                              ? (pref.Horario.hora_fin.includes('T') ? pref.Horario.hora_fin.substring(11, 16) : pref.Horario.hora_fin.substring(0, 5))
+                              : undefined,
+                          } : undefined,
                           horarioNombre: pref?.Horario ? `${['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][pref.Horario.dia_semana]} (${String(pref.Horario.hora_inicio).substring(11,16)} - ${String(pref.Horario.hora_fin).substring(11,16)})` : undefined
                         }}
                         onSelectDate={(d) => { setAltFecha(d); setAltDisponibilidadId(''); }}

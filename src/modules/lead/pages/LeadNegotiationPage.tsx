@@ -457,56 +457,57 @@ export default function LeadNegotiationPage() {
       <div className="lg:col-span-2 space-y-6">
 
         {/* Tarjeta de Inteligencia Comercial & Scoring */}
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-900/90 via-teal-800/90 to-slate-900 text-white shadow-md border border-teal-700/40 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-            <Sparkles className="w-24 h-24 text-white" />
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-950/95 via-slate-900 to-teal-950/95 text-white shadow-lg border border-teal-500/30 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+            <Sparkles className="w-28 h-28 text-white" />
           </div>
           <div className="relative z-10 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-700/50 pb-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-800/60 pb-2.5">
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-500/30 text-teal-200 border border-teal-400/30">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-500/20 text-teal-300 border border-teal-400/30">
                   <Zap className="h-3.5 w-3.5" />
                 </span>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-teal-200">
                   Estrategia Comercial Recomendada & Matching
                 </h4>
               </div>
-              <Badge className="bg-teal-500/20 text-teal-200 border border-teal-400/40 text-[10px] py-0.5 px-2 font-medium">
-                Inteligencia BUYER → LEAD
-              </Badge>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide bg-teal-900/80 text-teal-200 border border-teal-500/40 shadow-sm select-none">
+                <Sparkles className="w-3 h-3 text-teal-300" />
+                <span>Inteligencia BUYER → LEAD</span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-              <div className="p-2.5 rounded-xl bg-teal-950/40 border border-teal-600/30 space-y-1">
+              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-teal-800/50 hover:border-teal-500/60 transition-colors space-y-1">
                 <div className="flex items-center gap-1.5 text-teal-300 font-bold text-[11px]">
-                  <GraduationCap className="h-3.5 w-3.5" />
+                  <GraduationCap className="h-3.5 w-3.5 text-teal-400" />
                   <span>Perfil Académico</span>
                 </div>
-                <p className="text-[11px] text-teal-100/90 leading-tight">
+                <p className="text-[11px] text-slate-200 leading-tight">
                   {isStudent
                     ? `Convenio activo (${datAcad?.universidad || 'Univ.'}). Descuento sugerido -15%.`
                     : 'Tarifa regular aplicable (No estudiante).'}
                 </p>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-teal-950/40 border border-teal-600/30 space-y-1">
+              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-teal-800/50 hover:border-teal-500/60 transition-colors space-y-1">
                 <div className="flex items-center gap-1.5 text-teal-300 font-bold text-[11px]">
-                  <HeartPulse className="h-3.5 w-3.5" />
+                  <HeartPulse className="h-3.5 w-3.5 text-teal-400" />
                   <span>Prioridad Clínica</span>
                 </div>
-                <p className="text-[11px] text-teal-100/90 leading-tight">
+                <p className="text-[11px] text-slate-200 leading-tight">
                   {hasUrgentPain
                     ? `Dolor ${saludOdonto?.nivel_dolor}. Priorizar agendamiento (mín. 72h).`
                     : 'Evaluación de rutina estándar.'}
                 </p>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-teal-950/40 border border-teal-600/30 space-y-1">
+              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-teal-800/50 hover:border-teal-500/60 transition-colors space-y-1">
                 <div className="flex items-center gap-1.5 text-teal-300 font-bold text-[11px]">
-                  <MapPin className="h-3.5 w-3.5" />
+                  <MapPin className="h-3.5 w-3.5 text-teal-400" />
                   <span>Matching de Preferencias</span>
                 </div>
-                <p className="text-[11px] text-teal-100/90 leading-tight">
+                <p className="text-[11px] text-slate-200 leading-tight">
                   {pref?.sede_preferida || pref?.profesional_preferido
                     ? `Preferencia: Sede ${pref?.sede_preferida || 'Indif.'} / Esp. ${pref?.profesional_preferido || 'Indif.'}.`
                     : 'Disponibilidad libre de sede/médico.'}
@@ -596,7 +597,7 @@ export default function LeadNegotiationPage() {
                   </div>
                 </div>
 
-                {/* Calendario y Horarios Interactivos con Regla 72h */}
+                {/* Calendario y Horarios Interactivos con Match Scoring */}
                 <div className="pt-1">
                   <InteractiveAvailabilityPicker
                     disponibilidades={options.disponibilidades || []}
@@ -611,6 +612,15 @@ export default function LeadNegotiationPage() {
                     patientPreferences={{
                       sede: pref?.sede_preferida,
                       profesional: pref?.profesional_preferido,
+                      horario: pref?.Horario ? {
+                        dia_semana: pref.Horario.dia_semana,
+                        hora_inicio: typeof pref.Horario.hora_inicio === 'string'
+                          ? (pref.Horario.hora_inicio.includes('T') ? pref.Horario.hora_inicio.substring(11, 16) : pref.Horario.hora_inicio.substring(0, 5))
+                          : undefined,
+                        hora_fin: typeof pref.Horario.hora_fin === 'string'
+                          ? (pref.Horario.hora_fin.includes('T') ? pref.Horario.hora_fin.substring(11, 16) : pref.Horario.hora_fin.substring(0, 5))
+                          : undefined,
+                      } : undefined,
                       horarioNombre: pref?.Horario ? `${['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][pref.Horario.dia_semana]} (${String(pref.Horario.hora_inicio).substring(11,16)} - ${String(pref.Horario.hora_fin).substring(11,16)})` : undefined
                     }}
                     onSelectDate={(d) => { setSelectedDate(d); setSelectedDisponibilidad(''); }}
@@ -707,7 +717,7 @@ export default function LeadNegotiationPage() {
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                       <input 
-                        type="number"
+                        type="number" 
                         step="0.5"
                         className={`flex h-9 w-full rounded-xl border bg-slate-50 dark:bg-slate-800 pl-9 pr-3 text-xs font-semibold focus:outline-none focus:ring-2 ${offerErrors.precio ? 'border-rose-500 ring-rose-500/20' : 'border-slate-200 dark:border-slate-700 focus:ring-teal-500/20 focus:border-teal-500'}`} 
                         value={precioOfrecido} 

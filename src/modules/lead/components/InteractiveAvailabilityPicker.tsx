@@ -9,12 +9,12 @@ import {
   endOfWeek,
   eachDayOfInterval,
   isSameMonth,
-  isSameDay,
   isToday,
   parseISO,
   addDays,
   isBefore,
   startOfDay,
+  getDay,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -27,12 +27,24 @@ import {
   CheckCircle2,
   Sparkles,
   PlusCircle,
-  AlertCircle,
   ShieldCheck,
-  Star
+  Star,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
+
+export interface PatientPreferences {
+  sede?: string;
+  profesional?: string;
+  horarioId?: string;
+  horarioNombre?: string;
+  horario?: {
+    dia_semana?: number;
+    hora_inicio?: string;
+    hora_fin?: string;
+  };
+}
 
 export interface InteractiveAvailabilityPickerProps {
   disponibilidades: any[];
@@ -44,12 +56,7 @@ export interface InteractiveAvailabilityPickerProps {
   selectedDisponibilidadId: string;
   customTime?: { startTime: string; endTime: string };
   isCustomMode?: boolean;
-  patientPreferences?: {
-    sede?: string;
-    profesional?: string;
-    horarioId?: string;
-    horarioNombre?: string;
-  };
+  patientPreferences?: PatientPreferences;
   onSelectDate: (dateStr: string) => void;
   onSelectDisponibilidad: (dispId: string, dispObj?: any) => void;
   onCustomTimeChange?: (custom: { startTime: string; endTime: string }) => void;
@@ -70,6 +77,100 @@ const PRESET_HOURS = [
   { start: '19:00', end: '20:00' },
 ];
 
+// Helper para calcular nivel de Match y coincidencias (Horario, Sede, Especialista)
+function calculateSlotMatch(disp: any, dateStr: string, prefs?: PatientPreferences) {
+  if (!prefs) {
+    return {
+      matchCount: 0,
+      matchesDoctor: false,
+      matchesSede: false,
+      matchesHorario: false,
+      label: '',
+      badgeType: 'none' as const,
+      detail: '',
+    };
+  }
+
+  // 1. Especialista
+  const profApellidos = disp.Profesional?.apellidos || '';
+  const profNombres = disp.Profesional?.nombres || '';
+  const profFullName = `${profNombres} ${profApellidos}`.trim().toLowerCase();
+  const targetProf = (prefs.profesional || '').trim().toLowerCase();
+  const matchesDoctor = Boolean(
+    targetProf &&
+    (profFullName.includes(targetProf) ||
+     targetProf.includes(profApellidos.toLowerCase()) ||
+     targetProf.includes(profNombres.toLowerCase()))
+  );
+
+  // 2. Sede
+  const sedeNombre = (disp.Sede?.nombre || '').trim().toLowerCase();
+  const targetSede = (prefs.sede || '').trim().toLowerCase();
+  const matchesSede = Boolean(
+    targetSede &&
+    (sedeNombre.includes(targetSede) || targetSede.includes(sedeNombre))
+  );
+
+  // 3. Horario
+  let matchesHorario = false;
+  const slotStart = typeof disp.hora_inicio === 'string'
+    ? (disp.hora_inicio.includes('T') ? disp.hora_inicio.substring(11, 16) : disp.hora_inicio.substring(0, 5))
+    : '';
+
+  if (prefs.horario) {
+    let dayMatches = true;
+    if (typeof prefs.horario.dia_semana === 'number' && dateStr) {
+      try {
+        const slotDayOfWeek = getDay(parseISO(dateStr));
+        dayMatches = slotDayOfWeek === prefs.horario.dia_semana;
+      } catch {}
+    }
+
+    let timeMatches = false;
+    if (slotStart && prefs.horario.hora_inicio && prefs.horario.hora_fin) {
+      timeMatches = slotStart >= prefs.horario.hora_inicio && slotStart <= prefs.horario.hora_fin;
+    } else if (slotStart && prefs.horario.hora_inicio) {
+      timeMatches = slotStart === prefs.horario.hora_inicio;
+    }
+
+    matchesHorario = (dayMatches && timeMatches) || timeMatches;
+  } else if (prefs.horarioNombre && slotStart) {
+    matchesHorario = prefs.horarioNombre.includes(slotStart);
+  }
+
+  let matchCount = 0;
+  const matchItems: string[] = [];
+  if (matchesDoctor) { matchCount++; matchItems.push('Especialista'); }
+  if (matchesSede) { matchCount++; matchItems.push('Sede'); }
+  if (matchesHorario) { matchCount++; matchItems.push('Horario'); }
+
+  let label = '';
+  let badgeType: 'perfect' | 'high' | 'partial' | 'none' = 'none';
+
+  if (matchCount === 3) {
+    label = '100% Match Total ⭐';
+    badgeType = 'perfect';
+  } else if (matchCount === 2) {
+    label = 'Match Alto (2/3) ✨';
+    badgeType = 'high';
+  } else if (matchCount === 1) {
+    label = 'Match Parcial (1/3)';
+    badgeType = 'partial';
+  } else {
+    badgeType = 'none';
+  }
+
+  return {
+    matchCount,
+    matchesDoctor,
+    matchesSede,
+    matchesHorario,
+    label,
+    badgeType,
+    detail: matchItems.join(' + '),
+  };
+}
+
 export function InteractiveAvailabilityPicker({
   disponibilidades = [],
   profesionales = [],
@@ -87,7 +188,7 @@ export function InteractiveAvailabilityPicker({
   onToggleCustomMode,
   errorMessage,
 }: InteractiveAvailabilityPickerProps) {
-  // Política de anticipación mínima de 3 días (72 horas)
+  // Política estricta de anticipación mínima de 3 días (72 horas)
   const minAllowedDate = useMemo(() => addDays(startOfDay(new Date()), 3), []);
 
   const [currentMonth, setCurrentMonth] = useState<Date>(() => {
@@ -119,7 +220,7 @@ export function InteractiveAvailabilityPicker({
         if (isBefore(startOfDay(parseISO(dateKey)), minAllowedDate)) continue;
       } catch {}
 
-      // Filtrar horarios de madrugada no laborables (ej. 00:00 a 06:00 generados por seeds)
+      // Filtrar horarios de madrugada no laborables (ej. 00:00 a 06:00)
       const rawStart = typeof d.hora_inicio === 'string' 
         ? (d.hora_inicio.includes('T') ? d.hora_inicio.substring(11, 16) : d.hora_inicio.substring(0, 5)) 
         : '';
@@ -146,12 +247,11 @@ export function InteractiveAvailabilityPicker({
     return eachDayOfInterval({ start: startDate, end: endDate });
   }, [currentMonth]);
 
-  // Turnos disponibles únicos y ordenados para la fecha seleccionada
+  // Turnos disponibles únicos y ordenados por nivel de Match descendente y luego por hora
   const availableSlotsForSelectedDate = useMemo(() => {
     if (!selectedDate) return [];
     const rawSlots = datesWithSlotsMap.get(selectedDate) || [];
     
-    // Deduplicar turnos idénticos de mismo horario, profesional y sede
     const uniqueMap = new Map<string, any>();
     for (const slot of rawSlots) {
       const hInicio = typeof slot.hora_inicio === 'string' 
@@ -167,12 +267,22 @@ export function InteractiveAvailabilityPicker({
       }
     }
 
-    return Array.from(uniqueMap.values()).sort((a, b) => {
+    const listWithMatches = Array.from(uniqueMap.values()).map(slot => ({
+      ...slot,
+      matchInfo: calculateSlotMatch(slot, selectedDate, patientPreferences),
+    }));
+
+    return listWithMatches.sort((a, b) => {
+      // Prioridad 1: Mayor nivel de coincidencia (3 -> 2 -> 1 -> 0)
+      if (b.matchInfo.matchCount !== a.matchInfo.matchCount) {
+        return b.matchInfo.matchCount - a.matchInfo.matchCount;
+      }
+      // Prioridad 2: Orden cronológico de hora de inicio
       const tA = String(a.hora_inicio || '');
       const tB = String(b.hora_inicio || '');
       return tA.localeCompare(tB);
     });
-  }, [datesWithSlotsMap, selectedDate]);
+  }, [datesWithSlotsMap, selectedDate, patientPreferences]);
 
   const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
@@ -194,10 +304,6 @@ export function InteractiveAvailabilityPicker({
       onToggleCustomMode(tab === 'custom');
     }
   };
-
-  const selectedDispObject = useMemo(() => {
-    return disponibilidades.find(d => d.id_disponibilidad.toString() === selectedDisponibilidadId);
-  }, [disponibilidades, selectedDisponibilidadId]);
 
   return (
     <div className="space-y-3.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 p-4">
@@ -311,6 +417,7 @@ export function InteractiveAvailabilityPicker({
                 const isSelected = selectedDate === dayKey;
                 const isCurrentMonth = isSameMonth(day, currentMonth);
                 const hasSlots = (datesWithSlotsMap.get(dayKey) || []).length > 0;
+                const isTodayDate = isToday(day);
                 const isDayDisabled = isBefore(startOfDay(day), minAllowedDate);
 
                 return (
@@ -325,6 +432,8 @@ export function InteractiveAvailabilityPicker({
                         ? 'opacity-30 cursor-not-allowed bg-slate-100/50 dark:bg-slate-800/20 text-slate-400 dark:text-slate-600 line-through select-none'
                         : isSelected
                         ? 'bg-teal-600 text-white shadow-sm font-bold scale-105 z-10'
+                        : isTodayDate
+                        ? 'ring-1 ring-teal-500 text-teal-700 dark:text-teal-300 bg-teal-50/50 dark:bg-teal-950/40 hover:bg-teal-100'
                         : !isCurrentMonth
                         ? 'text-slate-300 dark:text-slate-600 hover:text-slate-500'
                         : hasSlots
@@ -411,57 +520,92 @@ export function InteractiveAvailabilityPicker({
                   </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[190px] overflow-y-auto no-scrollbar p-0.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[220px] overflow-y-auto no-scrollbar p-0.5">
                   {availableSlotsForSelectedDate.map((disp: any) => {
                     const isSelected = selectedDisponibilidadId === disp.id_disponibilidad.toString();
                     const horaInicio = String(disp.hora_inicio || '').substring(11, 16) || '09:00';
                     const horaFin = String(disp.hora_fin || '').substring(11, 16) || '10:00';
                     const profApellidos = disp.Profesional?.apellidos || 'General';
-                    const profFullName = `Esp. ${disp.Profesional?.nombres || ''} ${profApellidos}`.trim();
+                    const profNombres = disp.Profesional?.nombres || '';
                     const sedeNombre = disp.Sede?.nombre || 'Sede';
-
-                    // Coincidencia con preferencias del paciente
-                    const matchesDoctor = Boolean(patientPreferences?.profesional && profFullName.toLowerCase().includes(patientPreferences.profesional.toLowerCase()));
-                    const matchesSede = Boolean(patientPreferences?.sede && sedeNombre.toLowerCase().includes(patientPreferences.sede.toLowerCase()));
-                    const isPreferred = matchesDoctor || matchesSede;
+                    const { matchCount, matchesDoctor, matchesSede, matchesHorario, label, badgeType, detail } = disp.matchInfo;
 
                     return (
                       <div
                         key={disp.id_disponibilidad}
                         onClick={() => onSelectDisponibilidad(disp.id_disponibilidad.toString(), disp)}
-                        className={`p-2.5 rounded-xl border-2 cursor-pointer transition-all flex items-start justify-between gap-2 text-left ${
+                        className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between gap-2 text-left relative ${
                           isSelected
-                            ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 shadow-sm ring-2 ring-teal-500/20'
+                            ? 'bg-teal-50 dark:bg-teal-950/70 border-teal-600 dark:border-teal-500 shadow-md ring-2 ring-teal-500/20'
+                            : badgeType === 'perfect'
+                            ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-400/80 dark:border-emerald-600/70 hover:border-emerald-500 hover:shadow-sm'
                             : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-teal-400 dark:hover:border-teal-600'
                         }`}
                       >
-                        <div className="space-y-1 w-full">
-                          <div className="flex items-center justify-between gap-1">
-                            <div className="flex items-center gap-1.5">
-                              <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'}`} />
-                              <span className={`text-xs font-bold ${isSelected ? 'text-teal-900 dark:text-teal-100' : 'text-slate-900 dark:text-white'}`}>
-                                {horaInicio} – {horaFin}
-                              </span>
-                            </div>
-                            {isPreferred && (
-                              <span className="text-[9px] font-bold text-teal-700 dark:text-teal-300 bg-teal-100/90 dark:bg-teal-900/60 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
-                                <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
-                                Preferido
+                        {/* Fila Superior: Hora y Badge de Match */}
+                        <div className="flex items-center justify-between gap-1 border-b border-slate-100 dark:border-slate-700/80 pb-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className={`w-3.5 h-3.5 ${matchesHorario ? 'text-emerald-600 dark:text-emerald-400' : isSelected ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'}`} />
+                            <span className={`text-xs font-bold ${isSelected ? 'text-teal-900 dark:text-teal-100' : 'text-slate-900 dark:text-white'}`}>
+                              {horaInicio} – {horaFin}
+                            </span>
+                            {matchesHorario && (
+                              <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 px-1 py-0.2 rounded" title="Coincide con horario preferido">
+                                ✓
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
-                            <User className="w-3 h-3 shrink-0" />
-                            <span className="truncate">Esp. {profApellidos}</span>
+
+                          {/* Etiqueta de Match según nivel de coincidencia (3=Total, 2=Alto, 1=Parcial, 0=Sin etiqueta) */}
+                          {matchCount === 3 && (
+                            <span className="text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/90 border border-emerald-300 dark:border-emerald-700 px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-xs animate-pulse">
+                              <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                              100% Match Total
+                            </span>
+                          )}
+                          {matchCount === 2 && (
+                            <span className="text-[10px] font-bold text-teal-800 dark:text-teal-300 bg-teal-100 dark:bg-teal-950/80 border border-teal-300 dark:border-teal-700 px-1.5 py-0.5 rounded-lg flex items-center gap-1">
+                              <Sparkles className="w-2.5 h-2.5 text-teal-600 dark:text-teal-400" />
+                              Match 2/3
+                            </span>
+                          )}
+                          {matchCount === 1 && (
+                            <span className="text-[9px] font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded-md">
+                              Coincide 1/3
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Fila Intermedia: Especialista y Sede con indicadores individuales */}
+                        <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
+                          <div className="flex items-center justify-between gap-1">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <User className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span className="truncate font-medium">Esp. {profNombres} {profApellidos}</span>
+                            </div>
+                            {matchesDoctor && (
+                              <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/80 px-1.5 py-0.5 rounded shrink-0 flex items-center gap-0.5">
+                                <Check className="w-2.5 h-2.5 text-emerald-600" /> Médico preferido
+                              </span>
+                            )}
                           </div>
-                          <div className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500">
-                            <MapPin className="w-3 h-3 shrink-0" />
-                            <span className="truncate">{sedeNombre}</span>
+
+                          <div className="flex items-center justify-between gap-1">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span className="truncate text-[11px] text-slate-500 dark:text-slate-400">{sedeNombre}</span>
+                            </div>
+                            {matchesSede && (
+                              <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/80 px-1.5 py-0.5 rounded shrink-0 flex items-center gap-0.5">
+                                <Check className="w-2.5 h-2.5 text-emerald-600" /> Sede preferida
+                              </span>
+                            )}
                           </div>
                         </div>
 
+                        {/* Checkmark al seleccionar */}
                         {isSelected && (
-                          <div className="h-5 w-5 rounded-full bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                          <div className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-teal-600 text-white flex items-center justify-center shadow-md">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                           </div>
                         )}
@@ -469,6 +613,12 @@ export function InteractiveAvailabilityPicker({
                     );
                   })}
                 </div>
+              )}
+
+              {errorMessage && (
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold pt-1">
+                  {errorMessage}
+                </p>
               )}
             </div>
           ) : (
@@ -515,12 +665,8 @@ export function InteractiveAvailabilityPicker({
                   <input
                     type="time"
                     value={customTime.startTime}
-                    onChange={(e) => {
-                      if (onCustomTimeChange) {
-                        onCustomTimeChange({ startTime: e.target.value, endTime: customTime.endTime });
-                      }
-                    }}
-                    className="flex h-8 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-2 text-xs font-semibold text-slate-900 dark:text-white"
+                    onChange={(e) => onCustomTimeChange?.({ ...customTime, startTime: e.target.value })}
+                    className="w-full text-xs p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                   />
                 </div>
                 <div>
@@ -528,49 +674,15 @@ export function InteractiveAvailabilityPicker({
                   <input
                     type="time"
                     value={customTime.endTime}
-                    onChange={(e) => {
-                      if (onCustomTimeChange) {
-                        onCustomTimeChange({ startTime: customTime.startTime, endTime: e.target.value });
-                      }
-                    }}
-                    className="flex h-8 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-2 text-xs font-semibold text-slate-900 dark:text-white"
+                    onChange={(e) => onCustomTimeChange?.({ ...customTime, endTime: e.target.value })}
+                    className="w-full text-xs p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                   />
                 </div>
               </div>
             </div>
-          )}
-
-          {/* Resumen del Turno Seleccionado */}
-          <div className="p-2.5 rounded-xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/80 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
-              <div>
-                <span className="font-bold text-slate-900 dark:text-white">
-                  {activeTab === 'catalog' && selectedDispObject ? (
-                    <>
-                      {selectedDate} • {String(selectedDispObject.hora_inicio).substring(11, 16)} – {String(selectedDispObject.hora_fin).substring(11, 16)} • {selectedDispObject.Sede?.nombre} (Dr/a. {selectedDispObject.Profesional?.apellidos})
-                    </>
-                  ) : activeTab === 'custom' && selectedDate ? (
-                    <>
-                      Horario Propuesto: {selectedDate} de {customTime.startTime} a {customTime.endTime}
-                    </>
-                  ) : (
-                    'Ningún horario seleccionado todavía'
-                  )}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {errorMessage && (
-            <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 animate-in fade-in-50">
-              <AlertCircle className="w-3.5 h-3.5" />
-              {errorMessage}
-            </p>
           )}
         </div>
       </div>
     </div>
   );
 }
-
