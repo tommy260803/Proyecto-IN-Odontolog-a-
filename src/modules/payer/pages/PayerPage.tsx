@@ -652,7 +652,7 @@ export default function PayerPage() {
                     }`}
                   >
                     <Terminal className="w-3 h-3" />
-                    <span>Todos ({dunningStats.logs?.length || 0})</span>
+                    <span>Todos ({dunningStats?.logs?.length || 0})</span>
                   </button>
 
                   <button
@@ -717,7 +717,7 @@ export default function PayerPage() {
                     LIVE TAIL CONSOLE · Emisión de Notificaciones & Auditoría
                   </span>
                   <span className="text-[10px] font-mono text-slate-400">
-                    {dunningStats.timestamp ? new Date(dunningStats.timestamp).toLocaleTimeString() : ''}
+                    {dunningStats?.timestamp ? new Date(dunningStats.timestamp).toLocaleTimeString() : ''}
                   </span>
                 </div>
                 {filteredDunningLogs && filteredDunningLogs.length > 0 ? (
