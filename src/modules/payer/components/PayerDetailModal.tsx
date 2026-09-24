@@ -199,7 +199,6 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
         operationNumber: p.payment?.operationNumber,
         declaredAmount: p.payment?.amount,
         hasReceipt: !!p.payment?.receiptMetadata,
-        incidentsCount: p.incidents?.length || 0,
         incidentsCount: realIncidents.length,
         lastIncidentReason: p.incidents?.[p.incidents.length - 1]?.reason,
       };

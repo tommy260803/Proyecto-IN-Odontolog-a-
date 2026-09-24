@@ -332,7 +332,6 @@ export default function PayerPage() {
           reservationDate: p.reservation?.date,
           reservationTime: p.reservation?.time,
           hasReceipt: !!p.payment?.receiptMetadata,
-          incidentsCount: p.incidents?.length || 0,
           incidentsCount: realIncidents.length,
           lastIncidentReason: p.incidents?.[p.incidents.length - 1]?.reason,
         });
