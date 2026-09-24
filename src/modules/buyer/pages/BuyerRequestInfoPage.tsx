@@ -27,7 +27,6 @@ import {
   Building2,
   User,
   Star,
-  Zap
   Zap,
   Check
 } from 'lucide-react';
@@ -552,22 +551,12 @@ export default function BuyerRequestInfoPage() {
                       }}
                       className={`flex items-start space-x-3 rounded-xl p-2.5 transition-all border cursor-pointer select-none ${
                         termsAccepted 
-                          ? 'bg-teal-50/70 border-teal-300 ring-1 ring-teal-400/20' 
                           ? 'bg-teal-50/70 border-teal-300 ring-1 ring-teal-400/20 shadow-xs' 
                           : errors.terms 
                             ? 'bg-rose-50/60 border-rose-300 ring-1 ring-rose-400/20' 
                             : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
                       }`}
                     >
-                      <Checkbox
-                        id="terms"
-                        checked={termsAccepted}
-                        onCheckedChange={(checked: boolean) => {
-                          setTermsAccepted(Boolean(checked));
-                          if (errors.terms) setErrors(prev => ({ ...prev, terms: '' }));
-                        }}
-                        className="mt-0.5 cursor-pointer !bg-white !border-slate-300 data-[state=checked]:!bg-teal-600 data-[state=checked]:!border-teal-600"
-                      />
                       <div className="mt-0.5 shrink-0">
                         <div
                           className={`h-5 w-5 rounded-md border-2 transition-all flex items-center justify-center shadow-xs ${
@@ -582,10 +571,8 @@ export default function BuyerRequestInfoPage() {
                         </div>
                       </div>
                       <div className="space-y-0.5 leading-none">
-                        <label htmlFor="terms" className="text-[11px] font-bold text-slate-800 cursor-pointer">
                         <div className="text-[11px] font-bold text-slate-800 cursor-pointer">
                           Autorizo contacto por WhatsApp / Teléfono <span className="text-rose-500">*</span>
-                        </label>
                         </div>
                         <p className="text-[10px] text-slate-600 leading-tight">
                           Acepto los Términos y Política de Privacidad (Ley N° 29733) para agendamiento clínico.
