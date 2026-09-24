@@ -164,7 +164,8 @@ router.get('/:id', async (req, res) => {
               }
             }
           },
-          Pagos: true
+          Pagos: true,
+          Incidencias: true
         }
       });
     }
@@ -181,7 +182,8 @@ router.get('/:id', async (req, res) => {
               }
             }
           },
-          Pagos: true
+          Pagos: true,
+          Incidencias: true
         }
       });
     }
@@ -214,7 +216,7 @@ router.get('/:id', async (req, res) => {
         currency: 'PEN',
         channel: pago.canal_pago || 'YAPE',
         operationNumber: pago.referencia_pago || 'REF-YAPE',
-        operationDate: pago.fecha_registro.toISOString().split('T')[0],
+        operationDate: pago.fecha_registro ? pago.fecha_registro.toISOString().split('T')[0] : (reserva.fecha_reserva ? reserva.fecha_reserva.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
         observations: pago.observaciones || 'Pago verificado'
       } : undefined,
       person: {
@@ -231,7 +233,13 @@ router.get('/:id', async (req, res) => {
         branchId: reserva.Opcion?.Disponibilidad?.Sede?.nombre || 'Sede Norte',
         professionalId: `Dr. ${reserva.Opcion?.Disponibilidad?.Profesional?.apellidos || 'Perez'}`
       },
-      incidents: []
+      incidents: reserva.Incidencias ? reserva.Incidencias.map(inc => ({
+        id: inc.id_incidencia.toString(),
+        payerId: reserva.id_reserva.toString(),
+        reason: inc.descripcion || inc.tipo || 'Incidencia de cobro',
+        status: inc.estado || 'OPEN',
+        createdAt: inc.fecha_registro ? inc.fecha_registro.toISOString() : new Date().toISOString()
+      })) : []
     };
 
     res.json(payerDetails);

@@ -317,6 +317,12 @@ export default function PayerPage() {
     { 
       header: 'Prioridad IA', 
       cell: (p: PayerWithDetails) => {
+        const realIncidents = (p.incidents || []).filter(inc => 
+          !inc.reason?.includes('NOTIFICACION_') && 
+          !inc.reason?.includes('DUNNING_') && 
+          !inc.reason?.includes('AUTO_CANCELACION')
+        );
+
         const risk = calculatePayerRisk({
           patientName: `${p.person.firstName} ${p.person.lastName}`,
           phone: p.person.phone,
@@ -327,6 +333,8 @@ export default function PayerPage() {
           reservationTime: p.reservation?.time,
           hasReceipt: !!p.payment?.receiptMetadata,
           incidentsCount: p.incidents?.length || 0,
+          incidentsCount: realIncidents.length,
+          lastIncidentReason: p.incidents?.[p.incidents.length - 1]?.reason,
         });
 
         if (p.state === PayerState.VALIDATED) {

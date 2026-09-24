@@ -179,6 +179,12 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
     setAiError('');
     setAiCalled(true);
     try {
+      const realIncidents = (p.incidents || []).filter(inc => 
+        !inc.reason?.includes('NOTIFICACION_') && 
+        !inc.reason?.includes('DUNNING_') && 
+        !inc.reason?.includes('AUTO_CANCELACION')
+      );
+
       const ctx: PayerContext = {
         patientName: `${p.person.firstName} ${p.person.lastName}`,
         phone: p.person.phone,
@@ -194,6 +200,7 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
         declaredAmount: p.payment?.amount,
         hasReceipt: !!p.payment?.receiptMetadata,
         incidentsCount: p.incidents?.length || 0,
+        incidentsCount: realIncidents.length,
         lastIncidentReason: p.incidents?.[p.incidents.length - 1]?.reason,
       };
       const response = await callGroqAssistant(ctx);
