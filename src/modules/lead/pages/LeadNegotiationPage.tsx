@@ -344,9 +344,7 @@ export default function LeadNegotiationPage() {
   const hasUrgentPain = dolorLevel.includes('intenso') || dolorLevel.includes('moderado');
   const opciones = lead.Solicitudes?.[lead.Solicitudes.length - 1]?.Opciones || [];
 
-  const selectedOptData = useMemo(() => {
-    return opciones.find((o: any) => o.id_opcion === selectedOpcion);
-  }, [opciones, selectedOpcion]);
+  const selectedOptData = opciones.find((o: any) => o.id_opcion === selectedOpcion);
 
   const generateWhatsAppMessage = () => {
     const patientFirstName = lead?.nombres || 'Paciente';

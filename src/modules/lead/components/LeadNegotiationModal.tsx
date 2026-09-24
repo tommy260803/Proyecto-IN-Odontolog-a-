@@ -445,9 +445,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const dolorLevel = saludOdonto?.nivel_dolor?.toLowerCase() || '';
   const hasUrgentPain = dolorLevel.includes('intenso') || dolorLevel.includes('moderado');
 
-  const selectedOptData = useMemo(() => {
-    return opciones.find((o: any) => o.id_opcion === selectedOpcion);
-  }, [opciones, selectedOpcion]);
+  const selectedOptData = opciones.find((o: any) => o.id_opcion === selectedOpcion);
 
   const generateWhatsAppMessage = () => {
     const patientFirstName = lead?.nombres || 'Paciente';
