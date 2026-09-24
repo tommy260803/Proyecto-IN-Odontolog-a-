@@ -249,6 +249,7 @@ router.get('/', async (req, res) => {
         // En un caso real, podríamos buscar todos los que alguna vez fueron BUYER o los que están en BUYER
         // Aquí traeremos a todos los que estén en BUYER o LEAD para poder mostrarlos en la tabla histórica
       },
+      orderBy: { fecha_registro: 'desc' },
       include: {
         Etapa: true,
         CanalOrigen: true,

@@ -168,6 +168,7 @@ router.post('/:id/reserve', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const personas = await prisma.personas.findMany({
+      orderBy: { fecha_registro: 'desc' },
       include: {
         Etapa: true,
         Preferencias: true,

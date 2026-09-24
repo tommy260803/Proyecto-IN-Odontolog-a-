@@ -11,6 +11,7 @@ router.get('/', async (req, res) => {
 
     const personas = await prisma.personas.findMany({
       where: { id_etapa_actual: etapasTurned.id_etapa },
+      orderBy: { fecha_registro: 'desc' },
       include: {
         Solicitudes: { include: { Servicio: true, Opciones: { include: { Disponibilidad: { include: { Profesional: true, Sede: true } } } } } },
         Reservas: true,
