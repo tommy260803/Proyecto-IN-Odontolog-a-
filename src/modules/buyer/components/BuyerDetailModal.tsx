@@ -19,7 +19,7 @@ import { canTransitionBuyerToLead } from '@/domain/transitions';
 import { BuyerState } from '@/domain/enums';
 import { StatusBadge } from '@/shared/components/feedback/StatusBadge';
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
-import { UserCheck, ArrowRight, Save, Loader2, Sparkles, ShieldCheck, Stethoscope, MapPin, Clock, Radio, Tag, CheckCircle2, AlertTriangle, HelpCircle, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { UserCheck, ArrowRight, Save, Loader2, Sparkles, ShieldCheck, Stethoscope, MapPin, Clock, Radio, Tag, CheckCircle2, AlertTriangle, HelpCircle, ChevronDown, ChevronUp, RefreshCw, Flame, Zap } from 'lucide-react';
 import { analyzeBuyerMarketingAgent, type BuyerMarketingAnalysis } from '@/shared/services/groqService';
 
 interface BuyerDetailModalProps {
@@ -214,8 +214,9 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
                       )}
                     </Button>
                   ) : (
-                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                      ✓ En Etapa LEAD
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>En Etapa LEAD</span>
                     </span>
                   )}
                 </div>
@@ -251,14 +252,29 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
                         <StatusBadge status="Etapa BUYER · BI" variant="primary" />
                         
                         {aiAnalysis?.intentEvaluation && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1.5 ${
                             aiAnalysis.intentEvaluation.intentLevel === 'ALTA'
                               ? 'bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
                               : aiAnalysis.intentEvaluation.intentLevel === 'MEDIA'
                               ? 'bg-sky-100 dark:bg-sky-900/80 text-sky-800 dark:text-sky-200 border-sky-300 dark:border-sky-700'
                               : 'bg-amber-100 dark:bg-amber-900/80 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700'
                           }`}>
-                            {aiAnalysis.intentEvaluation.intentLevel === 'ALTA' ? '🔥 Intención Alta' : aiAnalysis.intentEvaluation.intentLevel === 'MEDIA' ? '⚡ Intención Media' : '⚠️ Intención Ambigua'}
+                            {aiAnalysis.intentEvaluation.intentLevel === 'ALTA' ? (
+                              <>
+                                <Flame className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                <span>Intención Alta</span>
+                              </>
+                            ) : aiAnalysis.intentEvaluation.intentLevel === 'MEDIA' ? (
+                              <>
+                                <Zap className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                                <span>Intención Media</span>
+                              </>
+                            ) : (
+                              <>
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                                <span>Intención Ambigua</span>
+                              </>
+                            )}
                           </span>
                         )}
                       </div>
