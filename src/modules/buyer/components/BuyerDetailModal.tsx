@@ -141,6 +141,13 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
   if (!isOpen || !buyerId) return null;
 
   const isConverted = buyer?.state === BuyerState.CONVERTED;
+  const isIntentAmbiguous = Boolean(
+    aiAnalysis && (
+      aiAnalysis.intentEvaluation.intentLevel === 'AMBIGUA' || 
+      !aiAnalysis.intentEvaluation.hasConcreteIntent || 
+      aiAnalysis.dataQuality.status !== 'Valido'
+    )
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -173,7 +180,11 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
                     <Button 
                       disabled={convertBuyer.isPending} 
                       onClick={() => setIsConvertDialogOpen(true)}
-                      className="bg-teal-600 hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-xl shadow-sm text-xs font-semibold px-3.5 py-2 h-9 flex items-center gap-1.5 transition-colors"
+                      className={
+                        isIntentAmbiguous
+                          ? "bg-amber-600 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500 text-white rounded-xl shadow-sm text-xs font-semibold px-3.5 py-2 h-9 flex items-center gap-1.5 transition-colors border border-amber-500/30"
+                          : "bg-teal-600 hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-xl shadow-sm text-xs font-semibold px-3.5 py-2 h-9 flex items-center gap-1.5 transition-colors"
+                      }
                     >
                       {convertBuyer.isPending ? (
                         <>
@@ -182,6 +193,9 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
                         </>
                       ) : (
                         <>
+                          {isIntentAmbiguous && (
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+                          )}
                           <span>Convertir a LEAD</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </>
@@ -288,15 +302,21 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
                     </div>
 
                     {/* Actividad 4: Evaluación de Conversión a LEAD */}
-                    <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                    <div className={`p-3 rounded-xl border space-y-1.5 ${
+                      aiAnalysis?.intentEvaluation.intentLevel === 'AMBIGUA'
+                        ? 'bg-amber-950/40 border-amber-800/80'
+                        : 'bg-slate-950/80 border-slate-800'
+                    }`}>
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-bold text-teal-300 flex items-center gap-1.5">
-                          <Sparkles className="h-3.5 w-3.5" /> 4. Intención Comercial
+                          <Sparkles className="h-3.5 w-3.5" /> 4. Intención Comercial & Conversión
                         </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase border ${
                           aiAnalysis?.intentEvaluation.intentLevel === 'ALTA'
-                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                            : 'bg-slate-800 text-slate-300'
+                            ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
+                            : aiAnalysis?.intentEvaluation.intentLevel === 'MEDIA'
+                            ? 'bg-sky-950 text-sky-300 border-sky-800'
+                            : 'bg-amber-950 text-amber-300 border-amber-800'
                         }`}>
                           {aiAnalysis?.intentEvaluation.intentLevel ? `Intención ${aiAnalysis.intentEvaluation.intentLevel}` : 'Intención Alta'}
                         </span>
@@ -304,6 +324,12 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
                       <p className="text-[11px] text-slate-300">
                         {aiAnalysis?.intentEvaluation.intentReason || 'Solicita información de precios y agendamiento clínico.'}
                       </p>
+                      {aiAnalysis?.intentEvaluation.marketingRecommendation && (
+                        <div className="pt-1 border-t border-slate-800/80 text-[10.5px] text-teal-200 flex items-center gap-1">
+                          <span className="font-semibold text-teal-400">Acción Sugerida:</span>
+                          <span>{aiAnalysis.intentEvaluation.marketingRecommendation}</span>
+                        </div>
+                      )}
                     </div>
 
                   </div>
@@ -394,16 +420,38 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
           </Button>
         </div>
 
-        {/* Confirmación para conversión */}
+        {/* Confirmación para conversión con Inteligencia de Negocios (Modo A - Advertencia Inteligente) */}
         <ConfirmationDialog
           isOpen={isConvertDialogOpen}
           onClose={() => setIsConvertDialogOpen(false)}
           onConfirm={handleConvert}
-          title="¿Convertir a LEAD?"
-          description="Esta acción cambiará el estado del Buyer y creará un nuevo registro en el módulo LEAD para abrir la mesa de negociación."
-          confirmText="Sí, Convertir a LEAD"
-          variant="default"
-        />
+          title={isIntentAmbiguous ? "⚠️ Advertencia de Intención: ¿Convertir a LEAD?" : "¿Convertir a LEAD?"}
+          description={
+            isIntentAmbiguous
+              ? "El Agente de Marketing (IA) detectó intención ambigua o datos incompletos. Revisa la evaluación del agente antes de proceder con el traspaso a LEAD:"
+              : `El Agente de Marketing validó la intención comercial (${aiAnalysis?.intentEvaluation.intentReason || 'Solicitud concreta de atención'}). Esta acción registrará la conversión comercial a LEAD.`
+          }
+          confirmText={isIntentAmbiguous ? "Sí, Forzar Conversión a LEAD" : "Sí, Convertir a LEAD"}
+          variant={isIntentAmbiguous ? "destructive" : "default"}
+        >
+          {isIntentAmbiguous && aiAnalysis && (
+            <div className="mt-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2 text-xs">
+              <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-bold text-[11px]">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span>Dictamen del Agente de Marketing (IA):</span>
+              </div>
+              <p className="text-amber-900/90 dark:text-amber-200/90 text-[11px] leading-relaxed">
+                {aiAnalysis.intentEvaluation.intentReason || 'No se detecta solicitud explícita ni urgencia en el motivo de consulta.'}
+              </p>
+              {aiAnalysis.intentEvaluation.marketingRecommendation && (
+                <div className="pt-1.5 border-t border-amber-500/20 text-[10.5px] text-slate-600 dark:text-slate-300 flex items-start gap-1">
+                  <span className="font-semibold text-amber-800 dark:text-amber-300 shrink-0">Recomendación:</span>
+                  <span>{aiAnalysis.intentEvaluation.marketingRecommendation}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </ConfirmationDialog>
       </DialogContent>
     </Dialog>
   );
