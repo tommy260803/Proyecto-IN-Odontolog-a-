@@ -160,10 +160,21 @@ export default function BuyerRequestInfoPage() {
   };
 
   return (
-    <div className="h-screen max-h-screen w-full overflow-hidden bg-slate-950 text-slate-100 flex flex-col justify-between px-4 py-3 sm:px-6 sm:py-4 lg:px-8 selection:bg-teal-500/30 selection:text-teal-200">
+    <div className="h-screen max-h-screen w-full overflow-hidden relative flex flex-col justify-between selection:bg-teal-500/30 selection:text-teal-200">
       
+      {/* Capa de Fondo Dividido en 2 Colores (Dual Two-Tone Split Screen) */}
+      <div className="absolute inset-0 grid grid-cols-1 lg:grid-cols-2 pointer-events-none -z-10">
+        {/* Mitad Izquierda: Azul Oscuro Profundo (Dark Slate/Navy) */}
+        <div className="bg-slate-950 w-full h-full" />
+        {/* Mitad Derecha: Blanco Puro con Sombra Suave */}
+        <div className="hidden lg:block bg-slate-50/90 lg:bg-white w-full h-full border-l border-slate-200 shadow-[-12px_0_35px_rgba(0,0,0,0.05)]" />
+      </div>
+
+      {/* Línea Central con Desvanecimiento Suave (Fading Divider) */}
+      <div className="hidden lg:block absolute left-1/2 top-0 bottom-0 -translate-x-1/2 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 via-50% to-transparent pointer-events-none z-10" />
+
       {/* Top Bar / Header */}
-      <header className="max-w-7xl mx-auto w-full flex items-center justify-between py-1 shrink-0">
+      <header className="max-w-7xl mx-auto w-full flex items-center justify-between py-2 px-4 sm:px-6 lg:px-8 shrink-0 z-20">
         <div className="flex items-center gap-2.5">
           <img 
             src="/Logo_NexoSalud.png" 
@@ -181,7 +192,7 @@ export default function BuyerRequestInfoPage() {
         <Button
           variant="outline"
           onClick={() => navigate('/buyer')}
-          className="rounded-xl border-slate-800 bg-slate-900/80 hover:bg-slate-800 text-slate-200 text-xs font-semibold gap-1.5 shadow-sm cursor-pointer h-8 sm:h-9"
+          className="rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 hover:text-slate-950 text-xs font-semibold gap-1.5 shadow-sm cursor-pointer h-8 sm:h-9 transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           <span>Volver al Dashboard</span>
@@ -189,11 +200,8 @@ export default function BuyerRequestInfoPage() {
       </header>
 
       {/* Main Content Split Screen (Fits seamlessly on 1 single screen) */}
-      <main className="relative max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-10 items-center min-h-0 py-1">
+      <main className="relative max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-10 items-center min-h-0 py-1 px-4 sm:px-6 lg:px-8 z-20">
         
-        {/* Línea Central con Desvanecimiento Suave (Fading Divider) */}
-        <div className="hidden lg:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[78%] w-[1.5px] bg-gradient-to-b from-transparent via-slate-700/60 via-50% to-transparent pointer-events-none" />
-
         {/* Left Column: Información de NexoSalud Odontología */}
         <div className="lg:col-span-6 xl:col-span-6 space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-left duration-300">
           
@@ -212,44 +220,44 @@ export default function BuyerRequestInfoPage() {
             </p>
           </div>
 
-          {/* Grid de Beneficios Clave - Tarjetas Blancas */}
+          {/* Grid de Beneficios Clave */}
           <div className="grid grid-cols-2 gap-2.5 pt-0.5">
-            <div className="p-3 rounded-2xl bg-white/95 text-slate-900 border border-white/40 shadow-lg shadow-black/10 backdrop-blur space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100">
+            <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur space-y-1">
+              <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
                 <Stethoscope className="h-3.5 w-3.5" />
               </div>
-              <h2 className="text-xs font-bold text-slate-900">Especialistas Top</h2>
-              <p className="text-[10.5px] text-slate-600 leading-tight font-medium">
+              <h2 className="text-xs font-bold text-white">Especialistas Top</h2>
+              <p className="text-[10.5px] text-slate-400 leading-tight">
                 Ortodoncia, Implantes y Estética.
               </p>
             </div>
 
-            <div className="p-3 rounded-2xl bg-white/95 text-slate-900 border border-white/40 shadow-lg shadow-black/10 backdrop-blur space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100">
+            <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur space-y-1">
+              <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
                 <Zap className="h-3.5 w-3.5" />
               </div>
-              <h2 className="text-xs font-bold text-slate-900">Diagnóstico 3D</h2>
-              <p className="text-[10.5px] text-slate-600 leading-tight font-medium">
+              <h2 className="text-xs font-bold text-white">Diagnóstico 3D</h2>
+              <p className="text-[10.5px] text-slate-400 leading-tight">
                 Escaneo intraoral sin dolor.
               </p>
             </div>
 
-            <div className="p-3 rounded-2xl bg-white/95 text-slate-900 border border-white/40 shadow-lg shadow-black/10 backdrop-blur space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100">
+            <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur space-y-1">
+              <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
                 <Building2 className="h-3.5 w-3.5" />
               </div>
-              <h2 className="text-xs font-bold text-slate-900">3 Sedes en Lima</h2>
-              <p className="text-[10.5px] text-slate-600 leading-tight font-medium">
+              <h2 className="text-xs font-bold text-white">3 Sedes en Lima</h2>
+              <p className="text-[10.5px] text-slate-400 leading-tight">
                 San Isidro, Surco y Los Olivos.
               </p>
             </div>
 
-            <div className="p-3 rounded-2xl bg-white/95 text-slate-900 border border-white/40 shadow-lg shadow-black/10 backdrop-blur space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100">
+            <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur space-y-1">
+              <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
                 <Clock className="h-3.5 w-3.5" />
               </div>
-              <h2 className="text-xs font-bold text-slate-900">Respuesta Rápida</h2>
-              <p className="text-[10.5px] text-slate-600 leading-tight font-medium">
+              <h2 className="text-xs font-bold text-white">Respuesta Rápida</h2>
+              <p className="text-[10.5px] text-slate-400 leading-tight">
                 Atención en menos de 15 min.
               </p>
             </div>
