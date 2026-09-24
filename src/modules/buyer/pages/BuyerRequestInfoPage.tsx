@@ -172,10 +172,17 @@ export default function BuyerRequestInfoPage() {
   return (
     <div className="h-screen max-h-screen w-full overflow-hidden relative flex flex-col justify-between selection:bg-teal-500/30 selection:text-teal-200">
       
-      {/* Capa de Fondo Dividido en 2 Colores (Dual Two-Tone Split Screen) */}
+      {/* Capa de Fondo Dividido en 2 Colores (Dual Two-Tone Split Screen con Fondo Dental) */}
       <div className="absolute inset-0 grid grid-cols-1 lg:grid-cols-2 pointer-events-none -z-10">
-        {/* Mitad Izquierda: Azul Oscuro Profundo (Dark Slate/Navy) */}
-        <div className="bg-slate-950 w-full h-full" />
+        {/* Mitad Izquierda: Foto de Odontología / NexoSalud con fondo oscuro y overlay equilibrado */}
+        <div className="relative bg-slate-950 w-full h-full overflow-hidden">
+          <img 
+            src="/Fondo_NexoSalud.png" 
+            alt="Fondo NexoSalud Dental" 
+            className="absolute inset-0 w-full h-full object-cover object-center opacity-40 mix-blend-screen scale-100"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/70 to-slate-950/90" />
+        </div>
         {/* Mitad Derecha: Blanco Puro Plano */}
         <div className="hidden lg:block bg-slate-50/90 lg:bg-white w-full h-full border-l border-slate-200" />
       </div>
