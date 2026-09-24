@@ -426,7 +426,7 @@ export default function BuyerRequestInfoPage() {
                         </SelectTrigger>
                         <SelectContent className="bg-white border-slate-200 text-slate-800 shadow-xl">
                           {catalogs.servicios.map((s: any) => (
-                            <SelectItem key={s.id_servicio} value={s.id_servicio.toString()} className="text-xs focus:bg-slate-100 focus:text-slate-900 cursor-pointer">
+                            <SelectItem key={s.id_servicio} value={s.id_servicio.toString()} className="text-xs">
                               {s.nombre}
                             </SelectItem>
                           ))}
@@ -456,15 +456,15 @@ export default function BuyerRequestInfoPage() {
                         <SelectContent className="bg-white border-slate-200 text-slate-800 shadow-xl">
                           {catalogs.sedes && catalogs.sedes.length > 0 ? (
                             catalogs.sedes.map((s: any) => (
-                              <SelectItem key={s.id_sede || s.nombre} value={s.nombre} className="text-xs focus:bg-slate-100 focus:text-slate-900 cursor-pointer">
+                              <SelectItem key={s.id_sede || s.nombre} value={s.nombre} className="text-xs">
                                 {s.nombre}
                               </SelectItem>
                             ))
                           ) : (
                             <>
-                              <SelectItem value="Sede San Isidro" className="text-xs focus:bg-slate-100 focus:text-slate-900 cursor-pointer">Sede San Isidro (Principal)</SelectItem>
-                              <SelectItem value="Sede Surco" className="text-xs focus:bg-slate-100 focus:text-slate-900 cursor-pointer">Sede Surco</SelectItem>
-                              <SelectItem value="Sede Los Olivos" className="text-xs focus:bg-slate-100 focus:text-slate-900 cursor-pointer">Sede Los Olivos</SelectItem>
+                              <SelectItem value="Sede San Isidro" className="text-xs">Sede San Isidro (Principal)</SelectItem>
+                              <SelectItem value="Sede Surco" className="text-xs">Sede Surco</SelectItem>
+                              <SelectItem value="Sede Los Olivos" className="text-xs">Sede Los Olivos</SelectItem>
                             </>
                           )}
                         </SelectContent>
