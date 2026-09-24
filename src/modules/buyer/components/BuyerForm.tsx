@@ -171,13 +171,22 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                     Teléfono / WhatsApp <span className="text-rose-500 font-bold">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input 
-                      type="tel"
-                      placeholder="987654321" 
-                      maxLength={9}
-                      className="rounded-lg h-9.5 text-xs font-mono bg-slate-50/40 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900" 
-                      {...field} 
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-slate-400 dark:text-slate-500">
+                        +51
+                      </span>
+                      <Input 
+                        type="tel"
+                        placeholder="987654321" 
+                        maxLength={9}
+                        className="pl-11 rounded-lg h-9.5 text-xs font-mono bg-slate-50/40 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900" 
+                        {...field}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          field.onChange(val);
+                        }}
+                      />
+                    </div>
                   </FormControl>
                   <FormDescription className="text-[10px] text-slate-400">9 dígitos exactos (Perú)</FormDescription>
                   <FormMessage className="text-[11px]" />
