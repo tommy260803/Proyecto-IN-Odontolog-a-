@@ -616,12 +616,8 @@ export default function BuyerRequestInfoPage() {
             /* Estado de Éxito */
             <Card className="border border-slate-200/90 shadow-xl lg:shadow-none bg-white rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in duration-400 max-w-md w-full relative">
               
-              {/* Contenedor Limpio del Checkmark: Primero aparece el círculo con desvanecido, luego el check trazándose */}
               {/* Contenedor Limpio del Checkmark: Fondo blanco, borde celeste/teal y check celeste/teal */}
               <div className="flex justify-center items-center pt-1">
-                <div className="w-16 h-16 rounded-full bg-teal-600 flex items-center justify-center shadow-none animate-circle-fade-in">
-                  <svg className="w-9 h-9 text-white" viewBox="0 0 48 48" fill="none">
-                    {/* Círculo base blanco sutil */}
                 <div className="w-16 h-16 rounded-full bg-white border-2 border-teal-500 flex items-center justify-center shadow-none animate-circle-fade-in">
                   <svg className="w-9 h-9" viewBox="0 0 48 48" fill="none">
                     {/* Círculo base celeste muy sutil */}
@@ -629,16 +625,12 @@ export default function BuyerRequestInfoPage() {
                       cx="24"
                       cy="24"
                       r="20"
-                      stroke="rgba(255, 255, 255, 0.3)"
-                      strokeWidth="2.5"
                       stroke="rgba(13, 148, 136, 0.15)"
                       strokeWidth="2"
                     />
-                    {/* Checkmark que se traza continuamente en bucle sincronizado */}
                     {/* Checkmark que se traza continuamente en celeste/teal */}
                     <path
                       d="M14 24.5L21 31.5L34 17"
-                      stroke="#ffffff"
                       stroke="#0d9488"
                       strokeWidth="3.5"
                       strokeLinecap="round"
