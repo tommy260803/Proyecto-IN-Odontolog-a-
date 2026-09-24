@@ -159,10 +159,10 @@ export default function BuyerRequestInfoPage() {
   };
 
   return (
-    <div className="h-screen max-h-screen w-full overflow-hidden relative flex flex-col justify-between selection:bg-teal-500/30 selection:text-teal-200">
+    <div className="min-h-screen h-auto lg:h-screen lg:max-h-screen w-full overflow-y-auto lg:overflow-hidden relative flex flex-col justify-between selection:bg-teal-500/30 selection:text-teal-200">
       
       {/* Capa de Fondo Dividido en 2 Colores (Dual Two-Tone Split Screen con Fondo Dental) */}
-      <div className="absolute inset-0 grid grid-cols-1 lg:grid-cols-2 pointer-events-none -z-10">
+      <div className="fixed inset-0 lg:absolute grid grid-cols-1 lg:grid-cols-2 pointer-events-none -z-10">
         {/* Mitad Izquierda: Foto de Odontología / NexoSalud con fondo oscuro y overlay equilibrado (Opción B) */}
         <div className="relative bg-slate-950 w-full h-full overflow-hidden">
           <img 
@@ -181,7 +181,7 @@ export default function BuyerRequestInfoPage() {
       <div className="hidden lg:block absolute left-1/2 top-0 bottom-0 -translate-x-1/2 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 via-50% to-transparent pointer-events-none z-10" />
 
       {/* Top Bar / Header */}
-      <header className="max-w-7xl mx-auto w-full flex items-center justify-between py-2 px-4 sm:px-6 lg:px-8 shrink-0 z-20">
+      <header className="max-w-7xl mx-auto w-full flex items-center justify-between py-3 lg:py-2 px-4 sm:px-6 lg:px-8 shrink-0 z-20">
         <div className="flex items-center gap-2.5">
           <img 
             src="/Logo_NexoSalud.png" 
@@ -206,8 +206,8 @@ export default function BuyerRequestInfoPage() {
         </Button>
       </header>
 
-      {/* Main Content Split Screen (Fits seamlessly on 1 single screen) */}
-      <main className="relative max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-10 items-center min-h-0 py-1 px-4 sm:px-6 lg:px-8 z-20">
+      {/* Main Content Split Screen */}
+      <main className="relative max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center min-h-0 py-4 lg:py-1 px-4 sm:px-6 lg:px-8 z-20">
         
         {/* Left Column: Información de NexoSalud Odontología */}
         <div className="lg:col-span-6 xl:col-span-6 space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-left duration-300">
@@ -228,7 +228,7 @@ export default function BuyerRequestInfoPage() {
           </div>
 
           {/* Grid de Beneficios Clave */}
-          <div className="grid grid-cols-2 gap-2.5 pt-0.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
             <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur space-y-1">
               <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
                 <Stethoscope className="h-3.5 w-3.5" />
@@ -271,17 +271,17 @@ export default function BuyerRequestInfoPage() {
           </div>
 
           {/* KPI Stats / Social Proof */}
-          <div className="flex items-center gap-5 pt-1.5 border-t border-slate-800/60">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-5 pt-1.5 border-t border-slate-800/60">
             <div>
               <p className="text-lg sm:text-xl font-black text-white font-mono">+12,000</p>
               <p className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Pacientes Atendidos</p>
             </div>
-            <div className="h-6 w-px bg-slate-800" />
+            <div className="h-6 w-px bg-slate-800 hidden sm:block" />
             <div>
               <p className="text-lg sm:text-xl font-black text-teal-400 font-mono">98.9%</p>
               <p className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Satisfacción</p>
             </div>
-            <div className="h-6 w-px bg-slate-800" />
+            <div className="h-6 w-px bg-slate-800 hidden sm:block" />
             <div className="flex items-center gap-1">
               <div className="flex text-amber-400">
                 {[...Array(5)].map((_, i) => (
@@ -294,10 +294,10 @@ export default function BuyerRequestInfoPage() {
 
         </div>
 
-        {/* Right Column: Formulario Plano con Fondo Blanco (Completamente Plano Sin Shadow) */}
-        <div className="lg:col-span-6 xl:col-span-6 w-full flex justify-center lg:justify-end min-h-0 animate-in fade-in slide-in-from-right duration-300">
+        {/* Right Column: Formulario Plano con Fondo Blanco */}
+        <div className="lg:col-span-6 xl:col-span-6 w-full flex justify-center lg:justify-end min-h-0 animate-in fade-in slide-in-from-right duration-300 pb-6 lg:pb-0">
           {!submittedSuccess ? (
-            <div className="w-full max-w-lg bg-white rounded-3xl overflow-hidden flex flex-col max-h-[78vh] h-full shadow-none border border-slate-200/60 relative">
+            <div className="w-full max-w-lg bg-white rounded-3xl overflow-hidden flex flex-col h-auto lg:max-h-[78vh] shadow-xl lg:shadow-none border border-slate-200/80 relative">
               
               {/* Header Fijo (Estático) */}
               <div className="px-5 py-4 bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-700 text-white shrink-0 relative overflow-hidden">
@@ -322,7 +322,7 @@ export default function BuyerRequestInfoPage() {
 
               {/* Cuerpo del Formulario Plano en Blanco con Scroll Interno Invisible */}
               <div 
-                className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-white [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                className="flex-1 lg:overflow-y-auto px-5 py-4 space-y-3 bg-white lg:[&::-webkit-scrollbar]:hidden lg:[-ms-overflow-style:none] lg:[scrollbar-width:none]"
               >
                 <form id="buyerWebForm" onSubmit={handleSubmit} className="space-y-3">
                   
