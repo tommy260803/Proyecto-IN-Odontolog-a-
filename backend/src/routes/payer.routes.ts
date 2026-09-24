@@ -963,7 +963,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
       ];
     }
 
-    const resendRes = await fetch('https://api.resend.com/emails', {
+    let resendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${resendApiKey.trim()}`,
@@ -972,7 +972,30 @@ export async function sendPaymentNoticeOrConfirmation(params: {
       body: JSON.stringify(resendPayload)
     });
 
-    const resendData: any = await resendRes.json();
+    let resendData: any = await resendRes.json();
+    
+    // Si Resend rechaza por estar en cuenta Sandbox de prueba sin dominio propio
+    if (!resendRes.ok && (resendData.message?.includes('only send testing emails') || resendData.name === 'validation_error')) {
+      const fallbackTestEmail = process.env.TEST_RECEIVER_EMAIL || 'benkr7@gmail.com';
+      console.warn(`[RESEND SANDBOX] Redirigiendo correo de prueba de (${toEmail}) hacia (${fallbackTestEmail})`);
+      
+      const sandboxPayload = {
+        ...resendPayload,
+        to: [fallbackTestEmail],
+        subject: `[Simulación Paciente: ${toEmail}] ${emailSubject}`
+      };
+
+      resendRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey.trim()}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(sandboxPayload)
+      });
+      resendData = await resendRes.json();
+    }
+
     if (!resendRes.ok) {
       console.error('[RESEND API ERROR]', resendData);
       throw new Error(resendData.message || 'Error al enviar correo mediante Resend API.');
