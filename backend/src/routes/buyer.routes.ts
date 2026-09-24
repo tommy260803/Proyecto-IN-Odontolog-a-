@@ -130,10 +130,43 @@ router.post('/register', async (req, res) => {
 
     // 2. Transacción para asegurar la creación completa con FK sanitizadas
     const result = await prisma.$transaction(async (tx) => {
-      const validCampana = await getValidCampanaId(tx, id_campana_origen);
-      const validCanalOrigen = await getValidCanalId(tx, id_canal_origen);
-      const validCanal = await getValidCanalId(tx, id_canal);
-      const validFuente = await getValidFuenteId(tx, id_fuente);
+      // Asegurar o buscar canal de Página Web
+      let webCanal = await tx.canales.findFirst({
+        where: {
+          OR: [
+            { nombre: { contains: 'Web' } },
+            { nombre: { contains: 'Portal' } },
+            { nombre: { contains: 'Online' } }
+          ]
+        }
+      });
+      if (!webCanal) {
+        webCanal = await tx.canales.create({
+          data: { nombre: 'Página Web / Portal Online', activo: true }
+        });
+      }
+
+      // Asegurar o buscar fuente de Formulario Web
+      let webFuente = await tx.fuentes.findFirst({
+        where: {
+          OR: [
+            { nombre: { contains: 'Web' } },
+            { nombre: { contains: 'Formulario' } },
+            { nombre: { contains: 'Digital' } },
+            { nombre: { contains: 'Meta' } }
+          ]
+        }
+      });
+      if (!webFuente) {
+        webFuente = await tx.fuentes.create({
+          data: { nombre: 'Formulario Web - Portal NexoSalud', activo: true }
+        });
+      }
+
+      const validCanal = (id_canal ? await getValidCanalId(tx, id_canal) : null) || webCanal.id_canal;
+      const validCanalOrigen = (id_canal_origen ? await getValidCanalId(tx, id_canal_origen) : null) || webCanal.id_canal;
+      const validFuente = (id_fuente ? await getValidFuenteId(tx, id_fuente) : null) || webFuente.id_fuente;
+      const validCampana = (id_campana_origen ? await getValidCampanaId(tx, id_campana_origen) : null) || webFuente.id_fuente;
       const validServicio = await getValidServicioId(tx, id_servicio);
       const validServicioInteres = await getValidServicioId(tx, id_servicio_interes);
 
@@ -218,9 +251,10 @@ router.get('/', async (req, res) => {
       },
       include: {
         Etapa: true,
-        Interacciones: { include: { Canal: true, Fuente: true } },
+        CanalOrigen: true,
+        Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'asc' } },
         Solicitudes: { include: { Servicio: true } },
-        Preferencias: true,
+        Preferencias: { include: { Canal: true } },
         DatosAcademicos: true,
         DatosLaborales: true,
         SaludOdontologica: true,
@@ -232,15 +266,18 @@ router.get('/', async (req, res) => {
       let state = 'NEW';
       if (p.Etapa.nombre === 'LEAD' || p.Etapa.nombre === 'PAYER') state = 'CONVERTED';
 
-      const canalName = p.Interacciones.length > 0 && p.Interacciones[0].Canal
-        ? p.Interacciones[0].Canal.nombre : 'Web';
-      const canalId = p.Interacciones.length > 0 && p.Interacciones[0].id_canal
-        ? p.Interacciones[0].id_canal.toString() : '';
+      const canalName = p.CanalOrigen?.nombre || 
+        (p.Interacciones.length > 0 && p.Interacciones[0].Canal?.nombre) || 
+        (p.Preferencias.length > 0 && p.Preferencias[0].Canal?.nombre) || 
+        'Página Web / Portal Online';
+      const canalId = p.id_canal_origen?.toString() || 
+        (p.Interacciones.length > 0 && p.Interacciones[0].id_canal?.toString()) || 
+        '';
 
-      const fuenteName = p.Interacciones.length > 0 && p.Interacciones[0].Fuente
-        ? p.Interacciones[0].Fuente.nombre : 'Organico';
-      const fuenteId = p.Interacciones.length > 0 && p.Interacciones[0].id_fuente
-        ? p.Interacciones[0].id_fuente.toString() : '';
+      const fuenteName = (p.Interacciones.length > 0 && p.Interacciones[0].Fuente?.nombre) || 
+        'Formulario Web - Portal NexoSalud';
+      const fuenteId = (p.Interacciones.length > 0 && p.Interacciones[0].id_fuente?.toString()) || 
+        '';
 
       const servicioName = p.Solicitudes.length > 0 && p.Solicitudes[0].Servicio
         ? p.Solicitudes[0].Servicio.nombre : undefined;

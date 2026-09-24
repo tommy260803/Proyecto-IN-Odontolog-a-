@@ -121,8 +121,18 @@ export default function BuyerRequestInfoPage() {
       const firstName = nameParts[0] || 'Prospecto';
       const lastName = nameParts.slice(1).join(' ') || 'Web';
 
-      const webCanal = catalogs.canales.find((c: any) => c.nombre.toLowerCase().includes('web') || c.nombre.toLowerCase().includes('formulario'))?.id_canal || 1;
-      const metaFuente = catalogs.fuentes.find((f: any) => f.nombre.toLowerCase().includes('redes') || f.nombre.toLowerCase().includes('ads') || f.nombre.toLowerCase().includes('meta'))?.id_fuente || 1;
+      const foundWebCanal = catalogs.canales.find((c: any) => 
+        c.nombre.toLowerCase().includes('web') || 
+        c.nombre.toLowerCase().includes('portal') || 
+        c.nombre.toLowerCase().includes('online')
+      )?.id_canal;
+
+      const foundWebFuente = catalogs.fuentes.find((f: any) => 
+        f.nombre.toLowerCase().includes('web') || 
+        f.nombre.toLowerCase().includes('formulario') || 
+        f.nombre.toLowerCase().includes('meta') || 
+        f.nombre.toLowerCase().includes('orgánica')
+      )?.id_fuente;
 
       await buyerService.registerAndConvert({
         nombres: firstName,
@@ -130,16 +140,16 @@ export default function BuyerRequestInfoPage() {
         email: email.trim() || undefined,
         numero: phone.trim(),
         autoriza_contacto: true,
-        id_canal: webCanal,
-        id_canal_origen: webCanal,
-        id_fuente: metaFuente,
-        id_campana_origen: metaFuente,
-        id_servicio: Number(serviceId),
-        id_servicio_interes: Number(serviceId),
-        sede_preferida: sede,
+        id_canal: foundWebCanal,
+        id_canal_origen: foundWebCanal,
+        id_fuente: foundWebFuente,
+        id_campana_origen: foundWebFuente,
+        id_servicio: serviceId ? Number(serviceId) : undefined,
+        id_servicio_interes: serviceId ? Number(serviceId) : undefined,
+        sede_preferida: sede || 'Sede San Isidro',
         tipo_persona: 'Adulto General',
         estado_calidad: 'Valido',
-        concreteRequest: `Solicitud Web: Servicio ID ${serviceId} - Horario: ${timeSlot || 'Cualquiera'}`,
+        concreteRequest: `Solicitud de Información y Evaluación Odontológica (Portal Web). Sede: ${sede || 'San Isidro'}. Franja Horaria: ${timeSlot || 'Flexible'}`,
       });
 
       setSubmittedSuccess(true);
