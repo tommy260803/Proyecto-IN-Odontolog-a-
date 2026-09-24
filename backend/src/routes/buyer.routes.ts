@@ -166,9 +166,9 @@ router.post('/register', async (req, res) => {
       const validCanal = (id_canal ? await getValidCanalId(tx, id_canal) : null) || webCanal.id_canal;
       const validCanalOrigen = (id_canal_origen ? await getValidCanalId(tx, id_canal_origen) : null) || webCanal.id_canal;
       const validFuente = (id_fuente ? await getValidFuenteId(tx, id_fuente) : null) || webFuente.id_fuente;
-      const validCampana = (id_campana_origen ? await getValidCampanaId(tx, id_campana_origen) : null) || webFuente.id_fuente;
+      const validCampana = id_campana_origen ? await getValidCampanaId(tx, id_campana_origen) : null;
       const validServicio = await getValidServicioId(tx, id_servicio);
-      const validServicioInteres = await getValidServicioId(tx, id_servicio_interes);
+      const validServicioInteres = (await getValidServicioId(tx, id_servicio_interes)) || validServicio;
 
       const persona = await tx.personas.create({
         data: {

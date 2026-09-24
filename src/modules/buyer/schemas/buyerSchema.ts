@@ -14,8 +14,8 @@ export const buyerSchema = z.object({
     .regex(/^[0-9]{9}$|^(\+?51)?[0-9]{9}$/, 'Debe ingresar un número de 9 dígitos válido (Perú)'),
   channel: z.string().min(1, 'Selecciona un canal de origen'),
   attractionSource: z.string().min(1, 'Selecciona una fuente de atracción'),
-  serviceOfInterestId: z.string().min(1, 'Selecciona el servicio de interés'),
-  pref_sede_preferida: z.string().min(1, 'Selecciona una sede de preferencia'),
+  serviceOfInterestId: z.string().optional().or(z.literal('')),
+  pref_sede_preferida: z.string().optional().or(z.literal('')),
   pref_id_horario: z.string().optional().or(z.literal('')),
   concreteRequest: z.string().min(3, 'Indica el motivo de consulta o necesidad'),
   contactAuthorization: z.boolean().refine((val) => val === true, {

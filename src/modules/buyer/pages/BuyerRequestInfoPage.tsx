@@ -85,17 +85,7 @@ export default function BuyerRequestInfoPage() {
       }
     }
 
-    // 4. Servicio de Interés
-    if (!serviceId) {
-      newErrors.serviceId = 'Por favor selecciona el servicio de tu interés.';
-    }
-
-    // 5. Sede de Interés
-    if (!sede) {
-      newErrors.sede = 'Por favor selecciona la sede de tu preferencia.';
-    }
-
-    // 6. Términos y Condiciones
+    // 4. Términos y Condiciones
     if (!termsAccepted) {
       newErrors.terms = 'Debes aceptar los términos y el consentimiento de datos.';
     }
@@ -143,13 +133,12 @@ export default function BuyerRequestInfoPage() {
         id_canal: foundWebCanal,
         id_canal_origen: foundWebCanal,
         id_fuente: foundWebFuente,
-        id_campana_origen: foundWebFuente,
         id_servicio: serviceId ? Number(serviceId) : undefined,
         id_servicio_interes: serviceId ? Number(serviceId) : undefined,
-        sede_preferida: sede || 'Sede San Isidro',
+        sede_preferida: sede || undefined,
         tipo_persona: 'Adulto General',
         estado_calidad: 'Valido',
-        concreteRequest: `Solicitud de Información y Evaluación Odontológica (Portal Web). Sede: ${sede || 'San Isidro'}. Franja Horaria: ${timeSlot || 'Flexible'}`,
+        concreteRequest: `Solicitud de Información y Evaluación Odontológica (Portal Web). Sede: ${sede || 'No especificada'}. Franja Horaria: ${timeSlot || 'Flexible'}`,
       });
 
       setSubmittedSuccess(true);
@@ -418,9 +407,12 @@ export default function BuyerRequestInfoPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Servicio de Interés */}
                     <div className="space-y-1">
-                      <Label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
-                        <Stethoscope className="h-3 w-3 text-teal-600" />
-                        Servicio de Interés <span className="text-rose-500 font-bold">*</span>
+                      <Label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          <Stethoscope className="h-3 w-3 text-teal-600" />
+                          Servicio de Interés
+                        </span>
+                        <span className="text-[9.5px] text-slate-500 font-normal">Opcional</span>
                       </Label>
                       <Select 
                         value={serviceId} 
@@ -429,7 +421,7 @@ export default function BuyerRequestInfoPage() {
                           if (errors.serviceId) setErrors(prev => ({ ...prev, serviceId: '' }));
                         }}
                       >
-                        <SelectTrigger className={`rounded-xl h-9 text-xs bg-slate-50 border border-slate-200 text-slate-900 focus:ring-1 focus:ring-teal-500 shadow-sm ${errors.serviceId ? 'ring-1 ring-rose-500' : ''}`}>
+                        <SelectTrigger className="rounded-xl h-9 text-xs bg-slate-50 border border-slate-200 text-slate-900 focus:ring-1 focus:ring-teal-500 shadow-sm">
                           <SelectValue placeholder="Selecciona tratamiento" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border-slate-200 text-slate-800 shadow-xl">
@@ -440,14 +432,16 @@ export default function BuyerRequestInfoPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {errors.serviceId && <p className="text-[10px] text-rose-500 font-medium">{errors.serviceId}</p>}
                     </div>
 
                     {/* Sede de Interés */}
                     <div className="space-y-1">
-                      <Label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
-                        <MapPin className="h-3 w-3 text-teal-600" />
-                        Sede de Interés <span className="text-rose-500 font-bold">*</span>
+                      <Label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3 text-teal-600" />
+                          Sede de Interés
+                        </span>
+                        <span className="text-[9.5px] text-slate-500 font-normal">Opcional</span>
                       </Label>
                       <Select 
                         value={sede} 
@@ -456,7 +450,7 @@ export default function BuyerRequestInfoPage() {
                           if (errors.sede) setErrors(prev => ({ ...prev, sede: '' }));
                         }}
                       >
-                        <SelectTrigger className={`rounded-xl h-9 text-xs bg-slate-50 border border-slate-200 text-slate-900 focus:ring-1 focus:ring-teal-500 shadow-sm ${errors.sede ? 'ring-1 ring-rose-500' : ''}`}>
+                        <SelectTrigger className="rounded-xl h-9 text-xs bg-slate-50 border border-slate-200 text-slate-900 focus:ring-1 focus:ring-teal-500 shadow-sm">
                           <SelectValue placeholder="Selecciona sede" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border-slate-200 text-slate-800 shadow-xl">
@@ -475,7 +469,6 @@ export default function BuyerRequestInfoPage() {
                           )}
                         </SelectContent>
                       </Select>
-                      {errors.sede && <p className="text-[10px] text-rose-500 font-medium">{errors.sede}</p>}
                     </div>
                   </div>
 
