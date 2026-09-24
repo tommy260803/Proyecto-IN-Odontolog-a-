@@ -614,11 +614,11 @@ export default function BuyerRequestInfoPage() {
             </div>
           ) : (
             /* Estado de Éxito */
-            <Card className="border border-slate-200/90 shadow-2xl shadow-teal-950/10 bg-white rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in zoom-in-95 duration-500 max-w-md w-full relative">
+            <Card className="border border-slate-200/90 shadow-xl lg:shadow-none bg-white rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in duration-400 max-w-md w-full relative">
               
-              {/* Contenedor Limpio del Checkmark con Trazo Continuo Infinito */}
+              {/* Contenedor Limpio del Checkmark: Primero aparece el círculo con desvanecido, luego el check trazándose */}
               <div className="flex justify-center items-center pt-1">
-                <div className="w-16 h-16 rounded-full bg-teal-600 flex items-center justify-center shadow-lg shadow-teal-700/25">
+                <div className="w-16 h-16 rounded-full bg-teal-600 flex items-center justify-center shadow-none animate-circle-fade-in">
                   <svg className="w-9 h-9 text-white" viewBox="0 0 48 48" fill="none">
                     {/* Círculo base blanco sutil */}
                     <circle
@@ -628,7 +628,7 @@ export default function BuyerRequestInfoPage() {
                       stroke="rgba(255, 255, 255, 0.3)"
                       strokeWidth="2.5"
                     />
-                    {/* Checkmark que se traza continuamente en bucle */}
+                    {/* Checkmark que se traza continuamente en bucle sincronizado */}
                     <path
                       d="M14 24.5L21 31.5L34 17"
                       stroke="#ffffff"
