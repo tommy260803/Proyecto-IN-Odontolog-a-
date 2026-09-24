@@ -377,11 +377,22 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {catalogs.canales.map((c) => (
-                          <SelectItem key={c.id_canal} value={c.id_canal.toString()} className="text-xs">
-                            {c.nombre}
-                          </SelectItem>
-                        ))}
+                        {catalogs.canales && catalogs.canales.length > 0 ? (
+                          catalogs.canales.map((c) => (
+                            <SelectItem key={c.id_canal} value={c.id_canal.toString()} className="text-xs">
+                              {c.nombre}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <>
+                            <SelectItem value="Presencial (Recepción en Sede)" className="text-xs">Presencial (Recepción en Sede)</SelectItem>
+                            <SelectItem value="Llamada Telefónica" className="text-xs">Llamada Telefónica</SelectItem>
+                            <SelectItem value="WhatsApp Directo" className="text-xs">WhatsApp Directo</SelectItem>
+                            <SelectItem value="Página Web / Portal Online" className="text-xs">Página Web / Portal Online</SelectItem>
+                            <SelectItem value="Redes Sociales (Instagram / FB / TikTok)" className="text-xs">Redes Sociales (Instagram / FB / TikTok)</SelectItem>
+                            <SelectItem value="Recomendación / Referido" className="text-xs">Recomendación / Referido</SelectItem>
+                          </>
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage className="text-[11px]" />
@@ -405,11 +416,21 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {catalogs.fuentes.map((f) => (
-                          <SelectItem key={f.id_fuente} value={f.id_fuente.toString()} className="text-xs">
-                            {f.nombre}
-                          </SelectItem>
-                        ))}
+                        {catalogs.fuentes && catalogs.fuentes.length > 0 ? (
+                          catalogs.fuentes.map((f) => (
+                            <SelectItem key={f.id_fuente} value={f.id_fuente.toString()} className="text-xs">
+                              {f.nombre}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <>
+                            <SelectItem value="Visita Espontánea / Walk-in" className="text-xs">Visita Espontánea / Walk-in</SelectItem>
+                            <SelectItem value="Meta Ads (Instagram / FB)" className="text-xs">Meta Ads (Instagram / FB)</SelectItem>
+                            <SelectItem value="Google Ads / Búsqueda" className="text-xs">Google Ads / Búsqueda</SelectItem>
+                            <SelectItem value="Búsqueda Orgánica Web" className="text-xs">Búsqueda Orgánica Web</SelectItem>
+                            <SelectItem value="Recomendación de Paciente" className="text-xs">Recomendación de Paciente</SelectItem>
+                          </>
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage className="text-[11px]" />

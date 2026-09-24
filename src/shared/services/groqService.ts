@@ -456,42 +456,65 @@ export async function analyzeBuyerMarketingAgent(ctx: BuyerMarketingContext): Pr
   const insight = `Prospecto captado a través de ${channel} atribuido a ${source}. Tráfico digital con alta intención de conversión.`;
 
   // 4. Actividad 4: Evaluación de Intención Comercial (Heurística + Groq AI)
+  const cLower = channel.toLowerCase();
+  const isHighFrictionChannel = cLower.includes('presencial') || cLower.includes('telef') || cLower.includes('llamada') || cLower.includes('sede');
   const reqLower = (ctx.concreteRequest || '').toLowerCase();
-  const commercialKeywords = ['precio', 'costo', 'cuanto', 'cuánto', 'cita', 'agendar', 'horario', 'disponib', 'doctor', 'especialista', 'sede', 'turno', 'cotiz', 'evalua', 'consulta', 'sábado', 'mañana', 'urgencia'];
+  const commercialKeywords = ['precio', 'costo', 'cuanto', 'cuánto', 'cita', 'agendar', 'horario', 'disponib', 'doctor', 'especialista', 'sede', 'turno', 'cotiz', 'evalua', 'consulta', 'sábado', 'mañana', 'urgencia', 'dolor', 'muela', 'sensib', 'sangr'];
   const matchedKeywords = commercialKeywords.filter(k => reqLower.includes(k));
 
-  let hasConcreteIntent = matchedKeywords.length > 0 || reqLower.length > 10;
+  let hasConcreteIntent = true;
   let intentLevel: 'ALTA' | 'MEDIA' | 'AMBIGUA' = 'ALTA';
-  let intentReason = 'El usuario solicita información concreta de precio, horario o agendamiento.';
+  let intentReason = '';
   let suggestedAction: 'CONVERT_TO_LEAD' | 'KEEP_IN_BUYER' = 'CONVERT_TO_LEAD';
-  let marketingRecommendation = 'Prospecto listo para pasar a LEAD. Se recomienda contactar en menos de 15 minutos vía WhatsApp.';
+  let marketingRecommendation = '';
 
-  if (!hasConcreteIntent && reqLower.length < 5) {
-    intentLevel = 'AMBIGUA';
-    intentReason = 'Consulta genérica sin solicitud de precios o agendamiento específico.';
-    suggestedAction = 'KEEP_IN_BUYER';
-    marketingRecommendation = 'Mantener en BUYER y enviar mensaje de bienvenida con catálogo de servicios.';
-  } else if (matchedKeywords.length >= 2) {
+  if (isHighFrictionChannel) {
     intentLevel = 'ALTA';
-    intentReason = `Intención comercial explícita detectada (${matchedKeywords.join(', ')}). Cumple criterios para calificación comercial.`;
+    hasConcreteIntent = true;
+    intentReason = `Contacto por canal de alta fricción (${channel}). Paciente con máxima prioridad de atención y decisión inmediata.`;
     suggestedAction = 'CONVERT_TO_LEAD';
+    marketingRecommendation = 'Asignar asesor comercial o recepcionista de inmediato para atención presencial / telefónica.';
+  } else if (reqLower.length < 5 || reqLower === 'info' || reqLower === 'hola' || reqLower === 'prueba' || !ctx.phone || ctx.phone.length < 9) {
+    intentLevel = 'AMBIGUA';
+    hasConcreteIntent = false;
+    intentReason = 'Consulta exploratoria vaga sin especificación de urgencia, tratamiento ni disponibilidad.';
+    suggestedAction = 'KEEP_IN_BUYER';
+    marketingRecommendation = 'Mantener en BUYER y enviar mensaje automático de WhatsApp con brochure y preguntas clave.';
+  } else if (matchedKeywords.length >= 2 || reqLower.includes('cita') || reqLower.includes('agendar') || reqLower.includes('precio') || reqLower.includes('dolor')) {
+    intentLevel = 'ALTA';
+    hasConcreteIntent = true;
+    intentReason = `Intención comercial explícita (${matchedKeywords.join(', ')}). Paciente con requerimiento claro de cita o presupuesto.`;
+    suggestedAction = 'CONVERT_TO_LEAD';
+    marketingRecommendation = 'Prospecto calificado para LEAD. Contactar en menos de 15 min vía WhatsApp con propuesta de horario.';
+  } else {
+    // Interés moderado / exploratorio (Canal Web o Redes)
+    intentLevel = 'MEDIA';
+    hasConcreteIntent = true;
+    intentReason = `Interés general expresado vía ${channel}. Solicita información sin urgencia médica declarada.`;
+    suggestedAction = 'CONVERT_TO_LEAD';
+    marketingRecommendation = 'Enviar catálogo de tarifas y agendar llamada de orientación odontológica.';
   }
 
   // Si hay API Key de Groq, enriquecer el análisis
   const apiKey = import.meta.env.VITE_GROQ_API_KEY;
   if (apiKey && apiKey !== 'tu_groq_api_key_aqui' && ctx.concreteRequest) {
     try {
-      const prompt = `Analiza la intención comercial del siguiente prospecto de odontología:
+      const prompt = `Analiza la intención comercial del siguiente prospecto odontológico:
 - Paciente: ${ctx.fullName}
 - Servicio: ${service}
-- Motivo/Mensaje: "${ctx.concreteRequest}"
-- Canal: ${channel}
+- Canal de Captación: ${channel}
+- Motivo / Mensaje: "${ctx.concreteRequest}"
+
+Criterios de Clasificación:
+1. "ALTA": Paciente contacta por Sede Presencial o Llamada Telefónica, o tiene dolor/urgencia, o solicita precio y disponibilidad para agendar cita.
+2. "MEDIA": Paciente interesado en la web/redes que hace consultas exploratorias de servicios sin urgencia inmediata declarada.
+3. "AMBIGUA": Mensaje vago ("info", "hola"), datos incompletos o sin propósito clínico definido.
 
 Responde ÚNICAMENTE un JSON con:
 {
   "hasConcreteIntent": true/false,
   "intentLevel": "ALTA" | "MEDIA" | "AMBIGUA",
-  "intentReason": "breve explicación del motivo",
+  "intentReason": "explicación concisa del nivel de intención en 1 línea",
   "suggestedAction": "CONVERT_TO_LEAD" | "KEEP_IN_BUYER",
   "marketingRecommendation": "acción comercial recomendada en 1 línea"
 }`;
@@ -505,7 +528,7 @@ Responde ÚNICAMENTE un JSON con:
         body: JSON.stringify({
           model: GROQ_MODELS[0],
           messages: [
-            { role: 'system', content: 'Eres el Agente de Marketing de NexoSalud Dental. Evalúas la intención comercial de los BUYERS.' },
+            { role: 'system', content: 'Eres el Agente de Marketing de NexoSalud Dental. Evalúas con precisión la intención comercial de los BUYERS.' },
             { role: 'user', content: prompt }
           ],
           temperature: 0.2,

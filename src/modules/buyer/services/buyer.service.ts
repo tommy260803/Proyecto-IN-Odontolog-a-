@@ -14,15 +14,19 @@ export const buyerService = {
           { id_servicio: 4, nombre: 'Implante Dental' }
         ],
         canales: [
-          { id_canal: 1, nombre: 'WhatsApp' },
-          { id_canal: 2, nombre: 'Facebook' },
-          { id_canal: 3, nombre: 'Página Web' },
-          { id_canal: 4, nombre: 'Recomendación' }
+          { id_canal: 1, nombre: 'Presencial (Recepción en Sede)' },
+          { id_canal: 2, nombre: 'Llamada Telefónica' },
+          { id_canal: 3, nombre: 'WhatsApp Directo' },
+          { id_canal: 4, nombre: 'Página Web / Portal Online' },
+          { id_canal: 5, nombre: 'Redes Sociales (Instagram / FB / TikTok)' },
+          { id_canal: 6, nombre: 'Recomendación / Referido' }
         ],
         fuentes: [
-          { id_fuente: 1, nombre: 'Campaña Redes Enero' },
-          { id_fuente: 2, nombre: 'Búsqueda Orgánica' },
-          { id_fuente: 3, nombre: 'Referido' }
+          { id_fuente: 1, nombre: 'Visita Espontánea / Walk-in' },
+          { id_fuente: 2, nombre: 'Meta Ads (Instagram / FB)' },
+          { id_fuente: 3, nombre: 'Google Ads / Búsqueda' },
+          { id_fuente: 4, nombre: 'Búsqueda Orgánica Web' },
+          { id_fuente: 5, nombre: 'Recomendación de Paciente' }
         ],
         sedes: [
           { id_sede: 1, nombre: 'Sede Norte' },
