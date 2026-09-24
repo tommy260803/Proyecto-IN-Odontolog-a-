@@ -44,16 +44,21 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             }
           }}
           className={cn(
-            'h-4 w-4 shrink-0 rounded border border-slate-300 dark:border-slate-700 transition-all cursor-pointer flex items-center justify-center',
+            'h-5 w-5 shrink-0 rounded-md border-2 transition-all cursor-pointer flex items-center justify-center select-none shadow-2xs',
             'peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-teal-500 peer-focus-visible:ring-offset-2',
             'peer-disabled:cursor-not-allowed peer-disabled:opacity-50',
             isChecked
-              ? 'bg-teal-600 border-teal-600 text-white shadow-sm'
-              : 'bg-white dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-600',
+              ? 'bg-teal-600 border-teal-600 dark:bg-teal-500 dark:border-teal-500 text-white'
+              : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:border-teal-500 dark:hover:border-teal-400',
             className
           )}
         >
-          {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
+          {isChecked && (
+            <Check 
+              className="h-3.5 w-3.5 text-white dark:text-white stroke-[3.5]" 
+              stroke="#ffffff"
+            />
+          )}
         </div>
       </div>
     );
@@ -63,4 +68,3 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
 Checkbox.displayName = 'Checkbox';
 
 export { Checkbox };
-

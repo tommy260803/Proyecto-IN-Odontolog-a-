@@ -399,7 +399,7 @@ export default function BuyerRequestInfoPage() {
                         setTermsAccepted(Boolean(checked));
                         if (errors.terms) setErrors(prev => ({ ...prev, terms: '' }));
                       }}
-                      className="mt-0.5 border-teal-500 text-teal-600 data-[state=checked]:bg-teal-600 data-[state=checked]:text-white"
+                      className="mt-0.5"
                     />
                     <div className="space-y-1 leading-none">
                       <label htmlFor="terms" className="text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer">

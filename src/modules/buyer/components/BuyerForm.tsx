@@ -419,7 +419,7 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
-                        className="mt-0.5 border-teal-500 text-teal-600 data-[state=checked]:bg-teal-600 data-[state=checked]:text-white"
+                        className="mt-0.5"
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
