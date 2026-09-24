@@ -344,9 +344,7 @@ export default function LeadNegotiationPage() {
   const hasUrgentPain = dolorLevel.includes('intenso') || dolorLevel.includes('moderado');
   const opciones = lead.Solicitudes?.[lead.Solicitudes.length - 1]?.Opciones || [];
 
-  const selectedOptData = useMemo(() => {
-    return opciones.find((o: any) => o.id_opcion === selectedOpcion);
-  }, [opciones, selectedOpcion]);
+  const selectedOptData = opciones.find((o: any) => o.id_opcion === selectedOpcion);
 
   const generateWhatsAppMessage = () => {
     const patientFirstName = lead?.nombres || 'Paciente';
@@ -402,18 +400,6 @@ export default function LeadNegotiationPage() {
     setCopiedWhatsApp(true);
     toast({ title: '¡Mensaje Copiado!', description: 'Texto copiado al portapapeles para enviar por chat.' });
     setTimeout(() => setCopiedWhatsApp(false), 2000);
-  };
-
-  const handleSendEmail = () => {
-    if (!lead?.email) {
-      toast({ title: 'Sin correo', description: 'El paciente no tiene correo registrado.', variant: 'destructive' });
-      return;
-    }
-    const subject = `Propuesta de Atención Odontológica - NexoSalud Dental (${lead?.nombres || 'Paciente'})`;
-    const body = generateWhatsAppMessage();
-    const mailtoUrl = `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(mailtoUrl, '_blank');
-    toast({ title: 'Correo Preparado', description: 'Abriendo cliente de correo con la propuesta personalizada.' });
   };
 
   return (
@@ -1103,7 +1089,7 @@ export default function LeadNegotiationPage() {
                   {generateWhatsAppMessage()}
                 </p>
 
-                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                <div className="flex items-center gap-2 pt-1">
                   <Button
                     type="button"
                     onClick={handleSendWhatsApp}
@@ -1111,14 +1097,6 @@ export default function LeadNegotiationPage() {
                   >
                     <MessageCircle className="w-4 h-4" />
                     <span>Abrir y Enviar por WhatsApp</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleSendEmail}
-                    className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm flex items-center gap-2"
-                  >
-                    <Mail className="w-4 h-4" />
-                    <span>Enviar por Correo</span>
                   </Button>
                   <Button
                     type="button"
