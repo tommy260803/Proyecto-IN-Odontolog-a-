@@ -616,57 +616,32 @@ export default function BuyerRequestInfoPage() {
             /* Estado de Éxito */
             <Card className="border border-slate-200/90 shadow-2xl shadow-teal-950/10 bg-white rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in zoom-in-95 duration-500 max-w-md w-full relative">
               
-              {/* Contenedor Animado del Checkmark con Auras de Resplandor */}
-              <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
-                {/* Aura 1: Pulso de onda expansiva */}
-                <div className="absolute inset-0 rounded-full bg-teal-400/20 animate-success-pulse pointer-events-none" />
-                
-                {/* Aura 2: Resplandor difuminado */}
-                <div className="absolute inset-1 rounded-full bg-emerald-500/15 blur-md pointer-events-none" />
-
-                {/* Insignia Central con Degradado Clínico */}
-                <div className="relative w-16 h-16 rounded-full bg-gradient-to-tr from-teal-600 via-emerald-600 to-teal-500 flex items-center justify-center shadow-lg shadow-teal-600/30 ring-4 ring-white">
-                  {/* SVG Animado de Trazado de Círculo y Check */}
-                  <svg className="w-10 h-10 text-white" viewBox="0 0 48 48" fill="none">
-                    {/* Círculo de base */}
+              {/* Contenedor Limpio del Checkmark con Trazo Continuo Infinito */}
+              <div className="flex justify-center items-center pt-1">
+                <div className="w-16 h-16 rounded-full bg-teal-600 flex items-center justify-center shadow-lg shadow-teal-700/25">
+                  <svg className="w-9 h-9 text-white" viewBox="0 0 48 48" fill="none">
+                    {/* Círculo base blanco sutil */}
                     <circle
                       cx="24"
                       cy="24"
-                      r="21"
+                      r="20"
                       stroke="rgba(255, 255, 255, 0.3)"
                       strokeWidth="2.5"
                     />
-                    {/* Círculo que se traza */}
-                    <circle
-                      cx="24"
-                      cy="24"
-                      r="21"
-                      stroke="#ffffff"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      className="animate-success-circle"
-                    />
-                    {/* Checkmark que se traza */}
+                    {/* Checkmark que se traza continuamente en bucle */}
                     <path
-                      d="M14.5 24.5L21 31L33.5 17.5"
+                      d="M14 24.5L21 31.5L34 17"
                       stroke="#ffffff"
                       strokeWidth="3.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="animate-success-check"
+                      className="animate-continuous-check"
                     />
                   </svg>
                 </div>
-
-                {/* Destellos / Sparkles flotantes */}
-                <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-amber-400 animate-success-sparkle" />
-                <Star className="absolute -bottom-1 -left-1 h-4 w-4 fill-teal-400 text-teal-400 animate-success-sparkle" style={{ animationDelay: '0.7s' }} />
               </div>
 
-              <div className="space-y-1.5 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-150">
-                <Badge className="bg-teal-50 text-teal-700 border-teal-200 text-[10px] px-2.5 py-0.5 rounded-full font-bold mb-1">
-                  ✓ Registro Confirmado
-                </Badge>
+              <div className="space-y-1.5">
                 <h2 className="text-xl font-black text-slate-900 tracking-tight">
                   ¡Solicitud Registrada con Éxito!
                 </h2>
