@@ -457,57 +457,54 @@ export default function LeadNegotiationPage() {
       <div className="lg:col-span-2 space-y-6">
 
         {/* Tarjeta de Inteligencia Comercial & Scoring */}
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-950/95 via-slate-900 to-teal-950/95 text-white shadow-lg border border-teal-500/30 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-            <Sparkles className="w-28 h-28 text-white" />
-          </div>
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-teal-50/90 via-white to-slate-50 dark:from-teal-950/40 dark:via-slate-900 dark:to-slate-950 border border-teal-200/90 dark:border-teal-800/80 shadow-sm relative overflow-hidden transition-all">
           <div className="relative z-10 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-800/60 pb-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-100/80 dark:border-teal-900/60 pb-2.5">
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-500/20 text-teal-300 border border-teal-400/30">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300 border border-teal-200 dark:border-teal-400/30">
                   <Zap className="h-3.5 w-3.5" />
                 </span>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-teal-200">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-teal-900 dark:text-teal-200">
                   Estrategia Comercial Recomendada & Matching
                 </h4>
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide bg-teal-900/80 text-teal-200 border border-teal-500/40 shadow-sm select-none">
-                <Sparkles className="w-3 h-3 text-teal-300" />
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide bg-teal-100/80 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-300/60 dark:border-teal-800/80 shadow-2xs select-none">
+                <Sparkles className="w-3 h-3 text-teal-600 dark:text-teal-300" />
                 <span>Inteligencia BUYER → LEAD</span>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-teal-800/50 hover:border-teal-500/60 transition-colors space-y-1">
-                <div className="flex items-center gap-1.5 text-teal-300 font-bold text-[11px]">
-                  <GraduationCap className="h-3.5 w-3.5 text-teal-400" />
+              <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 hover:border-teal-400/80 transition-colors space-y-1 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300 font-bold text-[11px]">
+                  <GraduationCap className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
                   <span>Perfil Académico</span>
                 </div>
-                <p className="text-[11px] text-slate-200 leading-tight">
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
                   {isStudent
                     ? `Convenio activo (${datAcad?.universidad || 'Univ.'}). Descuento sugerido -15%.`
                     : 'Tarifa regular aplicable (No estudiante).'}
                 </p>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-teal-800/50 hover:border-teal-500/60 transition-colors space-y-1">
-                <div className="flex items-center gap-1.5 text-teal-300 font-bold text-[11px]">
-                  <HeartPulse className="h-3.5 w-3.5 text-teal-400" />
+              <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 hover:border-teal-400/80 transition-colors space-y-1 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300 font-bold text-[11px]">
+                  <HeartPulse className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
                   <span>Prioridad Clínica</span>
                 </div>
-                <p className="text-[11px] text-slate-200 leading-tight">
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
                   {hasUrgentPain
                     ? `Dolor ${saludOdonto?.nivel_dolor}. Priorizar agendamiento (mín. 72h).`
                     : 'Evaluación de rutina estándar.'}
                 </p>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-teal-800/50 hover:border-teal-500/60 transition-colors space-y-1">
-                <div className="flex items-center gap-1.5 text-teal-300 font-bold text-[11px]">
-                  <MapPin className="h-3.5 w-3.5 text-teal-400" />
+              <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 hover:border-teal-400/80 transition-colors space-y-1 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300 font-bold text-[11px]">
+                  <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
                   <span>Matching de Preferencias</span>
                 </div>
-                <p className="text-[11px] text-slate-200 leading-tight">
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
                   {pref?.sede_preferida || pref?.profesional_preferido
                     ? `Preferencia: Sede ${pref?.sede_preferida || 'Indif.'} / Esp. ${pref?.profesional_preferido || 'Indif.'}.`
                     : 'Disponibilidad libre de sede/médico.'}

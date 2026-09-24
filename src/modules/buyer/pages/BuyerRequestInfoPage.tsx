@@ -532,13 +532,19 @@ export default function BuyerRequestInfoPage() {
 
                   {/* 7: Checkbox de Términos y Consentimiento */}
                   <div className="pt-0.5">
-                    <div className={`flex items-start space-x-2.5 rounded-xl p-2.5 transition-all border ${
-                      termsAccepted 
-                        ? 'bg-teal-50/80 border-teal-300' 
-                        : errors.terms 
-                          ? 'bg-rose-50 border-rose-300' 
-                          : 'bg-slate-50 border-slate-200'
-                    }`}>
+                    <div 
+                      onClick={() => {
+                        setTermsAccepted(prev => !prev);
+                        if (errors.terms) setErrors(prev => ({ ...prev, terms: '' }));
+                      }}
+                      className={`flex items-start space-x-3 rounded-xl p-2.5 transition-all border cursor-pointer select-none ${
+                        termsAccepted 
+                          ? 'bg-teal-50/70 border-teal-300 ring-1 ring-teal-400/20' 
+                          : errors.terms 
+                            ? 'bg-rose-50/60 border-rose-300 ring-1 ring-rose-400/20' 
+                            : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
+                      }`}
+                    >
                       <Checkbox
                         id="terms"
                         checked={termsAccepted}
@@ -546,7 +552,7 @@ export default function BuyerRequestInfoPage() {
                           setTermsAccepted(Boolean(checked));
                           if (errors.terms) setErrors(prev => ({ ...prev, terms: '' }));
                         }}
-                        className="mt-0.5 cursor-pointer"
+                        className="mt-0.5 cursor-pointer !bg-white !border-slate-300 data-[state=checked]:!bg-teal-600 data-[state=checked]:!border-teal-600"
                       />
                       <div className="space-y-0.5 leading-none">
                         <label htmlFor="terms" className="text-[11px] font-bold text-slate-800 cursor-pointer">
