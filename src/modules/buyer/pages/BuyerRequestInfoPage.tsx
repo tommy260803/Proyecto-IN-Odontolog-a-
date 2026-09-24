@@ -189,8 +189,11 @@ export default function BuyerRequestInfoPage() {
       </header>
 
       {/* Main Content Split Screen (Fits seamlessly on 1 single screen) */}
-      <main className="max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-center min-h-0 py-1">
+      <main className="relative max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-10 items-center min-h-0 py-1">
         
+        {/* Línea Central con Desvanecimiento Suave (Fading Divider) */}
+        <div className="hidden lg:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[78%] w-[1.5px] bg-gradient-to-b from-transparent via-slate-700/60 via-50% to-transparent pointer-events-none" />
+
         {/* Left Column: Información de NexoSalud Odontología */}
         <div className="lg:col-span-6 xl:col-span-6 space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-left duration-300">
           
@@ -209,44 +212,44 @@ export default function BuyerRequestInfoPage() {
             </p>
           </div>
 
-          {/* Grid de Beneficios Clave */}
+          {/* Grid de Beneficios Clave - Tarjetas Blancas */}
           <div className="grid grid-cols-2 gap-2.5 pt-0.5">
-            <div className="p-3 rounded-2xl bg-slate-900/40 border border-slate-800/60 backdrop-blur space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
+            <div className="p-3 rounded-2xl bg-white/95 text-slate-900 border border-white/40 shadow-lg shadow-black/10 backdrop-blur space-y-1">
+              <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100">
                 <Stethoscope className="h-3.5 w-3.5" />
               </div>
-              <h2 className="text-xs font-bold text-white">Especialistas Top</h2>
-              <p className="text-[10.5px] text-slate-400 leading-tight">
+              <h2 className="text-xs font-bold text-slate-900">Especialistas Top</h2>
+              <p className="text-[10.5px] text-slate-600 leading-tight font-medium">
                 Ortodoncia, Implantes y Estética.
               </p>
             </div>
 
-            <div className="p-3 rounded-2xl bg-slate-900/40 border border-slate-800/60 backdrop-blur space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
+            <div className="p-3 rounded-2xl bg-white/95 text-slate-900 border border-white/40 shadow-lg shadow-black/10 backdrop-blur space-y-1">
+              <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100">
                 <Zap className="h-3.5 w-3.5" />
               </div>
-              <h2 className="text-xs font-bold text-white">Diagnóstico 3D</h2>
-              <p className="text-[10.5px] text-slate-400 leading-tight">
+              <h2 className="text-xs font-bold text-slate-900">Diagnóstico 3D</h2>
+              <p className="text-[10.5px] text-slate-600 leading-tight font-medium">
                 Escaneo intraoral sin dolor.
               </p>
             </div>
 
-            <div className="p-3 rounded-2xl bg-slate-900/40 border border-slate-800/60 backdrop-blur space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
+            <div className="p-3 rounded-2xl bg-white/95 text-slate-900 border border-white/40 shadow-lg shadow-black/10 backdrop-blur space-y-1">
+              <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100">
                 <Building2 className="h-3.5 w-3.5" />
               </div>
-              <h2 className="text-xs font-bold text-white">3 Sedes en Lima</h2>
-              <p className="text-[10.5px] text-slate-400 leading-tight">
+              <h2 className="text-xs font-bold text-slate-900">3 Sedes en Lima</h2>
+              <p className="text-[10.5px] text-slate-600 leading-tight font-medium">
                 San Isidro, Surco y Los Olivos.
               </p>
             </div>
 
-            <div className="p-3 rounded-2xl bg-slate-900/40 border border-slate-800/60 backdrop-blur space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
+            <div className="p-3 rounded-2xl bg-white/95 text-slate-900 border border-white/40 shadow-lg shadow-black/10 backdrop-blur space-y-1">
+              <div className="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100">
                 <Clock className="h-3.5 w-3.5" />
               </div>
-              <h2 className="text-xs font-bold text-white">Respuesta Rápida</h2>
-              <p className="text-[10.5px] text-slate-400 leading-tight">
+              <h2 className="text-xs font-bold text-slate-900">Respuesta Rápida</h2>
+              <p className="text-[10.5px] text-slate-600 leading-tight font-medium">
                 Atención en menos de 15 min.
               </p>
             </div>
@@ -276,10 +279,10 @@ export default function BuyerRequestInfoPage() {
 
         </div>
 
-        {/* Right Column: Formulario Plano (Sin Bordes Pesados y Sin Scrollbar en Pantalla) */}
+        {/* Right Column: Formulario Plano con Fondo Blanco (Sin Bordes Pesados y Sin Scrollbar en Pantalla) */}
         <div className="lg:col-span-6 xl:col-span-6 w-full flex justify-center lg:justify-end min-h-0 animate-in fade-in slide-in-from-right duration-300">
           {!submittedSuccess ? (
-            <div className="w-full max-w-lg bg-slate-900/60 rounded-3xl overflow-hidden flex flex-col max-h-[76vh] h-full shadow-2xl relative backdrop-blur-xl border-0">
+            <div className="w-full max-w-lg bg-white rounded-3xl overflow-hidden flex flex-col max-h-[78vh] h-full shadow-2xl shadow-black/20 relative border border-slate-100">
               
               {/* Header Fijo (Estático) */}
               <div className="px-5 py-4 bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-700 text-white shrink-0 relative overflow-hidden">
@@ -302,18 +305,18 @@ export default function BuyerRequestInfoPage() {
                 </p>
               </div>
 
-              {/* Cuerpo del Formulario Plano con Scroll Interno Invisible */}
+              {/* Cuerpo del Formulario Plano en Blanco con Scroll Interno Invisible */}
               <div 
-                className="flex-1 overflow-y-auto px-5 py-4 space-y-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-white [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               >
                 <form id="buyerWebForm" onSubmit={handleSubmit} className="space-y-3">
                   
                   {/* 1. Nombres y Apellidos */}
                   <div className="space-y-1">
-                    <Label htmlFor="fullName" className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
+                    <Label htmlFor="fullName" className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
                       <span className="flex items-center gap-1">
-                        <User className="h-3 w-3 text-teal-400" />
-                        Nombres y Apellidos <span className="text-rose-400 font-bold">*</span>
+                        <User className="h-3 w-3 text-teal-600" />
+                        Nombres y Apellidos <span className="text-rose-500 font-bold">*</span>
                       </span>
                     </Label>
                     <Input
@@ -324,18 +327,18 @@ export default function BuyerRequestInfoPage() {
                         setFullName(e.target.value);
                         if (errors.fullName) setErrors(prev => ({ ...prev, fullName: '' }));
                       }}
-                      className={`rounded-xl h-9 text-xs bg-slate-950/80 border-0 text-white focus-visible:ring-1 focus-visible:ring-teal-500 shadow-inner ${errors.fullName ? 'ring-1 ring-rose-500' : ''}`}
+                      className={`rounded-xl h-9 text-xs bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-teal-500 focus:bg-white shadow-sm ${errors.fullName ? 'ring-1 ring-rose-500' : ''}`}
                     />
-                    {errors.fullName && <p className="text-[10px] text-rose-400 font-medium">{errors.fullName}</p>}
+                    {errors.fullName && <p className="text-[10px] text-rose-500 font-medium">{errors.fullName}</p>}
                   </div>
 
                   {/* 2 & 3: Teléfono y Correo */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Teléfono WhatsApp */}
                     <div className="space-y-1">
-                      <Label htmlFor="phone" className="text-[11px] font-bold text-slate-300 flex items-center gap-1">
-                        <Phone className="h-3 w-3 text-teal-400" />
-                        Teléfono / WhatsApp <span className="text-rose-400 font-bold">*</span>
+                      <Label htmlFor="phone" className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                        <Phone className="h-3 w-3 text-teal-600" />
+                        Teléfono / WhatsApp <span className="text-rose-500 font-bold">*</span>
                       </Label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-slate-500">
@@ -352,11 +355,11 @@ export default function BuyerRequestInfoPage() {
                             setPhone(val);
                             if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
                           }}
-                          className={`pl-11 rounded-xl h-9 text-xs font-mono bg-slate-950/80 border-0 text-white focus-visible:ring-1 focus-visible:ring-teal-500 shadow-inner ${errors.phone ? 'ring-1 ring-rose-500' : ''}`}
+                          className={`pl-11 rounded-xl h-9 text-xs font-mono bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-teal-500 focus:bg-white shadow-sm ${errors.phone ? 'ring-1 ring-rose-500' : ''}`}
                         />
                       </div>
                       {errors.phone ? (
-                        <p className="text-[10px] text-rose-400 font-medium">{errors.phone}</p>
+                        <p className="text-[10px] text-rose-500 font-medium">{errors.phone}</p>
                       ) : (
                         <p className="text-[9.5px] text-slate-500">9 dígitos para Perú</p>
                       )}
@@ -364,9 +367,9 @@ export default function BuyerRequestInfoPage() {
 
                     {/* Correo Electrónico */}
                     <div className="space-y-1">
-                      <Label htmlFor="email" className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
+                      <Label htmlFor="email" className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
                         <span className="flex items-center gap-1">
-                          <Mail className="h-3 w-3 text-slate-400" /> Correo Electrónico
+                          <Mail className="h-3 w-3 text-slate-500" /> Correo Electrónico
                         </span>
                         <span className="text-[9.5px] text-slate-500 font-normal">Opcional</span>
                       </Label>
@@ -379,9 +382,9 @@ export default function BuyerRequestInfoPage() {
                           setEmail(e.target.value);
                           if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
                         }}
-                        className={`rounded-xl h-9 text-xs bg-slate-950/80 border-0 text-white focus-visible:ring-1 focus-visible:ring-teal-500 shadow-inner ${errors.email ? 'ring-1 ring-rose-500' : ''}`}
+                        className={`rounded-xl h-9 text-xs bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-teal-500 focus:bg-white shadow-sm ${errors.email ? 'ring-1 ring-rose-500' : ''}`}
                       />
-                      {errors.email && <p className="text-[10px] text-rose-400 font-medium">{errors.email}</p>}
+                      {errors.email && <p className="text-[10px] text-rose-500 font-medium">{errors.email}</p>}
                     </div>
                   </div>
 
@@ -389,9 +392,9 @@ export default function BuyerRequestInfoPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Servicio de Interés */}
                     <div className="space-y-1">
-                      <Label className="text-[11px] font-bold text-slate-300 flex items-center gap-1">
-                        <Stethoscope className="h-3 w-3 text-teal-400" />
-                        Servicio de Interés <span className="text-rose-400 font-bold">*</span>
+                      <Label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                        <Stethoscope className="h-3 w-3 text-teal-600" />
+                        Servicio de Interés <span className="text-rose-500 font-bold">*</span>
                       </Label>
                       <Select 
                         value={serviceId} 
@@ -400,25 +403,25 @@ export default function BuyerRequestInfoPage() {
                           if (errors.serviceId) setErrors(prev => ({ ...prev, serviceId: '' }));
                         }}
                       >
-                        <SelectTrigger className={`rounded-xl h-9 text-xs bg-slate-950/80 border-0 text-white focus:ring-1 focus:ring-teal-500 shadow-inner ${errors.serviceId ? 'ring-1 ring-rose-500' : ''}`}>
+                        <SelectTrigger className={`rounded-xl h-9 text-xs bg-slate-50 border border-slate-200 text-slate-900 focus:ring-1 focus:ring-teal-500 shadow-sm ${errors.serviceId ? 'ring-1 ring-rose-500' : ''}`}>
                           <SelectValue placeholder="Selecciona tratamiento" />
                         </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                        <SelectContent className="bg-white border-slate-200 text-slate-800 shadow-xl">
                           {catalogs.servicios.map((s: any) => (
-                            <SelectItem key={s.id_servicio} value={s.id_servicio.toString()} className="text-xs focus:bg-slate-800 focus:text-white">
+                            <SelectItem key={s.id_servicio} value={s.id_servicio.toString()} className="text-xs focus:bg-slate-100 focus:text-slate-900 cursor-pointer">
                               {s.nombre}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      {errors.serviceId && <p className="text-[10px] text-rose-400 font-medium">{errors.serviceId}</p>}
+                      {errors.serviceId && <p className="text-[10px] text-rose-500 font-medium">{errors.serviceId}</p>}
                     </div>
 
                     {/* Sede de Interés */}
                     <div className="space-y-1">
-                      <Label className="text-[11px] font-bold text-slate-300 flex items-center gap-1">
-                        <MapPin className="h-3 w-3 text-teal-400" />
-                        Sede de Interés <span className="text-rose-400 font-bold">*</span>
+                      <Label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                        <MapPin className="h-3 w-3 text-teal-600" />
+                        Sede de Interés <span className="text-rose-500 font-bold">*</span>
                       </Label>
                       <Select 
                         value={sede} 
@@ -427,34 +430,34 @@ export default function BuyerRequestInfoPage() {
                           if (errors.sede) setErrors(prev => ({ ...prev, sede: '' }));
                         }}
                       >
-                        <SelectTrigger className={`rounded-xl h-9 text-xs bg-slate-950/80 border-0 text-white focus:ring-1 focus:ring-teal-500 shadow-inner ${errors.sede ? 'ring-1 ring-rose-500' : ''}`}>
+                        <SelectTrigger className={`rounded-xl h-9 text-xs bg-slate-50 border border-slate-200 text-slate-900 focus:ring-1 focus:ring-teal-500 shadow-sm ${errors.sede ? 'ring-1 ring-rose-500' : ''}`}>
                           <SelectValue placeholder="Selecciona sede" />
                         </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                        <SelectContent className="bg-white border-slate-200 text-slate-800 shadow-xl">
                           {catalogs.sedes && catalogs.sedes.length > 0 ? (
                             catalogs.sedes.map((s: any) => (
-                              <SelectItem key={s.id_sede || s.nombre} value={s.nombre} className="text-xs focus:bg-slate-800 focus:text-white">
+                              <SelectItem key={s.id_sede || s.nombre} value={s.nombre} className="text-xs focus:bg-slate-100 focus:text-slate-900 cursor-pointer">
                                 {s.nombre}
                               </SelectItem>
                             ))
                           ) : (
                             <>
-                              <SelectItem value="Sede San Isidro" className="text-xs focus:bg-slate-800 focus:text-white">Sede San Isidro (Principal)</SelectItem>
-                              <SelectItem value="Sede Surco" className="text-xs focus:bg-slate-800 focus:text-white">Sede Surco</SelectItem>
-                              <SelectItem value="Sede Los Olivos" className="text-xs focus:bg-slate-800 focus:text-white">Sede Los Olivos</SelectItem>
+                              <SelectItem value="Sede San Isidro" className="text-xs focus:bg-slate-100 focus:text-slate-900 cursor-pointer">Sede San Isidro (Principal)</SelectItem>
+                              <SelectItem value="Sede Surco" className="text-xs focus:bg-slate-100 focus:text-slate-900 cursor-pointer">Sede Surco</SelectItem>
+                              <SelectItem value="Sede Los Olivos" className="text-xs focus:bg-slate-100 focus:text-slate-900 cursor-pointer">Sede Los Olivos</SelectItem>
                             </>
                           )}
                         </SelectContent>
                       </Select>
-                      {errors.sede && <p className="text-[10px] text-rose-400 font-medium">{errors.sede}</p>}
+                      {errors.sede && <p className="text-[10px] text-rose-500 font-medium">{errors.sede}</p>}
                     </div>
                   </div>
 
                   {/* 6: Franja Horaria Preferida */}
                   <div className="space-y-1.5 pt-0.5">
-                    <Label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
+                    <Label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
                       <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-slate-400" /> Franja Horaria Preferida
+                        <Clock className="h-3 w-3 text-slate-500" /> Franja Horaria Preferida
                       </span>
                       <span className="text-[9.5px] text-slate-500 font-normal">Opcional</span>
                     </Label>
@@ -466,21 +469,21 @@ export default function BuyerRequestInfoPage() {
                           label: 'Mañana', 
                           hours: '08:00 - 13:00', 
                           icon: Sunrise,
-                          iconColor: 'text-amber-400'
+                          iconColor: 'text-amber-500'
                         },
                         { 
                           id: '2', 
                           label: 'Tarde', 
                           hours: '13:00 - 18:00', 
                           icon: Sun,
-                          iconColor: 'text-orange-400'
+                          iconColor: 'text-orange-500'
                         },
                         { 
                           id: '3', 
                           label: 'Noche', 
                           hours: '18:00 - 21:00', 
                           icon: Moon,
-                          iconColor: 'text-indigo-400'
+                          iconColor: 'text-indigo-500'
                         },
                       ].map((slot) => {
                         const isSelected = timeSlot === slot.id;
@@ -491,13 +494,13 @@ export default function BuyerRequestInfoPage() {
                             key={slot.id}
                             type="button"
                             onClick={() => setTimeSlot(isSelected ? '' : slot.id)}
-                            className={`flex flex-col items-center justify-center p-2 rounded-xl text-center transition-all cursor-pointer ${
+                            className={`flex flex-col items-center justify-center p-2 rounded-xl text-center transition-all cursor-pointer border ${
                               isSelected
-                                ? 'bg-teal-950/80 text-teal-300 ring-1 ring-teal-500/50 shadow-inner'
-                                : 'bg-slate-950/70 text-slate-400 hover:bg-slate-950 hover:text-slate-200'
+                                ? 'bg-teal-50 text-teal-900 border-2 border-teal-600 shadow-sm'
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
                             }`}
                           >
-                            <div className={`p-1 rounded-lg mb-0.5 ${isSelected ? 'bg-teal-900/60' : 'bg-slate-900'}`}>
+                            <div className={`p-1 rounded-lg mb-0.5 ${isSelected ? 'bg-teal-100/80' : 'bg-white shadow-xs'}`}>
                               <IconComponent className={`h-3.5 w-3.5 ${slot.iconColor}`} />
                             </div>
                             <span className="text-[11px] font-bold leading-tight">{slot.label}</span>
@@ -510,12 +513,12 @@ export default function BuyerRequestInfoPage() {
 
                   {/* 7: Checkbox de Términos y Consentimiento */}
                   <div className="pt-0.5">
-                    <div className={`flex items-start space-x-2.5 rounded-xl p-2.5 transition-all ${
+                    <div className={`flex items-start space-x-2.5 rounded-xl p-2.5 transition-all border ${
                       termsAccepted 
-                        ? 'bg-teal-950/30 ring-1 ring-teal-800/60' 
+                        ? 'bg-teal-50/80 border-teal-300' 
                         : errors.terms 
-                          ? 'bg-rose-950/30 ring-1 ring-rose-900/60' 
-                          : 'bg-slate-950/50'
+                          ? 'bg-rose-50 border-rose-300' 
+                          : 'bg-slate-50 border-slate-200'
                     }`}>
                       <Checkbox
                         id="terms"
@@ -527,23 +530,23 @@ export default function BuyerRequestInfoPage() {
                         className="mt-0.5 cursor-pointer"
                       />
                       <div className="space-y-0.5 leading-none">
-                        <label htmlFor="terms" className="text-[11px] font-bold text-slate-200 cursor-pointer">
-                          Autorizo contacto por WhatsApp / Teléfono <span className="text-rose-400">*</span>
+                        <label htmlFor="terms" className="text-[11px] font-bold text-slate-800 cursor-pointer">
+                          Autorizo contacto por WhatsApp / Teléfono <span className="text-rose-500">*</span>
                         </label>
-                        <p className="text-[10px] text-slate-400 leading-tight">
+                        <p className="text-[10px] text-slate-600 leading-tight">
                           Acepto los Términos y Política de Privacidad (Ley N° 29733) para agendamiento clínico.
                         </p>
                       </div>
                     </div>
-                    {errors.terms && <p className="text-[10px] text-rose-400 font-medium mt-0.5 pl-1">{errors.terms}</p>}
+                    {errors.terms && <p className="text-[10px] text-rose-500 font-medium mt-0.5 pl-1">{errors.terms}</p>}
                   </div>
                 </form>
               </div>
 
               {/* Footer Fijo (Estático) con Botón de Enviar */}
-              <div className="px-5 py-3.5 bg-slate-950/90 shrink-0 flex items-center justify-between gap-3 border-t border-slate-900">
-                <div className="hidden sm:flex items-center gap-1.5 text-[10.5px] text-slate-400 font-medium">
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+              <div className="px-5 py-3.5 bg-slate-50/95 shrink-0 flex items-center justify-between gap-3 border-t border-slate-100">
+                <div className="hidden sm:flex items-center gap-1.5 text-[10.5px] text-slate-500 font-medium">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
                   <span>Datos 100% seguros</span>
                 </div>
 
@@ -551,7 +554,7 @@ export default function BuyerRequestInfoPage() {
                   type="button"
                   onClick={() => handleSubmit()}
                   disabled={loading}
-                  className="w-full sm:w-auto sm:min-w-[240px] h-10 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-teal-900/20 text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full sm:w-auto sm:min-w-[240px] h-10 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl shadow-md shadow-teal-700/20 text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   {loading ? (
                     <>
@@ -570,32 +573,32 @@ export default function BuyerRequestInfoPage() {
             </div>
           ) : (
             /* Estado de Éxito */
-            <Card className="border-0 shadow-2xl bg-slate-900/90 rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in zoom-in-95 duration-300 max-w-md w-full backdrop-blur-xl">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-950/70 text-emerald-400 mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/10">
+            <Card className="border border-slate-100 shadow-2xl bg-white rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in zoom-in-95 duration-300 max-w-md w-full">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/10 border border-emerald-100">
                 <CheckCircle2 className="h-8 w-8" />
               </div>
 
               <div className="space-y-1.5">
-                <h2 className="text-xl font-black text-white tracking-tight">
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">
                   ¡Solicitud Registrada Exitosamente!
                 </h2>
-                <p className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed">
-                  Gracias <span className="font-bold text-teal-400">{fullName}</span>. Tus datos fueron transferidos a la etapa <span className="font-bold uppercase text-teal-300">LEAD</span> para atención prioritaria.
+                <p className="text-xs text-slate-600 max-w-xs mx-auto leading-relaxed">
+                  Gracias <span className="font-bold text-teal-600">{fullName}</span>. Tus datos fueron transferidos a la etapa <span className="font-bold uppercase text-teal-700">LEAD</span> para atención prioritaria.
                 </p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-950/80 text-left text-xs space-y-1.5 max-w-xs mx-auto">
-                <div className="flex items-center justify-between text-slate-400 text-[11px]">
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-1.5 max-w-xs mx-auto">
+                <div className="flex items-center justify-between text-slate-600 text-[11px]">
                   <span>Teléfono:</span>
-                  <span className="font-mono font-bold text-white">+51 {phone}</span>
+                  <span className="font-mono font-bold text-slate-900">+51 {phone}</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-400 text-[11px]">
+                <div className="flex items-center justify-between text-slate-600 text-[11px]">
                   <span>Sede preferida:</span>
-                  <span className="font-semibold text-white">{sede}</span>
+                  <span className="font-semibold text-slate-900">{sede}</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-400 text-[11px]">
+                <div className="flex items-center justify-between text-slate-600 text-[11px]">
                   <span>Canal asignado:</span>
-                  <span className="font-semibold text-teal-400">Portal Web (Meta Ads)</span>
+                  <span className="font-semibold text-teal-700">Portal Web (Meta Ads)</span>
                 </div>
               </div>
 
@@ -611,7 +614,7 @@ export default function BuyerRequestInfoPage() {
                     setTimeSlot('');
                     setTermsAccepted(false);
                   }}
-                  className="w-full sm:w-auto rounded-xl text-xs font-semibold px-4 h-9 border-slate-800 text-slate-200 bg-slate-800/60 hover:bg-slate-800 cursor-pointer"
+                  className="w-full sm:w-auto rounded-xl text-xs font-semibold px-4 h-9 border-slate-200 text-slate-700 bg-slate-50 hover:bg-slate-100 cursor-pointer"
                 >
                   Enviar otra solicitud
                 </Button>
