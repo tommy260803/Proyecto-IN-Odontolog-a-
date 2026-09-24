@@ -614,28 +614,75 @@ export default function BuyerRequestInfoPage() {
             </div>
           ) : (
             /* Estado de Éxito */
-            <Card className="border border-slate-200/80 shadow-none bg-white rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in zoom-in-95 duration-300 max-w-md w-full">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/10 border border-emerald-100">
-                <CheckCircle2 className="h-8 w-8" />
+            <Card className="border border-slate-200/90 shadow-2xl shadow-teal-950/10 bg-white rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in zoom-in-95 duration-500 max-w-md w-full relative">
+              
+              {/* Contenedor Animado del Checkmark con Auras de Resplandor */}
+              <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
+                {/* Aura 1: Pulso de onda expansiva */}
+                <div className="absolute inset-0 rounded-full bg-teal-400/20 animate-success-pulse pointer-events-none" />
+                
+                {/* Aura 2: Resplandor difuminado */}
+                <div className="absolute inset-1 rounded-full bg-emerald-500/15 blur-md pointer-events-none" />
+
+                {/* Insignia Central con Degradado Clínico */}
+                <div className="relative w-16 h-16 rounded-full bg-gradient-to-tr from-teal-600 via-emerald-600 to-teal-500 flex items-center justify-center shadow-lg shadow-teal-600/30 ring-4 ring-white">
+                  {/* SVG Animado de Trazado de Círculo y Check */}
+                  <svg className="w-10 h-10 text-white" viewBox="0 0 48 48" fill="none">
+                    {/* Círculo de base */}
+                    <circle
+                      cx="24"
+                      cy="24"
+                      r="21"
+                      stroke="rgba(255, 255, 255, 0.3)"
+                      strokeWidth="2.5"
+                    />
+                    {/* Círculo que se traza */}
+                    <circle
+                      cx="24"
+                      cy="24"
+                      r="21"
+                      stroke="#ffffff"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      className="animate-success-circle"
+                    />
+                    {/* Checkmark que se traza */}
+                    <path
+                      d="M14.5 24.5L21 31L33.5 17.5"
+                      stroke="#ffffff"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="animate-success-check"
+                    />
+                  </svg>
+                </div>
+
+                {/* Destellos / Sparkles flotantes */}
+                <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-amber-400 animate-success-sparkle" />
+                <Star className="absolute -bottom-1 -left-1 h-4 w-4 fill-teal-400 text-teal-400 animate-success-sparkle" style={{ animationDelay: '0.7s' }} />
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-150">
+                <Badge className="bg-teal-50 text-teal-700 border-teal-200 text-[10px] px-2.5 py-0.5 rounded-full font-bold mb-1">
+                  ✓ Registro Confirmado
+                </Badge>
                 <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                  ¡Solicitud Registrada Exitosamente!
+                  ¡Solicitud Registrada con Éxito!
                 </h2>
                 <p className="text-xs text-slate-600 max-w-xs mx-auto leading-relaxed">
                   Gracias <span className="font-bold text-teal-600">{fullName}</span>. Tus datos fueron transferidos a la etapa <span className="font-bold uppercase text-teal-700">LEAD</span> para atención prioritaria.
                 </p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-1.5 max-w-xs mx-auto">
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-1.5 max-w-xs mx-auto animate-in fade-in slide-in-from-bottom-3 duration-500 delay-200">
                 <div className="flex items-center justify-between text-slate-600 text-[11px]">
                   <span>Teléfono:</span>
                   <span className="font-mono font-bold text-slate-900">+51 {phone}</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-600 text-[11px]">
                   <span>Sede preferida:</span>
-                  <span className="font-semibold text-slate-900">{sede}</span>
+                  <span className="font-semibold text-slate-900">{sede || 'San Isidro (Principal)'}</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-600 text-[11px]">
                   <span>Canal asignado:</span>
@@ -643,7 +690,7 @@ export default function BuyerRequestInfoPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-1">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-1 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300">
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -655,14 +702,14 @@ export default function BuyerRequestInfoPage() {
                     setTimeSlot('');
                     setTermsAccepted(false);
                   }}
-                  className="w-full sm:w-auto rounded-xl text-xs font-semibold px-4 h-9 border-slate-200 text-slate-700 bg-slate-50 hover:bg-slate-100 cursor-pointer"
+                  className="w-full sm:w-auto rounded-xl text-xs font-semibold px-4 h-9 border-slate-200 text-slate-700 bg-slate-50 hover:bg-slate-100 cursor-pointer transition-all"
                 >
                   Enviar otra solicitud
                 </Button>
 
                 <Button
                   onClick={() => navigate('/buyer')}
-                  className="w-full sm:w-auto rounded-xl text-xs font-semibold px-5 h-9 bg-teal-600 hover:bg-teal-700 text-white shadow-sm cursor-pointer"
+                  className="w-full sm:w-auto rounded-xl text-xs font-semibold px-5 h-9 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white shadow-md shadow-teal-700/20 cursor-pointer transition-all"
                 >
                   Ir al Dashboard
                 </Button>
