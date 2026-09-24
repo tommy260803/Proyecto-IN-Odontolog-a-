@@ -41,6 +41,11 @@ import {
   Tag,
   TrendingDown,
   Award,
+  Copy,
+  Send,
+  MessageCircle,
+  HelpCircle,
+  CheckCheck,
 } from 'lucide-react';
 import { InteractiveAvailabilityPicker } from '../components/InteractiveAvailabilityPicker';
 
@@ -73,6 +78,10 @@ export default function LeadNegotiationPage() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingOptionTarget, setDeletingOptionTarget] = useState<any | null>(null);
   const [isDeletingOption, setIsDeletingOption] = useState(false);
+
+  // Estados para Copiloto de Objeciones y Seguimiento WhatsApp (Actividades 3 y 4)
+  const [objectionCategory, setObjectionCategory] = useState<'PRECIO' | 'HORARIO' | 'SEDE'>('PRECIO');
+  const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
 
   const fetchLeadData = () => {
     Promise.all([
@@ -333,6 +342,67 @@ export default function LeadNegotiationPage() {
   const isStudent = datAcad?.aplica === true || Boolean(datAcad?.universidad);
   const dolorLevel = saludOdonto?.nivel_dolor?.toLowerCase() || '';
   const hasUrgentPain = dolorLevel.includes('intenso') || dolorLevel.includes('moderado');
+  const opciones = lead.Solicitudes?.[lead.Solicitudes.length - 1]?.Opciones || [];
+
+  const selectedOptData = useMemo(() => {
+    return opciones.find((o: any) => o.id_opcion === selectedOpcion);
+  }, [opciones, selectedOpcion]);
+
+  const generateWhatsAppMessage = () => {
+    const patientFirstName = lead?.nombres || 'Paciente';
+    const ultimaSolicitud = lead.Solicitudes?.[lead.Solicitudes.length - 1];
+    const serviceName = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
+    
+    if (selectedOptData) {
+      const fecha = selectedOptData.Disponibilidad?.fecha?.split('T')[0] || '';
+      const hora = `${String(selectedOptData.Disponibilidad?.hora_inicio).substring(11, 16)} - ${String(selectedOptData.Disponibilidad?.hora_fin).substring(11, 16)}`;
+      const sede = selectedOptData.Disponibilidad?.Sede?.nombre || 'Sede Principal';
+      const doctor = `Esp. ${selectedOptData.Disponibilidad?.Profesional?.nombres || ''} ${selectedOptData.Disponibilidad?.Profesional?.apellidos || ''}`.trim();
+      const precio = Number(selectedOptData.precio_ofrecido).toFixed(2);
+
+      return `¡Hola ${patientFirstName}! 👋 Te saludamos de NexoSalud Dental.\n\n` +
+        `De acuerdo a lo coordinado para tu atención de *${serviceName}*, te dejamos los detalles de tu pre-reserva:\n` +
+        `📅 *Fecha:* ${fecha}\n` +
+        `⏰ *Horario:* ${hora}\n` +
+        `📍 *Sede:* ${sede}\n` +
+        `👨‍⚕️ *Especialista:* ${doctor}\n` +
+        `💰 *Tarifa acordada:* S/ ${precio}\n\n` +
+        `Para formalizar tu reserva y asegurar el sillón odontológico, indícanos tu método de pago preferido (Yape, Transferencia o Tarjeta) para enviarte la proforma oficial. ¡Te esperamos! ✨`;
+    }
+
+    if (opciones.length > 0) {
+      const resumenOpciones = opciones.map((o: any, idx: number) => 
+        `• *Opción ${idx + 1}:* ${o.Disponibilidad?.fecha?.split('T')[0]} (${String(o.Disponibilidad?.hora_inicio).substring(11, 16)} hrs) en Sede ${o.Disponibilidad?.Sede?.nombre} — S/ ${Number(o.precio_ofrecido).toFixed(2)}`
+      ).join('\n');
+
+      return `¡Hola ${patientFirstName}! 👋 De NexoSalud Dental.\n\n` +
+        `Tenemos disponibles las siguientes alternativas personalizadas para tu servicio de *${serviceName}*:\n\n` +
+        `${resumenOpciones}\n\n` +
+        `${isStudent ? '🎓 *Aplica tu descuento especial de convenio universitario (-15%).*\n\n' : ''}` +
+        `¿Cuál de estos horarios se acomoda mejor para ti? Quedamos atentos para reservar tu turno. 😊`;
+    }
+
+    return `¡Hola ${patientFirstName}! 👋 Te saludamos de NexoSalud Dental. Vemos tu solicitud para el servicio de *${serviceName}*. ¿Te gustaría coordinar una cita preferencial para esta semana? Quedamos atentos a tus comentarios. ✨`;
+  };
+
+  const handleSendWhatsApp = () => {
+    const rawPhone = (lead?.numero || '').replace(/\D/g, '');
+    const cleanPhone = rawPhone.length === 9 ? `51${rawPhone}` : rawPhone;
+    const message = generateWhatsAppMessage();
+    const url = cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+      : `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+    toast({ title: 'WhatsApp Abierto', description: 'Redirigiendo a WhatsApp con la propuesta comercial.' });
+  };
+
+  const handleCopyWhatsApp = () => {
+    const message = generateWhatsAppMessage();
+    navigator.clipboard.writeText(message);
+    setCopiedWhatsApp(true);
+    toast({ title: '¡Mensaje Copiado!', description: 'Texto copiado al portapapeles para enviar por chat.' });
+    setTimeout(() => setCopiedWhatsApp(false), 2000);
+  };
 
   return (
     <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
@@ -859,6 +929,238 @@ export default function LeadNegotiationPage() {
                 </div>
               )}
             </section>
+
+            {/* ── 3. Copiloto de Detección y Apoyo ante Objeciones (Actividad 3) ── */}
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 shadow-sm space-y-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/80 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">
+                    3
+                  </span>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                    Copiloto de Apoyo ante Objeciones
+                  </h3>
+                </div>
+                <span className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 rounded-md border border-teal-200/60 dark:border-teal-800/60">
+                  Asistente en Vivo
+                </span>
+              </div>
+
+              {/* Selector de tipo de objeción */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setObjectionCategory('PRECIO')}
+                  className={`text-[11px] font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${
+                    objectionCategory === 'PRECIO'
+                      ? 'bg-teal-600 text-white border-teal-600 shadow-2xs'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <DollarSign className="w-3.5 h-3.5" />
+                  <span>Objeción: "Está caro"</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setObjectionCategory('HORARIO')}
+                  className={`text-[11px] font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${
+                    objectionCategory === 'HORARIO'
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Objeción: "No puedo a esa hora"</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setObjectionCategory('SEDE')}
+                  className={`text-[11px] font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${
+                    objectionCategory === 'SEDE'
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>Objeción: "Me queda lejos"</span>
+                </button>
+              </div>
+
+              {/* Contenido contextual de la objeción seleccionada */}
+              {objectionCategory === 'PRECIO' && (
+                <div className="p-3 bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/70 rounded-xl space-y-2 text-xs">
+                  <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                    Argumento & Solución Comercial:
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Explica la garantía clínica de NexoSalud, instrumentación esterilizada y especialista colegiado. Si el paciente aún duda, aplica un descuento rápido sobre el precio oficial:
+                  </p>
+                  <div className="flex items-center gap-2 pt-1 flex-wrap">
+                    <Button
+                      size="sm"
+                      type="button"
+                      onClick={() => applyQuickDiscount(15)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs h-7 px-2.5 font-medium"
+                    >
+                      Aplicar -15% Convenio
+                    </Button>
+                    <Button
+                      size="sm"
+                      type="button"
+                      onClick={() => applyQuickDiscount(20)}
+                      className="bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs h-7 px-2.5 font-medium"
+                    >
+                      Aplicar -20% Pronto Pago
+                    </Button>
+                    <span className="text-[10px] text-slate-400">
+                      (Recuerda presionar "Añadir al Tablero" para crear la propuesta)
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {objectionCategory === 'HORARIO' && (
+                <div className="p-3 bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/70 rounded-xl space-y-2 text-xs">
+                  <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    Flexibilidad Horaria & Turnos Alternos:
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Utiliza el botón de <strong>"Personalizado"</strong> en el selector de turnos para pactar un horario especial o consulta fechas en fin de semana (Sábados).
+                  </p>
+                  <Button
+                    size="sm"
+                    type="button"
+                    onClick={() => setIsCustomMode(true)}
+                    className="bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs h-7 px-2.5 font-medium"
+                  >
+                    Activar Horario Personalizado
+                  </Button>
+                </div>
+              )}
+
+              {objectionCategory === 'SEDE' && (
+                <div className="p-3 bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/70 rounded-xl space-y-2 text-xs">
+                  <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-indigo-600" />
+                    Red de Sedes & Cobertura:
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                    NexoSalud cuenta con sedes en puntos estratégicos. Cambia la sede en el selector superior para ver qué especialistas atienden más cerca de la zona del paciente ({lead?.zona || 'Trujillo/Lima'}).
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* ── 4. Seguimiento Inteligente por WhatsApp (Actividad 4) ── */}
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">
+                    4
+                  </span>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                    Seguimiento Inteligente por WhatsApp
+                  </h3>
+                </div>
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/60">
+                  Mensaje Dinámico
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                    <MessageSquare className="w-3 h-3 text-emerald-500" />
+                    Vista Previa del Mensaje para el Paciente:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyWhatsApp}
+                    className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-teal-50 dark:hover:bg-teal-950/50"
+                  >
+                    {copiedWhatsApp ? <CheckCheck className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedWhatsApp ? '¡Copiado!' : 'Copiar texto'}
+                  </button>
+                </div>
+
+                <p className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-line bg-slate-50/80 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700/70 font-sans leading-relaxed">
+                  {generateWhatsAppMessage()}
+                </p>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <Button
+                    type="button"
+                    onClick={handleSendWhatsApp}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm flex items-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Abrir y Enviar por WhatsApp</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCopyWhatsApp}
+                    className="rounded-xl text-xs h-9 px-3 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                  >
+                    <Copy className="w-3.5 h-3.5 mr-1" />
+                    Copiar
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 5. Preparación y Resumen del Paso a PAYER (Actividad 5) ── */}
+            {selectedOptData && (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-50/90 to-emerald-50/80 dark:from-teal-950/40 dark:to-emerald-950/30 border border-teal-200/90 dark:border-teal-800/80 shadow-sm space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                <div className="flex items-center justify-between border-b border-teal-100 dark:border-teal-900/60 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-bold">
+                      5
+                    </span>
+                    <h4 className="text-xs font-bold text-teal-950 dark:text-teal-200 uppercase tracking-wider">
+                      Resumen del Trato Comercial (Paso a PAYER)
+                    </h4>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">
+                    Opción Seleccionada
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div className="bg-white/90 dark:bg-slate-900/90 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+                    <span className="text-[10px] text-slate-400 font-semibold block">Fecha & Turno</span>
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {selectedOptData.Disponibilidad?.fecha?.split('T')[0]} ({String(selectedOptData.Disponibilidad?.hora_inicio).substring(11, 16)})
+                    </span>
+                  </div>
+
+                  <div className="bg-white/90 dark:bg-slate-900/90 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+                    <span className="text-[10px] text-slate-400 font-semibold block">Sede</span>
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {selectedOptData.Disponibilidad?.Sede?.nombre}
+                    </span>
+                  </div>
+
+                  <div className="bg-white/90 dark:bg-slate-900/90 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+                    <span className="text-[10px] text-slate-400 font-semibold block">Especialista</span>
+                    <span className="font-bold text-slate-900 dark:text-white truncate block">
+                      Esp. {selectedOptData.Disponibilidad?.Profesional?.apellidos}
+                    </span>
+                  </div>
+
+                  <div className="bg-teal-100/80 dark:bg-teal-900/60 p-2.5 rounded-xl border border-teal-300/80 dark:border-teal-700 flex flex-col justify-center">
+                    <span className="text-[10px] text-teal-800 dark:text-teal-300 font-semibold block">Monto a Cobrar (PAYER)</span>
+                    <span className="font-black font-mono text-base text-teal-900 dark:text-teal-100">
+                      S/ {Number(selectedOptData.precio_ofrecido).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Acciones Finales de Mesa */}
             <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
