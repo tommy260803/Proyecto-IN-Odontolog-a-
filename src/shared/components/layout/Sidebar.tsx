@@ -7,6 +7,9 @@ import {
   HeartHandshake,
   Building2,
   Sparkles
+  Sparkles,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import { useSidebar } from '@/shared/context/SidebarContext';
 
@@ -117,6 +120,53 @@ export function Sidebar({ onClickItem }: { onClickItem?: () => void }) {
               </NavLink>
             ))}
           </nav>
+        </div>
+
+        {/* Sección de Simulación Externa / Portal Web */}
+        <div className="pt-2 border-t border-slate-200/70 dark:border-slate-800/80">
+          {!isCollapsed && (
+            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 mb-2 transition-opacity duration-300 animate-in fade-in flex items-center gap-1.5">
+              <Globe className="h-3 w-3" /> Simulación de Captura
+            </p>
+          )}
+          <NavLink
+            to="/solicitar-informacion"
+            onClick={onClickItem}
+            title={isCollapsed ? 'Portal Web Paciente (Landing Pública)' : undefined}
+            className={({ isActive }) =>
+              `group relative flex items-center rounded-xl transition-all duration-300 ease-in-out border border-teal-200/60 dark:border-teal-900/60 bg-teal-50/50 dark:bg-teal-950/30 hover:bg-teal-100/60 dark:hover:bg-teal-900/50 ${
+                isCollapsed ? 'justify-center p-3' : 'justify-between px-3.5 py-2.5'
+              } ${
+                isActive
+                  ? 'ring-2 ring-teal-500/40 text-teal-950 dark:text-teal-200'
+                  : 'text-teal-900 dark:text-teal-300'
+              }`
+            }
+          >
+            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} overflow-hidden`}>
+              <div className="p-1.5 rounded-lg bg-teal-600 text-white shrink-0 shadow-sm shadow-teal-600/30">
+                <Globe className="h-4 w-4" />
+              </div>
+
+              {!isCollapsed && (
+                <div className="flex flex-col text-left truncate animate-in fade-in duration-300">
+                  <span className="text-xs font-bold tracking-tight text-teal-950 dark:text-teal-200 truncate flex items-center gap-1">
+                    Portal Web Paciente
+                    <ExternalLink className="h-2.5 w-2.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                  </span>
+                  <span className="text-[10px] text-teal-700/80 dark:text-teal-400/80 truncate">
+                    Simular Captura / Ads
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {!isCollapsed && (
+              <span className="text-[9px] font-bold uppercase tracking-wider bg-teal-200/70 dark:bg-teal-900 text-teal-800 dark:text-teal-200 px-1.5 py-0.5 rounded-md font-mono shrink-0">
+                Web
+              </span>
+            )}
+          </NavLink>
         </div>
       </div>
 

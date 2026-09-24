@@ -1,0 +1,66 @@
+import * as React from 'react';
+import { Check } from 'lucide-react';
+import { cn } from '@/shared/utils';
+
+export interface CheckboxProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {
+  onCheckedChange?: (checked: boolean) => void;
+}
+
+const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
+  ({ className, checked, defaultChecked, onCheckedChange, onChange, ...props }, ref) => {
+    const isControlled = checked !== undefined;
+    const [internalChecked, setInternalChecked] = React.useState<boolean>(
+      Boolean(defaultChecked)
+    );
+
+    const isChecked = isControlled ? Boolean(checked) : internalChecked;
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newChecked = e.target.checked;
+      if (!isControlled) {
+        setInternalChecked(newChecked);
+      }
+      onChange?.(e);
+      onCheckedChange?.(newChecked);
+    };
+
+    return (
+      <div className="relative inline-flex items-center justify-center shrink-0">
+        <input
+          type="checkbox"
+          ref={ref}
+          checked={isChecked}
+          onChange={handleChange}
+          className="peer sr-only"
+          {...props}
+        />
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            const target = (e.currentTarget.previousSibling as HTMLInputElement);
+            if (target) {
+              target.click();
+            }
+          }}
+          className={cn(
+            'h-4 w-4 shrink-0 rounded border border-slate-300 dark:border-slate-700 transition-all cursor-pointer flex items-center justify-center',
+            'peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-teal-500 peer-focus-visible:ring-offset-2',
+            'peer-disabled:cursor-not-allowed peer-disabled:opacity-50',
+            isChecked
+              ? 'bg-teal-600 border-teal-600 text-white shadow-sm'
+              : 'bg-white dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-600',
+            className
+          )}
+        >
+          {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
+        </div>
+      </div>
+    );
+  }
+);
+
+Checkbox.displayName = 'Checkbox';
+
+export { Checkbox };
+

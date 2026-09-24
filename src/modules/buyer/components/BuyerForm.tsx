@@ -8,6 +8,8 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/shared/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/card';
+import { Card, CardContent } from '@/shared/components/ui/card';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import { buyerService } from '../services/buyer.service';
 import { useToast } from '@/shared/hooks/use-toast';
 import { 
@@ -28,6 +30,9 @@ import {
   Activity, 
   ShieldCheck, 
   ChevronDown 
+  FileText,
+  Radio,
+  Tag
 } from 'lucide-react';
 
 export interface BuyerFormRef {
@@ -60,10 +65,14 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
     modalidades?: any[];
     horarios?: any[];
   }>({ canales: [], fuentes: [], servicios: [], sedes: [], modalidades: [], horarios: [] });
+  }>({ canales: [], fuentes: [], servicios: [], sedes: [], horarios: [] });
 
   useEffect(() => {
     buyerService.getCatalogs()
       .then(setCatalogs)
+      .then((data) => {
+        setCatalogs(data);
+      })
       .catch((err) => console.error('Error loading buyer catalogs:', err));
   }, []);
 
@@ -72,6 +81,7 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
     resolver: zodResolver(buyerSchema) as any,
     mode: 'onChange',
     values: {
+    defaultValues: {
       firstName: initialValues?.firstName || '',
       lastName: initialValues?.lastName || '',
       documentType: initialValues?.documentType || 'DNI',
@@ -80,8 +90,11 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
       phone: initialValues?.phone || '',
       channel: initialValues?.channel || '',
       attractionSource: initialValues?.attractionSource || '',
+      channel: initialValues?.channel || '1', // default Canal WhatsApp o ID 1
+      attractionSource: initialValues?.attractionSource || '1', // default Meta Ads o ID 1
       serviceOfInterestId: initialValues?.serviceOfInterestId || '',
       pref_id_canal: initialValues?.pref_id_canal || '',
+      pref_sede_preferida: initialValues?.pref_sede_preferida || '',
       pref_id_horario: initialValues?.pref_id_horario || '',
       pref_id_modalidad: initialValues?.pref_id_modalidad || '',
       pref_sede_preferida: initialValues?.pref_sede_preferida || '',
@@ -104,6 +117,7 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
       sangrado_o_inflamacion: initialValues?.sangrado_o_inflamacion || '',
       usa_aparato_o_protesis: initialValues?.usa_aparato_o_protesis || '',
       condicion_atencion_especial: initialValues?.condicion_atencion_especial || '',
+      concreteRequest: initialValues?.concreteRequest || 'Consultar precio y disponibilidad',
       contactAuthorization: initialValues?.contactAuthorization ?? true,
     },
   });
@@ -120,6 +134,8 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
           toast({
             title: 'Faltan datos obligatorios',
             description: firstErrorMsg || 'Por favor verifica los campos resaltados en rojo.',
+            title: 'Campos requeridos incompletos',
+            description: firstErrorMsg || 'Por favor completa todos los campos obligatorios.',
             variant: 'destructive',
           });
         }
@@ -129,10 +145,14 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
 
   const watchIsEstudiante = form.watch('estudianteAplica');
   const watchIsLaboral = form.watch('laboralAplica');
+  const handleFormSubmit = (data: BuyerFormValues) => {
+    onSubmit(data);
+  };
 
   return (
     <Form {...form}>
       <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form id={formId} onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
         
         {/* 1. Identificación y Contacto */}
         <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm rounded-xl overflow-hidden">
@@ -149,9 +169,21 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                   Información personal básica del prospecto
                 </CardDescription>
               </div>
+        {/* Bloque 1: Identificación y Contacto */}
+        <Card className="border border-slate-200/90 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-xl overflow-hidden">
+          <div className="px-5 py-3.5 bg-slate-50/80 dark:bg-slate-800/40 border-b border-slate-200/80 dark:border-slate-800 flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 border border-teal-200/60 dark:border-teal-800/60">
+              <User className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Identificación y Contacto</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Datos esenciales para el primer contacto comercial y respuesta rápida.</p>
+            </div>
+          </div>
+
+          <CardContent className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="firstName"
@@ -159,11 +191,15 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                 <FormItem>
                   <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Nombres <span className="text-rose-500">*</span>
+                  <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                    Nombres <span className="text-rose-500 font-bold">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="Ej. Juan Carlos" 
                       className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus-visible:ring-teal-500 rounded-xl"
+                      placeholder="Ej: Lucía" 
+                      className="rounded-lg h-9.5 text-xs bg-slate-50/40 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900" 
                       {...field} 
                     />
                   </FormControl>
@@ -225,12 +261,15 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                   <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                     <CreditCard className="h-3 w-3 text-slate-400" />
                     Nº de Documento
+                    Apellidos <span className="text-rose-500 font-bold">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="Ej. 74839201"
                       maxLength={form.watch('documentType') === 'DNI' ? 8 : 20}
                       className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus-visible:ring-teal-500 rounded-xl"
+                      placeholder="Ej: Mendoza Rojas" 
+                      className="rounded-lg h-9.5 text-xs bg-slate-50/40 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900" 
                       {...field} 
                       onChange={(e) => {
                         if (form.watch('documentType') === 'DNI') {
@@ -253,15 +292,22 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                   <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                     <Phone className="h-3 w-3 text-slate-400" />
                     Teléfono / WhatsApp
+                    <Phone className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 inline" />
+                    Teléfono / WhatsApp <span className="text-rose-500 font-bold">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input 
                       type="tel" 
                       placeholder="Ej. +51 987 654 321" 
                       className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus-visible:ring-teal-500 rounded-xl"
+                      type="tel"
+                      placeholder="987654321" 
+                      maxLength={9}
+                      className="rounded-lg h-9.5 text-xs font-mono bg-slate-50/40 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900" 
                       {...field} 
                     />
                   </FormControl>
+                  <FormDescription className="text-[10px] text-slate-400">9 dígitos exactos (Perú)</FormDescription>
                   <FormMessage className="text-[11px]" />
                 </FormItem>
               )}
@@ -275,12 +321,19 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                   <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                     <Mail className="h-3 w-3 text-slate-400" />
                     Correo Electrónico
+                  <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Mail className="h-3.5 w-3.5 text-slate-400 inline" /> Correo Electrónico
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-normal">Opcional</span>
                   </FormLabel>
                   <FormControl>
                     <Input 
                       type="email" 
                       placeholder="Ej. paciente@ejemplo.com" 
                       className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus-visible:ring-teal-500 rounded-xl"
+                      placeholder="lucia.mendoza@ejemplo.com" 
+                      className="rounded-lg h-9.5 text-xs bg-slate-50/40 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900" 
                       {...field} 
                     />
                   </FormControl>
@@ -306,6 +359,11 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                   Origen de la prospección y requerimiento dental
                 </CardDescription>
               </div>
+        {/* Bloque 2: Interés Clínico y Preferencias */}
+        <Card className="border border-slate-200/90 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-xl overflow-hidden">
+          <div className="px-5 py-3.5 bg-slate-50/80 dark:bg-slate-800/40 border-b border-slate-200/80 dark:border-slate-800 flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 border border-teal-200/60 dark:border-teal-800/60">
+              <Stethoscope className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -346,20 +404,30 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                 </FormItem>
               )}
             />
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Interés Odontológico y Preferencias</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Servicio solicitado, motivo y condiciones preferidas de atención.</p>
+            </div>
+          </div>
 
+          <CardContent className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="attractionSource"
+              name="serviceOfInterestId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                     <Sparkles className="h-3 w-3 text-slate-400" />
                     Fuente de Atracción <span className="text-rose-500">*</span>
+                    Servicio de Interés <span className="text-rose-500 font-bold">*</span>
                   </FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium rounded-xl">
                         <SelectValue placeholder="Seleccionar fuente..." />
+                      <SelectTrigger className="rounded-lg h-9.5 text-xs bg-slate-50/40 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800">
+                        <SelectValue placeholder="Selecciona el servicio inicial" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
@@ -402,6 +470,9 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                     <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                       {catalogs.servicios.map((s: any) => (
                         <SelectItem key={s.id_servicio} value={s.id_servicio.toString()} className="text-xs text-slate-900 dark:text-slate-100">
+                    <SelectContent>
+                      {catalogs.servicios.map((s) => (
+                        <SelectItem key={s.id_servicio} value={s.id_servicio.toString()} className="text-xs">
                           {s.nombre}
                         </SelectItem>
                       ))}
@@ -461,6 +532,7 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
             <FormField
               control={form.control}
               name="pref_id_canal"
+              name="pref_sede_preferida"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -493,11 +565,15 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                   <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                     <Clock className="h-3 w-3 text-slate-400" />
                     Franja Horaria Preferida
+                    <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 inline" />
+                    Sede de Interés <span className="text-rose-500 font-bold">*</span>
                   </FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl">
                         <SelectValue placeholder="Seleccionar franja..." />
+                      <SelectTrigger className="rounded-lg h-9.5 text-xs bg-slate-50/40 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800">
+                        <SelectValue placeholder="Selecciona la sede" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
@@ -530,6 +606,11 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                         catalogs.modalidades.map((m: any) => (
                           <SelectItem key={m.id_modalidad} value={m.id_modalidad.toString()} className="text-xs text-slate-900 dark:text-slate-100">
                             {m.nombre}
+                    <SelectContent>
+                      {catalogs.sedes && catalogs.sedes.length > 0 ? (
+                        catalogs.sedes.map((sede) => (
+                          <SelectItem key={sede.id_sede || sede.nombre} value={sede.nombre} className="text-xs">
+                            {sede.nombre} {sede.direccion ? `(${sede.direccion})` : ''}
                           </SelectItem>
                         ))
                       ) : (
@@ -538,6 +619,9 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                           <SelectItem value="2" className="text-xs text-slate-900 dark:text-slate-100">Virtual</SelectItem>
                           <SelectItem value="3" className="text-xs text-slate-900 dark:text-slate-100">Teleconsulta</SelectItem>
                           <SelectItem value="4" className="text-xs text-slate-900 dark:text-slate-100">Domiciliaria</SelectItem>
+                          <SelectItem value="Sede San Isidro" className="text-xs">Sede San Isidro (Principal)</SelectItem>
+                          <SelectItem value="Sede Surco" className="text-xs">Sede Surco</SelectItem>
+                          <SelectItem value="Sede Los Olivos" className="text-xs">Sede Los Olivos</SelectItem>
                         </>
                       )}
                     </SelectContent>
@@ -550,16 +634,25 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
             <FormField
               control={form.control}
               name="pref_sede_preferida"
+              name="pref_id_horario"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                     <MapPin className="h-3 w-3 text-slate-400" />
                     Sede Preferida
+                  <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5 text-slate-400 inline" /> Franja Horaria Preferida
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-normal">Opcional</span>
                   </FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
                     <FormControl>
                       <SelectTrigger className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl">
                         <SelectValue placeholder="Seleccionar sede..." />
+                      <SelectTrigger className="rounded-lg h-9.5 text-xs bg-slate-50/40 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800">
+                        <SelectValue placeholder="Cualquier horario / Sin preferencia" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
@@ -568,6 +661,10 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                           {s.nombre}
                         </SelectItem>
                       ))}
+                    <SelectContent>
+                      <SelectItem value="1" className="text-xs">🌅 Mañana (08:00 - 13:00)</SelectItem>
+                      <SelectItem value="2" className="text-xs">☀️ Tarde (13:00 - 18:00)</SelectItem>
+                      <SelectItem value="3" className="text-xs">🌙 Noche (18:00 - 21:00)</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage className="text-[11px]" />
@@ -578,16 +675,22 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
             <FormField
               control={form.control}
               name="pref_profesional_preferido"
+              name="concreteRequest"
               render={({ field }) => (
                 <FormItem className="col-span-1 sm:col-span-2">
+                <FormItem>
                   <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                     <Stethoscope className="h-3 w-3 text-slate-400" />
                     Especialista Preferido
+                    <FileText className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 inline" />
+                    Motivo de Consulta / Necesidad <span className="text-rose-500 font-bold">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="Ej. Esp. Fernando Torres" 
                       className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus-visible:ring-teal-500 rounded-xl"
+                      placeholder="Ej: Consultar precio y disponibilidad de cita" 
+                      className="rounded-lg h-9.5 text-xs bg-slate-50/40 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900" 
                       {...field} 
                     />
                   </FormControl>
@@ -597,6 +700,8 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
             />
           </div>
         </details>
+          </CardContent>
+        </Card>
 
         {/* 4. Perfil de Salud Odontológica (Acordeón) */}
         <details className="group border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 overflow-hidden [&_summary::-webkit-details-marker]:hidden shadow-sm">
@@ -613,6 +718,11 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                   Antecedentes, sintomatología y nivel de dolor
                 </p>
               </div>
+        {/* Bloque 3: Trazabilidad & Consentimiento Legal */}
+        <Card className="border border-slate-200/90 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-xl overflow-hidden">
+          <div className="px-5 py-3.5 bg-slate-50/80 dark:bg-slate-800/40 border-b border-slate-200/80 dark:border-slate-800 flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 border border-teal-200/60 dark:border-teal-800/60">
+              <ShieldCheck className="h-4 w-4" />
             </div>
             <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
           </summary>
@@ -799,6 +909,10 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                 </FormItem>
               )}
             />
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Trazabilidad Comercial y Consentimiento</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Atribución de captación y consentimiento regulatorio.</p>
+            </div>
           </div>
         </details>
 
@@ -823,9 +937,12 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
           <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 space-y-5">
             {/* Sub-bloque Estudiante */}
             <div className="space-y-3 p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+          <CardContent className="p-5 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="estudianteAplica"
+                name="channel"
                 render={({ field }) => (
                   <FormItem className="flex items-center space-x-2.5 space-y-0 cursor-pointer">
                     <FormControl>
@@ -841,6 +958,26 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                       <GraduationCap className="h-3.5 w-3.5 text-indigo-500" />
                       ¿El paciente es estudiante actualmente?
                     </label>
+                  <FormItem>
+                    <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      <Radio className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 inline" />
+                      Canal de Origen
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="rounded-lg h-9.5 text-xs bg-slate-50/40 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800">
+                          <SelectValue placeholder="Selecciona el canal" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {catalogs.canales.map((c) => (
+                          <SelectItem key={c.id_canal} value={c.id_canal.toString()} className="text-xs">
+                            {c.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-[11px]" />
                   </FormItem>
                 )}
               />
@@ -888,15 +1025,45 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                   />
                 </div>
               )}
+              <FormField
+                control={form.control}
+                name="attractionSource"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      <Tag className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 inline" />
+                      Fuente de Atracción
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="rounded-lg h-9.5 text-xs bg-slate-50/40 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800">
+                          <SelectValue placeholder="Selecciona la fuente" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {catalogs.fuentes.map((f) => (
+                          <SelectItem key={f.id_fuente} value={f.id_fuente.toString()} className="text-xs">
+                            {f.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-[11px]" />
+                  </FormItem>
+                )}
+              />
             </div>
 
             {/* Sub-bloque Laboral */}
             <div className="space-y-3 p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
               <FormField
                 control={form.control}
                 name="laboralAplica"
+                name="contactAuthorization"
                 render={({ field }) => (
                   <FormItem className="flex items-center space-x-2.5 space-y-0 cursor-pointer">
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border border-teal-200/60 dark:border-teal-800/60 bg-teal-50/40 dark:bg-teal-950/20 p-3.5">
                     <FormControl>
                       <input 
                         type="checkbox" 
@@ -904,12 +1071,25 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                         className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
                         checked={field.value} 
                         onChange={field.onChange} 
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        className="mt-0.5 border-teal-500 text-teal-600 data-[state=checked]:bg-teal-600 data-[state=checked]:text-white"
                       />
                     </FormControl>
                     <label htmlFor="buyer-check-laboral" className="text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer flex items-center gap-1.5">
                       <Briefcase className="h-3.5 w-3.5 text-emerald-500" />
                       ¿El paciente labora actualmente?
                     </label>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-xs font-bold text-slate-900 dark:text-white cursor-pointer">
+                        Autorización de Contacto y Tratamiento de Datos <span className="text-rose-500">*</span>
+                      </FormLabel>
+                      <FormDescription className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                        El prospecto autoriza expresamente el envío de presupuestos, recordatorios y ofertas comerciales por WhatsApp y Correo (Ley N° 29733).
+                      </FormDescription>
+                      <FormMessage className="text-[11px] text-rose-500" />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -1020,12 +1200,16 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
 
         {!hideSubmitButton && (
           <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-end pt-2">
             <Button 
               type="submit" 
               disabled={isLoading} 
               className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold px-5 py-2 shadow-sm"
+              disabled={isLoading}
+              className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold px-6 py-2.5 shadow-sm"
             >
               {isLoading ? 'Guardando...' : (isEdit ? 'Actualizar Ficha BUYER' : 'Registrar Prospecto (BUYER)')}
+              {isLoading ? 'Registrando...' : 'Registrar Prospecto (BUYER)'}
             </Button>
           </div>
         )}
