@@ -166,8 +166,8 @@ export default function BuyerRequestInfoPage() {
       <div className="absolute inset-0 grid grid-cols-1 lg:grid-cols-2 pointer-events-none -z-10">
         {/* Mitad Izquierda: Azul Oscuro Profundo (Dark Slate/Navy) */}
         <div className="bg-slate-950 w-full h-full" />
-        {/* Mitad Derecha: Blanco Puro con Sombra Suave */}
-        <div className="hidden lg:block bg-slate-50/90 lg:bg-white w-full h-full border-l border-slate-200 shadow-[-12px_0_35px_rgba(0,0,0,0.05)]" />
+        {/* Mitad Derecha: Blanco Puro Plano */}
+        <div className="hidden lg:block bg-slate-50/90 lg:bg-white w-full h-full border-l border-slate-200" />
       </div>
 
       {/* Línea Central con Desvanecimiento Suave (Fading Divider) */}
@@ -287,10 +287,10 @@ export default function BuyerRequestInfoPage() {
 
         </div>
 
-        {/* Right Column: Formulario Plano con Fondo Blanco (Sin Bordes Pesados y Sin Scrollbar en Pantalla) */}
+        {/* Right Column: Formulario Plano con Fondo Blanco (Completamente Plano Sin Shadow) */}
         <div className="lg:col-span-6 xl:col-span-6 w-full flex justify-center lg:justify-end min-h-0 animate-in fade-in slide-in-from-right duration-300">
           {!submittedSuccess ? (
-            <div className="w-full max-w-lg bg-white rounded-3xl overflow-hidden flex flex-col max-h-[78vh] h-full shadow-2xl shadow-black/20 relative border border-slate-100">
+            <div className="w-full max-w-lg bg-white rounded-3xl overflow-hidden flex flex-col max-h-[78vh] h-full shadow-none border border-slate-200/60 relative">
               
               {/* Header Fijo (Estático) */}
               <div className="px-5 py-4 bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-700 text-white shrink-0 relative overflow-hidden">
@@ -581,7 +581,7 @@ export default function BuyerRequestInfoPage() {
             </div>
           ) : (
             /* Estado de Éxito */
-            <Card className="border border-slate-100 shadow-2xl bg-white rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in zoom-in-95 duration-300 max-w-md w-full">
+            <Card className="border border-slate-200/80 shadow-none bg-white rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in zoom-in-95 duration-300 max-w-md w-full">
               <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/10 border border-emerald-100">
                 <CheckCircle2 className="h-8 w-8" />
               </div>
