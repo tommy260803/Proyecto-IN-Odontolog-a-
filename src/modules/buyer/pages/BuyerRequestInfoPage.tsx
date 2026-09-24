@@ -28,6 +28,8 @@ import {
   User,
   Star,
   Zap
+  Zap,
+  Check
 } from 'lucide-react';
 
 export default function BuyerRequestInfoPage() {
@@ -270,6 +272,7 @@ export default function BuyerRequestInfoPage() {
             </div>
           </div>
 
+          {/* KPI Stats / Social Proof */}
           {/* KPI Stats / Social Proof */}
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-5 pt-1.5 border-t border-slate-800/60">
             <div>
@@ -533,13 +536,24 @@ export default function BuyerRequestInfoPage() {
                   {/* 7: Checkbox de Términos y Consentimiento */}
                   <div className="pt-0.5">
                     <div 
+                      role="checkbox"
+                      aria-checked={termsAccepted}
+                      tabIndex={0}
                       onClick={() => {
                         setTermsAccepted(prev => !prev);
                         if (errors.terms) setErrors(prev => ({ ...prev, terms: '' }));
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === 'Enter') {
+                          e.preventDefault();
+                          setTermsAccepted(prev => !prev);
+                          if (errors.terms) setErrors(prev => ({ ...prev, terms: '' }));
+                        }
+                      }}
                       className={`flex items-start space-x-3 rounded-xl p-2.5 transition-all border cursor-pointer select-none ${
                         termsAccepted 
                           ? 'bg-teal-50/70 border-teal-300 ring-1 ring-teal-400/20' 
+                          ? 'bg-teal-50/70 border-teal-300 ring-1 ring-teal-400/20 shadow-xs' 
                           : errors.terms 
                             ? 'bg-rose-50/60 border-rose-300 ring-1 ring-rose-400/20' 
                             : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
@@ -554,10 +568,25 @@ export default function BuyerRequestInfoPage() {
                         }}
                         className="mt-0.5 cursor-pointer !bg-white !border-slate-300 data-[state=checked]:!bg-teal-600 data-[state=checked]:!border-teal-600"
                       />
+                      <div className="mt-0.5 shrink-0">
+                        <div
+                          className={`h-5 w-5 rounded-md border-2 transition-all flex items-center justify-center shadow-xs ${
+                            termsAccepted
+                              ? 'bg-teal-600 border-teal-600 text-white'
+                              : 'border-slate-300 bg-white hover:border-teal-500'
+                          }`}
+                        >
+                          {termsAccepted && (
+                            <Check className="h-3.5 w-3.5 text-white stroke-[3.5]" stroke="#ffffff" />
+                          )}
+                        </div>
+                      </div>
                       <div className="space-y-0.5 leading-none">
                         <label htmlFor="terms" className="text-[11px] font-bold text-slate-800 cursor-pointer">
+                        <div className="text-[11px] font-bold text-slate-800 cursor-pointer">
                           Autorizo contacto por WhatsApp / Teléfono <span className="text-rose-500">*</span>
                         </label>
+                        </div>
                         <p className="text-[10px] text-slate-600 leading-tight">
                           Acepto los Términos y Política de Privacidad (Ley N° 29733) para agendamiento clínico.
                         </p>
