@@ -373,3 +373,191 @@ export async function callGroqAssistant(ctx: PayerContext): Promise<AiCollection
 
   return fallbackResult;
 }
+
+// ============================================================================
+// AGENTE DE MARKETING (ETAPA BUYER) — 4 ACTIVIDADES CLAVE DE BUSINESS INTELLIGENCE
+// ============================================================================
+
+export interface BuyerMarketingContext {
+  fullName: string;
+  phone?: string;
+  email?: string;
+  serviceOfInterest?: string;
+  preferredBranch?: string;
+  preferredTimeSlot?: string;
+  channel?: string;
+  attractionSource?: string;
+  concreteRequest?: string;
+  contactAuthorization?: boolean;
+  qualityStatus?: string;
+}
+
+export interface BuyerMarketingAnalysis {
+  dataQuality: {
+    status: 'Valido' | 'Incompleto' | 'Duplicado';
+    isValidPhone: boolean;
+    hasConsent: boolean;
+    explanation: string;
+  };
+  preferencesProfile: {
+    service: string;
+    branch: string;
+    timeSlot: string;
+    category: string;
+  };
+  attribution: {
+    channel: string;
+    source: string;
+    campaign: string;
+    insight: string;
+  };
+  intentEvaluation: {
+    hasConcreteIntent: boolean;
+    intentLevel: 'ALTA' | 'MEDIA' | 'AMBIGUA';
+    intentReason: string;
+    suggestedAction: 'CONVERT_TO_LEAD' | 'KEEP_IN_BUYER';
+    marketingRecommendation: string;
+  };
+}
+
+export async function analyzeBuyerMarketingAgent(ctx: BuyerMarketingContext): Promise<BuyerMarketingAnalysis> {
+  const cleanPhone = (ctx.phone || '').replace(/\D/g, '');
+  const isValidPhone = cleanPhone.length === 9;
+  const hasConsent = !!ctx.contactAuthorization;
+  
+  // 1. Actividad 1: Validación y Calidad de Datos
+  let qualityStatus: 'Valido' | 'Incompleto' | 'Duplicado' = 'Valido';
+  let qualityDetails = 'Registro con teléfono de 9 dígitos y consentimiento de Ley N° 29733 verificado.';
+  
+  if (ctx.qualityStatus === 'Duplicado') {
+    qualityStatus = 'Duplicado';
+    qualityDetails = 'Contacto ya registrado previamente en la base de datos clínica.';
+  } else if (!isValidPhone || !ctx.fullName || !hasConsent) {
+    qualityStatus = 'Incompleto';
+    qualityDetails = 'Faltan campos obligatorios o el teléfono no cuenta con 9 dígitos.';
+  }
+
+  // 2. Actividad 2: Clasificación de Preferencias
+  const service = ctx.serviceOfInterest || 'Consulta Odontológica General';
+  const branch = ctx.preferredBranch || 'Sede San Isidro (Principal)';
+  const timeSlot = ctx.preferredTimeSlot || 'Franja Flexible';
+  
+  let category = 'Odontología General';
+  const sLower = service.toLowerCase();
+  if (sLower.includes('orto') || sLower.includes('bracket')) category = 'Ortodoncia & Alineadores';
+  else if (sLower.includes('blanquea') || sLower.includes('diseño') || sLower.includes('estét')) category = 'Estética & Cosmética Dental';
+  else if (sLower.includes('implante') || sLower.includes('cirug')) category = 'Implantología & Cirugía Oral';
+  else if (sLower.includes('niño') || sLower.includes('pediat')) category = 'Odontopediatría';
+
+  // 3. Actividad 3: Origen de Captación
+  const channel = ctx.channel || 'Portal Web';
+  const source = ctx.attractionSource || 'Meta Ads (Instagram / FB)';
+  const campaign = 'Campaña Preventiva 2026';
+  const insight = `Prospecto captado a través de ${channel} atribuido a ${source}. Tráfico digital con alta intención de conversión.`;
+
+  // 4. Actividad 4: Evaluación de Intención Comercial (Heurística + Groq AI)
+  const reqLower = (ctx.concreteRequest || '').toLowerCase();
+  const commercialKeywords = ['precio', 'costo', 'cuanto', 'cuánto', 'cita', 'agendar', 'horario', 'disponib', 'doctor', 'especialista', 'sede', 'turno', 'cotiz', 'evalua', 'consulta', 'sábado', 'mañana', 'urgencia'];
+  const matchedKeywords = commercialKeywords.filter(k => reqLower.includes(k));
+
+  let hasConcreteIntent = matchedKeywords.length > 0 || reqLower.length > 10;
+  let intentLevel: 'ALTA' | 'MEDIA' | 'AMBIGUA' = 'ALTA';
+  let intentReason = 'El usuario solicita información concreta de precio, horario o agendamiento.';
+  let suggestedAction: 'CONVERT_TO_LEAD' | 'KEEP_IN_BUYER' = 'CONVERT_TO_LEAD';
+  let marketingRecommendation = 'Prospecto listo para pasar a LEAD. Se recomienda contactar en menos de 15 minutos vía WhatsApp.';
+
+  if (!hasConcreteIntent && reqLower.length < 5) {
+    intentLevel = 'AMBIGUA';
+    intentReason = 'Consulta genérica sin solicitud de precios o agendamiento específico.';
+    suggestedAction = 'KEEP_IN_BUYER';
+    marketingRecommendation = 'Mantener en BUYER y enviar mensaje de bienvenida con catálogo de servicios.';
+  } else if (matchedKeywords.length >= 2) {
+    intentLevel = 'ALTA';
+    intentReason = `Intención comercial explícita detectada (${matchedKeywords.join(', ')}). Cumple criterios para calificación comercial.`;
+    suggestedAction = 'CONVERT_TO_LEAD';
+  }
+
+  // Si hay API Key de Groq, enriquecer el análisis
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  if (apiKey && apiKey !== 'tu_groq_api_key_aqui' && ctx.concreteRequest) {
+    try {
+      const prompt = `Analiza la intención comercial del siguiente prospecto de odontología:
+- Paciente: ${ctx.fullName}
+- Servicio: ${service}
+- Motivo/Mensaje: "${ctx.concreteRequest}"
+- Canal: ${channel}
+
+Responde ÚNICAMENTE un JSON con:
+{
+  "hasConcreteIntent": true/false,
+  "intentLevel": "ALTA" | "MEDIA" | "AMBIGUA",
+  "intentReason": "breve explicación del motivo",
+  "suggestedAction": "CONVERT_TO_LEAD" | "KEEP_IN_BUYER",
+  "marketingRecommendation": "acción comercial recomendada en 1 línea"
+}`;
+
+      const res = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: GROQ_MODELS[0],
+          messages: [
+            { role: 'system', content: 'Eres el Agente de Marketing de NexoSalud Dental. Evalúas la intención comercial de los BUYERS.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.2,
+          max_tokens: 300,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content?.replace(/```json/gi, '')?.replace(/```/g, '')?.trim();
+        if (content) {
+          const parsed = JSON.parse(content);
+          if (parsed.intentLevel) {
+            hasConcreteIntent = Boolean(parsed.hasConcreteIntent ?? hasConcreteIntent);
+            intentLevel = parsed.intentLevel;
+            intentReason = parsed.intentReason || intentReason;
+            suggestedAction = parsed.suggestedAction || suggestedAction;
+            marketingRecommendation = parsed.marketingRecommendation || marketingRecommendation;
+          }
+        }
+      }
+    } catch {
+      // Usar resultado heurístico
+    }
+  }
+
+  return {
+    dataQuality: {
+      status: qualityStatus,
+      isValidPhone,
+      hasConsent,
+      explanation: qualityDetails
+    },
+    preferencesProfile: {
+      service,
+      branch,
+      timeSlot,
+      category
+    },
+    attribution: {
+      channel,
+      source,
+      campaign,
+      insight
+    },
+    intentEvaluation: {
+      hasConcreteIntent,
+      intentLevel,
+      intentReason,
+      suggestedAction,
+      marketingRecommendation
+    }
+  };
+}
+

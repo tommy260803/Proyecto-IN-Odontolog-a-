@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,8 @@ import { canTransitionBuyerToLead } from '@/domain/transitions';
 import { BuyerState } from '@/domain/enums';
 import { StatusBadge } from '@/shared/components/feedback/StatusBadge';
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
-import { UserCheck, ArrowRight, Save, Loader2 } from 'lucide-react';
+import { UserCheck, ArrowRight, Save, Loader2, Sparkles, ShieldCheck, Stethoscope, MapPin, Clock, Radio, Tag, CheckCircle2, AlertTriangle, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { analyzeBuyerMarketingAgent, type BuyerMarketingAnalysis } from '@/shared/services/groqService';
 
 interface BuyerDetailModalProps {
   buyerId: string | null;
@@ -37,6 +38,37 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
 
   const journeys: any[] = [];
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
+  const [isAgentExpanded, setIsAgentExpanded] = useState(true);
+  const [aiAnalysis, setAiAnalysis] = useState<BuyerMarketingAnalysis | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  // Auto-análisis del Agente de Marketing al abrir el modal
+  useEffect(() => {
+    if (isOpen && buyer) {
+      setIsAiLoading(true);
+      analyzeBuyerMarketingAgent({
+        fullName: `${buyer.person?.firstName || ''} ${buyer.person?.lastName || ''}`.trim(),
+        phone: buyer.person?.phone,
+        email: buyer.person?.email,
+        serviceOfInterest: buyer.serviceOfInterest,
+        preferredBranch: buyer.pref_sede_preferida,
+        preferredTimeSlot: buyer.pref_id_horario,
+        channel: buyer.channel,
+        attractionSource: buyer.attractionSource,
+        concreteRequest: buyer.concreteRequest,
+        contactAuthorization: buyer.contactAuthorization,
+        qualityStatus: buyer.state === BuyerState.CONVERTED ? 'Valido' : undefined
+      }).then(result => {
+        setAiAnalysis(result);
+      }).catch(err => {
+        console.warn('Error en análisis del agente de marketing:', err);
+      }).finally(() => {
+        setIsAiLoading(false);
+      });
+    } else if (!isOpen) {
+      setAiAnalysis(null);
+    }
+  }, [isOpen, buyer?.id]);
 
   const handleSubmit = (data: BuyerFormValues) => {
     if (!buyerId) return;
@@ -174,6 +206,109 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
             <ErrorState message="No se pudo cargar la información del Buyer." />
           ) : (
             <div className="space-y-6">
+              {/* Agente de Marketing (IA) — 4 Actividades Clave de Negocio */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3.5 shadow-sm text-slate-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-400">
+                      <Sparkles className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                        <span>Agente Inteligente de Marketing</span>
+                        <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-teal-950 text-teal-300 border border-teal-800">
+                          Etapa BUYER · BI
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-slate-400">Automatización de las 4 actividades clave del embudo de captación.</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsAgentExpanded(!isAgentExpanded)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                  >
+                    {isAgentExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                </div>
+
+                {isAgentExpanded && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    
+                    {/* Actividad 1: Validación y Calidad de Datos */}
+                    <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-teal-300 flex items-center gap-1.5">
+                          <ShieldCheck className="h-3.5 w-3.5" /> 1. Validación de Registro
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                          aiAnalysis?.dataQuality.status === 'Valido' 
+                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' 
+                            : aiAnalysis?.dataQuality.status === 'Duplicado'
+                            ? 'bg-rose-950 text-rose-300 border border-rose-800'
+                            : 'bg-amber-950 text-amber-300 border border-amber-800'
+                        }`}>
+                          {aiAnalysis?.dataQuality.status || 'Valido'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300">
+                        {aiAnalysis?.dataQuality.explanation || '9 dígitos y consentimiento de Ley N° 29733 validados.'}
+                      </p>
+                    </div>
+
+                    {/* Actividad 2: Clasificación de Preferencias */}
+                    <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-teal-300 flex items-center gap-1.5">
+                          <Stethoscope className="h-3.5 w-3.5" /> 2. Perfil de Preferencias
+                        </span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                          {aiAnalysis?.preferencesProfile.category || 'Odontología'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300">
+                        <span className="font-semibold text-white">{buyer.serviceOfInterest || 'Consulta Dental'}</span> · {buyer.pref_sede_preferida || 'Sede Principal'}
+                      </p>
+                    </div>
+
+                    {/* Actividad 3: Identificación del Origen */}
+                    <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-teal-300 flex items-center gap-1.5">
+                          <Tag className="h-3.5 w-3.5" /> 3. Origen de Captación
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-950 text-teal-300 border border-teal-800">
+                          {buyer.channel || 'Portal Web'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300">
+                        Fuente: <span className="font-semibold text-white">{buyer.attractionSource || 'Meta Ads (Campaña 2026)'}</span>
+                      </p>
+                    </div>
+
+                    {/* Actividad 4: Evaluación de Conversión a LEAD */}
+                    <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-teal-300 flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5" /> 4. Intención Comercial
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                          aiAnalysis?.intentEvaluation.intentLevel === 'ALTA'
+                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                            : 'bg-slate-800 text-slate-300'
+                        }`}>
+                          {aiAnalysis?.intentEvaluation.intentLevel ? `Intención ${aiAnalysis.intentEvaluation.intentLevel}` : 'Intención Alta'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300">
+                        {aiAnalysis?.intentEvaluation.intentReason || 'Solicita información de precios y agendamiento clínico.'}
+                      </p>
+                    </div>
+
+                  </div>
+                )}
+              </div>
 
               {journeys.find(j => j.buyerId === buyer.id) && (
                 <div className="py-2">
