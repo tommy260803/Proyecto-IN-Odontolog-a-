@@ -17,6 +17,7 @@ export interface DunningCycleResult {
     details: string;
     emailSent: boolean;
     emailRecipient?: string;
+    sentAt?: string;
   }>;
 }
 
@@ -164,7 +165,8 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
           stage: 'ETAPA_3_CANCELACION',
           details: `Cita cancelada a las 00:00 hrs. Sillón liberado para reasignación.`,
           emailSent,
-          emailRecipient: patientEmail
+          emailRecipient: patientEmail,
+          sentAt: now.toISOString()
         });
         continue;
       }
@@ -217,7 +219,8 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
           stage: 'ETAPA_2_URGENCIA',
           details: `Alerta de urgencia (vencimiento hoy a las 23:59) enviada por correo.`,
           emailSent,
-          emailRecipient: patientEmail
+          emailRecipient: patientEmail,
+          sentAt: now.toISOString()
         });
         continue;
       }
@@ -271,7 +274,8 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
           stage: 'ETAPA_1_PREVENTIVO',
           details: `Recordatorio preventivo (T-48h) enviado por correo.`,
           emailSent,
-          emailRecipient: patientEmail
+          emailRecipient: patientEmail,
+          sentAt: now.toISOString()
         });
         continue;
       }
@@ -282,7 +286,8 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
         patientName,
         stage: 'SIN_ACCION',
         details: `Cita para ${reservationDateStr} (${hoursUntilMidnightDeadline.toFixed(1)}h restantes). Dentro del margen regular.`,
-        emailSent: false
+        emailSent: false,
+        sentAt: now.toISOString()
       });
     }
 

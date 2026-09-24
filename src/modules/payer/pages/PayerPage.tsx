@@ -47,8 +47,19 @@ export default function PayerPage() {
   const [isLiveTailActive, setIsLiveTailActive] = useState(true);
   const [logFilterStage, setLogFilterStage] = useState('ALL');
   const [logSearchTerm, setLogSearchTerm] = useState('');
+  const [currentLiveTime, setCurrentLiveTime] = useState(new Date());
 
   // Live Tail Polling en Segundo Plano
+  // Reloj en tiempo real segundo a segundo cuando el modal está abierto
+  useEffect(() => {
+    if (!isCronModalOpen) return;
+    const clockInterval = setInterval(() => {
+      setCurrentLiveTime(new Date());
+    }, 1000);
+    return () => clearInterval(clockInterval);
+  }, [isCronModalOpen]);
+
+  // Live Tail Polling en Segundo Plano (cada 2 segundos)
   useEffect(() => {
     if (!isCronModalOpen || !isLiveTailActive) return;
 
@@ -65,6 +76,7 @@ export default function PayerPage() {
         // Silently ignore background poll errors
       }
     }, 4000);
+    }, 2000);
 
     return () => clearInterval(interval);
   }, [isCronModalOpen, isLiveTailActive]);
@@ -141,6 +153,7 @@ export default function PayerPage() {
             details: `Reserva por S/ ${p.amountToPay?.toFixed(2)} validada con éxito. No requiere cobro.`,
             emailSent: true,
             emailRecipient: email,
+            sentAt: new Date().toISOString()
           });
         } else if (p.state === 'REJECTED' || p.state === 'REVERTED') {
           stage3Count++;
@@ -151,6 +164,7 @@ export default function PayerPage() {
             details: `Vencimiento a las 00:00 hrs. Cita cancelada en BD y sillón odontológico liberado.`,
             emailSent: true,
             emailRecipient: email,
+            sentAt: new Date().toISOString()
           });
         } else {
           stage1Count++;
@@ -161,6 +175,7 @@ export default function PayerPage() {
             details: `T-48h Preventivo: Enlace de pago y proforma PDF de S/ ${p.amountToPay?.toFixed(2)} remitidos por correo.`,
             emailSent: true,
             emailRecipient: email,
+            sentAt: new Date().toISOString()
           });
         }
       });
@@ -180,6 +195,8 @@ export default function PayerPage() {
             details: 'T-48h: Recordatorio preventivo y proforma PDF de S/ 120.00 enviada por correo.',
             emailSent: true,
             emailRecipient: 'lucia.mendoza@ejemplo.com'
+            emailRecipient: 'lucia.mendoza@ejemplo.com',
+            sentAt: new Date().toISOString()
           },
           {
             reservationId: '102',
@@ -188,6 +205,8 @@ export default function PayerPage() {
             details: 'T-24h: Alerta de urgencia clínica remitida antes de medianoche (23:59).',
             emailSent: true,
             emailRecipient: 'carlos.rojas@ejemplo.com'
+            emailRecipient: 'carlos.rojas@ejemplo.com',
+            sentAt: new Date().toISOString()
           }
         ]
       };
@@ -717,12 +736,27 @@ export default function PayerPage() {
             <div className="bg-slate-950 text-slate-100 rounded-xl p-4 border border-slate-800 space-y-2.5 max-h-72 overflow-y-auto font-mono text-xs shadow-inner">
               <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px] font-sans font-bold text-slate-400">
                 <span className="flex items-center gap-1.5 text-teal-400">
+              <div className="flex items-center justify-between pb-2.5 border-b border-slate-800 text-[11px] font-sans font-bold text-slate-400 flex-wrap gap-2">
+                <span className="flex items-center gap-2 text-teal-400">
                   <Terminal className="w-3.5 h-3.5" />
                   LIVE TAIL CONSOLE · Emisión de Notificaciones & Auditoría
+                  <span>LIVE TAIL CONSOLE · Emisión de Notificaciones & Auditoría</span>
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
                 </span>
                 <span className="text-[10px] font-mono text-slate-400">
                   {dunningStats?.timestamp ? new Date(dunningStats.timestamp).toLocaleTimeString() : ''}
                 </span>
+                <div className="flex items-center gap-2 font-mono text-[11px]">
+                  <span className="text-emerald-400 bg-emerald-950/80 border border-emerald-800/80 px-2 py-0.5 rounded text-[10px] font-bold">
+                    EN VIVO
+                  </span>
+                  <span className="text-slate-300 font-medium">
+                    {currentLiveTime.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })} {currentLiveTime.toLocaleTimeString('es-PE', { hour12: true })}
+                  </span>
+                </div>
               </div>
               {filteredDunningLogs && filteredDunningLogs.length > 0 ? (
                 <div className="space-y-2 font-mono">
@@ -732,6 +766,52 @@ export default function PayerPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[10px] text-teal-400 font-bold font-mono">
                             [ID:{log.reservationId}]
+                  {filteredDunningLogs.map((log: any, i: number) => {
+                    const logDate = log.sentAt ? new Date(log.sentAt) : (dunningStats?.timestamp ? new Date(dunningStats.timestamp) : currentLiveTime);
+                    const formattedDateStr = logDate.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    const formattedTimeStr = logDate.toLocaleTimeString('es-PE', { hour12: true });
+
+                    return (
+                      <div key={i} className="text-xs p-3 rounded-lg bg-slate-900/90 border border-slate-800 flex items-start justify-between gap-3 leading-relaxed">
+                        <div className="space-y-1.5 flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 border-b border-slate-800/70 pb-1.5 flex-wrap">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[10px] text-teal-400 font-bold font-mono">
+                                [ID:{log.reservationId}]
+                              </span>
+                              <span className="font-bold text-white font-sans">{log.patientName}</span>
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                log.stage === 'ETAPA_3_CANCELACION' ? 'bg-rose-950 text-rose-300 border border-rose-800' :
+                                log.stage === 'ETAPA_2_URGENCIA' ? 'bg-amber-950 text-amber-300 border border-amber-800' :
+                                log.stage === 'ETAPA_1_PREVENTIVO' ? 'bg-teal-950 text-teal-300 border border-teal-800' :
+                                'bg-slate-800 text-slate-400'
+                              }`}>
+                                {log.stage.replace('ETAPA_', 'E-')}
+                              </span>
+                            </div>
+                            
+                            <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1.5 shrink-0 bg-slate-950/70 px-2 py-0.5 rounded border border-slate-800">
+                              <Clock className="w-3 h-3 text-teal-400" />
+                              <span>{formattedDateStr} · {formattedTimeStr}</span>
+                            </div>
+                          </div>
+
+                          <div className="text-[11px] text-slate-300 font-sans">
+                            {log.details}
+                          </div>
+
+                          {log.emailRecipient && (
+                            <div className="text-[10px] text-slate-400 flex items-center gap-1.5 font-sans pt-0.5">
+                              <Mail className="w-3 h-3 text-slate-500" />
+                              <span>Destinatario: <span className="text-slate-300 font-mono">{log.emailRecipient}</span></span>
+                            </div>
+                          )}
+                        </div>
+
+                        {log.emailSent && (
+                          <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-sans flex items-center gap-1 mt-0.5">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            <span>Correo Despachado</span>
                           </span>
                           <span className="font-bold text-white font-sans">{log.patientName}</span>
                           <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
@@ -761,6 +841,8 @@ export default function PayerPage() {
                       )}
                     </div>
                   ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-xs text-slate-400 italic py-4 text-center font-sans">
