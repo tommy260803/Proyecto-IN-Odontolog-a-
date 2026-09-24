@@ -6,7 +6,6 @@ import {
   Stethoscope,
   HeartHandshake,
   Building2,
-  Sparkles
   Sparkles,
   Globe,
   ExternalLink
