@@ -43,6 +43,7 @@ export default function BuyerRequestInfoPage() {
 
   const [loading, setLoading] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
+  const [isDuplicateSubmitted, setIsDuplicateSubmitted] = useState(false);
 
   // Form State
   const [fullName, setFullName] = useState('');
@@ -125,7 +126,7 @@ export default function BuyerRequestInfoPage() {
         f.nombre.toLowerCase().includes('orgánica')
       )?.id_fuente;
 
-      await buyerService.registerAndConvert({
+      const res = await buyerService.registerAndConvert({
         nombres: firstName,
         apellidos: lastName,
         email: email.trim() || undefined,
@@ -142,11 +143,20 @@ export default function BuyerRequestInfoPage() {
         concreteRequest: `Solicitud de Información y Evaluación Odontológica (Portal Web). Sede: ${sede || 'No especificada'}. Franja Horaria: ${timeSlot || 'Flexible'}`,
       });
 
+      const isDup = Boolean(res?.isDuplicate);
+      setIsDuplicateSubmitted(isDup);
       setSubmittedSuccess(true);
-      toast({
-        title: '¡Solicitud Recibida con Éxito!',
-        description: 'Un asesor comercial odontológico se pondrá en contacto contigo en breve.',
-      });
+      if (isDup) {
+        toast({
+          title: '¡Consulta Registrada!',
+          description: 'Identificamos que ya formas parte de nuestra base. Tu consulta ha sido anexada con prioridad a tu ficha existente.',
+        });
+      } else {
+        toast({
+          title: '¡Solicitud Recibida con Éxito!',
+          description: 'Un asesor comercial odontológico se pondrá en contacto contigo en breve.',
+        });
+      }
     } catch (error: any) {
       console.error(error);
       toast({
@@ -616,22 +626,20 @@ export default function BuyerRequestInfoPage() {
             /* Estado de Éxito */
             <Card className="border border-slate-200/90 shadow-xl lg:shadow-none bg-white rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in duration-400 max-w-md w-full relative">
               
-              {/* Contenedor Limpio del Checkmark: Fondo blanco, borde celeste/teal y check celeste/teal */}
+              {/* Contenedor Limpio del Checkmark */}
               <div className="flex justify-center items-center pt-1">
-                <div className="w-16 h-16 rounded-full bg-white border-2 border-teal-500 flex items-center justify-center shadow-none animate-circle-fade-in">
+                <div className={`w-16 h-16 rounded-full bg-white border-2 ${isDuplicateSubmitted ? 'border-purple-500' : 'border-teal-500'} flex items-center justify-center shadow-none animate-circle-fade-in`}>
                   <svg className="w-9 h-9" viewBox="0 0 48 48" fill="none">
-                    {/* Círculo base celeste muy sutil */}
                     <circle
                       cx="24"
                       cy="24"
                       r="20"
-                      stroke="rgba(13, 148, 136, 0.15)"
+                      stroke={isDuplicateSubmitted ? "rgba(147, 51, 234, 0.15)" : "rgba(13, 148, 136, 0.15)"}
                       strokeWidth="2"
                     />
-                    {/* Checkmark que se traza continuamente en celeste/teal */}
                     <path
                       d="M14 24.5L21 31.5L34 17"
-                      stroke="#0d9488"
+                      stroke={isDuplicateSubmitted ? "#9333ea" : "#0d9488"}
                       strokeWidth="3.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -643,10 +651,18 @@ export default function BuyerRequestInfoPage() {
 
               <div className="space-y-1.5">
                 <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                  ¡Solicitud Registrada con Éxito!
+                  {isDuplicateSubmitted ? '¡Consulta Registrada!' : '¡Solicitud Registrada con Éxito!'}
                 </h2>
                 <p className="text-xs text-slate-600 max-w-xs mx-auto leading-relaxed">
-                  Gracias <span className="font-bold text-teal-600">{fullName}</span>. Tus datos fueron transferidos a la etapa <span className="font-bold uppercase text-teal-700">LEAD</span> para atención prioritaria.
+                  {isDuplicateSubmitted ? (
+                    <>
+                      Hola <span className="font-bold text-purple-700">{fullName}</span>. Identificamos que ya formas parte de nuestra base de datos. Anexamos tu consulta a tu ficha con estado <span className="font-bold uppercase text-purple-700">DUPLICATED</span> para brindarte atención preferencial.
+                    </>
+                  ) : (
+                    <>
+                      Gracias <span className="font-bold text-teal-600">{fullName}</span>. Tus datos fueron transferidos a la etapa <span className="font-bold uppercase text-teal-700">LEAD</span> para atención prioritaria.
+                    </>
+                  )}
                 </p>
               </div>
 
@@ -660,8 +676,10 @@ export default function BuyerRequestInfoPage() {
                   <span className="font-semibold text-slate-900">{sede || 'San Isidro (Principal)'}</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-600 text-[11px]">
-                  <span>Canal asignado:</span>
-                  <span className="font-semibold text-teal-700">Portal Web (Meta Ads)</span>
+                  <span>Estado asignado:</span>
+                  <span className={`font-semibold font-mono ${isDuplicateSubmitted ? 'text-purple-700' : 'text-teal-700'}`}>
+                    {isDuplicateSubmitted ? 'DUPLICATED (Auditoría / Trazabilidad)' : 'Portal Web (LEAD)'}
+                  </span>
                 </div>
               </div>
 

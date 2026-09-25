@@ -3,6 +3,7 @@ export const BuyerState = {
   CONTACTED: 'CONTACTED',
   CONVERTED: 'CONVERTED',
   DISCARDED: 'DISCARDED',
+  DUPLICATED: 'DUPLICATED',
 } as const;
 export type BuyerState = (typeof BuyerState)[keyof typeof BuyerState];
 

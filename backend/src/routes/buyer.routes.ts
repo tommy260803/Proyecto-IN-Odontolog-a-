@@ -127,8 +127,27 @@ router.post('/register', async (req, res) => {
     let etapaLead = await prisma.etapas.findFirst({ where: { nombre: 'LEAD' } });
     if (!etapaLead) etapaLead = await prisma.etapas.create({ data: { nombre: 'LEAD', descripcion: 'Intención concreta' } });
 
+    const cleanPhone = numero ? String(numero).trim() : null;
+    const cleanEmail = email ? String(email).trim() : null;
+
     // 2. Transacción para asegurar la creación completa con FK sanitizadas
     const result = await prisma.$transaction(async (tx) => {
+      // Verificar si ya existe un registro con el mismo número o email
+      let isDuplicate = false;
+      if (cleanPhone || cleanEmail) {
+        const existingPerson = await tx.personas.findFirst({
+          where: {
+            OR: [
+              ...(cleanPhone ? [{ numero: cleanPhone }] : []),
+              ...(cleanEmail ? [{ email: cleanEmail }] : [])
+            ]
+          }
+        });
+        if (existingPerson) {
+          isDuplicate = true;
+        }
+      }
+
       // Asegurar o buscar canal de Página Web
       let webCanal = await tx.canales.findFirst({
         where: {
@@ -169,31 +188,24 @@ router.post('/register', async (req, res) => {
       const validServicio = await getValidServicioId(tx, id_servicio);
       const validServicioInteres = (await getValidServicioId(tx, id_servicio_interes)) || validServicio;
 
-      // Verificación de duplicado por teléfono o correo
-      const cleanPhone = (numero || '').replace(/\D/g, '');
-      const existingPerson = await tx.personas.findFirst({
-        where: {
-          OR: [
-            cleanPhone && cleanPhone.length >= 8 ? { numero: { contains: cleanPhone.slice(-8) } } : undefined,
-            email && email.trim() ? { email: email.trim().toLowerCase() } : undefined,
-          ].filter(Boolean) as any
-        }
-      });
-      const finalEstadoCalidad = existingPerson ? 'Duplicado' : (estado_calidad || 'Valido');
+      // Si es duplicado: se queda en etapa BUYER con estado_calidad 'Duplicado'
+      // Si NO es duplicado: avanza a etapa LEAD con estado_calidad 'Valido'
+      const targetEtapaId = isDuplicate ? etapaBuyer.id_etapa : etapaLead.id_etapa;
+      const finalCalidad = isDuplicate ? 'Duplicado' : (estado_calidad || 'Valido');
 
       const persona = await tx.personas.create({
         data: {
           nombres,
           apellidos,
-          email,
-          numero,
+          email: cleanEmail,
+          numero: cleanPhone,
           autoriza_contacto: autoriza_contacto || false,
           fecha_autorizacion: autoriza_contacto ? new Date() : null,
           id_campana_origen: validCampana,
           id_canal_origen: validCanalOrigen,
           tipo_persona: tipo_persona || 'Adulto General',
-          estado_calidad: finalEstadoCalidad,
-          id_etapa_actual: etapaLead.id_etapa,
+          estado_calidad: finalCalidad,
+          id_etapa_actual: targetEtapaId,
         }
       });
 
@@ -203,8 +215,10 @@ router.post('/register', async (req, res) => {
           id_persona: persona.id_persona,
           id_canal: validCanal,
           id_fuente: validFuente,
-          tipo: 'Registro y Solicitud de Info',
-          mensaje: 'El usuario llenó el formulario público de solicitud de información.'
+          tipo: isDuplicate ? 'Consulta Web (Duplicado Registrado)' : 'Registro y Solicitud de Info',
+          mensaje: isDuplicate 
+            ? 'El usuario reingresó datos ya existentes en el formulario web. Se guardó para trazabilidad e histórico con estado DUPLICATED.'
+            : 'El usuario llenó el formulario público de solicitud de información.'
         }
       });
 
@@ -225,24 +239,42 @@ router.post('/register', async (req, res) => {
         data: {
           id_persona: persona.id_persona,
           id_servicio: validServicio,
-          motivo: 'Solicitud de información desde formulario web',
+          motivo: isDuplicate 
+            ? 'Consulta recurrente / datos duplicados desde formulario web' 
+            : 'Solicitud de información desde formulario web',
         }
       });
 
-      // Generar evento de cambio de etapa (BUYER -> LEAD)
-      await tx.eventosEtapa.create({
-        data: {
-          id_persona: persona.id_persona,
-          etapa_origen: etapaBuyer.id_etapa,
-          etapa_destino: etapaLead.id_etapa,
-          motivo: 'Solicitud de información concreta',
-        }
-      });
+      // Generar evento de cambio de etapa SOLO SI NO ES DUPLICADO (BUYER -> LEAD)
+      if (!isDuplicate) {
+        await tx.eventosEtapa.create({
+          data: {
+            id_persona: persona.id_persona,
+            etapa_origen: etapaBuyer.id_etapa,
+            etapa_destino: etapaLead.id_etapa,
+            motivo: 'Solicitud de información concreta',
+          }
+        });
+      }
 
-      return { persona, solicitud };
+      return { persona, solicitud, isDuplicate };
     });
 
-    res.status(201).json({ message: 'Solicitud registrada correctamente. Pasado a estado LEAD.', data: result });
+    if (result.isDuplicate) {
+      return res.status(200).json({ 
+        success: true, 
+        isDuplicate: true, 
+        message: '¡Gracias por volver a escribirnos! Identificamos que ya formas parte de nuestra base de datos. Tu consulta ha sido anexada con prioridad a tu ficha existente.', 
+        data: result 
+      });
+    }
+
+    res.status(201).json({ 
+      success: true, 
+      isDuplicate: false, 
+      message: 'Solicitud registrada correctamente. Pasado a estado LEAD.', 
+      data: result 
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al registrar al BUYER' });
@@ -278,25 +310,34 @@ router.get('/', async (req, res) => {
       }
     });
 
-    // Pre-calcular frecuencias para deduplicación
+    // Precalcular frecuencias para identificar duplicados por teléfono o DNI
     const phoneCounts = new Map<string, number>();
     const dniCounts = new Map<string, number>();
     for (const p of personas) {
-      const cleanP = (p.numero || '').replace(/\D/g, '');
-      if (cleanP.length >= 8) {
-        const key = cleanP.slice(-8);
-        phoneCounts.set(key, (phoneCounts.get(key) || 0) + 1);
+      if (p.numero && p.numero.trim()) {
+        const ph = p.numero.trim();
+        phoneCounts.set(ph, (phoneCounts.get(ph) || 0) + 1);
       }
       if (p.dni && p.dni.trim()) {
-        dniCounts.set(p.dni.trim(), (dniCounts.get(p.dni.trim()) || 0) + 1);
+        const dn = p.dni.trim();
+        dniCounts.set(dn, (dniCounts.get(dn) || 0) + 1);
       }
     }
 
     // Mapeamos a BuyerWithPerson
     const buyers = personas.map(p => {
+      const isDuplicate = p.estado_calidad === 'Duplicado' || 
+        (p.numero && (phoneCounts.get(p.numero.trim()) || 0) > 1) ||
+        (p.dni && (dniCounts.get(p.dni.trim()) || 0) > 1);
+
       let state = 'NEW';
-      if (p.estado_calidad === 'Rechazado') state = 'DISCARDED';
-      else if (p.Etapa.nombre === 'LEAD' || p.Etapa.nombre === 'PAYER' || p.Etapa.nombre === 'CUSTOMER' || p.Etapa.nombre === 'TURNED') state = 'CONVERTED';
+      if (p.estado_calidad === 'Rechazado') {
+        state = 'DISCARDED';
+      } else if (p.estado_calidad === 'Duplicado' || (isDuplicate && p.Etapa.nombre === 'BUYER')) {
+        state = 'DUPLICATED';
+      } else if (p.Etapa.nombre === 'LEAD' || p.Etapa.nombre === 'PAYER' || p.Etapa.nombre === 'CUSTOMER' || p.Etapa.nombre === 'TURNED') {
+        state = 'CONVERTED';
+      }
 
       // Buscar fecha real de conversión a LEAD desde EventosEtapa
       const eventoConversion = p.EventosEtapa.find(e => e.EtapaDestino?.nombre === 'LEAD' || e.EtapaDestino?.nombre === 'PAYER' || e.EtapaDestino?.nombre === 'CUSTOMER');
@@ -333,14 +374,6 @@ router.get('/', async (req, res) => {
       const campaignName = p.CampanaOrigen?.nombre;
       const campaignCost = p.CampanaOrigen?.GastosCampana?.reduce((sum, g) => sum + Number(g.importe), 0);
 
-      const cleanPPhone = (p.numero || '').replace(/\D/g, '');
-      const phoneMatches = cleanPPhone.length >= 8 ? (phoneCounts.get(cleanPPhone.slice(-8)) || 0) : 0;
-      const dniMatches = (p.dni && p.dni.trim()) ? (dniCounts.get(p.dni.trim()) || 0) : 0;
-      const isDuplicate = phoneMatches > 1 || dniMatches > 1 || p.estado_calidad === 'Duplicado';
-      const duplicateReason = isDuplicate
-        ? (phoneMatches > 1 && dniMatches > 1 ? 'Teléfono y DNI coincidentes con otro contacto registrado' : phoneMatches > 1 ? 'Mismo número celular registrado múltiples veces' : 'Mismo documento de identidad registrado previamente')
-        : undefined;
-
       return {
         id: p.id_persona.toString(),
         personId: p.id_persona.toString(),
@@ -351,8 +384,6 @@ router.get('/', async (req, res) => {
           phone: p.numero,
           email: p.email,
         },
-        isDuplicate,
-        duplicateReason,
         channel: canalName,
         channelId: canalId,
         attractionSource: fuenteName,
@@ -363,7 +394,7 @@ router.get('/', async (req, res) => {
         serviceOfInterest: servicioName,
         serviceOfInterestId: servicioId,
         contactAuthorization: p.autoriza_contacto,
-        qualityStatus: p.estado_calidad || 'Valido',
+        qualityStatus: isDuplicate ? 'Duplicado' : (p.estado_calidad || 'Valido'),
         concreteRequest: motivo,
         createdAt: p.fecha_registro.toISOString(),
         convertedAt,
@@ -425,6 +456,22 @@ router.post('/', async (req, res) => {
     if (!etapaBuyer) etapaBuyer = await prisma.etapas.create({ data: { nombre: 'BUYER', descripcion: 'Contacto inicial' } });
 
     const result = await prisma.$transaction(async (tx) => {
+      // Verificar si ya existe por teléfono o DNI
+      let isDuplicate = false;
+      if (phoneToSave || dniToSave) {
+        const existing = await tx.personas.findFirst({
+          where: {
+            OR: [
+              ...(phoneToSave ? [{ numero: phoneToSave }] : []),
+              ...(dniToSave ? [{ dni: dniToSave }] : [])
+            ]
+          }
+        });
+        if (existing) {
+          isDuplicate = true;
+        }
+      }
+
       const validCampana = await getValidCampanaId(tx, id_campana_origen);
       const validCanalOrigen = await getValidCanalId(tx, id_canal_origen);
       const validChannel = await getValidCanalId(tx, channel);
@@ -434,18 +481,7 @@ router.post('/', async (req, res) => {
       const validPrefHorario = await getValidHorarioId(tx, pref_id_horario);
       const validPrefModalidad = await getValidModalidadId(tx, pref_id_modalidad);
 
-      // Verificación de duplicado por teléfono, DNI o correo
-      const cleanPhone = (phoneToSave || '').replace(/\D/g, '');
-      const existingPerson = await tx.personas.findFirst({
-        where: {
-          OR: [
-            cleanPhone && cleanPhone.length >= 8 ? { numero: { contains: cleanPhone.slice(-8) } } : undefined,
-            dniToSave ? { dni: dniToSave } : undefined,
-            email && email.trim() ? { email: email.trim().toLowerCase() } : undefined,
-          ].filter(Boolean) as any
-        }
-      });
-      const finalEstadoCalidad = existingPerson ? 'Duplicado' : (estado_calidad || 'Valido');
+      const finalCalidad = estado_calidad || (isDuplicate ? 'Duplicado' : 'Valido');
 
       const persona = await tx.personas.create({
         data: {
@@ -459,7 +495,7 @@ router.post('/', async (req, res) => {
           id_campana_origen: validCampana,
           id_canal_origen: validCanalOrigen,
           tipo_persona: tipo_persona || 'Adulto General',
-          estado_calidad: finalEstadoCalidad,
+          estado_calidad: finalCalidad,
           id_etapa_actual: etapaBuyer.id_etapa,
         }
       });

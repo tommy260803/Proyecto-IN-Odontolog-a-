@@ -134,9 +134,10 @@ export default function BuyerPage() {
     { 
       header: 'Estado', 
       cell: (b: BuyerWithPerson) => {
-        let variant: 'neutral' | 'success' | 'warning' | 'error' = 'neutral';
+        let variant: 'neutral' | 'success' | 'warning' | 'error' | 'purple' = 'neutral';
         if (b.state === BuyerState.CONVERTED) variant = 'success';
         if (b.state === BuyerState.DISCARDED) variant = 'error';
+        if (b.state === BuyerState.DUPLICATED) variant = 'purple';
         if (b.state === BuyerState.NEW) variant = 'warning';
         return <StatusBadge status={b.state} variant={variant} />;
       }
@@ -269,6 +270,7 @@ export default function BuyerPage() {
                 <SelectItem value={BuyerState.CONTACTED}>Contactado</SelectItem>
                 <SelectItem value={BuyerState.CONVERTED}>Convertido</SelectItem>
                 <SelectItem value={BuyerState.DISCARDED}>Descartado</SelectItem>
+                <SelectItem value={BuyerState.DUPLICATED}>Duplicado</SelectItem>
               </SelectContent>
             </Select>
           </div>

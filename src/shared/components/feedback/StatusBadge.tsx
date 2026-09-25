@@ -1,4 +1,4 @@
-type StatusVariant = 'success' | 'warning' | 'error' | 'neutral' | 'primary';
+type StatusVariant = 'success' | 'warning' | 'error' | 'neutral' | 'primary' | 'purple';
 
 interface StatusBadgeProps {
   status: string;
@@ -17,6 +17,10 @@ const variantStyles: Record<StatusVariant, { pill: string; dot: string }> = {
   error: {
     pill: 'bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/80',
     dot: 'bg-rose-500'
+  },
+  purple: {
+    pill: 'bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200/80 dark:border-purple-800/80',
+    dot: 'bg-purple-600 dark:bg-purple-400'
   },
   neutral: {
     pill: 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700',
