@@ -100,7 +100,76 @@ router.get('/catalogs', async (req, res) => {
   }
 });
 
-// Registrar BUYER e inmediatamente solicitar información (Convertir a LEAD)
+// Endpoint para verificar duplicidad en tiempo real (Client & Admin)
+router.get('/check-duplicate', async (req, res) => {
+  try {
+    const { phone, email, dni, excludeId } = req.query;
+
+    const rawPhone = phone ? String(phone).replace(/\D/g, '') : '';
+    const cleanPhone = rawPhone.length >= 9 ? rawPhone.slice(-9) : (rawPhone.length >= 7 ? rawPhone : null);
+    const cleanEmail = email ? String(email).trim().toLowerCase() : null;
+    const cleanDni = dni ? String(dni).trim() : null;
+
+    if (!cleanPhone && !cleanEmail && !cleanDni) {
+      return res.json({ isDuplicate: false });
+    }
+
+    const orConditions: any[] = [];
+    if (cleanPhone) {
+      orConditions.push({ numero: { contains: cleanPhone } });
+    }
+    if (cleanEmail && cleanEmail.includes('@')) {
+      orConditions.push({ email: { equals: cleanEmail, mode: 'insensitive' } });
+    }
+    if (cleanDni && cleanDni.length >= 8) {
+      orConditions.push({ dni: cleanDni });
+    }
+
+    if (orConditions.length === 0) {
+      return res.json({ isDuplicate: false });
+    }
+
+    const whereClause: any = { OR: orConditions };
+    if (excludeId && !isNaN(Number(excludeId))) {
+      whereClause.id_persona = { not: Number(excludeId) };
+    }
+
+    const existing = await prisma.personas.findFirst({
+      where: whereClause,
+      include: {
+        Etapa: true,
+      }
+    });
+
+    if (existing) {
+      let matchedBy = 'phone';
+      if (cleanDni && existing.dni === cleanDni) matchedBy = 'dni';
+      else if (cleanEmail && existing.email?.toLowerCase() === cleanEmail) matchedBy = 'email';
+
+      return res.json({
+        isDuplicate: true,
+        matchedBy,
+        person: {
+          id: existing.id_persona,
+          firstName: existing.nombres,
+          lastName: existing.apellidos,
+          phone: existing.numero,
+          email: existing.email,
+          documentNumber: existing.dni,
+          etapa: existing.Etapa?.nombre || 'BUYER',
+          estadoCalidad: existing.estado_calidad || 'Valido',
+        }
+      });
+    }
+
+    return res.json({ isDuplicate: false });
+  } catch (error) {
+    console.error('Error in check-duplicate:', error);
+    res.status(500).json({ error: 'Error al verificar duplicados' });
+  }
+});
+
+// Registrar BUYER e inmediatamente solicitar información (Convertir a LEAD si es único)
 router.post('/register', async (req, res) => {
   const {
     nombres,
@@ -120,35 +189,35 @@ router.post('/register', async (req, res) => {
   } = req.body;
 
   try {
-    // 1. Encontrar o crear Etapas
     let etapaBuyer = await prisma.etapas.findFirst({ where: { nombre: 'BUYER' } });
     if (!etapaBuyer) etapaBuyer = await prisma.etapas.create({ data: { nombre: 'BUYER', descripcion: 'Contacto inicial' } });
 
     let etapaLead = await prisma.etapas.findFirst({ where: { nombre: 'LEAD' } });
     if (!etapaLead) etapaLead = await prisma.etapas.create({ data: { nombre: 'LEAD', descripcion: 'Intención concreta' } });
 
-    const cleanPhone = numero ? String(numero).trim() : null;
-    const cleanEmail = email ? String(email).trim() : null;
+    const rawDigits = numero ? String(numero).replace(/\D/g, '') : '';
+    const cleanPhone = rawDigits.length >= 9 ? rawDigits.slice(-9) : (rawDigits.length >= 7 ? rawDigits : null);
+    const cleanEmail = email ? String(email).trim().toLowerCase() : null;
 
-    // 2. Transacción para asegurar la creación completa con FK sanitizadas
     const result = await prisma.$transaction(async (tx) => {
-      // Verificar si ya existe un registro con el mismo número o email
+      // 1. Detectar duplicado por teléfono o correo
       let isDuplicate = false;
-      if (cleanPhone || cleanEmail) {
-        const existingPerson = await tx.personas.findFirst({
-          where: {
-            OR: [
-              ...(cleanPhone ? [{ numero: cleanPhone }] : []),
-              ...(cleanEmail ? [{ email: cleanEmail }] : [])
-            ]
-          }
+      let existingPerson = null;
+
+      const dupChecks: any[] = [];
+      if (cleanPhone) dupChecks.push({ numero: { contains: cleanPhone } });
+      if (cleanEmail && cleanEmail.includes('@')) dupChecks.push({ email: { equals: cleanEmail, mode: 'insensitive' } });
+
+      if (dupChecks.length > 0) {
+        existingPerson = await tx.personas.findFirst({
+          where: { OR: dupChecks }
         });
         if (existingPerson) {
           isDuplicate = true;
         }
       }
 
-      // Asegurar o buscar canal de Página Web
+      // 2. Canal Web y Fuente Web
       let webCanal = await tx.canales.findFirst({
         where: {
           OR: [
@@ -164,7 +233,6 @@ router.post('/register', async (req, res) => {
         });
       }
 
-      // Asegurar o buscar fuente de Formulario Web
       let webFuente = await tx.fuentes.findFirst({
         where: {
           OR: [
@@ -188,8 +256,8 @@ router.post('/register', async (req, res) => {
       const validServicio = await getValidServicioId(tx, id_servicio);
       const validServicioInteres = (await getValidServicioId(tx, id_servicio_interes)) || validServicio;
 
-      // Si es duplicado: se queda en etapa BUYER con estado_calidad 'Duplicado'
-      // Si NO es duplicado: avanza a etapa LEAD con estado_calidad 'Valido'
+      // REGLA CLAVE: Si es duplicado, SE QUEDA EN BUYER con estado_calidad 'Duplicado'.
+      // Si es único, avanza a etapa LEAD con estado_calidad 'Valido'.
       const targetEtapaId = isDuplicate ? etapaBuyer.id_etapa : etapaLead.id_etapa;
       const finalCalidad = isDuplicate ? 'Duplicado' : (estado_calidad || 'Valido');
 
@@ -197,8 +265,8 @@ router.post('/register', async (req, res) => {
         data: {
           nombres,
           apellidos,
-          email: cleanEmail,
-          numero: cleanPhone,
+          email: email ? String(email).trim() : null,
+          numero: numero ? String(numero).trim() : null,
           autoriza_contacto: autoriza_contacto || false,
           fecha_autorizacion: autoriza_contacto ? new Date() : null,
           id_campana_origen: validCampana,
@@ -209,7 +277,6 @@ router.post('/register', async (req, res) => {
         }
       });
 
-      // Crear interacción (origen)
       await tx.interacciones.create({
         data: {
           id_persona: persona.id_persona,
@@ -217,12 +284,11 @@ router.post('/register', async (req, res) => {
           id_fuente: validFuente,
           tipo: isDuplicate ? 'Consulta Web (Duplicado Registrado)' : 'Registro y Solicitud de Info',
           mensaje: isDuplicate 
-            ? 'El usuario reingresó datos ya existentes en el formulario web. Se guardó para trazabilidad e histórico con estado DUPLICATED.'
+            ? 'El usuario reingresó datos ya existentes en el formulario web. Se guardó para trazabilidad e histórico con estado DUPLICATED sin promover a LEAD.'
             : 'El usuario llenó el formulario público de solicitud de información.'
         }
       });
 
-      // Guardar preferencias si existen
       if (sede_preferida || validCanal || validServicioInteres) {
         await tx.personaPreferencias.create({
           data: {
@@ -234,7 +300,6 @@ router.post('/register', async (req, res) => {
         });
       }
 
-      // Generar Solicitud
       const solicitud = await tx.solicitudes.create({
         data: {
           id_persona: persona.id_persona,
@@ -245,7 +310,7 @@ router.post('/register', async (req, res) => {
         }
       });
 
-      // Generar evento de cambio de etapa SOLO SI NO ES DUPLICADO (BUYER -> LEAD)
+      // Solo crea EventosEtapa si NO es duplicado
       if (!isDuplicate) {
         await tx.eventosEtapa.create({
           data: {
@@ -257,7 +322,7 @@ router.post('/register', async (req, res) => {
         });
       }
 
-      return { persona, solicitud, isDuplicate };
+      return { persona, solicitud, isDuplicate, existingPerson };
     });
 
     if (result.isDuplicate) {
@@ -310,12 +375,12 @@ router.get('/', async (req, res) => {
       }
     });
 
-    // Precalcular frecuencias para identificar duplicados por teléfono o DNI
+    // Precalcular frecuencias para identificar duplicados por teléfono (últimos 9 dígitos) o DNI
     const phoneCounts = new Map<string, number>();
     const dniCounts = new Map<string, number>();
     for (const p of personas) {
-      if (p.numero && p.numero.trim()) {
-        const ph = p.numero.trim();
+      const ph = (p.numero || '').replace(/\D/g, '').slice(-9);
+      if (ph.length >= 8) {
         phoneCounts.set(ph, (phoneCounts.get(ph) || 0) + 1);
       }
       if (p.dni && p.dni.trim()) {
@@ -326,8 +391,9 @@ router.get('/', async (req, res) => {
 
     // Mapeamos a BuyerWithPerson
     const buyers = personas.map(p => {
+      const ph = (p.numero || '').replace(/\D/g, '').slice(-9);
       const isDuplicate = p.estado_calidad === 'Duplicado' || 
-        (p.numero && (phoneCounts.get(p.numero.trim()) || 0) > 1) ||
+        (ph.length >= 8 && (phoneCounts.get(ph) || 0) > 1) ||
         (p.dni && (dniCounts.get(p.dni.trim()) || 0) > 1);
 
       let state = 'NEW';
@@ -458,14 +524,17 @@ router.post('/', async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       // Verificar si ya existe por teléfono o DNI
       let isDuplicate = false;
-      if (phoneToSave || dniToSave) {
+      const rawDigits = phoneToSave ? phoneToSave.replace(/\D/g, '') : '';
+      const last9 = rawDigits.length >= 9 ? rawDigits.slice(-9) : (rawDigits.length >= 7 ? rawDigits : null);
+
+      const dupChecks: any[] = [];
+      if (last9) dupChecks.push({ numero: { contains: last9 } });
+      if (dniToSave) dupChecks.push({ dni: dniToSave });
+      if (email && email.trim()) dupChecks.push({ email: { equals: email.trim(), mode: 'insensitive' } });
+
+      if (dupChecks.length > 0) {
         const existing = await tx.personas.findFirst({
-          where: {
-            OR: [
-              ...(phoneToSave ? [{ numero: phoneToSave }] : []),
-              ...(dniToSave ? [{ dni: dniToSave }] : [])
-            ]
-          }
+          where: { OR: dupChecks }
         });
         if (existing) {
           isDuplicate = true;

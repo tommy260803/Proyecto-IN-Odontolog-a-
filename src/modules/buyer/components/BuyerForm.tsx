@@ -22,9 +22,9 @@ import {
   FileText,
   Radio,
   Tag,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from 'lucide-react';
-import { useBuyers } from '../hooks/useBuyerQueries';
 
 export interface BuyerFormRef {
   submit: () => void;
@@ -64,8 +64,6 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
       .catch((err) => console.error('Error loading buyer catalogs:', err));
   }, []);
 
-  const { data: allBuyers = [] } = useBuyers();
-
   const form = useForm<BuyerFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(buyerSchema) as any,
@@ -75,7 +73,6 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
       lastName: initialValues?.lastName || '',
       email: initialValues?.email || '',
       phone: initialValues?.phone || '',
-      documentNumber: initialValues?.documentNumber || '',
       channel: initialValues?.channel || '1',
       attractionSource: initialValues?.attractionSource || '1',
       serviceOfInterestId: initialValues?.serviceOfInterestId || '',
@@ -86,27 +83,41 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
     },
   });
 
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    isDuplicate: boolean;
+    person?: { firstName: string; lastName: string; etapa: string; phone?: string; documentNumber?: string };
+    matchedBy?: string;
+  } | null>(null);
+
   const watchedPhone = form.watch('phone');
-  const watchedDni = form.watch('documentNumber');
+  const watchedEmail = form.watch('email');
 
-  const duplicateMatch = React.useMemo(() => {
-    if (!allBuyers || allBuyers.length === 0) return null;
-    const cleanPhone = (watchedPhone || '').trim().replace(/\D/g, '');
-    const cleanDni = (watchedDni || '').trim();
+  useEffect(() => {
+    const rawDigits = (watchedPhone || '').replace(/\D/g, '');
+    const cleanEmail = (watchedEmail || '').trim();
 
-    return allBuyers.find((b: any) => {
-      if (isEdit && (b.id === (initialValues as any)?.id || b.personId === (initialValues as any)?.personId)) {
-        return false;
-      }
-      const bPhone = (b.person?.phone || '').replace(/\D/g, '');
-      const bDni = (b.person?.documentNumber || '').trim();
-
-      const phoneMatches = cleanPhone.length >= 9 && bPhone === cleanPhone;
-      const dniMatches = cleanDni.length >= 8 && bDni === cleanDni;
-
-      return phoneMatches || dniMatches;
-    });
-  }, [watchedPhone, watchedDni, allBuyers, isEdit, initialValues]);
+    if (rawDigits.length >= 9 || (cleanEmail.includes('@') && cleanEmail.includes('.'))) {
+      const timer = setTimeout(async () => {
+        try {
+          const res = await buyerService.checkDuplicate({
+            phone: rawDigits.length >= 9 ? rawDigits : undefined,
+            email: cleanEmail.includes('@') ? cleanEmail : undefined,
+            excludeId: (initialValues as any)?.id,
+          });
+          if (res?.isDuplicate) {
+            setDuplicateWarning(res);
+          } else {
+            setDuplicateWarning(null);
+          }
+        } catch (err) {
+          console.warn('Error checking duplicate in BuyerForm:', err);
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setDuplicateWarning(null);
+    }
+  }, [watchedPhone, watchedEmail, initialValues]);
 
   useImperativeHandle(ref, () => ({
     submit: () => {
@@ -245,13 +256,16 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
               )}
             />
 
-            {duplicateMatch && (
+            {duplicateWarning?.isDuplicate && (
               <div className="md:col-span-2 flex items-start gap-2.5 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 text-purple-900 dark:text-purple-200 text-xs animate-in fade-in slide-in-from-top-1">
                 <AlertCircle className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
                 <div className="space-y-0.5">
-                  <p className="font-semibold text-purple-900 dark:text-purple-100">⚠️ Registro ya existente detectado en el sistema</p>
+                  <p className="font-bold text-[12px] flex items-center gap-1.5 text-purple-900 dark:text-purple-100">
+                    <span>⚠️ Registro ya existente detectado en el sistema</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-200 dark:bg-purple-900 text-purple-900 dark:text-purple-200 font-bold">DUPLICATED</span>
+                  </p>
                   <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
-                    Los datos ingresados coinciden con el paciente <strong>{duplicateMatch.person?.firstName} {duplicateMatch.person?.lastName}</strong>. Al guardar, este registro se guardará con estado <span className="font-mono font-bold bg-purple-200/80 dark:bg-purple-900/80 px-1 py-0.5 rounded text-purple-900 dark:text-purple-100">DUPLICATED</span> para control de calidad y auditoría.
+                    El {duplicateWarning.matchedBy === 'dni' ? 'DNI' : duplicateWarning.matchedBy === 'email' ? 'correo' : 'número telefónico'} ya se encuentra registrado a nombre de <strong>{duplicateWarning.person?.firstName} {duplicateWarning.person?.lastName}</strong> ({duplicateWarning.person?.etapa}). Al guardar, este registro se guardará con estado <strong className="font-mono bg-purple-200/80 dark:bg-purple-900/80 px-1 py-0.5 rounded">DUPLICATED</strong> para trazabilidad sin promover a LEAD.
                   </p>
                 </div>
               </div>

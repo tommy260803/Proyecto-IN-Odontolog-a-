@@ -47,6 +47,23 @@ export const buyerService = {
     return res.json();
   },
 
+  checkDuplicate: async (params: { phone?: string; email?: string; dni?: string; excludeId?: string }) => {
+    const query = new URLSearchParams();
+    if (params.phone) query.append('phone', params.phone);
+    if (params.email) query.append('email', params.email);
+    if (params.dni) query.append('dni', params.dni);
+    if (params.excludeId) query.append('excludeId', params.excludeId);
+
+    try {
+      const res = await fetch(`${API_URL}/buyer/check-duplicate?${query.toString()}`);
+      if (!res.ok) return { isDuplicate: false };
+      return res.json();
+    } catch (e) {
+      console.warn('Error checking duplicate:', e);
+      return { isDuplicate: false };
+    }
+  },
+
   registerAndConvert: async (data: any) => {
     if (!useApi) {
       const buyer = await buyerUseCases.createBuyer(data);

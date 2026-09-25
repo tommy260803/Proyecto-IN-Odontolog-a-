@@ -44,6 +44,11 @@ export default function BuyerRequestInfoPage() {
   const [loading, setLoading] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
   const [isDuplicateSubmitted, setIsDuplicateSubmitted] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    isDuplicate: boolean;
+    person?: { firstName: string; lastName: string; etapa: string };
+    matchedBy?: string;
+  } | null>(null);
 
   // Form State
   const [fullName, setFullName] = useState('');
@@ -62,6 +67,32 @@ export default function BuyerRequestInfoPage() {
       .then((data) => setCatalogs(data))
       .catch((err) => console.error('Error cargando catálogos:', err));
   }, []);
+
+  // Verificación en vivo de duplicidad al escribir teléfono o correo
+  useEffect(() => {
+    const rawDigits = phone.replace(/\D/g, '');
+    const cleanMail = email.trim();
+    if (rawDigits.length >= 9 || (cleanMail.includes('@') && cleanMail.includes('.'))) {
+      const timer = setTimeout(async () => {
+        try {
+          const res = await buyerService.checkDuplicate({
+            phone: rawDigits.length >= 9 ? rawDigits : undefined,
+            email: cleanMail.includes('@') ? cleanMail : undefined,
+          });
+          if (res?.isDuplicate) {
+            setDuplicateWarning(res);
+          } else {
+            setDuplicateWarning(null);
+          }
+        } catch (err) {
+          console.warn('Error checking duplicate in form:', err);
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setDuplicateWarning(null);
+    }
+  }, [phone, email]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -143,13 +174,13 @@ export default function BuyerRequestInfoPage() {
         concreteRequest: `Solicitud de Información y Evaluación Odontológica (Portal Web). Sede: ${sede || 'No especificada'}. Franja Horaria: ${timeSlot || 'Flexible'}`,
       });
 
-      const isDup = Boolean(res?.isDuplicate);
+      const isDup = Boolean(res?.isDuplicate || duplicateWarning?.isDuplicate);
       setIsDuplicateSubmitted(isDup);
       setSubmittedSuccess(true);
       if (isDup) {
         toast({
-          title: '¡Consulta Registrada!',
-          description: 'Identificamos que ya formas parte de nuestra base. Tu consulta ha sido anexada con prioridad a tu ficha existente.',
+          title: '¡Consulta Registrada (Paciente Frecuente)!',
+          description: 'Identificamos que ya formas parte de nuestra base de datos. Tu consulta ha sido anexada con prioridad a tu ficha existente.',
         });
       } else {
         toast({
@@ -415,6 +446,24 @@ export default function BuyerRequestInfoPage() {
                     </div>
                   </div>
 
+                  {/* Alerta interactiva en el mismo formulario si detecta duplicidad */}
+                  {duplicateWarning?.isDuplicate && (
+                    <div className="p-3 rounded-2xl bg-purple-50 border border-purple-200 text-purple-900 text-xs flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1">
+                      <div className="p-1 rounded-lg bg-purple-100 text-purple-700 shrink-0 mt-0.5">
+                        <Sparkles className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="font-bold text-[11.5px] text-purple-900 flex items-center gap-1.5">
+                          <span>¡Hola {duplicateWarning.person?.firstName || 'paciente'}! Identificamos que ya estás registrado</span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-200 text-purple-900 font-bold">DUPLICATED</span>
+                        </p>
+                        <p className="text-[10.5px] text-purple-700 leading-relaxed">
+                          Tu {duplicateWarning.matchedBy === 'email' ? 'correo electrónico' : 'número de WhatsApp'} ya figura en nuestra base clínica. Puedes enviar tu consulta con confianza: se anexará con prioridad a tu ficha existente bajo el estado <strong className="text-purple-950 font-bold">DUPLICATED</strong>.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* 4 & 5: Servicio de Interés y Sede */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Servicio de Interés */}
@@ -656,7 +705,7 @@ export default function BuyerRequestInfoPage() {
                 <p className="text-xs text-slate-600 max-w-xs mx-auto leading-relaxed">
                   {isDuplicateSubmitted ? (
                     <>
-                      Hola <span className="font-bold text-purple-700">{fullName}</span>. Identificamos que ya formas parte de nuestra base de datos. Anexamos tu consulta a tu ficha con estado <span className="font-bold uppercase text-purple-700">DUPLICATED</span> para brindarte atención preferencial.
+                      Hola <span className="font-bold text-purple-700">{fullName}</span>. Identificamos que ya formas parte de nuestra base de datos. Anexamos tu consulta a tu historial con estado <span className="font-bold uppercase text-purple-700">DUPLICATED</span> para brindarte atención preferencial sin duplicar tu ficha.
                     </>
                   ) : (
                     <>
