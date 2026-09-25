@@ -90,7 +90,7 @@ async function main() {
     }
   });
 
-  const horarioTarde = await prisma.horarios.create({
+  const campanaGoogle = await prisma.campanas.create({
     data: {
       dia_semana: 4, // Jueves
       hora_inicio: new Date('1970-01-01T14:00:00Z'),
