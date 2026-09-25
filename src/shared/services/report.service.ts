@@ -52,14 +52,25 @@ export const reportService = {
     return res.json();
   },
 
-  getAllExecutiveReports: async (): Promise<AllExecutiveReports> => {
-    const res = await fetch(`${API_URL}/reports/all-executive`);
+  getAllExecutiveReports: async (measures?: { buyer?: string; lead?: string; payer?: string; customer?: string }): Promise<AllExecutiveReports> => {
+    let query = '';
+    if (measures) {
+      const params = new URLSearchParams();
+      if (measures.buyer) params.append('buyerMeasure', measures.buyer);
+      if (measures.lead) params.append('leadMeasure', measures.lead);
+      if (measures.payer) params.append('payerMeasure', measures.payer);
+      if (measures.customer) params.append('customerMeasure', measures.customer);
+      const str = params.toString();
+      if (str) query = `?${str}`;
+    }
+    const res = await fetch(`${API_URL}/reports/all-executive${query}`);
     if (!res.ok) throw new Error('Error al obtener reportes ejecutivos');
     return res.json();
   },
 
-  getExecutiveReport: async (stage: 'buyer' | 'lead' | 'payer' | 'customer'): Promise<ExecutiveReportData> => {
-    const res = await fetch(`${API_URL}/reports/executive/${stage}`);
+  getExecutiveReport: async (stage: 'buyer' | 'lead' | 'payer' | 'customer', measure?: string): Promise<ExecutiveReportData> => {
+    const query = measure ? `?measure=${measure}` : '';
+    const res = await fetch(`${API_URL}/reports/executive/${stage}${query}`);
     if (!res.ok) throw new Error(`Error al obtener reporte ejecutivo de ${stage}`);
     return res.json();
   },

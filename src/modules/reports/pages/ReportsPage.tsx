@@ -19,6 +19,8 @@ import type {
   MartStatus 
 } from '@/shared/services/report.service';
 import { ExecutiveMatrixTable } from '../components/ExecutiveMatrixTable';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+
 
 type ActiveTab = 'buyer' | 'lead' | 'payer' | 'customer' | 'all';
 
@@ -36,6 +38,11 @@ export default function ReportsPage() {
   const [reports, setReports] = useState<AllExecutiveReports | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [buyerMeasure, setBuyerMeasure] = useState('contactos_registrados');
+  const [leadMeasure, setLeadMeasure] = useState('leads_cohorte');
+  const [payerMeasure, setPayerMeasure] = useState('pagos_registrados');
+  const [customerMeasure, setCustomerMeasure] = useState('citas_evaluables');
+
   const handleTabChange = (newTab: ActiveTab) => {
     setActiveTab(newTab);
     setSearchParams({ tab: newTab });
@@ -47,7 +54,12 @@ export default function ReportsPage() {
       setError(null);
       const [st, rep] = await Promise.all([
         reportService.getStatus(),
-        reportService.getAllExecutiveReports(),
+        reportService.getAllExecutiveReports({
+          buyer: buyerMeasure,
+          lead: leadMeasure,
+          payer: payerMeasure,
+          customer: customerMeasure
+        }),
       ]);
       setStatus(st);
       setReports(rep);
@@ -61,7 +73,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     loadExecutiveReports();
-  }, []);
+  }, [buyerMeasure, leadMeasure, payerMeasure, customerMeasure]);
 
   const renderSummaryCard = (report: ExecutiveReportData, icon: any) => {
     const Icon = icon;
@@ -213,12 +225,29 @@ export default function ReportsPage() {
           {/* TAB: BUYER */}
           {(activeTab === 'buyer' || activeTab === 'all') && (
             <section className="space-y-4">
-              {activeTab === 'all' && (
-                <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200">
-                  <span className="w-2.5 h-2.5 rounded-full bg-teal-500" />
-                  <span>ETAPA 01: CAPTACIÓN (BUYER)</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {activeTab === 'all' ? (
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200">
+                    <span className="w-2.5 h-2.5 rounded-full bg-teal-500" />
+                    <span>ETAPA 01: CAPTACIÓN (BUYER)</span>
+                  </div>
+                ) : <div />}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500">Medida (KPI):</span>
+                  <Select value={buyerMeasure} onValueChange={setBuyerMeasure}>
+                    <SelectTrigger className="w-[280px] h-9 text-xs">
+                      <SelectValue placeholder="Seleccione medida" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="contactos_registrados">Contactos registrados [Cant.]</SelectItem>
+                      <SelectItem value="contactos_utilizables">Contactos utilizables [Cant.]</SelectItem>
+                      <SelectItem value="conversiones_lead">Conversiones a LEAD [Cant.]</SelectItem>
+                      <SelectItem value="tiempo_conversion">Tiempo de conversión [Días]</SelectItem>
+                      <SelectItem value="costo_atribuido">Costo atribuido de captación [S/.]</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
+              </div>
               <ExecutiveMatrixTable data={reports.buyer} containerId="report-matrix-buyer" />
             </section>
           )}
@@ -226,12 +255,30 @@ export default function ReportsPage() {
           {/* TAB: LEAD */}
           {(activeTab === 'lead' || activeTab === 'all') && (
             <section className="space-y-4">
-              {activeTab === 'all' && (
-                <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200">
-                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
-                  <span>ETAPA 02: NEGOCIACIÓN (LEAD)</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {activeTab === 'all' ? (
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                    <span>ETAPA 02: NEGOCIACIÓN (LEAD)</span>
+                  </div>
+                ) : <div />}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500">Medida (KPI):</span>
+                  <Select value={leadMeasure} onValueChange={setLeadMeasure}>
+                    <SelectTrigger className="w-[320px] h-9 text-xs">
+                      <SelectValue placeholder="Seleccione medida" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="leads_cohorte">LEADs de cohorte evaluable [Cant.]</SelectItem>
+                      <SelectItem value="leads_convertidos_14d">Convertidos a PAYER en ≤ 14 días [Cant.]</SelectItem>
+                      <SelectItem value="leads_requieren_resp">Requieren respuesta [Cant.]</SelectItem>
+                      <SelectItem value="leads_resp_15m">1ra respuesta útil en ≤ 15 min [Cant.]</SelectItem>
+                      <SelectItem value="leads_resultado_final">LEADs con resultado final [Cant.]</SelectItem>
+                      <SelectItem value="leads_abandonados">LEADs abandonados [Cant.]</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
+              </div>
               <ExecutiveMatrixTable data={reports.lead} containerId="report-matrix-lead" />
             </section>
           )}
@@ -239,12 +286,31 @@ export default function ReportsPage() {
           {/* TAB: PAYER */}
           {(activeTab === 'payer' || activeTab === 'all') && (
             <section className="space-y-4">
-              {activeTab === 'all' && (
-                <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  <span>ETAPA 03: RECAUDACIÓN (PAYER)</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {activeTab === 'all' ? (
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    <span>ETAPA 03: RECAUDACIÓN (PAYER)</span>
+                  </div>
+                ) : <div />}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500">Medida (KPI):</span>
+                  <Select value={payerMeasure} onValueChange={setPayerMeasure}>
+                    <SelectTrigger className="w-[300px] h-9 text-xs">
+                      <SelectValue placeholder="Seleccione medida" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pagos_registrados">Pagos registrados [Cant.]</SelectItem>
+                      <SelectItem value="pagos_validados">Pagos validados [Cant.]</SelectItem>
+                      <SelectItem value="pagos_rechazados">Pagos rechazados [Cant.]</SelectItem>
+                      <SelectItem value="conversiones_customer">Conversiones a CUSTOMER [Cant.]</SelectItem>
+                      <SelectItem value="importe_total">Importe total de cobro [S/.]</SelectItem>
+                      <SelectItem value="costo_transacciones">Costo total de transacciones [S/.]</SelectItem>
+                      <SelectItem value="tiempo_validacion">Tiempo total de validación [Min.]</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
+              </div>
               <ExecutiveMatrixTable data={reports.payer} containerId="report-matrix-payer" />
             </section>
           )}
@@ -252,12 +318,29 @@ export default function ReportsPage() {
           {/* TAB: CUSTOMER */}
           {(activeTab === 'customer' || activeTab === 'all') && (
             <section className="space-y-4">
-              {activeTab === 'all' && (
-                <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200">
-                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" />
-                  <span>ETAPA 04: PRESTACIÓN CLÍNICA (CUSTOMER)</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {activeTab === 'all' ? (
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200">
+                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" />
+                    <span>ETAPA 04: PRESTACIÓN CLÍNICA (CUSTOMER)</span>
+                  </div>
+                ) : <div />}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500">Medida (KPI):</span>
+                  <Select value={customerMeasure} onValueChange={setCustomerMeasure}>
+                    <SelectTrigger className="w-[300px] h-9 text-xs">
+                      <SelectValue placeholder="Seleccione medida" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="citas_evaluables">Citas evaluables [Cant.]</SelectItem>
+                      <SelectItem value="atenciones_realizadas">Atenciones realizadas [Cant.]</SelectItem>
+                      <SelectItem value="citas_inasistencia">Citas con inasistencia [Cant.]</SelectItem>
+                      <SelectItem value="tiempo_sillon">Tiempo en sillón dental [Min.]</SelectItem>
+                      <SelectItem value="atenciones_conformes">Atenciones finalizadas conformes [Cant.]</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
+              </div>
               <ExecutiveMatrixTable data={reports.customer} containerId="report-matrix-customer" />
             </section>
           )}

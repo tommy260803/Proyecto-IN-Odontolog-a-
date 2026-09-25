@@ -217,241 +217,282 @@ router.get('/status', async (_req: Request, res: Response) => {
 });
 
 // ── BUILDER: BUYER MATRIX (DINÁMICO) ─────────────────────────────────────────
-async function getBuyerMatrix(): Promise<ExecutiveReportData> {
-  const checkDistinct = await queryMart<{ c: number }>(`
-    SELECT COUNT(DISTINCT e.EstadoCalidad) as c 
+async function getBuyerMatrix(measure: string = 'contactos_registrados'): Promise<ExecutiveReportData> {
+  let measureSQL = 'SUM(fc.ContactosRegistrados)';
+  let isCurrency = false;
+  let metricTitle = 'Contactos Registrados [Cant.]';
+
+  switch (measure) {
+    case 'contactos_utilizables':
+      measureSQL = 'SUM(fc.ContactosUtilizables)';
+      metricTitle = 'Contactos Utilizables [Cant.]';
+      break;
+    case 'conversiones_lead':
+      measureSQL = 'SUM(fc.ConversionesALead)';
+      metricTitle = 'Conversiones a LEAD [Cant.]';
+      break;
+    case 'tiempo_conversion':
+      measureSQL = 'AVG(CAST(fc.TiempoConversionDias AS FLOAT))';
+      metricTitle = 'Tiempo de Conversión [Días]';
+      break;
+    case 'costo_atribuido':
+      measureSQL = 'SUM(fc.CostoAtribuido)';
+      metricTitle = 'Costo Atribuido de Captación [S/.]';
+      isCurrency = true;
+      break;
+  }
+
+  const rawData = await queryMart<{
+    categoria: string;
+    item: string;
+    columna: string;
+    valor: number;
+  }>(`
+    SELECT 
+      ISNULL(f.TipoOrigen, 'Canal Digital') AS categoria,
+      ISNULL(c.NombreCanal, 'General') AS item,
+      ISNULL(s.Sede, 'Sede Principal') AS columna,
+      ${measureSQL} AS valor
     FROM Fact_CaptacionBuyer fc
-    JOIN Dim_EstadoRegistro e ON e.KeyEstadoRegistro = fc.KeyEstadoRegistro
-    WHERE e.EstadoCalidad IS NOT NULL AND e.KeyEstadoRegistro > 0
+    LEFT JOIN Dim_Canal c ON c.KeyCanal = fc.KeyCanal
+    LEFT JOIN Dim_Fuente f ON f.KeyFuente = fc.KeyFuente
+    LEFT JOIN Dim_Sede s ON s.KeySede = fc.KeySede
+    GROUP BY f.TipoOrigen, c.NombreCanal, s.Sede
   `);
 
-  let rows: Array<Record<string, any>> = [];
-
-  if (checkDistinct[0]?.c > 1) {
-    const rawData = await queryMart<{
-      categoria: string;
-      item: string;
-      columna: string;
-      valor: number;
-    }>(`
-      SELECT 
-        ISNULL(f.TipoOrigen, ISNULL(c.TipoMedio, 'Canal Digital')) AS categoria,
-        ISNULL(c.NombreCanal, 'General') AS item,
-        ISNULL(e.EstadoCalidad, 'Válidos') AS columna,
-        SUM(fc.ContactosRegistrados) AS valor
-      FROM Fact_CaptacionBuyer fc
-      LEFT JOIN Dim_Canal c ON c.KeyCanal = fc.KeyCanal
-      LEFT JOIN Dim_Fuente f ON f.KeyFuente = fc.KeyFuente
-      LEFT JOIN Dim_EstadoRegistro e ON e.KeyEstadoRegistro = fc.KeyEstadoRegistro
-      GROUP BY ISNULL(f.TipoOrigen, ISNULL(c.TipoMedio, 'Canal Digital')), c.NombreCanal, e.EstadoCalidad, e.KeyEstadoRegistro
-      ORDER BY e.KeyEstadoRegistro ASC
-    `);
-
-    const itemMap = new Map<string, Record<string, any>>();
-    rawData.forEach((r) => {
-      const key = `${r.categoria}|||${r.item}`;
-      if (!itemMap.has(key)) {
-        itemMap.set(key, { categoria: r.categoria, item: r.item });
-      }
-      itemMap.get(key)![r.columna] = Number(r.valor) || 0;
-    });
-    rows = Array.from(itemMap.values());
-  } else {
-    rows = await queryMart<Record<string, any>>(`
-      SELECT 
-        ISNULL(f.TipoOrigen, ISNULL(c.TipoMedio, 'Canal Digital')) AS categoria,
-        ISNULL(c.NombreCanal, 'Sin Canal') AS item,
-        SUM(fc.ContactosRegistrados) AS [Contactos Registrados],
-        SUM(fc.ContactosUtilizables) AS [Contactos Utilizables],
-        SUM(fc.ConversionesALead) AS [Conversiones a LEAD]
-      FROM Fact_CaptacionBuyer fc
-      LEFT JOIN Dim_Canal c ON c.KeyCanal = fc.KeyCanal
-      LEFT JOIN Dim_Fuente f ON f.KeyFuente = fc.KeyFuente
-      GROUP BY ISNULL(f.TipoOrigen, ISNULL(c.TipoMedio, 'Canal Digital')), c.NombreCanal
-    `);
-  }
+  const itemMap = new Map<string, Record<string, any>>();
+  rawData.forEach((r) => {
+    const key = `${r.categoria}|||${r.item}`;
+    if (!itemMap.has(key)) {
+      itemMap.set(key, { categoria: r.categoria, item: r.item });
+    }
+    itemMap.get(key)![r.columna] = Number(r.valor) || 0;
+  });
+  const rows = Array.from(itemMap.values());
 
   return buildDynamicMatrix(rows, {
     stage: 'BUYER',
     reportTitle: 'RESUMEN DE CAPTACIÓN. Etapa BUYER',
     period: 'Septiembre 2026',
-    metric: 'Estado de Calidad y Registro del Contacto',
+    metric: metricTitle,
     rowHeader: 'Fuente de Atracción / Canal',
-    superHeader: 'Estado de Calidad del Registro',
+    superHeader: 'Sede Física',
     totalColumnName: 'Total',
     grandTotalLabel: '** Totales Generales **',
-    isCurrency: false,
+    isCurrency,
     sourceMart: 'NexoSalud_Mart.Fact_CaptacionBuyer',
-    preferredColumnsOrder: ['Válidos', 'Incompletos', 'Duplicados', 'Rechazados'],
   });
 }
 
 // ── BUILDER: LEAD MATRIX (DINÁMICO) ──────────────────────────────────────────
-async function getLeadMatrix(): Promise<ExecutiveReportData> {
-  const rows = await queryMart<Record<string, any>>(`
+async function getLeadMatrix(measure: string = 'leads_cohorte'): Promise<ExecutiveReportData> {
+  let measureSQL = 'SUM(f.LeadsCohorteEvaluable)';
+  let metricTitle = 'LEADs de Cohorte Evaluable [Cant.]';
+
+  switch (measure) {
+    case 'leads_convertidos_14d':
+      measureSQL = 'SUM(f.LeadsConvertidosPayer14Dias)';
+      metricTitle = 'LEADs Convertidos a PAYER en ≤ 14 días [Cant.]';
+      break;
+    case 'leads_requieren_resp':
+      measureSQL = 'SUM(f.LeadsRequierenRespuesta)';
+      metricTitle = 'LEADs que Requieren Respuesta [Cant.]';
+      break;
+    case 'leads_resp_15m':
+      measureSQL = 'SUM(f.LeadsPrimeraRespuesta15Min)';
+      metricTitle = 'LEADs con Primera Respuesta ≤ 15 min [Cant.]';
+      break;
+    case 'leads_resultado_final':
+      measureSQL = 'SUM(f.LeadsConResultadoFinal)';
+      metricTitle = 'LEADs con Resultado Final [Cant.]';
+      break;
+    case 'leads_abandonados':
+      measureSQL = 'SUM(f.LeadsAbandonados)';
+      metricTitle = 'LEADs Abandonados [Cant.]';
+      break;
+  }
+
+  const rawData = await queryMart<{
+    categoria: string;
+    item: string;
+    columna: string;
+    valor: number;
+  }>(`
     SELECT 
       ISNULL(s.Sede, 'Sede Principal') AS categoria,
-      ISNULL(n.NombreNegociador, ISNULL(p.Odontologo, 'Operador Asignado')) AS item,
-      SUM(f.LeadsConvertidosPayer14Dias) AS [Convertidos a PAYER],
-      SUM(ISNULL(f.LeadsEnNegociacion, f.LeadsCohorteEvaluable - f.LeadsConvertidosPayer14Dias - f.LeadsAbandonados)) AS [En Negociación],
-      SUM(f.LeadsAbandonados) AS [Abandonados]
+      ISNULL(n.NombreNegociador, 'Operador Asignado') AS item,
+      ISNULL(serv.Categoria, 'Clínica Odontológica') AS columna,
+      ${measureSQL} AS valor
     FROM Fact_NegociacionLead f
     LEFT JOIN Dim_Sede s ON s.KeySede = f.KeySede
     LEFT JOIN Dim_Negociador n ON n.KeyNegociador = f.KeyNegociador
-    LEFT JOIN Dim_Profesional p ON p.KeyProfesional = f.KeyProfesional
-    GROUP BY s.Sede, ISNULL(n.NombreNegociador, ISNULL(p.Odontologo, 'Operador Asignado'))
+    LEFT JOIN Dim_Servicio serv ON serv.KeyServicio = f.KeyServicio
+    GROUP BY s.Sede, n.NombreNegociador, serv.Categoria
   `);
+
+  const itemMap = new Map<string, Record<string, any>>();
+  rawData.forEach((r) => {
+    const key = `${r.categoria}|||${r.item}`;
+    if (!itemMap.has(key)) {
+      itemMap.set(key, { categoria: r.categoria, item: r.item });
+    }
+    itemMap.get(key)![r.columna] = Number(r.valor) || 0;
+  });
+  const rows = Array.from(itemMap.values());
 
   return buildDynamicMatrix(rows, {
     stage: 'LEAD',
     reportTitle: 'RESUMEN DE NEGOCIACIÓN. Etapa LEAD',
     period: 'Septiembre 2026',
-    metric: 'Estado del Embudo por Negociador',
+    metric: metricTitle,
     rowHeader: 'Sede / Negociador',
-    superHeader: 'Estado del Embudo',
+    superHeader: 'Categoría de Servicio',
     totalColumnName: 'Total LEADs',
     grandTotalLabel: '** Totales **',
     isCurrency: false,
     sourceMart: 'NexoSalud_Mart.Fact_NegociacionLead',
-    preferredColumnsOrder: ['Convertidos a PAYER', 'En Negociación', 'Abandonados'],
   });
 }
 
 // ── BUILDER: PAYER MATRIX (DINÁMICO) ─────────────────────────────────────────
-async function getPayerMatrix(): Promise<ExecutiveReportData> {
-  const checkDistinct = await queryMart<{ c: number }>(`
-    SELECT COUNT(DISTINCT c.EstadoPago) as c 
-    FROM Fact_GestionPayer fp
-    JOIN Dim_Cobro c ON c.KeyCobro = fp.KeyCobro
-    WHERE c.EstadoPago IS NOT NULL AND c.KeyCobro > 0
+async function getPayerMatrix(measure: string = 'pagos_registrados'): Promise<ExecutiveReportData> {
+  let measureSQL = 'SUM(f.PagosRegistrados)';
+  let metricTitle = 'Pagos Registrados [Cant.]';
+  let isCurrency = false;
+
+  switch (measure) {
+    case 'pagos_validados':
+      measureSQL = 'SUM(f.PagosValidados)';
+      metricTitle = 'Pagos Validados [Cant.]';
+      break;
+    case 'pagos_rechazados':
+      measureSQL = 'SUM(f.PagosRechazados)';
+      metricTitle = 'Pagos Rechazados [Cant.]';
+      break;
+    case 'conversiones_customer':
+      measureSQL = 'SUM(f.ConversionesACustomer)';
+      metricTitle = 'Conversiones a CUSTOMER [Cant.]';
+      break;
+    case 'importe_total':
+      measureSQL = 'SUM(f.ImporteTotalCobro)';
+      metricTitle = 'Importe Total de Cobro [S/.]';
+      isCurrency = true;
+      break;
+    case 'costo_transacciones':
+      measureSQL = 'SUM(f.CostoTotalTransacciones)';
+      metricTitle = 'Costo Total de Transacciones [S/.]';
+      isCurrency = true;
+      break;
+    case 'tiempo_validacion':
+      measureSQL = 'AVG(CAST(f.TiempoValidacionMin AS FLOAT))';
+      metricTitle = 'Tiempo Total de Validación [Min.]';
+      break;
+  }
+
+  const rawData = await queryMart<{
+    categoria: string;
+    item: string;
+    columna: string;
+    valor: number;
+  }>(`
+    SELECT 
+      ISNULL(p.TipoMedio, 'Bancarizado / Digital') AS categoria,
+      ISNULL(p.MetodoPago, 'Canal General') AS item,
+      ISNULL(c.EstadoPago, 'VALIDATED') AS columna,
+      ${measureSQL} AS valor
+    FROM Fact_GestionPayer f
+    LEFT JOIN Dim_Pasarela p ON p.KeyPasarela = f.KeyPasarela
+    LEFT JOIN Dim_Cobro c ON c.KeyCobro = f.KeyCobro
+    GROUP BY p.TipoMedio, p.MetodoPago, c.EstadoPago
   `);
 
-  let rows: Array<Record<string, any>> = [];
-
-  if (checkDistinct[0]?.c > 1) {
-    const rawData = await queryMart<{
-      categoria: string;
-      item: string;
-      columna: string;
-      valor: number;
-    }>(`
-      SELECT 
-        ISNULL(p.TipoMedio, 'Bancarizado / Digital') AS categoria,
-        ISNULL(p.MetodoPago, 'Canal General') AS item,
-        ISNULL(c.EstadoPago, 'VALIDATED') AS columna,
-        SUM(f.ImporteTotalCobro) AS valor
-      FROM Fact_GestionPayer f
-      LEFT JOIN Dim_Pasarela p ON p.KeyPasarela = f.KeyPasarela
-      LEFT JOIN Dim_Cobro c ON c.KeyCobro = f.KeyCobro
-      GROUP BY p.TipoMedio, p.MetodoPago, c.EstadoPago, c.KeyCobro
-      ORDER BY c.KeyCobro ASC
-    `);
-
-    const itemMap = new Map<string, Record<string, any>>();
-    rawData.forEach((r) => {
-      const key = `${r.categoria}|||${r.item}`;
-      if (!itemMap.has(key)) {
-        itemMap.set(key, { categoria: r.categoria, item: r.item });
-      }
-      itemMap.get(key)![r.columna] = Number(r.valor) || 0;
-    });
-    rows = Array.from(itemMap.values());
-  } else {
-    rows = await queryMart<Record<string, any>>(`
-      SELECT 
-        ISNULL(p.TipoMedio, 'Canal de Recaudación') AS categoria,
-        ISNULL(p.MetodoPago, 'Canal Digital') AS item,
-        SUM(CASE WHEN f.PagosValidados > 0 THEN f.ImporteTotalCobro ELSE 0.0 END) AS [VALIDATED],
-        0.0 AS [PENDING],
-        0.0 AS [REJECTED]
-      FROM Fact_GestionPayer f
-      LEFT JOIN Dim_Pasarela p ON p.KeyPasarela = f.KeyPasarela
-      GROUP BY p.TipoMedio, p.MetodoPago
-    `);
-  }
+  const itemMap = new Map<string, Record<string, any>>();
+  rawData.forEach((r) => {
+    const key = `${r.categoria}|||${r.item}`;
+    if (!itemMap.has(key)) {
+      itemMap.set(key, { categoria: r.categoria, item: r.item });
+    }
+    itemMap.get(key)![r.columna] = Number(r.valor) || 0;
+  });
+  const rows = Array.from(itemMap.values());
 
   return buildDynamicMatrix(rows, {
     stage: 'PAYER',
     reportTitle: 'RESUMEN DE RECAUDACIÓN. Etapa PAYER',
     period: 'Septiembre 2026',
-    metric: 'Importe Total (S/.) por Canal de Pago',
+    metric: metricTitle,
     rowHeader: 'Modalidad / Canal',
     superHeader: 'Estado del Pago',
-    totalColumnName: 'Total (S/.)',
+    totalColumnName: 'Total',
     grandTotalLabel: '** Totales **',
-    isCurrency: true,
+    isCurrency,
     sourceMart: 'NexoSalud_Mart.Fact_GestionPayer',
     preferredColumnsOrder: ['VALIDATED', 'PENDING', 'REJECTED'],
   });
 }
 
 // ── BUILDER: CUSTOMER MATRIX (DINÁMICO) ──────────────────────────────────────
-async function getCustomerMatrix(): Promise<ExecutiveReportData> {
-  const checkDistinct = await queryMart<{ c: number }>(`
-    SELECT COUNT(DISTINCT dea.EstadoFinal) as c 
+async function getCustomerMatrix(measure: string = 'citas_evaluables'): Promise<ExecutiveReportData> {
+  let measureSQL = 'SUM(fa.CitasEvaluables)';
+  let metricTitle = 'Citas Evaluables [Cant.]';
+
+  switch (measure) {
+    case 'atenciones_realizadas':
+      measureSQL = 'SUM(fa.AtencionesRealizadas)';
+      metricTitle = 'Atenciones Realizadas [Cant.]';
+      break;
+    case 'citas_inasistencia':
+      measureSQL = 'SUM(fa.CitasConInasistencia)';
+      metricTitle = 'Citas con Inasistencia [Cant.]';
+      break;
+    case 'tiempo_sillon':
+      measureSQL = 'AVG(CAST(fa.TiempoSillonDentalMin AS FLOAT))';
+      metricTitle = 'Tiempo en Sillón Dental [Min.]';
+      break;
+    case 'atenciones_conformes':
+      measureSQL = 'SUM(fa.AtencionesFinalizadasConformes)';
+      metricTitle = 'Atenciones Finalizadas Conformes [Cant.]';
+      break;
+  }
+
+  const rawData = await queryMart<{
+    categoria: string;
+    item: string;
+    columna: string;
+    valor: number;
+  }>(`
+    SELECT 
+      ISNULL(serv.Categoria, 'Clínica Odontológica') AS categoria,
+      ISNULL(serv.ServicioOdontologico, 'Consulta General') AS item,
+      ISNULL(s.Sede, 'Sede Principal') AS columna,
+      ${measureSQL} AS valor
     FROM Fact_AtencionCustomer fa
-    JOIN Dim_EstadoAtencion dea ON dea.KeyEstadoAtencion = fa.KeyEstadoAtencion
-    WHERE dea.EstadoFinal IS NOT NULL AND dea.KeyEstadoAtencion > 0
+    LEFT JOIN Dim_Sede s ON s.KeySede = f.KeySede
+    LEFT JOIN Dim_Servicio serv ON serv.KeyServicio = fa.KeyServicio
+    GROUP BY serv.Categoria, serv.ServicioOdontologico, s.Sede
   `);
 
-  let rows: Array<Record<string, any>> = [];
-
-  if (checkDistinct[0]?.c > 1) {
-    const rawData = await queryMart<{
-      categoria: string;
-      item: string;
-      columna: string;
-      valor: number;
-    }>(`
-      SELECT 
-        ISNULL(serv.Categoria, ISNULL(s.Sede, 'Clínica Odontológica')) AS categoria,
-        ISNULL(serv.ServicioOdontologico, 'Consulta General') AS item,
-        ISNULL(dea.EstadoFinal, ISNULL(dea.Asistencia, 'Atendidos')) AS columna,
-        SUM(fa.CitasEvaluables) AS valor
-      FROM Fact_AtencionCustomer fa
-      LEFT JOIN Dim_Sede s ON s.KeySede = fa.KeySede
-      LEFT JOIN Dim_Servicio serv ON serv.KeyServicio = fa.KeyServicio
-      LEFT JOIN Dim_EstadoAtencion dea ON dea.KeyEstadoAtencion = fa.KeyEstadoAtencion
-      GROUP BY ISNULL(serv.Categoria, ISNULL(s.Sede, 'Clínica Odontológica')), serv.ServicioOdontologico, ISNULL(dea.EstadoFinal, ISNULL(dea.Asistencia, 'Atendidos')), dea.KeyEstadoAtencion
-      ORDER BY dea.KeyEstadoAtencion ASC
-    `);
-
-    const itemMap = new Map<string, Record<string, any>>();
-    rawData.forEach((r) => {
-      const key = `${r.categoria}|||${r.item}`;
-      if (!itemMap.has(key)) {
-        itemMap.set(key, { categoria: r.categoria, item: r.item });
-      }
-      itemMap.get(key)![r.columna] = Number(r.valor) || 0;
-    });
-    rows = Array.from(itemMap.values());
-  } else {
-    rows = await queryMart<Record<string, any>>(`
-      SELECT 
-        ISNULL(s.Sede, 'Sede Principal') AS categoria,
-        ISNULL(serv.ServicioOdontologico, 'Consulta General') AS item,
-        SUM(fa.AtencionesRealizadas) AS [Atendidos],
-        SUM(fa.CitasConInasistencia) AS [No Asistió (No-Show)],
-        SUM(fa.CitasEvaluables - fa.AtencionesRealizadas - fa.CitasConInasistencia) AS [Cancelados]
-      FROM Fact_AtencionCustomer fa
-      LEFT JOIN Dim_Sede s ON s.KeySede = fa.KeySede
-      LEFT JOIN Dim_Servicio serv ON serv.KeyServicio = fa.KeyServicio
-      GROUP BY s.Sede, serv.ServicioOdontologico
-    `);
-  }
+  const itemMap = new Map<string, Record<string, any>>();
+  rawData.forEach((r) => {
+    const key = `${r.categoria}|||${r.item}`;
+    if (!itemMap.has(key)) {
+      itemMap.set(key, { categoria: r.categoria, item: r.item });
+    }
+    itemMap.get(key)![r.columna] = Number(r.valor) || 0;
+  });
+  const rows = Array.from(itemMap.values());
 
   return buildDynamicMatrix(rows, {
     stage: 'CUSTOMER',
     reportTitle: 'RESUMEN DE PRESTACIÓN CLÍNICA. Etapa CUSTOMER',
     period: 'Septiembre 2026',
-    metric: 'Asistencia y Deserción por Servicio',
+    metric: metricTitle,
     rowHeader: 'Categoría / Servicio',
-    superHeader: 'Asistencia y Deserción',
-    totalColumnName: 'Total Citas',
+    superHeader: 'Sede Clínica',
+    totalColumnName: 'Total',
     grandTotalLabel: '** Totales **',
     isCurrency: false,
     sourceMart: 'NexoSalud_Mart.Fact_AtencionCustomer',
-    preferredColumnsOrder: ['Atendidos', 'No Asistió (No-Show)', 'Cancelados'],
   });
 }
 
@@ -459,19 +500,20 @@ async function getCustomerMatrix(): Promise<ExecutiveReportData> {
 router.get('/executive/:stage', async (req: Request, res: Response) => {
   try {
     const stage = String(req.params.stage || '').toLowerCase();
+    const measure = req.query.measure ? String(req.query.measure) : undefined;
     let data: ExecutiveReportData;
     switch (stage) {
       case 'buyer':
-        data = await getBuyerMatrix();
+        data = await getBuyerMatrix(measure);
         break;
       case 'lead':
-        data = await getLeadMatrix();
+        data = await getLeadMatrix(measure);
         break;
       case 'payer':
-        data = await getPayerMatrix();
+        data = await getPayerMatrix(measure);
         break;
       case 'customer':
-        data = await getCustomerMatrix();
+        data = await getCustomerMatrix(measure);
         break;
       default:
         return res.status(400).json({ error: `Etapa inválida: ${stage}. Use buyer, lead, payer o customer.` });
@@ -484,13 +526,18 @@ router.get('/executive/:stage', async (req: Request, res: Response) => {
 });
 
 // ── GET /api/reports/all-executive ──────────────────────────────────────────
-router.get('/all-executive', async (_req: Request, res: Response) => {
+router.get('/all-executive', async (req: Request, res: Response) => {
   try {
+    const buyerMeasure = req.query.buyerMeasure ? String(req.query.buyerMeasure) : undefined;
+    const leadMeasure = req.query.leadMeasure ? String(req.query.leadMeasure) : undefined;
+    const payerMeasure = req.query.payerMeasure ? String(req.query.payerMeasure) : undefined;
+    const customerMeasure = req.query.customerMeasure ? String(req.query.customerMeasure) : undefined;
+
     const [buyer, lead, payer, customer] = await Promise.all([
-      getBuyerMatrix(),
-      getLeadMatrix(),
-      getPayerMatrix(),
-      getCustomerMatrix(),
+      getBuyerMatrix(buyerMeasure),
+      getLeadMatrix(leadMeasure),
+      getPayerMatrix(payerMeasure),
+      getCustomerMatrix(customerMeasure),
     ]);
 
     res.json({
