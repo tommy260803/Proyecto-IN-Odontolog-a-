@@ -88,7 +88,7 @@ export async function executeNegotiatorAndDispatch(data: NegotiatorDispatchReque
             <p style="margin: 4px 0 0 0; font-size: 14px; opacity: 0.9;">Propuesta Comercial Personalizada</p>
           </div>
           <div style="padding: 24px;">
-            <p style="font-size: 16px; color: #1e293b; font-weight: 600; margin-top: 0;">¡Hola ${patient}!</p>
+            <p style="font-size: 16px; color: #1e293b; font-weight: 600; margin-top: 0;">¡Hola ${patient}! 👋</p>
             <p style="font-size: 14px; color: #475569; line-height: 1.6;">
               El equipo de especialistas de NexoSalud ha preparado un plan exclusivo para ti para el servicio de <strong>${service}</strong> en nuestra <strong>${sede}</strong>.
             </p>

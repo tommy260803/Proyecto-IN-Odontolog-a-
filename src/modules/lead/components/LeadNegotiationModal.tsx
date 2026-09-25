@@ -219,15 +219,6 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   // Estados para Copiloto de Objeciones y Seguimiento WhatsApp (Actividades 3 y 4)
   const [objectionCategory, setObjectionCategory] = useState<'PRECIO' | 'HORARIO' | 'SEDE'>('PRECIO');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
-  const [canvaLoading, setCanvaLoading] = useState(false);
-  const [canvaResult, setCanvaResult] = useState<{
-    success?: boolean;
-    flyerUrl?: string;
-    message?: string;
-    emailSent?: boolean;
-    canvaSource?: string;
-    details?: any;
-  } | null>(null);
 
   const fetchData = () => {
     if (!leadId) return;
@@ -548,66 +539,6 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     setCopiedWhatsApp(true);
     toast({ title: '¡Mensaje Copiado!', description: 'Texto copiado al portapapeles para enviar por chat o correo.' });
     setTimeout(() => setCopiedWhatsApp(false), 2000);
-  };
-
-  const handleGenerateCanvaAndDispatch = async () => {
-    try {
-      setCanvaLoading(true);
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-      const patientFullName = `${lead?.nombres || ''} ${lead?.apellidos || ''}`.trim() || 'Estimado Paciente';
-      const selectedService = catalogs?.servicios?.find((s: any) => s.id_servicio.toString() === altServicioId);
-      const selectedSede = catalogs?.sedes?.find((s: any) => s.id_sede.toString() === altSedeId);
-
-      const payload = {
-        leadId: lead?.id_persona || leadId,
-        patientName: patientFullName,
-        email: lead?.email,
-        phone: lead?.numero,
-        serviceName: selectedService?.nombre || 'Tratamiento Odontológico',
-        sedeName: selectedSede?.nombre || lead?.Preferencias?.[0]?.sede_preferida || 'Sede Principal',
-        price: Number(altPrecio) || 150,
-        originalPrice: Math.round((Number(altPrecio) || 150) * 1.3),
-        discountPercentage: 25,
-        urgencyText: `Válido por ${getVigenciaLabel(altVigencia, altVigenciaCustom)}`,
-        benefitText: altCondiciones || 'Evaluación 3D + Profilaxis de Regalo',
-        persuasiveCopy: generateWhatsAppMessage()
-      };
-
-      const res = await fetch(`${backendUrl}/api/lead/negotiate-and-dispatch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setCanvaResult(data);
-        toast({
-          title: '🎨 Canva Connect API ejecutado',
-          description: data.emailSent 
-            ? 'Flyer generado e inyectado con variables. Correo enviado al paciente.'
-            : 'Flyer generado con variables de Canva Autofill correctamente.'
-        });
-      } else {
-        throw new Error('No se pudo conectar al endpoint de Canva');
-      }
-    } catch (e: any) {
-      console.warn('Fallback Canva:', e.message);
-      const patientFullName = `${lead?.nombres || ''} ${lead?.apellidos || ''}`.trim() || 'Estimado Paciente';
-      setCanvaResult({
-        success: true,
-        flyerUrl: `https://dummyimage.com/800x480/0d9488/ffffff.png&text=Canva+Autofill+%7C+${encodeURIComponent(patientFullName)}+-+S/+${altPrecio}`,
-        message: '¡Propuesta generada mediante Canva Connect Autofill con éxito!',
-        canvaSource: 'canva_smart_preview',
-        emailSent: Boolean(lead?.email)
-      });
-      toast({
-        title: '🎨 Propuesta Canva Generada',
-        description: 'Plantilla de Canva Autofill procesada y vinculada a la negociación.'
-      });
-    } finally {
-      setCanvaLoading(false);
-    }
   };
 
   return (
@@ -1474,15 +1405,6 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                       </Button>
                       <Button
                         type="button"
-                        onClick={handleGenerateCanvaAndDispatch}
-                        disabled={canvaLoading}
-                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-md flex items-center gap-2"
-                      >
-                        <Sparkles className="w-4 h-4" />
-                        <span>{canvaLoading ? 'Generando en Canva...' : '🎨 Generar Flyer con Canva & Despachar'}</span>
-                      </Button>
-                      <Button
-                        type="button"
                         variant="outline"
                         onClick={handleCopyWhatsApp}
                         className="rounded-xl text-xs h-9 px-3 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
@@ -1491,51 +1413,6 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                         Copiar Mensaje
                       </Button>
                     </div>
-
-                    {/* ── Resultado del Flyer Canva Connect API (Autofill) ── */}
-                    {canvaResult && (
-                      <div className="mt-3 p-3.5 bg-gradient-to-r from-purple-50/90 to-indigo-50/80 dark:from-purple-950/30 dark:to-indigo-950/30 border border-purple-200/80 dark:border-purple-800/60 rounded-xl space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-purple-600 animate-pulse" />
-                            <span className="text-xs font-bold text-purple-950 dark:text-purple-200">
-                              Plantilla Canva Connect API (Autofill):
-                            </span>
-                          </div>
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-200/80 dark:bg-purple-900/80 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-700">
-                            {canvaResult.canvaSource === 'canva_live_api' ? '⚡ Canva Connect Live' : '🎨 Canva Autofill Preview'}
-                          </span>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row items-center gap-3">
-                          <img
-                            src={canvaResult.flyerUrl}
-                            alt="Flyer Canva"
-                            className="w-full sm:w-48 h-28 object-cover rounded-lg border border-purple-200 dark:border-purple-800 shadow-sm"
-                          />
-                          <div className="flex-1 space-y-1 text-xs">
-                            <p className="font-semibold text-slate-800 dark:text-slate-200">
-                              {canvaResult.message}
-                            </p>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                              Variables inyectadas: Sede ({catalogs?.sedes?.find((s: any) => s.id_sede.toString() === altSedeId)?.nombre || 'Sede Norte'}), Tarifa (S/ {altPrecio}), Tratamiento ({catalogs?.servicios?.find((s: any) => s.id_servicio.toString() === altServicioId)?.nombre || 'General'}).
-                            </p>
-                            <div className="pt-1 flex items-center gap-2">
-                              {canvaResult.flyerUrl && (
-                                <a
-                                  href={canvaResult.flyerUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-[11px] text-indigo-600 dark:text-indigo-400 underline font-medium"
-                                >
-                                  Ver Flyer en tamaño completo ↗
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
 

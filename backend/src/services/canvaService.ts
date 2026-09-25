@@ -34,7 +34,6 @@ export async function generateCanvaFlyer(params: CanvaAutofillParams): Promise<C
     try {
       console.log('🎨 [Canva API] Solicitando token y ejecutando Autofill en Canva Connect API...');
       
-      // 1. Obtener Access Token vía Client Credentials
       const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
       const tokenRes = await fetch('https://api.canva.com/rest/v1/oauth/token', {
         method: 'POST',
@@ -53,7 +52,6 @@ export async function generateCanvaFlyer(params: CanvaAutofillParams): Promise<C
         const accessToken = tokenData.access_token;
 
         if (accessToken) {
-          // 2. Crear trabajo de Autofill con las variables de la plantilla maestra
           const autofillRes = await fetch('https://api.canva.com/rest/v1/autofills', {
             method: 'POST',
             headers: {
@@ -95,19 +93,16 @@ export async function generateCanvaFlyer(params: CanvaAutofillParams): Promise<C
         }
       }
     } catch (apiError: any) {
-      console.warn('⚠️ [Canva API] Error al conectar con Canva Connect API directa, usando renderizado dinámico de alta fidelidad:', apiError.message);
+      console.warn('⚠️ [Canva API] Error al conectar con Canva Connect API directa:', apiError.message);
     }
   }
 
   // Generador de respaldo de alta fidelidad (Canva Template Mockup de Alta Resolución)
-  // Genera una imagen representativa y estructurada idéntica a la plantilla de Canva Pro
-  const encodedName = encodeURIComponent(params.patientName);
   const encodedService = encodeURIComponent(params.serviceName);
   const encodedSede = encodeURIComponent(params.sedeName);
   const encodedPrice = encodeURIComponent(`S/ ${params.price}`);
   const discountLabel = params.discountPercentage ? `-${params.discountPercentage}% OFF` : 'OFERTA EXCLUSIVA';
 
-  // Usamos una URL de imagen dinámica optimizada para correo y visualización instantánea
   const dynamicBanner = `https://dummyimage.com/800x480/0d9488/ffffff.png&text=NexoSalud+Dental+%7C+${encodedService}+-+${encodedPrice}+(${encodedSede})`;
 
   return {
