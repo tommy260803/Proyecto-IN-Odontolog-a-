@@ -415,4 +415,33 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// ── Agente Negociador: Generar con Canva y Despachar ──────────────────────
+import { executeNegotiatorAndDispatch } from '../services/negotiatorAgentService';
+
+router.post('/negotiate-and-dispatch', async (req, res) => {
+  try {
+    const { leadId, patientName, email, phone, serviceName, sedeName, price, originalPrice, discountPercentage, urgencyText, benefitText, persuasiveCopy } = req.body;
+    
+    const result = await executeNegotiatorAndDispatch({
+      leadId: leadId || 1,
+      patientName: patientName || 'Estimado Paciente',
+      email,
+      phone,
+      serviceName: serviceName || 'Evaluación Odontológica',
+      sedeName: sedeName || 'Sede Norte',
+      price: Number(price) || 150,
+      originalPrice: Number(originalPrice) || 200,
+      discountPercentage: Number(discountPercentage) || 25,
+      urgencyText,
+      benefitText,
+      persuasiveCopy
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error en negotiate-and-dispatch:', error);
+    res.status(500).json({ error: error.message || 'Error al procesar propuesta con Canva' });
+  }
+});
+
 export default router;
