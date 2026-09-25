@@ -28,7 +28,8 @@ import {
   User,
   Star,
   Zap,
-  Check
+  Check,
+  AlertCircle
 } from 'lucide-react';
 
 export default function BuyerRequestInfoPage() {
@@ -44,6 +45,7 @@ export default function BuyerRequestInfoPage() {
   const [loading, setLoading] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
   const [isDuplicateSubmitted, setIsDuplicateSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<{
     isDuplicate: boolean;
     person?: { firstName: string; lastName: string; etapa: string };
@@ -139,6 +141,7 @@ export default function BuyerRequestInfoPage() {
     }
 
     setLoading(true);
+    setSubmitError(null);
     try {
       const nameParts = fullName.trim().split(' ');
       const firstName = nameParts[0] || 'Prospecto';
@@ -190,9 +193,11 @@ export default function BuyerRequestInfoPage() {
       }
     } catch (error: any) {
       console.error(error);
+      const errMsg = error?.message || 'Hubo un inconveniente al procesar tu solicitud. Inténtalo nuevamente.';
+      setSubmitError(errMsg);
       toast({
         title: 'Error al enviar la solicitud',
-        description: error.message || 'Hubo un inconveniente. Inténtalo nuevamente.',
+        description: errMsg,
         variant: 'destructive',
       });
     } finally {
@@ -640,14 +645,40 @@ export default function BuyerRequestInfoPage() {
                     </div>
                     {errors.terms && <p className="text-[10px] text-rose-500 font-medium mt-0.5 pl-1">{errors.terms}</p>}
                   </div>
+
+                  {/* Banner de Error al Enviar */}
+                  {submitError && (
+                    <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1">
+                      <div className="p-1 rounded-lg bg-rose-100 text-rose-600 shrink-0 mt-0.5">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="font-bold text-[11.5px] text-rose-900">
+                          No se pudo registrar la solicitud
+                        </p>
+                        <p className="text-[10.5px] text-rose-700 leading-relaxed">
+                          {submitError}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </form>
               </div>
 
               {/* Footer Fijo (Estático) con Botón de Enviar */}
-              <div className="px-5 py-3.5 bg-slate-50/95 shrink-0 flex items-center justify-between gap-3 border-t border-slate-100">
-                <div className="hidden sm:flex items-center gap-1.5 text-[10.5px] text-slate-500 font-medium">
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>Datos 100% seguros</span>
+              <div className="px-5 py-3.5 bg-slate-50/95 shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-100">
+                <div className="flex items-center gap-1.5 text-[10.5px] text-slate-500 font-medium">
+                  {submitError ? (
+                    <span className="text-rose-600 font-semibold flex items-center gap-1">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      Revisa el error indicado arriba
+                    </span>
+                  ) : (
+                    <>
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Datos 100% seguros</span>
+                    </>
+                  )}
                 </div>
 
                 <Button

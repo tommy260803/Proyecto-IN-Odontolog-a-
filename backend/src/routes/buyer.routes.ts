@@ -340,9 +340,12 @@ router.post('/register', async (req, res) => {
       message: 'Solicitud registrada correctamente. Pasado a estado LEAD.', 
       data: result 
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al registrar al BUYER' });
+  } catch (error: any) {
+    console.error('Error al registrar BUYER:', error);
+    res.status(500).json({ 
+      error: error?.message || 'Error al registrar al BUYER',
+      details: error?.message
+    });
   }
 });
 
