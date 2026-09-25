@@ -5,13 +5,16 @@ dotenv.config();
 
 const connectionString =
   process.env.MART_CONNECTION_STRING ||
-  'Server=localhost;Database=NexoSalud_Mart;Trusted_Connection=yes;TrustServerCertificate=yes;';
+  'Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=NexoSalud_Mart;Trusted_Connection=yes;TrustServerCertificate=yes;';
 
 let poolPromise: Promise<sql.ConnectionPool> | null = null;
 
 export async function getMartPool(): Promise<sql.ConnectionPool> {
   if (!poolPromise) {
-    const pool = new sql.ConnectionPool(connectionString);
+    const config: any = {
+      connectionString,
+    };
+    const pool = new sql.ConnectionPool(config);
 
     poolPromise = pool.connect().then((connectedPool) => {
       console.log('✅ [NexoSalud_Mart] Conexión establecida exitosamente al DataMart (sin Prisma).');
@@ -40,13 +43,14 @@ export async function queryMart<T = any>(queryText: string, params?: Record<stri
 
 const oltpConnectionString =
   process.env.OLTP_CONNECTION_STRING ||
-  'Server=localhost;Database=NexoSaludDB;Trusted_Connection=yes;TrustServerCertificate=yes;';
+  'Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=NexoSaludDB;Trusted_Connection=yes;TrustServerCertificate=yes;';
 
 let oltpPoolPromise: Promise<sql.ConnectionPool> | null = null;
 
 export async function getOltpPool(): Promise<sql.ConnectionPool> {
   if (!oltpPoolPromise) {
-    const pool = new sql.ConnectionPool(oltpConnectionString);
+    const config: any = { connectionString: oltpConnectionString };
+    const pool = new sql.ConnectionPool(config);
     oltpPoolPromise = pool.connect().then((connectedPool) => {
       console.log('✅ [NexoSaludDB] Conexión establecida exitosamente a la BD Transaccional.');
       return connectedPool;

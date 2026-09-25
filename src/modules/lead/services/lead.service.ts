@@ -155,31 +155,5 @@ export const leadService = {
     });
     if (!res.ok) throw new Error('Error al registrar abandono del lead');
     return res.json();
-  },
-
-  negotiateAndDispatch: async (id: string, data: any) => {
-    const res = await fetch(`${API_URL}/lead/${id}/negotiate-and-dispatch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Error al despachar propuesta con Canva');
-    }
-    return res.json();
-  },
-
-  generateCanvaFlyer: async (data: any) => {
-    const res = await fetch(`${API_URL}/lead/canva/autofill`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Error al generar flyer en Canva');
-    }
-    return res.json();
   }
 };

@@ -18,7 +18,7 @@ export interface IndicatorResult {
   unit: string;
   formula: string;
   status: IndicatorStatus;
-  format: 'percentage' | 'number' | 'time' | 'currency';
+  format?: 'percentage' | 'number' | 'time' | 'currency';
   description?: string;
   dataUsed?: string;
   dbTables?: string;
