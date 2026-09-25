@@ -129,30 +129,5 @@ export const leadService = {
     });
     if (!res.ok) throw new Error('Error al registrar abandono del lead');
     return res.json();
-  },
-
-  negotiateAndDispatch: async (payload: {
-    leadId?: number | string;
-    patientName?: string;
-    patientEmail?: string;
-    patientPhone?: string;
-    serviceName?: string;
-    branchName?: string;
-    preferredSchedule?: string;
-    category?: 'ESTUDIANTE' | 'CONVENIO' | 'CAMPANA' | 'REGULAR';
-    customDiscountPercent?: number;
-    customValidityHours?: number;
-  }) => {
-    const res = await fetch(`${API_URL}/lead/negotiate-and-dispatch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || 'Error al ejecutar Agente Negociador y Canva Connect.');
-    }
-    return res.json();
   }
 };
-
