@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../db';
 import { sendPaymentNoticeOrConfirmation, generateBackendPdfBase64 } from '../routes/payer.routes';
-
-const prisma = new PrismaClient();
 
 export interface DunningCycleResult {
   timestamp: string;

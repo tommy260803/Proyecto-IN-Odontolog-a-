@@ -1,10 +1,9 @@
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../db';
 import { sendPaymentNoticeOrConfirmation } from './payer.routes';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Función auxiliar para registrar el pago validado en SQL Server y transferir automáticamente a CUSTOMER
 async function validateAndPromotePayer(payerId: number | string, channel: string, ref: string, amount?: number) {

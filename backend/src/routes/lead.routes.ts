@@ -1,8 +1,7 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../db';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // ── Catálogos para el formulario de alternativas ─────────────────────────────
 router.get('/options/availability', async (req, res) => {
