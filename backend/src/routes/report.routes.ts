@@ -206,7 +206,7 @@ router.get('/status', async (_req: Request, res: Response) => {
     res.json({
       status: 'online',
       source: 'NexoSalud_Mart (Datamart Dimensional)',
-      driver: 'mssql/msnodesqlv8 (Sin Prisma)',
+      driver: 'mssql (TDS / Cross-Platform)',
       database: dbInfo[0]?.db || 'NexoSalud_Mart',
       tables: counts,
     });
