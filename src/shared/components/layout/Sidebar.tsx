@@ -125,7 +125,7 @@ export function Sidebar({ onClickItem }: { onClickItem?: () => void }) {
         {/* Sección de Simulación Externa / Portal Web */}
         <div className="pt-2 border-t border-slate-200/70 dark:border-slate-800/80">
           {!isCollapsed && (
-            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 mb-2 transition-opacity duration-300 animate-in fade-in flex items-center gap-1.5">
+            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 transition-opacity duration-300 animate-in fade-in flex items-center gap-1.5">
               <Globe className="h-3 w-3" /> Simulación de Captura
             </p>
           )}
@@ -134,37 +134,51 @@ export function Sidebar({ onClickItem }: { onClickItem?: () => void }) {
             onClick={onClickItem}
             title={isCollapsed ? 'Portal Web Paciente (Landing Pública)' : undefined}
             className={({ isActive }) =>
-              `group relative flex items-center rounded-xl transition-all duration-300 ease-in-out border border-teal-200/60 dark:border-teal-900/60 bg-teal-50/50 dark:bg-teal-950/30 hover:bg-teal-100/60 dark:hover:bg-teal-900/50 ${
+              `group relative flex items-center rounded-xl transition-all duration-300 ease-in-out ${
                 isCollapsed ? 'justify-center p-3' : 'justify-between px-3.5 py-2.5'
               } ${
                 isActive
-                  ? 'ring-2 ring-teal-500/40 text-teal-950 dark:text-teal-200'
-                  : 'text-teal-900 dark:text-teal-300'
+                  ? 'bg-slate-900 dark:bg-slate-800 text-white shadow-md shadow-slate-900/10 dark:shadow-black/20 font-medium'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
               }`
             }
           >
-            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} overflow-hidden`}>
-              <div className="p-1.5 rounded-lg bg-teal-600 text-white shrink-0 shadow-sm shadow-teal-600/30">
-                <Globe className="h-4 w-4" />
-              </div>
+            {({ isActive }) => (
+              <>
+                <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} overflow-hidden transition-all duration-300`}>
+                  <div className={`p-1.5 rounded-lg transition-all duration-200 shrink-0 ${
+                    isActive 
+                      ? 'bg-teal-500/20 text-teal-300' 
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:bg-white dark:group-hover:bg-slate-700 group-hover:text-teal-600 dark:group-hover:text-teal-400'
+                  }`}>
+                    <Globe className="h-4 w-4 shrink-0" />
+                  </div>
 
-              {!isCollapsed && (
-                <div className="flex flex-col text-left truncate animate-in fade-in duration-300">
-                  <span className="text-xs font-bold tracking-tight text-teal-950 dark:text-teal-200 truncate flex items-center gap-1">
-                    Portal Web Paciente
-                    <ExternalLink className="h-2.5 w-2.5 text-teal-600 dark:text-teal-400 shrink-0" />
-                  </span>
-                  <span className="text-[10px] text-teal-700/80 dark:text-teal-400/80 truncate">
-                    Simular Captura / Ads
-                  </span>
+                  {!isCollapsed && (
+                    <div className="flex flex-col text-left truncate transition-opacity duration-300 ease-in-out animate-in fade-in">
+                      <span className="text-xs font-bold tracking-tight truncate whitespace-nowrap flex items-center gap-1">
+                        Portal Web Paciente
+                        <ExternalLink className="h-2.5 w-2.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 shrink-0" />
+                      </span>
+                      <span className={`text-[10px] leading-tight truncate whitespace-nowrap ${isActive ? 'text-slate-300 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>
+                        Simular Captura / Ads
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {!isCollapsed && (
-              <span className="text-[9px] font-bold uppercase tracking-wider bg-teal-200/70 dark:bg-teal-900 text-teal-800 dark:text-teal-200 px-1.5 py-0.5 rounded-md font-mono shrink-0">
-                Web
-              </span>
+                {!isCollapsed ? (
+                  <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded shrink-0 transition-opacity duration-300 animate-in fade-in ${
+                    isActive ? 'bg-slate-800 dark:bg-slate-900 text-teal-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-400 group-hover:bg-slate-200/70 dark:group-hover:bg-slate-700'
+                  }`}>
+                    WEB
+                  </span>
+                ) : (
+                  isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-teal-400 rounded-r-full animate-in fade-in duration-300" />
+                  )
+                )}
+              </>
             )}
           </NavLink>
         </div>
@@ -172,7 +186,7 @@ export function Sidebar({ onClickItem }: { onClickItem?: () => void }) {
         {/* Sección DataMart NexoSalud_Mart */}
         <div className="pt-2 border-t border-slate-200/70 dark:border-slate-800/80">
           {!isCollapsed && (
-            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2 transition-opacity duration-300 animate-in fade-in flex items-center gap-1.5">
+            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 transition-opacity duration-300 animate-in fade-in flex items-center gap-1.5">
               <BarChart3 className="h-3 w-3" /> DataMart Dimensional
             </p>
           )}
@@ -181,36 +195,50 @@ export function Sidebar({ onClickItem }: { onClickItem?: () => void }) {
             onClick={onClickItem}
             title={isCollapsed ? 'Reportes DataMart (NexoSalud_Mart)' : undefined}
             className={({ isActive }) =>
-              `group relative flex items-center rounded-xl transition-all duration-300 ease-in-out border border-indigo-200/60 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100/60 dark:hover:bg-indigo-900/50 ${
+              `group relative flex items-center rounded-xl transition-all duration-300 ease-in-out ${
                 isCollapsed ? 'justify-center p-3' : 'justify-between px-3.5 py-2.5'
               } ${
                 isActive
-                  ? 'ring-2 ring-indigo-500/40 text-indigo-950 dark:text-indigo-200 font-bold bg-indigo-100/80 dark:bg-indigo-900/60'
-                  : 'text-indigo-900 dark:text-indigo-300'
+                  ? 'bg-slate-900 dark:bg-slate-800 text-white shadow-md shadow-slate-900/10 dark:shadow-black/20 font-medium'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
               }`
             }
           >
-            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} overflow-hidden`}>
-              <div className="p-1.5 rounded-lg bg-indigo-600 text-white shrink-0 shadow-sm shadow-indigo-600/30">
-                <BarChart3 className="h-4 w-4" />
-              </div>
+            {({ isActive }) => (
+              <>
+                <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} overflow-hidden transition-all duration-300`}>
+                  <div className={`p-1.5 rounded-lg transition-all duration-200 shrink-0 ${
+                    isActive 
+                      ? 'bg-teal-500/20 text-teal-300' 
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:bg-white dark:group-hover:bg-slate-700 group-hover:text-teal-600 dark:group-hover:text-teal-400'
+                  }`}>
+                    <BarChart3 className="h-4 w-4 shrink-0" />
+                  </div>
 
-              {!isCollapsed && (
-                <div className="flex flex-col text-left truncate animate-in fade-in duration-300">
-                  <span className="text-xs font-bold tracking-tight text-indigo-950 dark:text-indigo-200 truncate flex items-center gap-1">
-                    Reportes DataMart
-                  </span>
-                  <span className="text-[10px] text-indigo-700/80 dark:text-indigo-400/80 truncate font-mono">
-                    NexoSalud_Mart (4 Etapas)
-                  </span>
+                  {!isCollapsed && (
+                    <div className="flex flex-col text-left truncate transition-opacity duration-300 ease-in-out animate-in fade-in">
+                      <span className="text-xs font-bold tracking-tight truncate whitespace-nowrap">
+                        Reportes DataMart
+                      </span>
+                      <span className={`text-[10px] leading-tight truncate whitespace-nowrap ${isActive ? 'text-slate-300 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>
+                        NexoSalud_Mart (4 Etapas)
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {!isCollapsed && (
-              <span className="text-[9px] font-bold uppercase tracking-wider bg-indigo-200/70 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-1.5 py-0.5 rounded-md font-mono shrink-0">
-                BI
-              </span>
+                {!isCollapsed ? (
+                  <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded shrink-0 transition-opacity duration-300 animate-in fade-in ${
+                    isActive ? 'bg-slate-800 dark:bg-slate-900 text-teal-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-400 group-hover:bg-slate-200/70 dark:group-hover:bg-slate-700'
+                  }`}>
+                    BI
+                  </span>
+                ) : (
+                  isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-teal-400 rounded-r-full animate-in fade-in duration-300" />
+                  )
+                )}
+              </>
             )}
           </NavLink>
         </div>
