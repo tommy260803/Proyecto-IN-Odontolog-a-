@@ -232,11 +232,11 @@ async function getBuyerMatrix(measure: string = 'contactos_registrados'): Promis
       metricTitle = 'Conversiones a LEAD [Cant.]';
       break;
     case 'tiempo_conversion':
-      measureSQL = 'AVG(CAST(fc.TiempoConversionDias AS FLOAT))';
+      measureSQL = 'ROUND(AVG(CAST(fc.TiempoConversionDias AS FLOAT)), 1)';
       metricTitle = 'Tiempo de Conversión [Días]';
       break;
     case 'costo_atribuido':
-      measureSQL = 'SUM(fc.CostoAtribuido)';
+      measureSQL = 'SUM(fc.CostoAtribuidoCaptacion)';
       metricTitle = 'Costo Atribuido de Captación [S/.]';
       isCurrency = true;
       break;
@@ -299,11 +299,11 @@ async function getLeadMatrix(measure: string = 'leads_cohorte'): Promise<Executi
       metricTitle = 'LEADs que Requieren Respuesta [Cant.]';
       break;
     case 'leads_resp_15m':
-      measureSQL = 'SUM(f.LeadsPrimeraRespuesta15Min)';
+      measureSQL = 'SUM(f.LeadsRespuestaUtil15Min)';
       metricTitle = 'LEADs con Primera Respuesta ≤ 15 min [Cant.]';
       break;
     case 'leads_resultado_final':
-      measureSQL = 'SUM(f.LeadsConResultadoFinal)';
+      measureSQL = 'SUM(f.LeadsResultadoFinal)';
       metricTitle = 'LEADs con Resultado Final [Cant.]';
       break;
     case 'leads_abandonados':
@@ -384,7 +384,7 @@ async function getPayerMatrix(measure: string = 'pagos_registrados'): Promise<Ex
       isCurrency = true;
       break;
     case 'tiempo_validacion':
-      measureSQL = 'AVG(CAST(f.TiempoValidacionMin AS FLOAT))';
+      measureSQL = 'ROUND(AVG(CAST(f.TiempoTotalValidacionMin AS FLOAT)), 1)';
       metricTitle = 'Tiempo Total de Validación [Min.]';
       break;
   }
@@ -446,7 +446,7 @@ async function getCustomerMatrix(measure: string = 'citas_evaluables'): Promise<
       metricTitle = 'Citas con Inasistencia [Cant.]';
       break;
     case 'tiempo_sillon':
-      measureSQL = 'AVG(CAST(fa.TiempoSillonDentalMin AS FLOAT))';
+      measureSQL = 'ROUND(AVG(CAST(fa.TiempoEnSillonDentalMin AS FLOAT)), 1)';
       metricTitle = 'Tiempo en Sillón Dental [Min.]';
       break;
     case 'atenciones_conformes':
