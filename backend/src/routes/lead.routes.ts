@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma, withRetry } from '../db';
+import { NegotiatorAgentService } from '../services/negotiatorAgentService';
 
 const router = Router();
 
@@ -207,7 +208,6 @@ router.get('/', async (req, res) => {
         let resultado_final: string | undefined = undefined;
         let motivo_cierre = sol?.motivo || undefined;
         let fecha_cierre = sol?.fecha_cierre ? sol.fecha_cierre.toISOString() : undefined;
-
         if (p.Etapa?.nombre === 'PAYER') state = 'PAYMENT_REQUESTED';
 
         if (p.Etapa.nombre === 'PAYER' || sol?.estado === 'Convertida') {
@@ -414,6 +414,64 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al eliminar lead' });
+  }
+});
+
+// ── Generar Flyer Publicitario con Canva Connect API ──────────────────────────
+router.post('/:id/canva-flyer', async (req, res) => {
+  const { id } = req.params;
+  const {
+    serviceName,
+    sedeName,
+    doctorName,
+    offeredPrice,
+    originalPrice,
+    discountPct,
+    expirationDate,
+    conditions,
+    sendEmail,
+    leadEmail,
+    leadPhone,
+  } = req.body;
+
+  try {
+    const lead = await withRetry(() =>
+      prisma.personas.findUnique({
+        where: { id_persona: Number(id) },
+        include: {
+          Solicitudes: {
+            include: {
+              Servicio: true,
+            },
+          },
+        },
+      })
+    );
+
+    const leadName = lead ? `${lead.nombres} ${lead.apellidos}` : 'Paciente';
+    const finalEmail = leadEmail || lead?.email || undefined;
+    const finalPhone = leadPhone || lead?.numero || undefined;
+
+    const result = await NegotiatorAgentService.processAndDispatch({
+      leadId: Number(id),
+      leadName,
+      leadEmail: finalEmail,
+      leadPhone: finalPhone,
+      serviceName: serviceName || lead?.Solicitudes?.[0]?.Servicio?.nombre || 'Consulta Odontológica',
+      sedeName: sedeName || 'Sede Miraflores - Av. Larco 123',
+      offeredPrice: Number(offeredPrice) || 150,
+      originalPrice: Number(originalPrice) || 180,
+      discountPct: Number(discountPct) || 15,
+      expirationDate: expirationDate || 'Vigente por 7 días',
+      conditions: conditions || 'Garantía clínica y reserva asegurada.',
+      canvaTemplateId: process.env.CANVA_BRAND_TEMPLATE_ID || process.env.CANVA_TEMPLATE_ID || 'EAHWLEXZ1lo',
+      sendEmail: Boolean(sendEmail),
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error al generar flyer en Canva:', error);
+    res.status(500).json({ error: error.message || 'Error al procesar el flyer con Canva' });
   }
 });
 

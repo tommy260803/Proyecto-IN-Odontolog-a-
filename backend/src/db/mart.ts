@@ -1,4 +1,4 @@
-import sql from 'mssql';
+import sql from 'mssql/msnodesqlv8';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -49,8 +49,7 @@ let oltpPoolPromise: Promise<sql.ConnectionPool> | null = null;
 
 export async function getOltpPool(): Promise<sql.ConnectionPool> {
   if (!oltpPoolPromise) {
-    const config: any = { connectionString: oltpConnectionString };
-    const pool = new sql.ConnectionPool(config);
+    const pool = new sql.ConnectionPool({ connectionString: oltpConnectionString } as any);
     oltpPoolPromise = pool.connect().then((connectedPool) => {
       console.log('✅ [NexoSaludDB] Conexión establecida exitosamente a la BD Transaccional.');
       return connectedPool;
