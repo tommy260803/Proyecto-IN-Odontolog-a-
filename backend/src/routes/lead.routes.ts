@@ -1,31 +1,35 @@
 import { Router } from 'express';
-import { prisma } from '../db';
+import { prisma, withRetry } from '../db';
 
 const router = Router();
 
 // ── Catálogos para el formulario de alternativas ─────────────────────────────
 router.get('/options/availability', async (req, res) => {
   try {
-    const profesionales = await prisma.profesionales.findMany({ where: { activo: true } });
-    const sedes = await prisma.sedes.findMany({ where: { activo: true } });
-    const servicios = await prisma.servicios.findMany({
-      where: { activo: true },
-      include: {
-        Tarifas: {
-          where: { activo: true },
-          orderBy: { fecha_inicio: 'desc' },
-          take: 1,
+    const data = await withRetry(async () => {
+      const profesionales = await prisma.profesionales.findMany({ where: { activo: true } });
+      const sedes = await prisma.sedes.findMany({ where: { activo: true } });
+      const servicios = await prisma.servicios.findMany({
+        where: { activo: true },
+        include: {
+          Tarifas: {
+            where: { activo: true },
+            orderBy: { fecha_inicio: 'desc' },
+            take: 1,
+          }
         }
-      }
-    });
-    const disponibilidades = await prisma.disponibilidad.findMany({
-      where: { estado: 'Disponible' },
-      include: { Profesional: true, Sede: true },
-      orderBy: [{ fecha: 'asc' }, { hora_inicio: 'asc' }],
+      });
+      const disponibilidades = await prisma.disponibilidad.findMany({
+        where: { estado: 'Disponible' },
+        include: { Profesional: true, Sede: true },
+        orderBy: [{ fecha: 'asc' }, { hora_inicio: 'asc' }],
+      });
+      return { profesionales, sedes, servicios, disponibilidades };
     });
 
-    res.json({ profesionales, sedes, servicios, disponibilidades });
+    res.json(data);
   } catch (error) {
+    console.error('Error al obtener disponibilidad:', error);
     res.status(500).json({ error: 'Error al obtener disponibilidad' });
   }
 });
@@ -35,11 +39,11 @@ router.put('/options/:id_opcion', async (req, res) => {
   const { id_opcion } = req.params;
   const { precio_ofrecido, condiciones } = req.body;
   try {
-    const updated = await prisma.opciones.update({
+    const updated = await withRetry(() => prisma.opciones.update({
       where: { id_opcion: Number(id_opcion) },
       data: { precio_ofrecido: Number(precio_ofrecido) },
       include: { Disponibilidad: { include: { Profesional: true, Sede: true } } }
-    });
+    }));
     res.json({ message: 'Alternativa actualizada exitosamente', data: updated });
   } catch (error) {
     console.error('Error al actualizar alternativa:', error);
@@ -50,8 +54,10 @@ router.put('/options/:id_opcion', async (req, res) => {
 router.delete('/options/:id_opcion', async (req, res) => {
   const { id_opcion } = req.params;
   try {
-    await prisma.reservas.deleteMany({ where: { id_opcion: Number(id_opcion) } });
-    await prisma.opciones.delete({ where: { id_opcion: Number(id_opcion) } });
+    await withRetry(async () => {
+      await prisma.reservas.deleteMany({ where: { id_opcion: Number(id_opcion) } });
+      await prisma.opciones.delete({ where: { id_opcion: Number(id_opcion) } });
+    });
     res.json({ message: 'Alternativa eliminada del tablero exitosamente' });
   } catch (error) {
     console.error('Error al eliminar alternativa:', error);
@@ -62,9 +68,14 @@ router.delete('/options/:id_opcion', async (req, res) => {
 // ── Detalle de un LEAD específico (con info completa del paciente) ────────────
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
+  const numId = Number(id) || Number(id.replace(/\D/g, ''));
+  if (isNaN(numId) || !numId) {
+    return res.status(400).json({ error: 'ID de LEAD inválido' });
+  }
+
   try {
-    const lead = await prisma.personas.findUnique({
-      where: { id_persona: Number(id) },
+    const lead = await withRetry(() => prisma.personas.findUnique({
+      where: { id_persona: numId },
       include: {
         Etapa: true,
         CanalOrigen: true,
@@ -98,12 +109,12 @@ router.get('/:id', async (req, res) => {
           orderBy: { fecha_solicitud: 'desc' },
         },
       }
-    });
+    }));
 
     if (!lead) return res.status(404).json({ error: 'LEAD no encontrado' });
     res.json(lead);
   } catch (error) {
-    console.error(error);
+    console.error('Error al obtener datos del LEAD:', error);
     res.status(500).json({ error: 'Error al obtener datos del LEAD' });
   }
 });
@@ -114,12 +125,12 @@ router.post('/:id/reserve', async (req, res) => {
   const { id_solicitud, id_opcion } = req.body;
 
   try {
-    let etapaPayer = await prisma.etapas.findFirst({ where: { nombre: 'PAYER' } });
-    if (!etapaPayer) etapaPayer = await prisma.etapas.create({ data: { nombre: 'PAYER', descripcion: 'Pago inicial validado' } });
+    let etapaPayer = await withRetry(() => prisma.etapas.findFirst({ where: { nombre: 'PAYER' } }));
+    if (!etapaPayer) etapaPayer = await withRetry(() => prisma.etapas.create({ data: { nombre: 'PAYER', descripcion: 'Pago inicial validado' } }));
 
-    const etapaLead = await prisma.etapas.findFirst({ where: { nombre: 'LEAD' } });
+    const etapaLead = await withRetry(() => prisma.etapas.findFirst({ where: { nombre: 'LEAD' } }));
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await withRetry(() => prisma.$transaction(async (tx) => {
       const opcion = await tx.opciones.update({
         where: { id_opcion: Number(id_opcion) },
         data: { seleccionada: true }
@@ -154,7 +165,7 @@ router.post('/:id/reserve', async (req, res) => {
       });
 
       return { reserva, opcion };
-    });
+    }));
 
     res.status(201).json({ message: 'Reserva creada. Estado convertido a PAYER.', data: result });
   } catch (error) {
@@ -166,20 +177,20 @@ router.post('/:id/reserve', async (req, res) => {
 // ── Lista de LEADS ─────────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
-    const personas = await prisma.personas.findMany({
+    const personas = await withRetry(() => prisma.personas.findMany({
       orderBy: { fecha_registro: 'desc' },
       include: {
         Etapa: true,
         Preferencias: true,
         Solicitudes: { include: { Servicio: true, Reservas: true } }
       }
-    });
+    }));
 
     const leads = personas
-      .filter(p => p.Etapa.nombre === 'LEAD' || p.Etapa.nombre === 'PAYER')
+      .filter(p => p.Etapa?.nombre === 'LEAD' || p.Etapa?.nombre === 'PAYER')
       .map(p => {
         let state = 'IN_NEGOTIATION';
-        if (p.Etapa.nombre === 'PAYER') state = 'PAYMENT_REQUESTED';
+        if (p.Etapa?.nombre === 'PAYER') state = 'PAYMENT_REQUESTED';
 
         const servicio = p.Solicitudes.length > 0 && p.Solicitudes[0].Servicio
           ? p.Solicitudes[0].Servicio.nombre : 'General';
@@ -208,6 +219,7 @@ router.get('/', async (req, res) => {
       });
 
     res.json(leads);
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener leads' });

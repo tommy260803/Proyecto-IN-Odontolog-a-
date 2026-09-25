@@ -5,23 +5,47 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 export const leadService = {
   getLeadDetails: async (id: string) => {
-    if (!useApi) {
-      const localLead = await leadUseCases.getLeadById(id);
-      if (!localLead || !localLead.person) return null;
+    const cleanId = id ? (id.replace(/\D/g, '') || id) : id;
+    let data: any = null;
+
+    try {
+      const res = await fetch(`${API_URL}/lead/${cleanId}`);
+      if (res.ok) {
+        data = await res.json();
+      }
+    } catch (err) {
+      console.warn('Backend fetch for lead failed, attempting fallback:', err);
+    }
+
+    if (!data && !useApi) {
+      data = await leadUseCases.getLeadById(id);
+    }
+
+    if (!data) return null;
+
+    // Direct backend Prisma object structure (has nombres/apellidos)
+    if (data.nombres || data.apellidos) {
+      return data;
+    }
+
+    // Mock/Domain object structure (has person property)
+    if (data.person) {
       return {
-        nombres: localLead.person.firstName || '',
-        apellidos: localLead.person.lastName || '',
-        email: localLead.person.email || '',
-        numero: localLead.person.phone || '',
-        Interacciones: [{ Canal: { nombre: localLead.buyer?.channel || 'Web' } }],
+        id_persona: Number(data.id || id),
+        nombres: data.person.firstName || '',
+        apellidos: data.person.lastName || '',
+        email: data.person.email || '',
+        numero: data.person.phone || '',
+        dni: data.person.documentNumber || '',
+        Interacciones: [{ Canal: { nombre: data.buyer?.channel || 'Web' } }],
         Solicitudes: [{
           id_solicitud: 1,
-          Servicio: { nombre: localLead.requestedServiceId || 'Evaluación' },
-          motivo: localLead.buyer?.concreteRequest || '',
-          Opciones: (localLead.alternatives || []).map((alt: any) => ({
+          Servicio: { nombre: data.requestedServiceId || 'Evaluación' },
+          motivo: data.buyer?.concreteRequest || '',
+          Opciones: (data.alternatives || []).map((alt: any) => ({
             id_opcion: alt.id,
             precio_ofrecido: alt.price,
-            seleccionada: alt.id === localLead.selectedAlternativeId,
+            seleccionada: alt.id === data.selectedAlternativeId,
             Disponibilidad: {
               fecha: alt.date + "T00:00:00.000Z",
               hora_inicio: "1970-01-01T" + alt.time + ":00.000Z",
@@ -31,19 +55,21 @@ export const leadService = {
             }
           }))
         }],
-        Preferencias: [{ sede_preferida: localLead.declaredPreferences || 'Sede Central' }]
+        Preferencias: [{ sede_preferida: data.declaredPreferences || data.buyer?.preferences || 'Sede Central' }]
       };
     }
-    const res = await fetch(`${API_URL}/lead/${id}`);
-    if (!res.ok) throw new Error('Error al cargar datos del LEAD');
-    return res.json();
+
+    return data;
   },
 
   getAvailabilityOptions: async () => {
-    if (!useApi) return { disponibilidades: [] }; // Fallback for local
-    const res = await fetch(`${API_URL}/lead/options/availability`);
-    if (!res.ok) throw new Error('Error al cargar opciones de disponibilidad');
-    return res.json();
+    try {
+      const res = await fetch(`${API_URL}/lead/options/availability`);
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn('Backend fetch for availability options failed:', err);
+    }
+    return { profesionales: [], sedes: [], servicios: [], disponibilidades: [] };
   },
 
   reserve: async (id: string, data: any) => {

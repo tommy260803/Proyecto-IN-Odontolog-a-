@@ -118,15 +118,19 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
         }
 
         // 3. Registrar incidencia de auditoría
-        await prisma.incidencias.create({
-          data: {
-            id_persona: r.id_persona,
-            id_reserva: r.id_reserva,
-            tipo: 'AUTO_CANCELACION',
-            descripcion: `ETAPA_3_CANCELACION: Plazo límite de abono expirado (00:00 hrs del ${reservationDateStr}). Sillón liberado automáticamente.`,
-            estado: 'CLOSED'
-          }
-        });
+        try {
+          await prisma.incidencias.create({
+            data: {
+              id_persona: r.id_persona,
+              id_reserva: r.id_reserva,
+              tipo: 'AUTO_CANCELACION',
+              descripcion: `ETAPA_3_CANCELACION: Plazo límite de abono expirado (00:00 hrs del ${reservationDateStr}). Sillón liberado automáticamente.`,
+              estado: 'CLOSED'
+            }
+          });
+        } catch (e) {
+          console.warn('⚠️ No se pudo registrar incidencia de dunning:', e);
+        }
 
         // 4. Enviar correo formal de cancelación
         let emailSent = false;
