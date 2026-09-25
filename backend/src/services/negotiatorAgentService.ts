@@ -102,11 +102,22 @@ export class NegotiatorAgentService {
                   <p style="margin: 4px 0;"><strong>Sede:</strong> ${params.sedeName || 'Sede Principal'}</p>
                 </div>
 
-                <p style="text-align: center; margin: 24px 0;">
-                  <a href="${canvaResult.designUrl}" target="_blank" style="background: #7c3aed; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">
-                    🎨 Ver Flyer Oficial en Canva
+                <!-- Flyer Publicitario de Canva Incrustado -->
+                <div style="text-align: center; margin: 24px 0;">
+                  <p style="font-size: 12px; font-weight: bold; color: #64748b; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    🎨 Tu Flyer Publicitario Oficial Canva
+                  </p>
+                  <img src="${canvaResult.previewUrl}" alt="Flyer Publicitario NexoSalud" style="max-width: 100%; width: 440px; height: auto; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 8px 24px rgba(0,0,0,0.12); display: inline-block;" />
+                </div>
+
+                <div style="text-align: center; margin: 24px 0; display: flex; gap: 10px; justify-content: center;">
+                  <a href="${canvaResult.designUrl}" target="_blank" style="background: #7c3aed; color: white; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 13px;">
+                    🎨 Ver y Editar en Canva
                   </a>
-                </p>
+                  <a href="https://nexosalud.pe/pre-reserva/${params.leadId}" target="_blank" style="background: #0d9488; color: white; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 13px; margin-left: 8px;">
+                    📅 Confirmar mi Turno
+                  </a>
+                </div>
               </div>
             </div>
           `,
