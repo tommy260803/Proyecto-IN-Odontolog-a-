@@ -115,8 +115,8 @@ export class CanvaService {
    * Genera el payload estructurado con las variables exactas de la plantilla de Canva
    */
   public static buildAutofillDataset(params: CanvaAutofillParams) {
-    // En la plantilla, Descuento_Texto está sobre 'hasta' y al lado de '% OFF'
-    // Se extrae sólo el número para no deformar el texto de tamaño gigante (ej: '20' o '30')
+    // En la plantilla de Canva, el campo Descuento_Texto está sobre "hasta" y al lado de "% OFF".
+    // Por lo tanto, sólo debe colocarse el número (ej: "20", "25", "30") para no deformar el texto gigante.
     let cleanDescuento = params.descuentoTexto || '20';
     const matchDigits = cleanDescuento.match(/\d+/);
     if (matchDigits) {
@@ -126,28 +126,25 @@ export class CanvaService {
     let cleanSede = params.sedeTexto || 'Av. Larco 123, Miraflores';
     cleanSede = cleanSede.replace(/^Sede:\s*/i, '').trim();
 
-    const contactoTexto = params.contactoTexto || '999-123-456\nhola@clinicaborcelle.com';
-    const horarioTexto = params.horarioTexto || 'Lunes a Viernes\n8:00h a 19:00';
+    const contactoTexto = params.contactoTexto || '+51 987 654 321\ninfo@nexosalud.pe';
+    const horarioTexto = params.horarioTexto || 'Lunes a Sábado\n8:00am a 8:00pm';
 
     const t1 = params.tratamiento1 || {
       titulo: 'Brackets Metálicos',
       desc: 'Consultas mensuales para el control y alineación perfecta de tu sonrisa.',
       precio: 'Desde S/ 150',
-      imgUrl: 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=600&auto=format&fit=crop&q=80',
     };
 
     const t2 = params.tratamiento2 || {
-      titulo: 'Alineadores Invisibles',
-      desc: 'Cambio mensual de la ortodoncia invisible para tu total comodidad.',
-      precio: 'Desde S/ 350',
-      imgUrl: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&auto=format&fit=crop&q=80',
+      titulo: 'Limpieza Dental',
+      desc: 'Evaluación preventiva integral y profilaxis profunda.',
+      precio: 'GRATIS (con reserva)',
     };
 
     const t3 = params.tratamiento3 || {
-      titulo: 'Retenedores Post-Tratamiento',
-      desc: 'Mantenimiento y cuidado para preservar tu alineación.',
+      titulo: 'Blanqueamiento',
+      desc: 'Mantenimiento y brillo estético de alta durabilidad.',
       precio: 'Desde S/ 100',
-      imgUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=600&auto=format&fit=crop&q=80',
     };
 
     return {
@@ -163,14 +160,14 @@ export class CanvaService {
       Tratamiento_1_Precio: { type: 'text', text: t1.precio || 'Desde S/ 150' },
 
       // BLOQUE DE TRATAMIENTO 2 (CENTRAL)
-      Tratamiento_2_Titulo: { type: 'text', text: t2.titulo || 'Ortodoncia Invisible' },
-      Tratamiento_2_Desc: { type: 'text', text: t2.desc || 'Cambio mensual de la ortodoncia invisible para tu total comodidad.' },
-      Tratamiento_2_Precio: { type: 'text', text: t2.precio || 'Desde S/ 350' },
+      Tratamiento_2_Titulo: { type: 'text', text: t2.titulo || 'Limpieza Dental' },
+      Tratamiento_2_Desc: { type: 'text', text: t2.desc || 'Evaluación integral preventiva incluida con tu reserva.' },
+      Tratamiento_2_Precio: { type: 'text', text: t2.precio || 'GRATIS (con reserva)' },
 
       // BLOQUE DE TRATAMIENTO 3 (INFERIOR)
-      Tratamiento_3_Titulo: { type: 'text', text: t3.titulo || 'Limpieza Profunda' },
-      Tratamiento_3_Desc: { type: 'text', text: t3.desc || 'Elimina la acumulación de placa y sarro que no se puede alcanzar con el cepillo.' },
-      Tratamiento_3_Precio: { type: 'text', text: t3.precio || 'Desde S/ 80' },
+      Tratamiento_3_Titulo: { type: 'text', text: t3.titulo || 'Blanqueamiento' },
+      Tratamiento_3_Desc: { type: 'text', text: t3.desc || 'Mantenimiento y brillo estético de alta durabilidad.' },
+      Tratamiento_3_Precio: { type: 'text', text: t3.precio || 'Desde S/ 100' },
     };
   }
 
