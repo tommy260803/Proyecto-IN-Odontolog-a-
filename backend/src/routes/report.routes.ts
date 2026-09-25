@@ -328,7 +328,8 @@ async function getLeadMatrix(measure: string = 'leads_cohorte'): Promise<Executi
     LEFT JOIN Dim_Sede s ON s.KeySede = f.KeySede
     LEFT JOIN Dim_Negociador n ON n.KeyNegociador = f.KeyNegociador
     LEFT JOIN Dim_Servicio serv ON serv.KeyServicio = f.KeyServicio
-    GROUP BY s.Sede, n.NombreNegociador, serv.Categoria
+    GROUP BY s.KeySede, s.Sede, n.KeyNegociador, n.NombreNegociador, serv.Categoria
+    ORDER BY s.KeySede ASC, n.KeyNegociador ASC
   `);
 
   const itemMap = new Map<string, Record<string, any>>();
@@ -347,11 +348,12 @@ async function getLeadMatrix(measure: string = 'leads_cohorte'): Promise<Executi
     period: 'Septiembre 2026',
     metric: metricTitle,
     rowHeader: 'Sede / Negociador',
-    superHeader: 'Categoría de Servicio',
-    totalColumnName: 'Total LEADs',
-    grandTotalLabel: '** Totales **',
+    superHeader: 'Categoría del tratamiento',
+    totalColumnName: 'Total',
+    grandTotalLabel: '** Totales Generales **',
     isCurrency: false,
     sourceMart: 'NexoSalud_Mart.Fact_NegociacionLead',
+    preferredColumnsOrder: ['Odontología Preventiva', 'Odontología Especializada'],
   });
 }
 

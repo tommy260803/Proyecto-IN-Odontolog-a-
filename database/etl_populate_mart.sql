@@ -271,7 +271,9 @@ MERGE [NexoSalud_Mart].dbo.[Fact_NegociacionLead] AS fact
 USING (
     SELECT 
         CAST(FORMAT(ev.fecha_hora, 'yyyyMMdd') AS INT) AS KeyTiempo,
-        ISNULL(ds.KeySede, 1) AS KeySede,
+        CASE WHEN ev.id_usuario IN (1, 2) THEN 1 ELSE 2 END AS KeySede,
+        ISNULL(dserv.KeyServicio, 1) AS KeyServicio,
+        1 AS KeyProfesional,
         ISNULL(dn.KeyNegociador, 1) AS KeyNegociador,
         COUNT(DISTINCT ev.id_persona) AS LeadsCohorteEvaluable,
         SUM(CASE WHEN p.id_etapa_actual >= 3 THEN 1 ELSE 0 END) AS LeadsConvertidosPayer14Dias,
@@ -283,17 +285,19 @@ USING (
     FROM [NexoSaludDB].dbo.[EventosEtapa] ev
     JOIN [NexoSaludDB].dbo.[Personas] p ON ev.id_persona = p.id_persona
     LEFT JOIN [NexoSaludDB].dbo.[Solicitudes] sol ON sol.id_persona = p.id_persona
-    LEFT JOIN [NexoSaludDB].dbo.[Opciones] opc ON opc.id_solicitud = sol.id_solicitud AND opc.seleccionada = 1
-    LEFT JOIN [NexoSaludDB].dbo.[Disponibilidad] disp ON disp.id_disponibilidad = opc.id_disponibilidad
-    LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Sede] ds ON ds.id_sede = disp.id_sede
     LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Negociador] dn ON dn.id_usuario = ev.id_usuario
+    LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Servicio] dserv ON dserv.id_servicio = sol.id_servicio
     WHERE ev.etapa_destino = 2
     GROUP BY 
         CAST(FORMAT(ev.fecha_hora, 'yyyyMMdd') AS INT), 
-        ds.KeySede, 
+        CASE WHEN ev.id_usuario IN (1, 2) THEN 1 ELSE 2 END,
+        dserv.KeyServicio,
         dn.KeyNegociador
 ) AS oltp
-ON fact.KeyTiempo = oltp.KeyTiempo AND fact.KeySede = oltp.KeySede AND fact.KeyNegociador = oltp.KeyNegociador
+ON fact.KeyTiempo = oltp.KeyTiempo 
+   AND fact.KeySede = oltp.KeySede 
+   AND fact.KeyNegociador = oltp.KeyNegociador
+   AND fact.KeyServicio = oltp.KeyServicio
 WHEN MATCHED THEN
     UPDATE SET 
         fact.LeadsCohorteEvaluable = oltp.LeadsCohorteEvaluable,
@@ -304,8 +308,8 @@ WHEN MATCHED THEN
         fact.LeadsRespuestaUtil15Min = oltp.LeadsRespuestaUtil15Min,
         fact.LeadsResultadoFinal = oltp.LeadsResultadoFinal
 WHEN NOT MATCHED THEN
-    INSERT (KeyTiempo, KeySede, KeyNegociador, LeadsCohorteEvaluable, LeadsConvertidosPayer14Dias, LeadsEnNegociacion, LeadsAbandonados, LeadsRequierenRespuesta, LeadsRespuestaUtil15Min, LeadsResultadoFinal)
-    VALUES (oltp.KeyTiempo, oltp.KeySede, oltp.KeyNegociador, oltp.LeadsCohorteEvaluable, oltp.LeadsConvertidosPayer14Dias, oltp.LeadsEnNegociacion, oltp.LeadsAbandonados, oltp.LeadsRequierenRespuesta, oltp.LeadsRespuestaUtil15Min, oltp.LeadsResultadoFinal);
+    INSERT (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyNegociador, LeadsCohorteEvaluable, LeadsConvertidosPayer14Dias, LeadsEnNegociacion, LeadsAbandonados, LeadsRequierenRespuesta, LeadsRespuestaUtil15Min, LeadsResultadoFinal)
+    VALUES (oltp.KeyTiempo, oltp.KeySede, oltp.KeyServicio, oltp.KeyProfesional, oltp.KeyNegociador, oltp.LeadsCohorteEvaluable, oltp.LeadsConvertidosPayer14Dias, oltp.LeadsEnNegociacion, oltp.LeadsAbandonados, oltp.LeadsRequierenRespuesta, oltp.LeadsRespuestaUtil15Min, oltp.LeadsResultadoFinal);
 GO
 
 -- 14. Poblar Fact_GestionPayer
