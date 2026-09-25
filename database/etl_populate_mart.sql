@@ -219,6 +219,10 @@ MERGE [NexoSalud_Mart].dbo.[Fact_CaptacionBuyer] AS fact
 USING (
     SELECT 
         CAST(FORMAT(p.fecha_registro, 'yyyyMMdd') AS INT) AS KeyTiempo,
+        CASE 
+            WHEN p.zona IN ('Centro Histórico', 'El Recreo', 'Florencia de Mora', 'La Esperanza', 'Moche') THEN 1
+            ELSE 2 
+        END AS KeySede,
         ISNULL(dc.KeyCanal, 1) AS KeyCanal,
         ISNULL(df.KeyFuente, 1) AS KeyFuente,
         ISNULL(der.KeyEstadoRegistro, 1) AS KeyEstadoRegistro,
@@ -238,11 +242,16 @@ USING (
     LEFT JOIN [NexoSaludDB].dbo.[EventosEtapa] ev ON p.id_persona = ev.id_persona AND ev.etapa_destino = 2
     GROUP BY 
         CAST(FORMAT(p.fecha_registro, 'yyyyMMdd') AS INT),
+        CASE 
+            WHEN p.zona IN ('Centro Histórico', 'El Recreo', 'Florencia de Mora', 'La Esperanza', 'Moche') THEN 1
+            ELSE 2 
+        END,
         dc.KeyCanal,
         df.KeyFuente,
         der.KeyEstadoRegistro
 ) AS oltp
 ON fact.KeyTiempo = oltp.KeyTiempo 
+   AND fact.KeySede = oltp.KeySede
    AND fact.KeyCanal = oltp.KeyCanal 
    AND fact.KeyFuente = oltp.KeyFuente 
    AND fact.KeyEstadoRegistro = oltp.KeyEstadoRegistro
@@ -253,8 +262,8 @@ WHEN MATCHED THEN
         fact.ConversionesALead = oltp.ConversionesALead,
         fact.TiempoConversionDias = oltp.TiempoConversionDias
 WHEN NOT MATCHED THEN
-    INSERT (KeyTiempo, KeyCanal, KeyFuente, KeyEstadoRegistro, ContactosRegistrados, ContactosUtilizables, ConversionesALead, TiempoConversionDias)
-    VALUES (oltp.KeyTiempo, oltp.KeyCanal, oltp.KeyFuente, oltp.KeyEstadoRegistro, oltp.ContactosRegistrados, oltp.ContactosUtilizables, oltp.ConversionesALead, oltp.TiempoConversionDias);
+    INSERT (KeyTiempo, KeySede, KeyCanal, KeyFuente, KeyEstadoRegistro, ContactosRegistrados, ContactosUtilizables, ConversionesALead, TiempoConversionDias)
+    VALUES (oltp.KeyTiempo, oltp.KeySede, oltp.KeyCanal, oltp.KeyFuente, oltp.KeyEstadoRegistro, oltp.ContactosRegistrados, oltp.ContactosUtilizables, oltp.ConversionesALead, oltp.TiempoConversionDias);
 GO
 
 -- 13. Poblar Fact_NegociacionLead

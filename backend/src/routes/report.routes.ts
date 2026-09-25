@@ -281,6 +281,7 @@ async function getBuyerMatrix(measure: string = 'contactos_registrados'): Promis
     grandTotalLabel: '** Totales Generales **',
     isCurrency,
     sourceMart: 'NexoSalud_Mart.Fact_CaptacionBuyer',
+    preferredColumnsOrder: ['Sede Centro Historico', 'Sede California'],
   });
 }
 
