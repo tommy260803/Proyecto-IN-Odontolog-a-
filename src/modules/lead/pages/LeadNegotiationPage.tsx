@@ -962,19 +962,85 @@ export default function LeadNegotiationPage() {
               )}
             </section>
 
-            {/* ── 3. Copiloto de Detección y Apoyo ante Objeciones (Actividad 3) ── */}
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 shadow-sm space-y-3.5">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/80 pb-2.5">
+            {/* ── 3. Envío y Seguimiento Omnicanal (Actividad 3) ── */}
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-2.5">
                 <div className="flex items-center gap-2">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">
                     3
                   </span>
                   <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                    Copiloto de Apoyo ante Objeciones
+                    Envío de Oferta Omnicanal (WhatsApp & Correo)
+                  </h3>
+                </div>
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/60">
+                  Mensaje Dinámico
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                    <MessageSquare className="w-3 h-3 text-emerald-500" />
+                    Vista Previa del Mensaje para el Paciente:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyWhatsApp}
+                    className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-teal-50 dark:hover:bg-teal-950/50"
+                  >
+                    {copiedWhatsApp ? <CheckCheck className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedWhatsApp ? '¡Copiado!' : 'Copiar texto'}
+                  </button>
+                </div>
+
+                <p className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-line bg-slate-50/80 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700/70 font-sans leading-relaxed">
+                  {generateWhatsAppMessage()}
+                </p>
+
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                  <Button
+                    type="button"
+                    onClick={handleSendWhatsApp}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm flex items-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Enviar por WhatsApp</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSendEmail}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm flex items-center gap-2"
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>Enviar por Correo</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCopyWhatsApp}
+                    className="rounded-xl text-xs h-9 px-3 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                  >
+                    <Copy className="w-3.5 h-3.5 mr-1" />
+                    Copiar Mensaje
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 4. Copiloto de Detección y Apoyo ante Objeciones (Actividad 4) ── */}
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 shadow-sm space-y-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/80 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">
+                    4
+                  </span>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                    Copiloto de Apoyo ante Objeciones & Re-negociación
                   </h3>
                 </div>
                 <span className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 rounded-md border border-teal-200/60 dark:border-teal-800/60">
-                  Asistente en Vivo
+                  Asistente de Rescate
                 </span>
               </div>
 
@@ -1084,72 +1150,6 @@ export default function LeadNegotiationPage() {
                   </p>
                 </div>
               )}
-            </div>
-
-            {/* ── 4. Envío y Seguimiento Omnicanal (Actividad 4) ── */}
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 shadow-sm space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">
-                    4
-                  </span>
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                    Envío de Oferta Omnicanal (WhatsApp & Correo)
-                  </h3>
-                </div>
-                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/60">
-                  Mensaje Dinámico
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-                    <MessageSquare className="w-3 h-3 text-emerald-500" />
-                    Vista Previa del Mensaje para el Paciente:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleCopyWhatsApp}
-                    className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-teal-50 dark:hover:bg-teal-950/50"
-                  >
-                    {copiedWhatsApp ? <CheckCheck className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                    {copiedWhatsApp ? '¡Copiado!' : 'Copiar texto'}
-                  </button>
-                </div>
-
-                <p className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-line bg-slate-50/80 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700/70 font-sans leading-relaxed">
-                  {generateWhatsAppMessage()}
-                </p>
-
-                <div className="flex items-center gap-2 pt-1 flex-wrap">
-                  <Button
-                    type="button"
-                    onClick={handleSendWhatsApp}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm flex items-center gap-2"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Enviar por WhatsApp</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleSendEmail}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm flex items-center gap-2"
-                  >
-                    <Mail className="w-4 h-4" />
-                    <span>Enviar por Correo</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCopyWhatsApp}
-                    className="rounded-xl text-xs h-9 px-3 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
-                  >
-                    <Copy className="w-3.5 h-3.5 mr-1" />
-                    Copiar Mensaje
-                  </Button>
-                </div>
-              </div>
             </div>
 
             {/* ── 5. Preparación y Resumen del Paso a PAYER (Actividad 5) ── */}
