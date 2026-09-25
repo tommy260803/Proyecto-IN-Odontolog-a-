@@ -19,7 +19,7 @@ import { canTransitionBuyerToLead } from '@/domain/transitions';
 import { BuyerState } from '@/domain/enums';
 import { StatusBadge } from '@/shared/components/feedback/StatusBadge';
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
-import { UserCheck, ArrowRight, Save, Loader2, Sparkles, ShieldCheck, Stethoscope, MapPin, Clock, Radio, Tag, CheckCircle2, AlertTriangle, HelpCircle, ChevronDown, ChevronUp, RefreshCw, Flame, Zap, History } from 'lucide-react';
+import { UserCheck, ArrowRight, Save, Loader2, Sparkles, ShieldCheck, Stethoscope, MapPin, Clock, Radio, Tag, CheckCircle2, AlertTriangle, HelpCircle, ChevronDown, ChevronUp, RefreshCw, Flame, Zap, History, Bot, RotateCw } from 'lucide-react';
 import { analyzeBuyerMarketingAgent, type BuyerMarketingAnalysis } from '@/shared/services/groqService';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -249,8 +249,8 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
                   className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none hover:bg-teal-50/60 dark:hover:bg-teal-950/40 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9.5 w-9.5 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-white shadow-md ring-4 ring-teal-50 dark:ring-teal-950/50">
-                      <Sparkles className="w-5 h-5" />
+                    <div className="flex h-9.5 w-9.5 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-teal-600 via-teal-500 to-emerald-500 text-white shadow-md ring-4 ring-teal-50 dark:ring-teal-950/50">
+                      <Bot className="w-5 h-5 stroke-[2.2]" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
@@ -416,19 +416,24 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
 
               {/* Historial de Consultas Recurrentes e Interacciones Web (BI & Negociación LEAD) */}
               {((buyer.consultasCount && buyer.consultasCount > 1) || (buyer.solicitudesHistory && buyer.solicitudesHistory.length > 0)) && (
-                <div className="rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-gradient-to-br from-amber-50/70 via-white to-amber-50/30 dark:from-amber-950/20 dark:via-slate-900/40 dark:to-slate-900/60 p-4 sm:p-5 shadow-2xs space-y-3.5">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shadow-2xs border border-amber-200 dark:border-amber-700/60 shrink-0">
-                        <History className="w-4 h-4" />
+                <div className="rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-gradient-to-br from-amber-50/70 via-white to-amber-50/30 dark:from-amber-950/20 dark:via-slate-900/40 dark:to-slate-900/60 shadow-2xs overflow-hidden transition-all">
+                  {/* Cabecera Desplegable del Historial (clic en cualquier parte del header) */}
+                  <div 
+                    onClick={() => setIsHistoryExpanded(prev => !prev)}
+                    className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none hover:bg-amber-100/50 dark:hover:bg-amber-950/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9.5 h-9.5 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shadow-2xs border border-amber-200 dark:border-amber-700/60 shrink-0">
+                        <History className="w-5 h-5" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100">
                             Historial de Consultas Recurrentes
                           </h4>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-                            🔁 {buyer.consultasCount || (buyer.solicitudesHistory?.length || 1)} Consultas Web
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1">
+                            <RotateCw className="w-2.5 h-2.5 text-amber-700 dark:text-amber-300 shrink-0" />
+                            <span>{buyer.consultasCount || (buyer.solicitudesHistory?.length || 1)} Consultas Web</span>
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
@@ -437,18 +442,21 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setIsHistoryExpanded(prev => !prev)}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-3 py-1.5 rounded-xl transition-all shadow-2xs border border-slate-200 dark:border-slate-700 cursor-pointer"
-                    >
-                      <span>{isHistoryExpanded ? 'Ocultar' : 'Ver detalle'}</span>
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isHistoryExpanded ? 'rotate-180' : ''}`} />
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => setIsHistoryExpanded(prev => !prev)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-3 py-1.5 rounded-xl transition-all shadow-2xs border border-slate-200 dark:border-slate-700 cursor-pointer"
+                        title={isHistoryExpanded ? "Ocultar historial" : "Desplegar historial"}
+                      >
+                        <span>{isHistoryExpanded ? 'Ocultar' : 'Ver detalle'}</span>
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isHistoryExpanded ? 'rotate-180' : ''}`} />
+                      </button>
+                    </div>
                   </div>
 
                   {isHistoryExpanded && (
-                    <div className="space-y-2.5 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-2 border-t border-amber-200/60 dark:border-amber-900/60 space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
                       <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                         {buyer.solicitudesHistory && buyer.solicitudesHistory.length > 0 ? (
                           buyer.solicitudesHistory.map((s: any, idx: number) => (

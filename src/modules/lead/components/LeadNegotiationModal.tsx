@@ -67,6 +67,7 @@ import {
   Download,
   Image as ImageIcon,
   History,
+  RotateCw,
 } from 'lucide-react';
 
 interface LeadNegotiationModalProps {
@@ -682,8 +683,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                     <div className="space-y-2">
                       {lead.Solicitudes.length > 1 && (
                         <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 flex items-center justify-between text-[11px]">
-                          <span className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1">
-                            🔁 Prospecto Recurrente
+                          <span className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                            <RotateCw className="w-3 h-3 text-amber-700 dark:text-amber-400 shrink-0" /> Prospecto Recurrente
                           </span>
                           <span className="font-mono font-bold px-2 py-0.5 rounded bg-amber-200/80 dark:bg-amber-900/60 text-amber-950 dark:text-amber-200 text-[10px]">
                             x{lead.Solicitudes.length} Consultas

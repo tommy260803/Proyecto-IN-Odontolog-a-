@@ -11,7 +11,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { useBuyers, useConvertBuyerToLead } from '../hooks/useBuyerQueries';
 import { BuyerState } from '@/domain/enums';
-import { Plus, Search, Eye, Trash2, X, RotateCcw, ArrowRight, Loader2, BarChart3 } from 'lucide-react';
+import { Plus, Search, Eye, Trash2, X, RotateCcw, RotateCw, ArrowRight, Loader2, BarChart3 } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -123,10 +123,11 @@ export default function BuyerPage() {
             <p className="font-semibold text-slate-900 dark:text-white">{b.person.firstName} {b.person.lastName}</p>
             {b.consultasCount && b.consultasCount > 1 ? (
               <span 
-                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-2xs" 
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-2xs" 
                 title={`Este paciente ha llenado el formulario o consultado ${b.consultasCount} veces vía web`}
               >
-                🔁 x{b.consultasCount}
+                <RotateCw className="w-2.5 h-2.5 text-amber-700 dark:text-amber-300 shrink-0" />
+                <span>x{b.consultasCount}</span>
               </span>
             ) : null}
           </div>

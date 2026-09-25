@@ -11,7 +11,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { useLeads } from '../hooks/useLeadQueries';
 import { LeadState } from '@/domain/enums';
-import { Search, Eye, Trash2, X, RotateCcw, Zap, Flame, Clock, Sparkles, UserX, BarChart3 } from 'lucide-react';
+import { Search, Eye, Trash2, X, RotateCcw, RotateCw, Zap, Flame, Clock, Sparkles, UserX, BarChart3 } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay, differenceInMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { LeadWithDetails } from '@/application/use-cases/lead';
@@ -148,10 +148,11 @@ export default function LeadPage() {
             <p className="font-semibold text-slate-900 dark:text-white">{l.person.firstName} {l.person.lastName}</p>
             {l.buyer?.consultasCount && l.buyer.consultasCount > 1 ? (
               <span 
-                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-2xs" 
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-2xs" 
                 title={`Este lead ha consultado o completado el formulario ${l.buyer.consultasCount} veces`}
               >
-                🔁 x{l.buyer.consultasCount}
+                <RotateCw className="w-2.5 h-2.5 text-amber-700 dark:text-amber-300 shrink-0" />
+                <span>x{l.buyer.consultasCount}</span>
               </span>
             ) : null}
           </div>

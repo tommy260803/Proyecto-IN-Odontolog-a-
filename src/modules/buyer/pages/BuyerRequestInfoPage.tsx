@@ -33,7 +33,8 @@ import {
   AlertCircle,
   AlertTriangle,
   HelpCircle,
-  History
+  History,
+  RotateCw,
 } from 'lucide-react';
 
 export default function BuyerRequestInfoPage() {
@@ -195,7 +196,7 @@ export default function BuyerRequestInfoPage() {
       setSubmittedSuccess(true);
       if (isRec) {
         toast({
-          title: `🔁 ¡Consulta Recurrente Anexada! (#${count})`,
+          title: `¡Consulta Recurrente Anexada! (#${count})`,
           description: `¡Hola de nuevo! Anexamos tu nueva consulta a tu historial clínico. Tu caso fue priorizado para seguimiento comercial en LEAD.`,
         });
       } else {
@@ -813,8 +814,9 @@ export default function BuyerRequestInfoPage() {
                 {isRecurringSubmitted && (
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-slate-600">Historial de consultas:</span>
-                    <span className="font-mono font-bold px-2 py-0.5 rounded bg-teal-100 text-teal-800 border border-teal-200">
-                      🔁 Intento #{consultationCount}
+                    <span className="font-mono font-bold px-2 py-0.5 rounded bg-teal-100 text-teal-800 border border-teal-200 inline-flex items-center gap-1">
+                      <RotateCw className="w-2.5 h-2.5 text-teal-700 shrink-0" />
+                      <span>Intento #{consultationCount}</span>
                     </span>
                   </div>
                 )}
