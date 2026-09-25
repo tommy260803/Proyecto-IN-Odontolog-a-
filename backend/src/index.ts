@@ -132,6 +132,22 @@ app.post(['/api/canva/exchange', '/api/canva-exchange'], async (req, res) => {
   }
 });
 
+app.get('/api/canva-dataset', async (req, res) => {
+  try {
+    const token = await CanvaService.getValidAccessToken();
+    const brandTemplateId = process.env.CANVA_BRAND_TEMPLATE_ID || process.env.CANVA_TEMPLATE_ID || 'EAHWLEXZ1lo';
+    const response = await fetch(`https://api.canva.com/rest/v1/brand-templates/${brandTemplateId}/dataset`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/canva-test-run', async (req, res) => {
   try {
     const token = await CanvaService.getValidAccessToken();

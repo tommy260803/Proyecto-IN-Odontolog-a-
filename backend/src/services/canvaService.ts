@@ -136,6 +136,54 @@ export class CanvaService {
   }
 
   /**
+   * Convierte un texto de horas a formato 12H (AM/PM) limpio y legible
+   */
+  public static formatTo12H(rawHorario?: string): string {
+    if (!rawHorario) return 'Lunes a Sábado\n08:00 AM - 08:00 PM';
+
+    // Si ya contiene AM/PM, homogeneizar formato
+    if (/am|pm/i.test(rawHorario)) {
+      return rawHorario.replace(/(\d{1,2}):(\d{2})\s*(am|pm)/gi, (_, h, m, ap) => {
+        return `${h.padStart(2, '0')}:${m} ${ap.toUpperCase()}`;
+      });
+    }
+
+    // Convertir horas formato 24H (ej: 08:00 a 20:00) a 12H
+    return rawHorario.replace(/(\d{1,2}):(\d{2})/g, (_, hStr, mStr) => {
+      let h = parseInt(hStr, 10);
+      const ap = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
+      return `${h.toString().padStart(2, '0')}:${mStr} ${ap}`;
+    });
+  }
+
+  /**
+   * Fuerza que el título del tratamiento tenga como máximo 2 palabras (ej: "Ortodoncia Brackets")
+   * para evitar desbordamientos visuales en las tarjetas del diseño de Canva.
+   */
+  public static shortenTitle(title?: string, fallback: string = 'Tratamiento'): string {
+    if (!title) return fallback;
+    let clean = title.replace(/^(Tratamiento|Servicio|Consulta)\s+de\s+/i, '').trim();
+    const words = clean.split(/\s+/).filter(Boolean);
+    if (words.length > 2) {
+      return words.slice(0, 2).join(' ');
+    }
+    return clean || fallback;
+  }
+
+  /**
+   * Fuerza que la descripción sea breve y concisa (máximo ~40 caracteres) para que no tape el precio
+   */
+  public static shortenDesc(desc?: string, fallback: string = 'Atención clínica personalizada.'): string {
+    if (!desc) return fallback;
+    let clean = desc.replace(/\[.*?\]/g, '').replace(/\|/g, '').trim();
+    if (clean.length > 40) {
+      clean = clean.substring(0, 37).trim() + '...';
+    }
+    return clean || fallback;
+  }
+
+  /**
    * Genera el payload estructurado con las variables exactas de la plantilla de Canva
    */
   public static buildAutofillDataset(params: CanvaAutofillParams) {
@@ -151,25 +199,19 @@ export class CanvaService {
     cleanSede = cleanSede.replace(/^Sede:\s*/i, '').trim();
 
     const contactoTexto = params.contactoTexto || '+51 987 654 321\ninfo@nexosalud.pe';
-    const horarioTexto = params.horarioTexto || 'Lunes a Sábado\n8:00am a 8:00pm';
+    const horarioTexto = this.formatTo12H(params.horarioTexto);
 
-    const t1 = params.tratamiento1 || {
-      titulo: 'Brackets Metálicos',
-      desc: 'Consultas mensuales para el control y alineación perfecta de tu sonrisa.',
-      precio: 'Desde S/ 150',
-    };
+    const t1Titulo = this.shortenTitle(params.tratamiento1?.titulo, 'Brackets Metálicos');
+    const t1Desc = this.shortenDesc(params.tratamiento1?.desc, 'Control mensual y garantía.');
+    const t1Precio = params.tratamiento1?.precio || 'Desde S/ 150';
 
-    const t2 = params.tratamiento2 || {
-      titulo: 'Limpieza Dental',
-      desc: 'Evaluación preventiva integral y profilaxis profunda.',
-      precio: 'GRATIS (con reserva)',
-    };
+    const t2Titulo = this.shortenTitle(params.tratamiento2?.titulo, 'Limpieza Dental');
+    const t2Desc = this.shortenDesc(params.tratamiento2?.desc, 'Profilaxis y diagnóstico 3D.');
+    const t2Precio = params.tratamiento2?.precio || 'GRATIS (con reserva)';
 
-    const t3 = params.tratamiento3 || {
-      titulo: 'Blanqueamiento',
-      desc: 'Mantenimiento y brillo estético de alta durabilidad.',
-      precio: 'Desde S/ 100',
-    };
+    const t3Titulo = this.shortenTitle(params.tratamiento3?.titulo, 'Blanqueamiento');
+    const t3Desc = this.shortenDesc(params.tratamiento3?.desc, 'Brillo estético y flúor.');
+    const t3Precio = params.tratamiento3?.precio || 'Desde S/ 100';
 
     return {
       // INFO GENERAL DE LA CLÍNICA Y GANCHO
@@ -178,20 +220,20 @@ export class CanvaService {
       Contacto_Texto: { type: 'text', text: contactoTexto },
       Horario_Texto: { type: 'text', text: horarioTexto },
 
-      // BLOQUE DE TRATAMIENTO 1 (SUPERIOR)
-      Tratamiento_1_Titulo: { type: 'text', text: t1.titulo || 'Brackets Metálicos' },
-      Tratamiento_1_Desc: { type: 'text', text: t1.desc || 'Consultas mensuales para el seguimiento del tratamiento.' },
-      Tratamiento_1_Precio: { type: 'text', text: t1.precio || 'Desde S/ 150' },
+      // BLOQUE DE TRATAMIENTO 1 (SUPERIOR - Máximo 2 palabras de título y descripción corta)
+      Tratamiento_1_Titulo: { type: 'text', text: t1Titulo },
+      Tratamiento_1_Desc: { type: 'text', text: t1Desc },
+      Tratamiento_1_Precio: { type: 'text', text: t1Precio },
 
       // BLOQUE DE TRATAMIENTO 2 (CENTRAL)
-      Tratamiento_2_Titulo: { type: 'text', text: t2.titulo || 'Limpieza Dental' },
-      Tratamiento_2_Desc: { type: 'text', text: t2.desc || 'Evaluación integral preventiva incluida con tu reserva.' },
-      Tratamiento_2_Precio: { type: 'text', text: t2.precio || 'GRATIS (con reserva)' },
+      Tratamiento_2_Titulo: { type: 'text', text: t2Titulo },
+      Tratamiento_2_Desc: { type: 'text', text: t2Desc },
+      Tratamiento_2_Precio: { type: 'text', text: t2Precio },
 
       // BLOQUE DE TRATAMIENTO 3 (INFERIOR)
-      Tratamiento_3_Titulo: { type: 'text', text: t3.titulo || 'Blanqueamiento' },
-      Tratamiento_3_Desc: { type: 'text', text: t3.desc || 'Mantenimiento y brillo estético de alta durabilidad.' },
-      Tratamiento_3_Precio: { type: 'text', text: t3.precio || 'Desde S/ 100' },
+      Tratamiento_3_Titulo: { type: 'text', text: t3Titulo },
+      Tratamiento_3_Desc: { type: 'text', text: t3Desc },
+      Tratamiento_3_Precio: { type: 'text', text: t3Precio },
     };
   }
 
@@ -202,18 +244,18 @@ export class CanvaService {
     const sede = params.sedeTexto || 'Sede Miraflores - Av. Larco 123';
     const descuento = params.descuentoTexto || '30';
     const contacto = params.contactoTexto?.replace(/\n/g, ' • ') || 'WhatsApp: +51 999 123 456';
-    const horario = params.horarioTexto?.replace(/\n/g, ' | ') || 'Lun - Sáb: 8:00am a 8:00pm';
+    const horario = this.formatTo12H(params.horarioTexto?.replace(/\n/g, ' | ') || 'Lun - Sáb: 08:00 AM - 08:00 PM');
 
-    const t1Title = params.tratamiento1?.titulo || 'Brackets Metálicos';
-    const t1Desc = params.tratamiento1?.desc || 'Consultas mensuales para el control y alineación perfecta de tu sonrisa.';
+    const t1Title = this.shortenTitle(params.tratamiento1?.titulo, 'Brackets Metálicos');
+    const t1Desc = this.shortenDesc(params.tratamiento1?.desc, 'Control mensual y garantía clínica.');
     const t1Precio = params.tratamiento1?.precio || 'Desde S/ 150';
 
-    const t2Title = params.tratamiento2?.titulo || 'Limpieza Dental';
-    const t2Desc = params.tratamiento2?.desc || 'Evaluación preventiva integral y profilaxis profunda.';
+    const t2Title = this.shortenTitle(params.tratamiento2?.titulo, 'Limpieza Dental');
+    const t2Desc = this.shortenDesc(params.tratamiento2?.desc, 'Profilaxis y diagnóstico 3D.');
     const t2Precio = params.tratamiento2?.precio || 'GRATIS (con reserva)';
 
-    const t3Title = params.tratamiento3?.titulo || 'Blanqueamiento';
-    const t3Desc = params.tratamiento3?.desc || 'Mantenimiento y brillo estético de alta durabilidad.';
+    const t3Title = this.shortenTitle(params.tratamiento3?.titulo, 'Blanqueamiento');
+    const t3Desc = this.shortenDesc(params.tratamiento3?.desc, 'Brillo estético y flúor.');
     const t3Precio = params.tratamiento3?.precio || 'Desde S/ 100';
 
     const svg = `

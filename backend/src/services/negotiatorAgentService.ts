@@ -24,29 +24,29 @@ export class NegotiatorAgentService {
   public static async processAndDispatch(params: DispatchNegotiationParams) {
     const brandTemplateId = params.canvaTemplateId || 'EAHWLEXZ1lo';
 
-    // 1. Preparar datos para Canva Autofill
+    // 1. Preparar datos para Canva Autofill con títulos cortos de máx 2 palabras y horario 12H
     const canvaParams: CanvaAutofillParams = {
       brandTemplateId,
       leadName: params.leadName,
       sedeTexto: `Sede: ${params.sedeName || 'Principal (Trujillo / Lima)'}`,
       descuentoTexto: `¡${params.discountPct}% DSCTO. EXCLUSIVO!`,
       contactoTexto: `WhatsApp: +51 999 123 456\ninfo@nexosalud.pe`,
-      horarioTexto: `Lunes a Sábado\n8:00am a 8:00pm`,
+      horarioTexto: `Lunes a Sábado\n08:00 AM - 08:00 PM`,
       tratamiento1: {
-        titulo: params.serviceName || 'Tratamiento Odontológico',
-        desc: params.conditions || 'Promoción personalizada con garantía clínica NexoSalud.',
+        titulo: params.serviceName || 'Ortodoncia Brackets',
+        desc: params.conditions || 'Control mensual y garantía clínica.',
         precio: `Desde S/ ${params.offeredPrice.toFixed(2)}`,
         imgUrl: 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=600&auto=format&fit=crop&q=80',
       },
       tratamiento2: {
-        titulo: 'Limpieza y Diagnóstico Digital 3D',
-        desc: 'Evaluación integral preventiva incluida con tu reserva.',
-        precio: 'GRATIS (con tu reserva)',
+        titulo: 'Limpieza Dental',
+        desc: 'Profilaxis y diagnóstico digital 3D.',
+        precio: 'GRATIS (con reserva)',
         imgUrl: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&auto=format&fit=crop&q=80',
       },
       tratamiento3: {
-        titulo: 'Retenedores & Blanqueamiento',
-        desc: 'Mantenimiento y brillo estético de alta durabilidad.',
+        titulo: 'Blanqueamiento',
+        desc: 'Brillo estético y mantenimiento.',
         precio: 'Desde S/ 100',
         imgUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=600&auto=format&fit=crop&q=80',
       },

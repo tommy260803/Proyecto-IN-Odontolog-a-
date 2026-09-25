@@ -315,9 +315,9 @@ export default function LeadPage() {
                 const url = await leadService.getCanvaAuthUrl();
                 window.location.href = url;
               }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-all shadow-none"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/80 text-purple-700 hover:text-purple-900 dark:text-purple-300 dark:hover:text-purple-100 border border-purple-200 dark:border-purple-800 text-xs font-bold transition-all shadow-none"
             >
-              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+              <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
               <span>Conectar Canva</span>
             </Button>
             <Link

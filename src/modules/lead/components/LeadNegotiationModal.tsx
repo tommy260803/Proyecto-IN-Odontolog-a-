@@ -242,6 +242,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
   const [generatingCanva, setGeneratingCanva] = useState(false);
   const [canvaResult, setCanvaResult] = useState<any>(null);
+  const [flyerImageLoading, setFlyerImageLoading] = useState(false);
 
   const fetchData = () => {
     if (!leadId) return;
@@ -1350,9 +1351,9 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                           const url = await leadService.getCanvaAuthUrl();
                           window.location.href = url;
                         }}
-                        className="border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50 rounded-xl text-xs h-9 px-3 font-semibold flex items-center gap-1.5 shadow-none"
+                        className="border border-purple-300 hover:border-purple-400 bg-purple-50 hover:bg-purple-100 text-purple-800 hover:text-purple-950 dark:bg-purple-950/60 dark:hover:bg-purple-900/80 dark:text-purple-200 dark:hover:text-white rounded-xl text-xs h-9 px-3 font-semibold flex items-center gap-1.5 shadow-none transition-colors cursor-pointer"
                       >
-                        <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                        <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                         <span>Conectar Canva</span>
                       </Button>
 
@@ -1383,7 +1384,12 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                           <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                             Flyer Publicitario Oficial Canva
                           </span>
-                          {canvaResult ? (
+                          {generatingCanva ? (
+                            <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-100/80 dark:bg-purple-950/60 px-2 py-0.5 rounded-full flex items-center gap-1 border border-purple-300 dark:border-purple-800 animate-pulse">
+                              <div className="w-2 h-2 rounded-full bg-purple-600 animate-ping" />
+                              Generando en Canva...
+                            </span>
+                          ) : canvaResult ? (
                             <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-300 dark:border-emerald-800">
                               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                               Imagen Generada
@@ -1421,19 +1427,46 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                         )}
                       </div>
 
-                      {/* Contenedor Visual de la Imagen del Flyer */}
-                      {canvaResult?.previewUrl ? (
+                      {/* Contenedor Visual de la Imagen del Flyer con Spinner y Zoom */}
+                      {generatingCanva ? (
+                        <div className="py-12 px-6 flex flex-col items-center justify-center text-center space-y-3 bg-purple-50/70 dark:bg-purple-950/40 rounded-xl border border-purple-200/80 dark:border-purple-800/60 animate-in fade-in duration-200">
+                          <div className="relative">
+                            <div className="w-12 h-12 rounded-full border-3 border-purple-200 dark:border-purple-800 border-t-purple-600 animate-spin" />
+                            <CanvaIcon className="w-5 h-5 text-purple-600 absolute inset-0 m-auto animate-pulse" />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs font-bold text-purple-900 dark:text-purple-200">
+                              Diseñando y Generando Flyer Oficial en Canva...
+                            </p>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                              Reemplazando tratamientos, tarifas y sede del paciente en alta definición.
+                            </p>
+                          </div>
+                        </div>
+                      ) : canvaResult?.previewUrl ? (
                         <div className="flex flex-col md:flex-row items-center gap-4 bg-white/90 dark:bg-slate-900/90 p-3.5 rounded-xl border border-purple-100 dark:border-purple-900/40">
                           {/* Vista previa de la Imagen del Flyer */}
-                          <div className="relative group shrink-0 max-w-[240px] sm:max-w-[270px] w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-md bg-slate-950 flex items-center justify-center">
+                          <div className="relative group shrink-0 max-w-[260px] sm:max-w-[300px] w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-md bg-slate-950 flex items-center justify-center min-h-[300px]">
+                            {flyerImageLoading && (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-xs z-10 text-white gap-2">
+                                <div className="w-8 h-8 rounded-full border-2 border-purple-400/40 border-t-purple-400 animate-spin" />
+                                <span className="text-[10px] font-medium text-slate-200">Cargando imagen...</span>
+                              </div>
+                            )}
                             <img
                               src={canvaResult.previewUrl}
                               alt="Flyer Oficial Canva"
-                              className="w-full h-auto max-h-[340px] object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                              onLoad={() => setFlyerImageLoading(false)}
+                              className={`w-full h-auto max-h-[360px] object-contain transition-transform duration-300 group-hover:scale-[1.02] cursor-pointer ${flyerImageLoading ? 'opacity-0' : 'opacity-100'}`}
+                              onClick={() => window.open(canvaResult.previewUrl, '_blank')}
+                              title="Haz clic para abrir el flyer en tamaño completo"
                             />
-                            <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                              <span className="text-[11px] font-bold text-white bg-slate-900/80 px-2.5 py-1 rounded-lg backdrop-blur-xs flex items-center gap-1">
-                                <ImageIcon className="w-3.5 h-3.5" /> Vista Previa
+                            <div
+                              onClick={() => window.open(canvaResult.previewUrl, '_blank')}
+                              className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                            >
+                              <span className="text-[11px] font-bold text-white bg-slate-900/80 px-2.5 py-1 rounded-lg backdrop-blur-xs flex items-center gap-1.5 shadow-sm">
+                                <ImageIcon className="w-3.5 h-3.5" /> Ampliar Imagen
                               </span>
                             </div>
                           </div>
