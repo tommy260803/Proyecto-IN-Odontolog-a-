@@ -1,7 +1,3 @@
-import path from 'path';
-import dotenv from 'dotenv';
-dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
-
 import express from 'express';
 import cors from 'cors';
 import { prisma } from './db';
@@ -13,6 +9,11 @@ import customerRoutes from './routes/customer.routes';
 import turnedRoutes from './routes/turned.routes';
 import reportRoutes from './routes/report.routes';
 import { startDunningScheduler } from './services/dunningScheduler';
+
+import dotenv from 'dotenv';
+import path from 'path';
+
+dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
 
 const app = express();
 const port = process.env.PORT || 3001;

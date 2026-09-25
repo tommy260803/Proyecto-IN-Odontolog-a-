@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 /**
  * Canva Connect API Service
  * Integración con Canva Autofill API para Brand Template: EAHWLEXZ1lo
@@ -44,13 +47,85 @@ export interface CanvaAutofillResult {
 
 export class CanvaService {
   private static BRAND_TEMPLATE_ID = 'EAHWLEXZ1lo';
+  private static cachedAccessToken: string | null = null;
+  private static tokenExpiresAt: number = 0;
 
   /**
-   * Genera el payload estructurado con las 16 variables exactas de la plantilla de Canva
+   * Obtiene un Access Token válido, renovándolo automáticamente mediante el Refresh Token si es necesario
+   */
+  public static async getValidAccessToken(): Promise<string | null> {
+    // Si tenemos un token en caché que no ha expirado (con margen de 2 minutos)
+    if (this.cachedAccessToken && Date.now() < this.tokenExpiresAt - 120000) {
+      return this.cachedAccessToken;
+    }
+
+    const clientId = process.env.CANVA_CLIENT_ID;
+    const clientSecret = process.env.CANVA_CLIENT_SECRET;
+    const refreshToken = process.env.CANVA_REFRESH_TOKEN;
+
+    // Intentar renovar con Refresh Token
+    if (clientId && clientSecret && refreshToken) {
+      try {
+        console.log('🔄 [Canva Connect] Renovando Access Token usando Refresh Token...');
+        const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+        const tokenRes = await fetch('https://api.canva.com/rest/v1/oauth/token', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${basicAuth}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+          }).toString(),
+        });
+
+        if (tokenRes.ok) {
+          const tokenData: any = await tokenRes.json();
+          this.cachedAccessToken = tokenData.access_token;
+          this.tokenExpiresAt = Date.now() + ((tokenData.expires_in || 14400) * 1000);
+          if (tokenData.refresh_token) {
+            process.env.CANVA_REFRESH_TOKEN = tokenData.refresh_token;
+            try {
+              const envPath = path.resolve(__dirname, '../../.env');
+              if (fs.existsSync(envPath)) {
+                let content = fs.readFileSync(envPath, 'utf8');
+                content = content.replace(/CANVA_REFRESH_TOKEN=.*/g, `CANVA_REFRESH_TOKEN=${tokenData.refresh_token}`);
+                content = content.replace(/CANVA_ACCESS_TOKEN=.*/g, `CANVA_ACCESS_TOKEN=${tokenData.access_token}`);
+                fs.writeFileSync(envPath, content, 'utf8');
+              }
+            } catch (_) {}
+          }
+          console.log('✅ [Canva Connect] Access Token renovado exitosamente.');
+          return this.cachedAccessToken;
+        } else {
+          console.warn('⚠️ [Canva Connect] Falló la renovación del token con Canva:', await tokenRes.text());
+        }
+      } catch (err: any) {
+        console.warn('⚠️ [Canva Connect] Excepción al renovar token:', err.message);
+      }
+    }
+
+    // Fallback al token estático de .env si existe
+    const fallbackToken = process.env.CANVA_API_KEY || process.env.CANVA_ACCESS_TOKEN || null;
+    return fallbackToken;
+  }
+
+  /**
+   * Genera el payload estructurado con las variables exactas de la plantilla de Canva
    */
   public static buildAutofillDataset(params: CanvaAutofillParams) {
-    const sedeTexto = params.sedeTexto || 'Sede: Miraflores - Av. Larco 123';
-    const descuentoTexto = params.descuentoTexto || 'hasta 20% OFF';
+    // En la plantilla, Descuento_Texto está sobre 'hasta' y al lado de '% OFF'
+    // Se extrae sólo el número para no deformar el texto de tamaño gigante (ej: '20' o '30')
+    let cleanDescuento = params.descuentoTexto || '20';
+    const matchDigits = cleanDescuento.match(/\d+/);
+    if (matchDigits) {
+      cleanDescuento = matchDigits[0];
+    }
+
+    let cleanSede = params.sedeTexto || 'Av. Larco 123, Miraflores';
+    cleanSede = cleanSede.replace(/^Sede:\s*/i, '').trim();
+
     const contactoTexto = params.contactoTexto || '999-123-456\nhola@clinicaborcelle.com';
     const horarioTexto = params.horarioTexto || 'Lunes a Viernes\n8:00h a 19:00';
 
@@ -77,28 +152,25 @@ export class CanvaService {
 
     return {
       // INFO GENERAL DE LA CLÍNICA Y GANCHO
-      Sede_Texto: { type: 'text', text: sedeTexto },
-      Descuento_Texto: { type: 'text', text: descuentoTexto },
+      Sede_Texto: { type: 'text', text: cleanSede },
+      Descuento_Texto: { type: 'text', text: cleanDescuento },
       Contacto_Texto: { type: 'text', text: contactoTexto },
       Horario_Texto: { type: 'text', text: horarioTexto },
 
       // BLOQUE DE TRATAMIENTO 1 (SUPERIOR)
-      Tratamiento_1_Img: { type: 'image', asset_id: undefined, url: t1.imgUrl },
       Tratamiento_1_Titulo: { type: 'text', text: t1.titulo || 'Brackets Metálicos' },
-      Tratamiento_1_Desc: { type: 'text', text: t1.desc || 'Consultas mensuales para el control y alineación perfecta.' },
+      Tratamiento_1_Desc: { type: 'text', text: t1.desc || 'Consultas mensuales para el seguimiento del tratamiento.' },
       Tratamiento_1_Precio: { type: 'text', text: t1.precio || 'Desde S/ 150' },
 
       // BLOQUE DE TRATAMIENTO 2 (CENTRAL)
-      Tratamiento_2_Img: { type: 'image', asset_id: undefined, url: t2.imgUrl },
-      Tratamiento_2_Titulo: { type: 'text', text: t2.titulo || 'Alineadores Invisibles' },
+      Tratamiento_2_Titulo: { type: 'text', text: t2.titulo || 'Ortodoncia Invisible' },
       Tratamiento_2_Desc: { type: 'text', text: t2.desc || 'Cambio mensual de la ortodoncia invisible para tu total comodidad.' },
       Tratamiento_2_Precio: { type: 'text', text: t2.precio || 'Desde S/ 350' },
 
       // BLOQUE DE TRATAMIENTO 3 (INFERIOR)
-      Tratamiento_3_Img: { type: 'image', asset_id: undefined, url: t3.imgUrl },
-      Tratamiento_3_Titulo: { type: 'text', text: t3.titulo || 'Retenedores' },
-      Tratamiento_3_Desc: { type: 'text', text: t3.desc || 'Mantenimiento y cuidado post-tratamiento para mantener tu sonrisa.' },
-      Tratamiento_3_Precio: { type: 'text', text: t3.precio || 'Desde S/ 100' },
+      Tratamiento_3_Titulo: { type: 'text', text: t3.titulo || 'Limpieza Profunda' },
+      Tratamiento_3_Desc: { type: 'text', text: t3.desc || 'Elimina la acumulación de placa y sarro que no se puede alcanzar con el cepillo.' },
+      Tratamiento_3_Precio: { type: 'text', text: t3.precio || 'Desde S/ 80' },
     };
   }
 
@@ -261,17 +333,116 @@ export class CanvaService {
   public static async generateFlyer(params: CanvaAutofillParams): Promise<CanvaAutofillResult> {
     const brandTemplateId = params.brandTemplateId || process.env.CANVA_BRAND_TEMPLATE_ID || process.env.CANVA_TEMPLATE_ID || this.BRAND_TEMPLATE_ID;
     const dataset = this.buildAutofillDataset(params);
-    const token = process.env.CANVA_API_KEY || process.env.CANVA_ACCESS_TOKEN;
+    const token = await this.getValidAccessToken();
 
     const jobId = `job_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
     // 1. Si contamos con API Key / Access Token de Canva Connect
     if (token) {
       try {
-        const designId = process.env.CANVA_DESIGN_ID || 'DAHWLeZ6ETo';
-        console.log('🎨 [Canva Connect] Solicitando exportación PNG oficial del diseño:', designId);
+        console.log('🎨 [Canva Connect] Ejecutando Autofill con datos del paciente para plantilla:', brandTemplateId);
 
-        const exportRes = await fetch('https://api.canva.com/rest/v1/exports', {
+        // PASO 1: Iniciar Job de Autofill en Canva
+        const autofillRes = await fetch('https://api.canva.com/rest/v1/autofills', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            brand_template_id: brandTemplateId,
+            title: `Flyer NexoSalud - ${params.leadName || 'Paciente'}`,
+            data: dataset,
+          }),
+        });
+
+        if (autofillRes.ok) {
+          const autofillJson: any = await autofillRes.json();
+          const autofillJobId = autofillJson.job?.id;
+          console.log('🎨 [Canva Connect] Job de Autofill creado:', autofillJobId, 'Status:', autofillJson.job?.status);
+
+          let autofillJob = autofillJson.job;
+          let pollAttempts = 0;
+          while (autofillJob?.status === 'in_progress' && pollAttempts < 10) {
+            await new Promise((r) => setTimeout(r, 1500));
+            const pollRes = await fetch(`https://api.canva.com/rest/v1/autofills/${autofillJobId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (pollRes.ok) {
+              const pollData: any = await pollRes.json();
+              autofillJob = pollData.job;
+              console.log(`🎨 [Canva Connect] Polling Autofill (${pollAttempts + 1}/10): ${autofillJob?.status}`);
+            }
+            pollAttempts++;
+          }
+
+          const customizedDesign = autofillJob?.result?.design;
+          const customizedDesignId = customizedDesign?.id;
+
+          if (autofillJob?.status === 'success' && customizedDesignId) {
+            console.log('🎉 [Canva Connect] ¡Diseño personalizado creado por Autofill! ID:', customizedDesignId);
+
+            // PASO 2: Exportar a PNG oficial el diseño con los datos ya reemplazados
+            console.log('🎨 [Canva Connect] Solicitando exportación PNG oficial del diseño personalizado:', customizedDesignId);
+            const exportRes = await fetch('https://api.canva.com/rest/v1/exports', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                design_id: customizedDesignId,
+                format: { type: 'png' },
+              }),
+            });
+
+            if (exportRes.ok) {
+              const exportJson: any = await exportRes.json();
+              const exportJobId = exportJson.job?.id;
+              let exportJob = exportJson.job;
+              let exportPoll = 0;
+
+              while (exportJob?.status === 'in_progress' && exportPoll < 10) {
+                await new Promise((r) => setTimeout(r, 1500));
+                const pRes = await fetch(`https://api.canva.com/rest/v1/exports/${exportJobId}`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                if (pRes.ok) {
+                  const pData: any = await pRes.json();
+                  exportJob = pData.job;
+                  console.log(`🎨 [Canva Connect] Polling Exportación PNG (${exportPoll + 1}/10): ${exportJob?.status}`);
+                }
+                exportPoll++;
+              }
+
+              if (exportJob?.status === 'success' && exportJob.urls && exportJob.urls.length > 0) {
+                const officialPngUrl = exportJob.urls[0];
+                const designUrl = customizedDesign.url || `https://www.canva.com/design/${customizedDesignId}/view`;
+                console.log('✅ [Canva Connect] ¡Flyer PNG con datos 100% reemplazados generado! URL:', officialPngUrl);
+
+                return {
+                  jobId: exportJobId || jobId,
+                  status: 'completed',
+                  designId: customizedDesignId,
+                  designUrl,
+                  previewUrl: officialPngUrl,
+                  downloadPdfUrl: officialPngUrl,
+                  downloadPngUrl: officialPngUrl,
+                  filledDataset: dataset,
+                };
+              }
+            }
+          }
+        } else {
+          const errText = await autofillRes.text();
+          console.warn('⚠️ [Canva Autofill Error Response]:', autofillRes.status, errText);
+        }
+
+        // Respaldo de exportación directa si Autofill no se completa
+        const designId = process.env.CANVA_DESIGN_ID || 'DAHWLeZ6ETo';
+        console.log('🎨 [Canva Connect] Usando exportación directa del diseño base:', designId);
+
+        const fallbackExportRes = await fetch('https://api.canva.com/rest/v1/exports', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -283,48 +454,38 @@ export class CanvaService {
           }),
         });
 
-        if (exportRes.ok) {
-          const exportJson: any = await exportRes.json();
-          const exportJobId = exportJson.job?.id;
-          console.log('🎨 [Canva Connect] Job de exportación creado:', exportJobId, 'Status:', exportJson.job?.status);
-
-          let exportJob = exportJson.job;
-          let pollAttempts = 0;
-          while (exportJob?.status === 'in_progress' && pollAttempts < 10) {
+        if (fallbackExportRes.ok) {
+          const fJson: any = await fallbackExportRes.json();
+          let fJob = fJson.job;
+          let fPoll = 0;
+          while (fJob?.status === 'in_progress' && fPoll < 10) {
             await new Promise((r) => setTimeout(r, 1500));
-            const pollRes = await fetch(`https://api.canva.com/rest/v1/exports/${exportJobId}`, {
+            const pRes = await fetch(`https://api.canva.com/rest/v1/exports/${fJson.job?.id}`, {
               headers: { Authorization: `Bearer ${token}` },
             });
-            if (pollRes.ok) {
-              const pollData: any = await pollRes.json();
-              exportJob = pollData.job;
-              console.log(`🎨 [Canva Connect] Polling exportación (${pollAttempts + 1}/10): ${exportJob?.status}`);
+            if (pRes.ok) {
+              const pData: any = await pRes.json();
+              fJob = pData.job;
             }
-            pollAttempts++;
+            fPoll++;
           }
 
-          if (exportJob?.status === 'success' && exportJob.urls && exportJob.urls.length > 0) {
-            const officialPngUrl = exportJob.urls[0];
-            const designUrl = `https://www.canva.com/design/${designId}/view`;
-            console.log('✅ [Canva Connect] ¡Flyer PNG oficial obtenido con éxito! URL:', officialPngUrl);
-
+          if (fJob?.status === 'success' && fJob.urls?.[0]) {
+            const pngUrl = fJob.urls[0];
             return {
-              jobId: exportJobId || jobId,
+              jobId: fJson.job?.id || jobId,
               status: 'completed',
               designId,
-              designUrl,
-              previewUrl: officialPngUrl,
-              downloadPdfUrl: officialPngUrl,
-              downloadPngUrl: officialPngUrl,
+              designUrl: `https://www.canva.com/design/${designId}/view`,
+              previewUrl: pngUrl,
+              downloadPdfUrl: pngUrl,
+              downloadPngUrl: pngUrl,
               filledDataset: dataset,
             };
           }
-        } else {
-          const errText = await exportRes.text();
-          console.warn('⚠️ [Canva Export Error Response]:', exportRes.status, errText);
         }
       } catch (err: any) {
-        console.warn('⚠️ [Canva Export API Exception]:', err.message);
+        console.warn('⚠️ [Canva Connect API Exception]:', err.message);
       }
     }
 

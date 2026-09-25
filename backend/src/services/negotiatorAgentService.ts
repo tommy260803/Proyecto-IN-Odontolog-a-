@@ -28,10 +28,10 @@ export class NegotiatorAgentService {
     const canvaParams: CanvaAutofillParams = {
       brandTemplateId,
       leadName: params.leadName,
-      sedeTexto: `Sede: ${params.sedeName || 'Principal (Trujillo / Lima)'}`,
-      descuentoTexto: `¡${params.discountPct}% DSCTO. EXCLUSIVO!`,
-      contactoTexto: `WhatsApp: +51 999 123 456\ninfo@nexosalud.pe`,
-      horarioTexto: `Lunes a Sábado\n8:00am a 8:00pm`,
+      sedeTexto: params.sedeName || 'Av. Larco 123, Miraflores',
+      descuentoTexto: String(params.discountPct || 20),
+      contactoTexto: '+51 987 654 321\ninfo@nexosalud.pe',
+      horarioTexto: 'Lunes a Sábado\n8:00am a 8:00pm',
       tratamiento1: {
         titulo: params.serviceName || 'Tratamiento Odontológico',
         desc: params.conditions || 'Promoción personalizada con garantía clínica NexoSalud.',
