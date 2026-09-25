@@ -1,4 +1,4 @@
-import sql from 'mssql';
+import sql from 'mssql/msnodesqlv8';
 import dotenv from 'dotenv';
 
 dotenv.config();

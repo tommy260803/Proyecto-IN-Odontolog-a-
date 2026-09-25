@@ -48,10 +48,19 @@ import {
   ExternalLink,
 } from 'lucide-react';
 
+// ── Logo oficial de Canva (Icon-Icons / Simple Icons) ───────────────────────
 function CanvaIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-label="Canva">
-      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 13.974c-.452 1.488-1.528 2.56-3.003 3.007-1.63.493-3.669.176-5.068-.788-1.284-.886-1.996-2.28-2.007-3.926-.013-1.895.918-3.486 2.493-4.266 1.493-.739 3.25-.662 4.67.206.31.189.336.56.059.78-.276.22-.647.19-.958-.002-1.096-.673-2.457-.73-3.606-.153-1.215.61-1.928 1.844-1.918 3.32.01 1.28.563 2.373 1.564 3.064 1.095.756 2.704 1.006 3.987.618 1.15-.348 1.99-1.187 2.342-2.347.167-.549.33-1.103.496-1.656.096-.322.423-.507.747-.411.323.096.508.423.411.747l-.209.807z"/>
+    <svg
+      role="img"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      aria-label="Canva"
+    >
+      <title>Canva</title>
+      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zM6.962 7.68c.754 0 1.337.549 1.405 1.2.069.583-.171 1.097-.822 1.406-.343.171-.48.172-.549.069-.034-.069 0-.137.069-.206.617-.514.617-.926.548-1.508-.034-.378-.308-.618-.583-.618-1.2 0-2.914 2.674-2.674 4.629.103.754.549 1.646 1.509 1.646.308 0 .65-.103.96-.24.5-.264.799-.47 1.097-.8-.073-.885.704-2.046 1.851-2.046.515 0 .926.205.96.583.068.514-.377.582-.514.582s-.378-.034-.378-.17c-.034-.138.309-.07.275-.378-.035-.206-.24-.274-.446-.274-.72 0-1.131.994-1.029 1.611.035.275.172.549.447.549.205 0 .514-.31.617-.755.068-.308.343-.514.583-.514.102 0 .17.034.205.171v.138c-.034.137-.137.548-.102.651 0 .069.034.171.17.171.092 0 .436-.18.777-.459.117-.59.253-1.298.253-1.357.034-.24.137-.48.617-.48.103 0 .171.034.205.171v.138l-.136.617c.445-.583 1.097-.994 1.508-.994.172 0 .309.102.309.274 0 .103 0 .274-.069.446-.137.377-.309.96-.412 1.474 0 .137.035.274.207.274.171 0 .685-.206 1.096-.754l.007-.004c-.002-.068-.007-.134-.007-.202 0-.411.035-.754.104-.994.068-.274.411-.514.617-.514.103 0 .205.069.205.171 0 .035 0 .103-.034.137-.137.446-.24.857-.24 1.269 0 .24.034.582.102.788 0 .034.035.069.07.069.068 0 .548-.445.89-1.028-.308-.206-.48-.549-.48-.96 0-.72.446-1.097.858-1.097.343 0 .617.24.617.72 0 .308-.103.65-.274.96h.102a.77.77 0 0 0 .584-.24.293.293 0 0 1 .134-.117c.335-.425.83-.74 1.41-.74.48 0 .924.205.959.582.068.515-.378.618-.515.618l-.002-.002c-.138 0-.377-.035-.377-.172 0-.137.309-.068.274-.376-.034-.206-.24-.275-.446-.275-.686 0-1.13.891-1.028 1.611.034.275.171.583.445.583.206 0 .515-.308.652-.754.068-.274.343-.514.583-.514.103 0 .17.034.205.171 0 .069 0 .206-.137.652-.17.308-.171.48-.137.617.034.274.171.48.309.583.034.034.068.102.068.102 0 .069-.034.138-.137.138-.034 0-.068 0-.103-.035-.514-.205-.72-.548-.789-.891-.205.24-.445.377-.72.377-.445 0-.89-.411-.96-.926a1.609 1.609 0 0 1 .075-.649c-.203.13-.422.203-.623.203h-.17c-.447.652-.927 1.098-1.27 1.303a.896.896 0 0 1-.377.104c-.068 0-.171-.035-.205-.104-.095-.152-.156-.392-.193-.667-.481.527-1.145.805-1.453.805-.343 0-.548-.206-.582-.55v-.376c.102-.754.377-1.2.377-1.337a.074.074 0 0 0-.069-.07c-.24 0-1.028.824-1.166 1.373l-.103.445c-.068.309-.377.515-.582.515-.103 0-.172-.035-.206-.172v-.137l.046-.233c-.435.31-.87.508-1.075.508-.308 0-.48-.172-.514-.412-.206.274-.445.412-.754.412-.352 0-.696-.24-.862-.593-.244.275-.523.553-.852.764-.48.309-1.028.549-1.68.549-.582 0-1.097-.309-1.371-.583-.412-.377-.651-.96-.686-1.509-.205-1.68.823-3.84 2.4-4.8.378-.205.755-.343 1.132-.343zm9.77 3.291c-.104 0-.172.172-.172.343 0 .274.137.583.309.755a1.74 1.74 0 0 0 .102-.583c0-.343-.137-.515-.24-.515z" />
     </svg>
   );
 }
@@ -465,7 +474,7 @@ export default function LeadNegotiationPage() {
 
       toast({
         title: '🎨 ¡Flyer Canva Generado!',
-        description: 'Plantilla EAHWLEXZ1lo personalizada con 16 variables estructuradas y lista para despacho.'
+        description: 'Plantilla de diseño oficial personalizada y lista para despacho.'
       });
 
       if (autoDispatch) {
@@ -1040,14 +1049,11 @@ export default function LeadNegotiationPage() {
                     3
                   </span>
                   <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <span>Envío de Oferta Omnicanal & Generador Canva</span>
-                    <Badge className="bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 text-[9px] py-0 px-1.5">
-                      Plantilla: EAHWLEXZ1lo
-                    </Badge>
+                    Envío de Oferta Omnicanal & Generador Canva
                   </h3>
                 </div>
                 <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-md border border-purple-200/60 dark:border-purple-800/60 flex items-center gap-1">
-                  <Palette className="w-3 h-3" />
+                  <CanvaIcon className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                   Canva Connect Autofill
                 </span>
               </div>
@@ -1072,7 +1078,7 @@ export default function LeadNegotiationPage() {
                   {generateWhatsAppMessage()}
                 </p>
 
-                {/* Botones de acción: Canva, WhatsApp, Correo (Sin shadow y sin botón Copiar duplicado) */}
+                {/* Botones de acción planos sin shadow ni botón Copiar duplicado */}
                 <div className="flex items-center gap-2 pt-1 flex-wrap">
                   <Button
                     type="button"
@@ -1103,13 +1109,13 @@ export default function LeadNegotiationPage() {
                   </Button>
                 </div>
 
-                {/* Tarjeta de Visualización de Flyer Canva (Plantilla EAHWLEXZ1lo) */}
+                {/* Tarjeta de Visualización de Flyer Canva */}
                 <div className="mt-2.5 p-3 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/70 dark:border-purple-900/50 space-y-2">
                   <div className="flex items-center justify-between flex-wrap gap-1">
                     <div className="flex items-center gap-2">
                       <CanvaIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                       <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        Plantilla Oficial de Marca Canva: <span className="font-mono text-purple-700 dark:text-purple-300">EAHWLEXZ1lo</span>
+                        Diseño Publicitario Oficial Canva
                       </span>
                     </div>
                     <a
