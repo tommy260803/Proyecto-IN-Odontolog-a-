@@ -5,7 +5,6 @@ import {
   addDays,
   startOfDay,
   parseISO,
-  isBefore,
 } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
@@ -42,12 +41,10 @@ import {
   TrendingDown,
   Award,
   Copy,
-  Send,
   MessageCircle,
-  HelpCircle,
   CheckCheck,
+  Timer,
 } from 'lucide-react';
-import { InteractiveAvailabilityPicker } from '../components/InteractiveAvailabilityPicker';
 
 export default function LeadNegotiationPage() {
   const { id } = useParams();
@@ -61,14 +58,13 @@ export default function LeadNegotiationPage() {
   const [addingAlternative, setAddingAlternative] = useState(false);
   const [selectedOpcion, setSelectedOpcion] = useState<number | null>(null);
 
-  // Form states for alternative offer
+  // Form states for commercial offer / promotion
   const [selectedServicioId, setSelectedServicioId] = useState('');
   const [selectedProfesionalId, setSelectedProfesionalId] = useState('');
   const [selectedSedeId, setSelectedSedeId] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedDisponibilidad, setSelectedDisponibilidad] = useState('');
-  const [customTime, setCustomTime] = useState({ startTime: '09:00', endTime: '10:00' });
-  const [isCustomMode, setIsCustomMode] = useState(false);
+  const [selectedVigencia, setSelectedVigencia] = useState<'24h' | '48h' | '72h' | '7d' | 'custom'>('48h');
+  const [selectedVigenciaCustom, setSelectedVigenciaCustom] = useState('');
+  const [selectedFranja, setSelectedFranja] = useState('Horario Flexible (A elección del paciente al confirmar)');
   const [precioOfrecido, setPrecioOfrecido] = useState('150.00');
   const [condiciones, setCondiciones] = useState('');
   const [offerErrors, setOfferErrors] = useState<Record<string, string>>({});
@@ -105,9 +101,6 @@ export default function LeadNegotiationPage() {
   // Pre-carga inteligente al obtener datos
   useEffect(() => {
     if (!lead || !options || !options.servicios?.length) return;
-
-    const minAllowedDate = addDays(startOfDay(new Date()), 3);
-    const minAllowedDateStr = format(minAllowedDate, 'yyyy-MM-dd');
 
     // 1. Servicio pre-seleccionado
     let initialServicioId = selectedServicioId;
@@ -151,25 +144,7 @@ export default function LeadNegotiationPage() {
       if (matchProf) setSelectedProfesionalId(matchProf.id_profesional.toString());
     }
 
-    // 4. Fecha pre-seleccionada (mínimo 72h)
-    if (!selectedDate) {
-      const validDisps = (options.disponibilidades || []).filter((d: any) => {
-        const dDate = (d.fecha || '').split('T')[0];
-        if (!dDate) return false;
-        try {
-          return !isBefore(startOfDay(parseISO(dDate)), minAllowedDate);
-        } catch {
-          return false;
-        }
-      });
-      if (validDisps.length > 0) {
-        setSelectedDate(validDisps[0].fecha.split('T')[0]);
-      } else {
-        setSelectedDate(minAllowedDateStr);
-      }
-    }
-
-    // 5. Precio oficial de lista & Descuento inteligente
+    // 4. Precio oficial de lista & Descuento inteligente
     const activeServicio = options.servicios?.find((s: any) => s.id_servicio.toString() === initialServicioId);
     const officialPrice = Number(activeServicio?.Tarifas?.[0]?.precio || 180);
     const isStudent = lead.DatosAcademicos?.[0]?.aplica === true || Boolean(lead.DatosAcademicos?.[0]?.universidad);
@@ -177,11 +152,37 @@ export default function LeadNegotiationPage() {
     if (precioOfrecido === '150.00' || !precioOfrecido) {
       if (isStudent) {
         setPrecioOfrecido(Math.round(officialPrice * 0.85).toFixed(2));
+        setCondiciones('Convenio Universitario: Presentar Carnet Universitario vigente al asistir');
       } else {
         setPrecioOfrecido(officialPrice.toFixed(2));
       }
     }
   }, [lead, options]);
+
+  // Cálculo en vivo de la fecha límite de vigencia de la oferta comercial
+  const calculatedExpiry = useMemo(() => {
+    const today = startOfDay(new Date());
+    if (selectedVigencia === '24h') return addDays(today, 1);
+    if (selectedVigencia === '48h') return addDays(today, 2);
+    if (selectedVigencia === '72h') return addDays(today, 3);
+    if (selectedVigencia === '7d') return addDays(today, 7);
+    if (selectedVigencia === 'custom' && selectedVigenciaCustom) {
+      try {
+        return parseISO(selectedVigenciaCustom);
+      } catch {
+        return addDays(today, 2);
+      }
+    }
+    return addDays(today, 2);
+  }, [selectedVigencia, selectedVigenciaCustom]);
+
+  const getVigenciaLabel = (vig: string, customVal: string) => {
+    if (vig === '24h') return '24 horas (Oferta Flash)';
+    if (vig === '48h') return '48 horas (Recomendado)';
+    if (vig === '72h') return '72 horas (3 días)';
+    if (vig === '7d') return '7 días (Semanal)';
+    return `Hasta ${customVal || 'Personalizado'}`;
+  };
 
   // Precio de lista oficial del servicio
   const currentOfficialPrice = useMemo(() => {
@@ -217,11 +218,8 @@ export default function LeadNegotiationPage() {
 
   const handleAddAlternative = async () => {
     const errors: Record<string, string> = {};
-    if (!isCustomMode && !selectedDisponibilidad) {
-      errors.disp = 'Por favor selecciona un turno disponible en el calendario interactivo.';
-    }
-    if (isCustomMode && !selectedDate) {
-      errors.disp = 'Selecciona una fecha en el calendario para el horario personalizado.';
+    if (!selectedServicioId) {
+      errors.servicio = 'Selecciona un servicio para la promoción.';
     }
     if (!precioOfrecido || isNaN(Number(precioOfrecido)) || Number(precioOfrecido) <= 0) {
       errors.precio = 'Ingresa una tarifa válida mayor a 0.';
@@ -234,25 +232,25 @@ export default function LeadNegotiationPage() {
     setOfferErrors({});
     setAddingAlternative(true);
     const ultimaSolicitud = lead.Solicitudes?.[lead.Solicitudes.length - 1];
+    const expiryStr = format(calculatedExpiry, 'yyyy-MM-dd');
+    const fullCondiciones = `[Vigencia: ${getVigenciaLabel(selectedVigencia, selectedVigenciaCustom)} - Vence: ${format(calculatedExpiry, 'dd/MM/yyyy')}] [Franja: ${selectedFranja}] ${condiciones ? `| ${condiciones}` : ''}`.trim();
+
     try {
       await leadService.addAlternative(id!, {
         id_solicitud: ultimaSolicitud?.id_solicitud,
-        id_disponibilidad: (!isCustomMode && selectedDisponibilidad) ? selectedDisponibilidad : undefined,
-        fecha: selectedDate,
-        hora_inicio: customTime.startTime,
-        hora_fin: customTime.endTime,
+        fecha: expiryStr,
+        hora_inicio: selectedFranja.includes('Tarde') ? '14:00' : '09:00',
+        hora_fin: selectedFranja.includes('Tarde') ? '19:00' : '13:00',
         id_profesional: (selectedProfesionalId && selectedProfesionalId !== 'ALL_PROFESSIONALS') ? selectedProfesionalId : undefined,
         id_sede: (selectedSedeId && selectedSedeId !== 'ALL_SEDES') ? selectedSedeId : undefined,
         precio_ofrecido: precioOfrecido,
-        condiciones: condiciones,
+        condiciones: fullCondiciones,
       });
       fetchLeadData();
-      setSelectedDisponibilidad('');
-      setIsCustomMode(false);
       setCondiciones('');
-      toast({ title: 'Alternativa Agregada 🎉', description: 'La propuesta horaria ha sido añadida al tablero de negociación.' });
+      toast({ title: '¡Promoción Registrada! 🎉', description: 'La oferta comercial con vigencia activa ha sido añadida al tablero.' });
     } catch {
-      toast({ title: 'Error', description: 'Error al añadir la alternativa.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Error al añadir la oferta comercial.', variant: 'destructive' });
     } finally {
       setAddingAlternative(false);
     }
@@ -286,7 +284,7 @@ export default function LeadNegotiationPage() {
         setSelectedOpcion(null);
       }
       fetchLeadData();
-      toast({ title: 'Alternativa Removida', description: 'La opción ha sido eliminada del tablero.' });
+      toast({ title: 'Oferta Comercial Removida', description: 'La propuesta ha sido eliminada del tablero.' });
     } catch {
       toast({ title: 'Error', description: 'Error al eliminar la alternativa.', variant: 'destructive' });
     } finally {
@@ -297,7 +295,7 @@ export default function LeadNegotiationPage() {
 
   const handleReserve = async () => {
     if (!selectedOpcion) {
-      toast({ title: 'Atención', description: 'Selecciona una de las alternativas del tablero antes de cerrar el trato.' });
+      toast({ title: 'Atención', description: 'Selecciona una de las ofertas del tablero antes de cerrar el trato.' });
       return;
     }
     
@@ -358,45 +356,47 @@ export default function LeadNegotiationPage() {
   const generateWhatsAppMessage = () => {
     const patientFirstName = lead?.nombres || 'Paciente';
     const ultimaSolicitud = lead.Solicitudes?.[lead.Solicitudes.length - 1];
-    const serviceName = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
+    const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
 
     const convenioPrompt = !isStudent
       ? `\n\n💡 *Beneficio Exclusivo:* ¿Eres estudiante universitario o cuentas con convenio en tu centro laboral? Indícanoslo para activar tu *15% de descuento especial* presentando tu carnet o fotocheck.`
       : '';
 
     if (selectedOptData) {
-      const fecha = selectedOptData.Disponibilidad?.fecha?.split('T')[0] || '';
-      const hora = `${String(selectedOptData.Disponibilidad?.hora_inicio).substring(11, 16)} - ${String(selectedOptData.Disponibilidad?.hora_fin).substring(11, 16)}`;
-      const sede = selectedOptData.Disponibilidad?.Sede?.nombre || 'Sede Principal';
-      const doctor = `Esp. ${selectedOptData.Disponibilidad?.Profesional?.nombres || ''} ${selectedOptData.Disponibilidad?.Profesional?.apellidos || ''}`.trim();
       const precio = Number(selectedOptData.precio_ofrecido).toFixed(2);
-      const cond = selectedOptData.condiciones ? `\n📌 *Condición / Beneficio:* ${selectedOptData.condiciones}` : '';
+      const sede = selectedOptData.Disponibilidad?.Sede?.nombre || 'Sede Principal';
+      const doctor = selectedOptData.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}` : 'Especialistas colegiados';
+      const fechaVigencia = selectedOptData.Disponibilidad?.fecha?.split('T')[0] || '';
+      const cond = selectedOptData.condiciones ? `\n📌 *Detalles de la oferta:* ${selectedOptData.condiciones}` : '';
 
       return `¡Hola ${patientFirstName}! 👋 Te saludamos de NexoSalud Dental.\n\n` +
-        `De acuerdo a lo coordinado para tu atención de *${serviceName}*, te dejamos los detalles de tu pre-reserva:\n` +
-        `📅 *Fecha:* ${fecha}\n` +
-        `⏰ *Horario:* ${hora}\n` +
+        `Diseñamos una *Oferta Comercial Exclusiva* para tu atención de *${reqServicio}*:\n\n` +
+        `💰 *Tarifa Promocional:* S/ ${precio}\n` +
+        `⏳ *Margen de Vigencia:* Válido hasta el ${fechaVigencia}\n` +
         `📍 *Sede:* ${sede}\n` +
-        `👨‍⚕️ *Especialista:* ${doctor}\n` +
-        `💰 *Tarifa acordada:* S/ ${precio}` +
+        `👨‍⚕️ *Atención:* ${doctor}\n` +
         `${cond}\n\n` +
-        `Para formalizar tu reserva y asegurar el sillón odontológico, indícanos tu método de pago preferido (Yape, Transferencia o Tarjeta) para enviarte la proforma oficial. ¡Te esperamos! ✨`;
+        `Para asegurar este precio con descuento, puedes separar tu turno en el siguiente enlace:\n` +
+        `🔗 *https://nexosalud.pe/pre-reserva/${id}*\n\n` +
+        `¡Quedamos atentos a tu confirmación para brindarte la mejor atención! ✨`;
     }
 
     if (opciones.length > 0) {
-      const resumenOpciones = opciones.map((o: any, idx: number) => 
-        `• *Opción ${idx + 1}:* ${o.Disponibilidad?.fecha?.split('T')[0]} (${String(o.Disponibilidad?.hora_inicio).substring(11, 16)} hrs) en Sede ${o.Disponibilidad?.Sede?.nombre} — S/ ${Number(o.precio_ofrecido).toFixed(2)}${o.condiciones ? ` [${o.condiciones}]` : ''}`
-      ).join('\n');
+      const resumenOpciones = opciones.map((o: any, idx: number) => {
+        const p = Number(o.precio_ofrecido).toFixed(2);
+        const f = o.Disponibilidad?.fecha?.split('T')[0] || '';
+        return `• *Propuesta ${idx + 1}:* S/ ${p} (Válido hasta ${f}) — Sede ${o.Disponibilidad?.Sede?.nombre || 'Principal'}${o.condiciones ? ` [${o.condiciones}]` : ''}`;
+      }).join('\n');
 
       return `¡Hola ${patientFirstName}! 👋 De NexoSalud Dental.\n\n` +
-        `Tenemos disponibles las siguientes alternativas personalizadas para tu servicio de *${serviceName}*:\n\n` +
+        `Tenemos disponibles las siguientes promociones personalizadas para tu servicio de *${reqServicio}*:\n\n` +
         `${resumenOpciones}\n\n` +
         `${isStudent ? '🎓 *Aplica tu descuento especial de convenio universitario (-15%).*\n' : ''}` +
         `${convenioPrompt}\n\n` +
-        `¿Cuál de estos horarios se acomoda mejor para ti? Quedamos atentos para reservar tu turno. 😊`;
+        `¿Cuál de estas alternativas se acomoda mejor a ti? Indícanos tu DNI para formalizar tu pre-reserva. 😊`;
     }
 
-    return `¡Hola ${patientFirstName}! 👋 Te saludamos de NexoSalud Dental. Vemos tu solicitud para el servicio de *${serviceName}*. ¿Te gustaría coordinar una cita preferencial para esta semana?${convenioPrompt}\n\nQuedamos atentos a tus comentarios. ✨`;
+    return `¡Hola ${patientFirstName}! 👋 Te saludamos de NexoSalud Dental. Vemos tu interés en el servicio de *${reqServicio}*. Tenemos promociones activas con descuentos preferenciales para esta semana.${convenioPrompt}\n\n¿Te gustaría conocer la propuesta comercial? Quedamos atentos a tus comentarios. ✨`;
   };
 
   const handleSendWhatsApp = () => {
@@ -410,11 +410,21 @@ export default function LeadNegotiationPage() {
     toast({ title: 'WhatsApp Abierto', description: 'Redirigiendo a WhatsApp con la propuesta comercial.' });
   };
 
+  const handleSendEmail = () => {
+    const patientFirstName = lead?.nombres || 'Paciente';
+    const email = lead?.email || '';
+    const subject = encodeURIComponent(`Propuesta Comercial Exclusiva - NexoSalud Dental para ${patientFirstName}`);
+    const body = encodeURIComponent(generateWhatsAppMessage().replace(/\*/g, ''));
+    const mailtoUrl = email ? `mailto:${email}?subject=${subject}&body=${body}` : `mailto:?subject=${subject}&body=${body}`;
+    window.open(mailtoUrl, '_blank');
+    toast({ title: 'Correo Preparado', description: 'Se abrió tu cliente de correo con la propuesta comercial.' });
+  };
+
   const handleCopyWhatsApp = () => {
     const message = generateWhatsAppMessage();
     navigator.clipboard.writeText(message);
     setCopiedWhatsApp(true);
-    toast({ title: '¡Mensaje Copiado!', description: 'Texto copiado al portapapeles para enviar por chat.' });
+    toast({ title: '¡Mensaje Copiado!', description: 'Texto copiado al portapapeles para enviar por chat o correo.' });
     setTimeout(() => setCopiedWhatsApp(false), 2000);
   };
 
@@ -464,84 +474,37 @@ export default function LeadNegotiationPage() {
             {/* Datos Académicos */}
             <div className="p-5 space-y-2">
               <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Condición Académica</Label>
-              {isStudent ? (
-                <div className="space-y-1">
-                  <Badge variant="outline" className="text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 flex items-center gap-1 font-bold w-fit">
-                    <Award className="w-3 h-3" />
+              {datAcad?.aplica ? (
+                <div className="space-y-2">
+                  <Badge variant="outline" className="text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 flex items-center gap-1 font-semibold w-fit">
+                    <Award className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     Estudiante Activo (-15% Convenio)
                   </Badge>
-                  <p className="text-slate-700 dark:text-slate-300 pt-1 font-medium">{datAcad.universidad} - {datAcad.carrera} (Ciclo {datAcad.ciclo})</p>
+                  <p className="text-slate-800 dark:text-slate-200"><span className="font-semibold">Universidad:</span> {datAcad.universidad}</p>
+                  <p className="text-slate-800 dark:text-slate-200"><span className="font-semibold">Carrera:</span> {datAcad.carrera} ({datAcad.ciclo})</p>
                 </div>
               ) : (
-                <p className="text-slate-500 italic">No aplica convenio universitario.</p>
+                <p className="text-slate-500 italic">No registrado como estudiante universitario</p>
               )}
             </div>
 
-            {/* Salud Odontológica */}
-            {saludOdonto && (
-              <div className="p-5 space-y-2 bg-slate-50/50 dark:bg-slate-900/40">
-                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <HeartPulse className="w-3.5 h-3.5 text-rose-500" />
-                  Salud Odontológica & Urgencia
-                </Label>
-                <div className="grid grid-cols-2 gap-2 text-slate-700 dark:text-slate-300">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block">Nivel de dolor:</span>
-                    <span className={`font-bold ${hasUrgentPain ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'}`}>
-                      {saludOdonto.nivel_dolor || 'Ninguno'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block">Motivo:</span>
-                    <span className="font-medium">{saludOdonto.motivo_consulta || 'Evaluación'}</span>
-                  </div>
-                </div>
+            {/* Preferencias */}
+            <div className="p-5 space-y-2">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Preferencias de Atención</Label>
+              <div className="space-y-1.5 text-slate-700 dark:text-slate-300">
+                <p><span className="font-semibold">Sede:</span> {pref?.sede_preferida || 'Indiferente'}</p>
+                <p><span className="font-semibold">Especialista:</span> {pref?.profesional_preferido || 'Indiferente'}</p>
               </div>
-            )}
-
-            {lead.Solicitudes?.length > 0 && (
-              <div className="p-5 bg-teal-50/50 dark:bg-teal-950/30">
-                <Label className="text-[10px] font-bold text-teal-700 dark:text-teal-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
-                  <Stethoscope className="h-3.5 w-3.5" />
-                  Servicio Solicitado en BUYER
-                </Label>
-                <p className="font-bold text-slate-900 dark:text-white text-sm">
-                  {lead.Solicitudes[lead.Solicitudes.length - 1].Servicio?.nombre || 'Servicio Integral'}
-                </p>
-                {lead.Solicitudes[lead.Solicitudes.length - 1].motivo && (
-                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 italic">
-                    "{lead.Solicitudes[lead.Solicitudes.length - 1].motivo}"
-                  </p>
-                )}
-              </div>
-            )}
-            
-            {pref && (
-              <div className="p-5 space-y-1.5">
-                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Preferencias Capturadas</Label>
-                {pref.sede_preferida && (
-                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                    <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Sede: {pref.sede_preferida}</span>
-                  </div>
-                )}
-                {pref.profesional_preferido && (
-                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                    <Stethoscope className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Especialista: Esp. {pref.profesional_preferido}</span>
-                  </div>
-                )}
-              </div>
-            )}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* ══ COLUMNA 2-3: Mesa de Negociación y Cierre ══ */}
+      {/* ══ COLUMNA 2 y 3: Negociación Inteligente ══ */}
       <div className="lg:col-span-2 space-y-6">
-
-        {/* Tarjeta de Inteligencia Comercial & Scoring */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-teal-50/90 via-white to-slate-50 dark:from-teal-950/40 dark:via-slate-900 dark:to-slate-950 border border-teal-200/90 dark:border-teal-800/80 shadow-sm relative overflow-hidden transition-all">
+        
+        {/* ── Tarjeta de Estrategia Comercial ── */}
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-teal-50/90 via-white to-slate-50 dark:from-teal-950/40 dark:via-slate-900 dark:to-slate-950 border border-teal-200/90 dark:border-teal-800/80 shadow-sm relative overflow-hidden">
           <div className="relative z-10 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-100/80 dark:border-teal-900/60 pb-2.5">
               <div className="flex items-center gap-2">
@@ -559,64 +522,162 @@ export default function LeadNegotiationPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-              <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 hover:border-teal-400/80 transition-colors space-y-1 shadow-2xs">
+              <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 space-y-1 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300 font-bold text-[11px]">
                   <GraduationCap className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
-                  <span>Perfil Académico</span>
+                  <span>Perfil Universitario</span>
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
-                  {isStudent
-                    ? `Convenio activo (${datAcad?.universidad || 'Univ.'}). Descuento sugerido -15%.`
-                    : 'Tarifa regular aplicable (No estudiante).'}
+                  {isStudent ? `Convenio activo (${datAcad?.universidad || 'Universidad'}). Aplicar -15% desc.` : 'Tarifa regular sugerida.'}
                 </p>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 hover:border-teal-400/80 transition-colors space-y-1 shadow-2xs">
+              <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 space-y-1 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300 font-bold text-[11px]">
                   <HeartPulse className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
                   <span>Prioridad Clínica</span>
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
-                  {hasUrgentPain
-                    ? `Dolor ${saludOdonto?.nivel_dolor}. Priorizar agendamiento (mín. 72h).`
-                    : 'Evaluación de rutina estándar.'}
+                  {hasUrgentPain ? `Dolor ${saludOdonto?.nivel_dolor}. Priorizar turno cercano.` : 'Chequeo preventivo o estético estándar.'}
                 </p>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 hover:border-teal-400/80 transition-colors space-y-1 shadow-2xs">
+              <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 space-y-1 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300 font-bold text-[11px]">
                   <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
-                  <span>Matching de Preferencias</span>
+                  <span>Preferencias</span>
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
-                  {pref?.sede_preferida || pref?.profesional_preferido
-                    ? `Preferencia: Sede ${pref?.sede_preferida || 'Indif.'} / Esp. ${pref?.profesional_preferido || 'Indif.'}.`
-                    : 'Disponibilidad libre de sede/médico.'}
+                  {pref?.sede_preferida || pref?.profesional_preferido ? `Sede ${pref?.sede_preferida || 'Indiferente'} / Esp. ${pref?.profesional_preferido || 'Indiferente'}.` : 'Sin restricciones.'}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
+        {/* ── Card Principal de Trabajo ── */}
         <Card className="shadow-sm border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-          <CardHeader className="border-b dark:border-slate-800 bg-white dark:bg-slate-900 pb-5">
-            <CardTitle className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Mesa de Negociación</CardTitle>
-            <CardDescription className="text-xs">Diseña alternativas de oferta y cierra el trato comercial para enviar a cobranza.</CardDescription>
+          <CardHeader className="bg-slate-50/70 dark:bg-slate-800/60 border-b dark:border-slate-800 pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg text-slate-900 dark:text-white">Mesa de Negociación Comercial</CardTitle>
+                <CardDescription className="text-xs">Formula propuestas comerciales con vigencia activa y cierra el trato</CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          
-          <CardContent className="p-6 space-y-6">
+
+          <CardContent className="p-6 space-y-6 text-xs">
             
-            {/* 1. Ofrecer Nueva Alternativa */}
+            {/* 1. Diseñar Oferta Comercial */}
             <section>
-              <h3 className="text-xs font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">1</span>
-                Diseñar Oferta
-              </h3>
-              <div className="p-5 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm rounded-2xl space-y-4">
-                {/* Servicio, Profesional y Sede */}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">1</span>
+                  Diseñar Oferta Comercial / Promoción
+                </h3>
+                <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/60 flex items-center gap-1">
+                  <Timer className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                  Válida hasta: {format(calculatedExpiry, 'dd/MM/yyyy')}
+                </span>
+              </div>
+
+              <div className="space-y-4 p-4 bg-white dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/90 rounded-2xl shadow-sm">
+                
+                {/* A. Margen de Vigencia Activo de la Promoción */}
+                <div className="p-3 rounded-xl bg-slate-50/90 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/70 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Timer className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                      Margen de Vigencia Activo de la Oferta:
+                    </Label>
+                    <span className="text-[11px] font-bold text-teal-700 dark:text-teal-300">
+                      {getVigenciaLabel(selectedVigencia, selectedVigenciaCustom)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedVigencia('24h')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
+                        selectedVigencia === '24h'
+                          ? 'bg-amber-600 text-white shadow-2xs'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Zap className="w-3 h-3 text-amber-400" />
+                      24 Horas (Flash)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedVigencia('48h')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
+                        selectedVigencia === '48h'
+                          ? 'bg-teal-600 text-white shadow-2xs'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Sparkles className="w-3 h-3 text-teal-300" />
+                      48 Horas (Recomendado)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedVigencia('72h')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
+                        selectedVigencia === '72h'
+                          ? 'bg-teal-600 text-white shadow-2xs'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Calendar className="w-3 h-3" />
+                      72 Horas (3 Días)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedVigencia('7d')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
+                        selectedVigencia === '7d'
+                          ? 'bg-indigo-600 text-white shadow-2xs'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Tag className="w-3 h-3" />
+                      7 Días (Campaña Semanal)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedVigencia('custom')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
+                        selectedVigencia === 'custom'
+                          ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 shadow-2xs'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      Personalizado
+                    </button>
+                  </div>
+
+                  {selectedVigencia === 'custom' && (
+                    <div className="pt-1.5 flex items-center gap-2">
+                      <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Fecha límite de la oferta:</Label>
+                      <input
+                        type="date"
+                        className="h-8 rounded-lg border border-slate-200 dark:border-slate-700 px-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                        value={selectedVigenciaCustom}
+                        onChange={(e) => setSelectedVigenciaCustom(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* B. Servicio, Sede y Especialista */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Servicio</Label>
+                    <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Servicio Ofertado</Label>
                     <Select
                       onValueChange={(v) => {
                         setSelectedServicioId(v);
@@ -630,7 +691,7 @@ export default function LeadNegotiationPage() {
                       }}
                       value={selectedServicioId}
                     >
-                      <SelectTrigger className="h-9 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 font-medium [&>span]:text-slate-900 dark:[&>span]:text-slate-100">
+                      <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium [&>span]:text-slate-900 dark:[&>span]:text-slate-100">
                         <SelectValue placeholder="Seleccionar servicio..." />
                       </SelectTrigger>
                       <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
@@ -641,33 +702,17 @@ export default function LeadNegotiationPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {offerErrors.servicio && <p className="text-[10px] text-rose-500">{offerErrors.servicio}</p>}
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Profesional</Label>
-                    <Select onValueChange={(v) => { setSelectedProfesionalId(v); setSelectedDisponibilidad(''); }} value={selectedProfesionalId}>
-                      <SelectTrigger className="h-9 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 font-medium [&>span]:text-slate-900 dark:[&>span]:text-slate-100">
-                        <SelectValue placeholder="Todos los especialistas..." />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                        <SelectItem value="ALL_PROFESSIONALS" className="font-semibold text-slate-900 dark:text-slate-100">Todos los especialistas</SelectItem>
-                        {options.profesionales?.map((p: any) => (
-                          <SelectItem key={p.id_profesional} value={p.id_profesional.toString()} className="text-slate-900 dark:text-slate-100">
-                            Esp. {p.nombres} {p.apellidos}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Sede</Label>
-                    <Select onValueChange={(v) => { setSelectedSedeId(v); setSelectedDisponibilidad(''); }} value={selectedSedeId}>
-                      <SelectTrigger className="h-9 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 font-medium [&>span]:text-slate-900 dark:[&>span]:text-slate-100">
+                    <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Sede Preferencial</Label>
+                    <Select onValueChange={(v) => setSelectedSedeId(v)} value={selectedSedeId}>
+                      <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium [&>span]:text-slate-900 dark:[&>span]:text-slate-100">
                         <SelectValue placeholder="Todas las sedes..." />
                       </SelectTrigger>
                       <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                        <SelectItem value="ALL_SEDES" className="font-semibold text-slate-900 dark:text-slate-100">Todas las sedes</SelectItem>
+                        <SelectItem value="ALL_SEDES" className="font-semibold text-slate-900 dark:text-slate-100">Todas las sedes (A elección)</SelectItem>
                         {options.sedes?.map((s: any) => (
                           <SelectItem key={s.id_sede} value={s.id_sede.toString()} className="text-slate-900 dark:text-slate-100">
                             {s.nombre}
@@ -676,56 +721,56 @@ export default function LeadNegotiationPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Especialista Sugerido</Label>
+                    <Select onValueChange={(v) => setSelectedProfesionalId(v)} value={selectedProfesionalId}>
+                      <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium [&>span]:text-slate-900 dark:[&>span]:text-slate-100">
+                        <SelectValue placeholder="Cualquier especialista..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                        <SelectItem value="ALL_PROFESSIONALS" className="font-semibold text-slate-900 dark:text-slate-100">Cualquier especialista colegiado</SelectItem>
+                        {options.profesionales?.map((p: any) => (
+                          <SelectItem key={p.id_profesional} value={p.id_profesional.toString()} className="text-slate-900 dark:text-slate-100">
+                            Esp. {p.nombres} {p.apellidos}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                {/* Calendario y Horarios Interactivos con Match Scoring */}
-                <div className="pt-1">
-                  <InteractiveAvailabilityPicker
-                    disponibilidades={options.disponibilidades || []}
-                    profesionales={options.profesionales || []}
-                    sedes={options.sedes || []}
-                    selectedProfesionalId={selectedProfesionalId === 'ALL_PROFESSIONALS' ? '' : selectedProfesionalId}
-                    selectedSedeId={selectedSedeId === 'ALL_SEDES' ? '' : selectedSedeId}
-                    selectedDate={selectedDate}
-                    selectedDisponibilidadId={selectedDisponibilidad}
-                    customTime={customTime}
-                    isCustomMode={isCustomMode}
-                    patientPreferences={{
-                      sede: pref?.sede_preferida,
-                      profesional: pref?.profesional_preferido,
-                      horario: pref?.Horario ? {
-                        dia_semana: pref.Horario.dia_semana,
-                        hora_inicio: typeof pref.Horario.hora_inicio === 'string'
-                          ? (pref.Horario.hora_inicio.includes('T') ? pref.Horario.hora_inicio.substring(11, 16) : pref.Horario.hora_inicio.substring(0, 5))
-                          : undefined,
-                        hora_fin: typeof pref.Horario.hora_fin === 'string'
-                          ? (pref.Horario.hora_fin.includes('T') ? pref.Horario.hora_fin.substring(11, 16) : pref.Horario.hora_fin.substring(0, 5))
-                          : undefined,
-                      } : undefined,
-                      horarioNombre: pref?.Horario ? `${['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][pref.Horario.dia_semana]} (${String(pref.Horario.hora_inicio).substring(11,16)} - ${String(pref.Horario.hora_fin).substring(11,16)})` : undefined
-                    }}
-                    onSelectDate={(d) => { setSelectedDate(d); setSelectedDisponibilidad(''); }}
-                    onSelectDisponibilidad={(idVal, disp) => {
-                      setSelectedDisponibilidad(idVal);
-                      if (disp?.id_profesional && (!selectedProfesionalId || selectedProfesionalId === 'ALL_PROFESSIONALS')) {
-                        setSelectedProfesionalId(disp.id_profesional.toString());
-                      }
-                      if (disp?.id_sede && (!selectedSedeId || selectedSedeId === 'ALL_SEDES')) {
-                        setSelectedSedeId(disp.id_sede.toString());
-                      }
-                      if (offerErrors.disp) setOfferErrors(p => ({ ...p, disp: '' }));
-                    }}
-                    onCustomTimeChange={(ct) => setCustomTime(ct)}
-                    onToggleCustomMode={(mode) => {
-                      setIsCustomMode(mode);
-                      if (mode) setSelectedDisponibilidad('');
-                      if (offerErrors.disp) setOfferErrors(p => ({ ...p, disp: '' }));
-                    }}
-                    errorMessage={offerErrors.disp}
-                  />
+                {/* C. Franja Horaria Sugerida para la Promoción */}
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    Franja Horaria Sugerida para la Promoción
+                  </Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {[
+                      'Horario Flexible (A elección del paciente al confirmar)',
+                      'Turno Mañana (09:00 - 13:00)',
+                      'Turno Tarde (14:00 - 18:00)',
+                      'Turno Noche (18:00 - 21:00)',
+                      'Sábados Exclusivo',
+                    ].map((franja) => (
+                      <button
+                        key={franja}
+                        type="button"
+                        onClick={() => setSelectedFranja(franja)}
+                        className={`p-2 rounded-xl text-[11px] font-semibold text-left border transition-all ${
+                          selectedFranja === franja
+                            ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs'
+                            : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
+                        }`}
+                      >
+                        {franja}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Comparador Financiero en Vivo & Descuentos Rápidos */}
+                {/* D. Comparador Financiero en Vivo & Descuentos Rápidos */}
                 <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/70 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -800,10 +845,10 @@ export default function LeadNegotiationPage() {
                   </div>
                 </div>
 
-                {/* Tarifa y Condiciones */}
+                {/* E. Precio y Condiciones */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                   <div className="space-y-1">
-                    <Label className={`text-xs font-medium ${offerErrors.precio ? 'text-rose-600' : 'text-slate-600 dark:text-slate-300'}`}>Tarifa Ofrecida Editable</Label>
+                    <Label className={`text-xs font-medium ${offerErrors.precio ? 'text-rose-600' : 'text-slate-600 dark:text-slate-300'}`}>Tarifa Ofrecida Editable (S/)</Label>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                       <input 
@@ -820,10 +865,10 @@ export default function LeadNegotiationPage() {
                     {offerErrors.precio && <p className="text-[11px] text-rose-600 font-medium">{offerErrors.precio}</p>}
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">Modalidad / Condiciones</Label>
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">Condición / Beneficio adicional</Label>
                     <input 
                       type="text" 
-                      placeholder="Ej. Convenio estudiante, pago en cuotas, presencial..." 
+                      placeholder="Ej. Válido con carnet de estudiante, pago en cuotas..." 
                       className="flex h-9 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-slate-900 dark:text-white"
                       value={condiciones} 
                       onChange={(e) => setCondiciones(e.target.value)} 
@@ -838,7 +883,7 @@ export default function LeadNegotiationPage() {
                     className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs h-9 px-5 shadow-sm font-semibold transition-colors"
                   >
                     <Plus className="h-4 w-4 mr-1.5" />
-                    {addingAlternative ? 'Registrando...' : 'Añadir al Tablero'}
+                    {addingAlternative ? 'Registrando...' : 'Añadir Oferta al Tablero'}
                   </Button>
                 </div>
               </div>
@@ -848,11 +893,11 @@ export default function LeadNegotiationPage() {
             <section>
               <h3 className="text-xs font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">2</span>
-                Alternativas sobre la Mesa (Selecciona una propuesta)
+                Ofertas Comerciales sobre la Mesa (Selecciona una propuesta)
               </h3>
               {(!lead.Solicitudes || lead.Solicitudes.length === 0 || !lead.Solicitudes[lead.Solicitudes.length - 1].Opciones || lead.Solicitudes[lead.Solicitudes.length - 1].Opciones.length === 0) ? (
                 <div className="py-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30">
-                  <p className="text-xs text-slate-400 dark:text-slate-500">Aún no se han ofrecido turnos al paciente.</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">Aún no se han generado ofertas comerciales para este paciente.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -873,9 +918,9 @@ export default function LeadNegotiationPage() {
                       )}
                       
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
-                        <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 text-xs bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-lg">
-                          <Calendar className="h-3.5 w-3.5 text-slate-500" />
-                          {opt.Disponibilidad?.fecha?.split('T')[0]}
+                        <span className="inline-flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-200 text-xs bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 px-2.5 py-1 rounded-lg">
+                          <Clock className="h-3.5 w-3.5 text-amber-500" />
+                          Válido hasta: {opt.Disponibilidad?.fecha?.split('T')[0] || 'Vigente'}
                         </span>
                         
                         {editingOptionId === opt.id_opcion ? (
@@ -929,22 +974,18 @@ export default function LeadNegotiationPage() {
 
                       <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
                         <div className="flex items-center gap-2">
-                          <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span>{String(opt.Disponibilidad?.hora_inicio).substring(11, 16)} – {String(opt.Disponibilidad?.hora_fin).substring(11, 16)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span>{opt.Disponibilidad?.Sede?.nombre}</span>
+                          <span>Sede: {opt.Disponibilidad?.Sede?.nombre || 'Todas las sedes'}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span>Esp. {opt.Disponibilidad?.Profesional?.nombres} {opt.Disponibilidad?.Profesional?.apellidos}</span>
+                          <span>Especialista: {opt.Disponibilidad?.Profesional?.apellidos ? `Esp. ${opt.Disponibilidad?.Profesional?.apellidos}` : 'Por asignar'}</span>
                         </div>
                       </div>
 
                       {opt.condiciones && (
-                        <div className="text-[11px] text-slate-400 dark:text-slate-500 italic pt-1 border-t border-slate-100 dark:border-slate-800">
-                          Condición: {opt.condiciones}
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 leading-tight">
+                          {opt.condiciones}
                         </div>
                       )}
                     </div>
@@ -1063,7 +1104,7 @@ export default function LeadNegotiationPage() {
                       Campaña (-20%)
                     </Button>
                     <span className="text-[10px] text-slate-400">
-                      (Recuerda presionar "Añadir al Tablero" para crear la propuesta)
+                      (Recuerda presionar "Añadir Oferta al Tablero" para crear la propuesta)
                     </span>
                   </div>
                 </div>
@@ -1098,7 +1139,7 @@ export default function LeadNegotiationPage() {
                       Convenio Corporativo (-15%)
                     </Button>
                     <span className="text-[10px] text-slate-400">
-                      (Presiona "Añadir al Tablero" para crear la propuesta)
+                      (Presiona "Añadir Oferta al Tablero" para crear la propuesta)
                     </span>
                   </div>
                 </div>
@@ -1111,15 +1152,15 @@ export default function LeadNegotiationPage() {
                     Flexibilidad Horaria & Turnos Alternos:
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                    Utiliza el botón de <strong>"Personalizado"</strong> en el selector de turnos para pactar un horario especial o consulta fechas en fin de semana (Sábados).
+                    La promoción no exige una cita fija inmediata. El paciente puede elegir <strong>Horario Flexible</strong> o convenir atención en Sábados según su disponibilidad.
                   </p>
                   <Button
                     size="sm"
                     type="button"
-                    onClick={() => setIsCustomMode(true)}
+                    onClick={() => setSelectedFranja('Horario Flexible (A elección del paciente al confirmar)')}
                     className="bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs h-7 px-2.5 font-medium"
                   >
-                    Activar Horario Personalizado
+                    Pactar Horario Flexible
                   </Button>
                 </div>
               )}
@@ -1131,13 +1172,13 @@ export default function LeadNegotiationPage() {
                     Red de Sedes & Cobertura:
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                    NexoSalud cuenta con sedes en puntos estratégicos. Cambia la sede en el selector superior para ver qué especialistas atienden más cerca de la zona del paciente ({lead?.zona || 'Trujillo/Lima'}).
+                    NexoSalud cuenta con sedes en puntos estratégicos. Cambia la sede en el selector superior para que la oferta sea válida en la sede más cercana a {lead?.zona || 'Trujillo/Lima'}.
                   </p>
                 </div>
               )}
             </div>
 
-            {/* ── 4. Seguimiento Inteligente por WhatsApp (Actividad 4) ── */}
+            {/* ── 4. Envío y Seguimiento Omnicanal (Actividad 4) ── */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 shadow-sm space-y-3">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-2.5">
                 <div className="flex items-center gap-2">
@@ -1145,7 +1186,7 @@ export default function LeadNegotiationPage() {
                     4
                   </span>
                   <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                    Seguimiento Inteligente por WhatsApp
+                    Envío de Oferta Omnicanal (WhatsApp & Correo)
                   </h3>
                 </div>
                 <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/60">
@@ -1173,14 +1214,22 @@ export default function LeadNegotiationPage() {
                   {generateWhatsAppMessage()}
                 </p>
 
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
                   <Button
                     type="button"
                     onClick={handleSendWhatsApp}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm flex items-center gap-2"
                   >
                     <MessageCircle className="w-4 h-4" />
-                    <span>Abrir y Enviar por WhatsApp</span>
+                    <span>Enviar por WhatsApp</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSendEmail}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm flex items-center gap-2"
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>Enviar por Correo</span>
                   </Button>
                   <Button
                     type="button"
@@ -1189,7 +1238,7 @@ export default function LeadNegotiationPage() {
                     className="rounded-xl text-xs h-9 px-3 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
                   >
                     <Copy className="w-3.5 h-3.5 mr-1" />
-                    Copiar
+                    Copiar Mensaje
                   </Button>
                 </div>
               </div>
@@ -1214,23 +1263,23 @@ export default function LeadNegotiationPage() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   <div className="bg-white/90 dark:bg-slate-900/90 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
-                    <span className="text-[10px] text-slate-400 font-semibold block">Fecha & Turno</span>
+                    <span className="text-[10px] text-slate-400 font-semibold block">Vigencia Promoción</span>
                     <span className="font-bold text-slate-900 dark:text-white">
-                      {selectedOptData.Disponibilidad?.fecha?.split('T')[0]} ({String(selectedOptData.Disponibilidad?.hora_inicio).substring(11, 16)})
+                      Hasta {selectedOptData.Disponibilidad?.fecha?.split('T')[0] || 'Vigente'}
                     </span>
                   </div>
 
                   <div className="bg-white/90 dark:bg-slate-900/90 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
                     <span className="text-[10px] text-slate-400 font-semibold block">Sede</span>
                     <span className="font-bold text-slate-900 dark:text-white">
-                      {selectedOptData.Disponibilidad?.Sede?.nombre}
+                      {selectedOptData.Disponibilidad?.Sede?.nombre || 'Todas las sedes'}
                     </span>
                   </div>
 
                   <div className="bg-white/90 dark:bg-slate-900/90 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
                     <span className="text-[10px] text-slate-400 font-semibold block">Especialista</span>
                     <span className="font-bold text-slate-900 dark:text-white truncate block">
-                      Esp. {selectedOptData.Disponibilidad?.Profesional?.apellidos}
+                      {selectedOptData.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad?.Profesional?.apellidos}` : 'Por asignar'}
                     </span>
                   </div>
 
@@ -1244,19 +1293,12 @@ export default function LeadNegotiationPage() {
               </div>
             )}
 
-            {/* Acciones Finales de Mesa */}
-            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
-              <Button 
-                variant="outline" 
-                onClick={() => navigate('/lead')}
-                className="rounded-xl text-xs font-semibold"
-              >
-                Volver al Listado
-              </Button>
+            {/* Acción de Cierre */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
               <Button 
                 onClick={handleReserve} 
                 disabled={reserving || !selectedOpcion} 
-                className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold px-6 shadow-md transition-all hover:shadow-lg"
+                className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-sm text-xs font-semibold px-6 py-2.5 h-10"
               >
                 {reserving ? 'Cerrando trato...' : 'Cerrar Trato (Pasar a PAYER)'}
                 {!reserving && <ArrowRight className="h-4 w-4 ml-2" />}
@@ -1271,9 +1313,9 @@ export default function LeadNegotiationPage() {
         onClose={() => setDeletingOptionTarget(null)}
         onConfirm={handleConfirmDeleteOption}
         isLoading={isDeletingOption}
-        title="¿Remover alternativa del tablero?"
-        description={`Se descartará la propuesta del turno ${deletingOptionTarget?.Disponibilidad?.fecha?.split('T')[0]} (Esp. ${deletingOptionTarget?.Disponibilidad?.Profesional?.apellidos}).`}
-        confirmText="Sí, Remover Alternativa"
+        title="¿Remover oferta comercial del tablero?"
+        description={`Se descartará la propuesta comercial seleccionada (Tarifa S/ ${Number(deletingOptionTarget?.precio_ofrecido || 0).toFixed(2)}).`}
+        confirmText="Sí, Remover Oferta"
         cancelText="Conservar"
         variant="destructive"
       />

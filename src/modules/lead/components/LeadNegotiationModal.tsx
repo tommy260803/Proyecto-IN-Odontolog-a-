@@ -4,7 +4,7 @@ import {
   addDays,
   startOfDay,
   parseISO,
-  isBefore,
+  differenceInYears,
 } from 'date-fns';
 import {
   Dialog,
@@ -12,18 +12,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Label } from '@/shared/components/ui/label';
 import { Badge } from '@/shared/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
 import { leadService } from '../services/lead.service';
 import { useToast } from '@/shared/hooks/use-toast';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
-import { LoadingState } from '@/shared/components/feedback/LoadingState';
-import { ErrorState } from '@/shared/components/feedback/ErrorState';
 import {
   CheckCircle2,
   Calendar,
@@ -40,50 +44,70 @@ import {
   Trash2,
   Check,
   X,
+  DollarSign,
   Briefcase,
   GraduationCap,
-  Settings2,
-  Activity,
-  Building2,
-  DollarSign,
-  ChevronDown,
-  ChevronRight,
   HeartPulse,
   Sparkles,
-  ShieldCheck,
+  Zap,
   Tag,
   TrendingDown,
   Award,
-  Zap,
   Copy,
-  Send,
+  ChevronDown,
+  ChevronRight,
+  Building2,
+  Activity,
   MessageCircle,
-  HelpCircle,
   CheckCheck,
+  Timer,
+  Settings2,
 } from 'lucide-react';
 
-import { InteractiveAvailabilityPicker } from './InteractiveAvailabilityPicker';
-
 interface LeadNegotiationModalProps {
-  leadId: string | null;
+  leadId: string | number | null;
   isOpen: boolean;
   onClose: () => void;
 }
 
-// ── Helper: calcular edad ────────────────────────────────────────────────────
-function calcAge(dob: string | null | undefined): string | null {
-  if (!dob) return null;
-  const diff = Date.now() - new Date(dob).getTime();
-  return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25)).toString();
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function calcAge(birthDate: string | null | undefined): number | null {
+  if (!birthDate) return null;
+  try {
+    return differenceInYears(new Date(), parseISO(birthDate));
+  } catch {
+    return null;
+  }
 }
 
-// ── Sub-componente: Fila de dato ─────────────────────────────────────────────
-function DataRow({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string | null | undefined }) {
-  if (!value) return null;
+// ── Estado de carga ──────────────────────────────────────────────────────────
+function LoadingState() {
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{label}</span>
-      <div className="flex items-center gap-1.5 text-sm font-medium text-slate-800 dark:text-slate-200">
+    <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-400">
+      <div className="w-8 h-8 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
+      <p className="text-xs font-medium">Cargando mesa de negociación inteligente...</p>
+    </div>
+  );
+}
+
+// ── Estado de error ──────────────────────────────────────────────────────────
+function ErrorState({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 gap-2 text-rose-500">
+      <p className="text-xs font-medium">{message}</p>
+    </div>
+  );
+}
+
+// ── Fila de dato con icono ───────────────────────────────────────────────────
+function DataRow({ label, value, icon }: { label: string; value: React.ReactNode; icon?: React.ReactNode }) {
+  if (!value && value !== 0) return null;
+  return (
+    <div className="space-y-0.5">
+      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+        {label}
+      </span>
+      <div className="flex items-center gap-1.5 text-xs font-medium text-slate-800 dark:text-slate-200">
         {icon && <span className="text-slate-400 dark:text-slate-500 shrink-0">{icon}</span>}
         <span>{value}</span>
       </div>
@@ -171,14 +195,13 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const [catalogs, setCatalogs] = useState<any>({ profesionales: [], sedes: [], servicios: [], disponibilidades: [] });
   const [loading, setLoading] = useState(true);
 
-  // Form alternativa
+  // Form oferta comercial / promoción
   const [altServicioId, setAltServicioId] = useState('');
   const [altProfesionalId, setAltProfesionalId] = useState('');
   const [altSedeId, setAltSedeId] = useState('');
-  const [altFecha, setAltFecha] = useState('');
-  const [altDisponibilidadId, setAltDisponibilidadId] = useState('');
-  const [altCustomTime, setAltCustomTime] = useState({ startTime: '09:00', endTime: '10:00' });
-  const [isCustomMode, setIsCustomMode] = useState(false);
+  const [altVigencia, setAltVigencia] = useState<'24h' | '48h' | '72h' | '7d' | 'custom'>('48h');
+  const [altVigenciaCustom, setAltVigenciaCustom] = useState('');
+  const [altFranja, setAltFranja] = useState('Horario Flexible (A elección del paciente al confirmar)');
   const [altPrecio, setAltPrecio] = useState('150.00');
   const [altCondiciones, setAltCondiciones] = useState('');
   const [addingAlternative, setAddingAlternative] = useState(false);
@@ -201,7 +224,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     if (!leadId) return;
     setLoading(true);
     Promise.all([
-      leadService.getLeadDetails(leadId),
+      leadService.getLeadDetails(leadId.toString()),
       leadService.getAvailabilityOptions(),
     ])
       .then(([leadData, catData]) => {
@@ -219,9 +242,6 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   // Pre-carga inteligente al obtener datos del lead y catálogos
   useEffect(() => {
     if (!lead || !catalogs || !catalogs.servicios?.length) return;
-
-    const minAllowedDate = addDays(startOfDay(new Date()), 3);
-    const minAllowedDateStr = format(minAllowedDate, 'yyyy-MM-dd');
 
     // 1. Pre-seleccionar servicio solicitado
     let initialServicioId = altServicioId;
@@ -265,25 +285,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
       if (matchProf) setAltProfesionalId(matchProf.id_profesional.toString());
     }
 
-    // 4. Pre-seleccionar primera fecha válida (mínimo 72h)
-    if (!altFecha) {
-      const validDisps = (catalogs.disponibilidades || []).filter((d: any) => {
-        const dDate = (d.fecha || '').split('T')[0];
-        if (!dDate) return false;
-        try {
-          return !isBefore(startOfDay(parseISO(dDate)), minAllowedDate);
-        } catch {
-          return false;
-        }
-      });
-      if (validDisps.length > 0) {
-        setAltFecha(validDisps[0].fecha.split('T')[0]);
-      } else {
-        setAltFecha(minAllowedDateStr);
-      }
-    }
-
-    // 5. Determinar precio de lista oficial y descuento inteligente
+    // 4. Determinar precio de lista oficial y descuento inteligente
     const activeServicio = catalogs.servicios?.find((s: any) => s.id_servicio.toString() === initialServicioId);
     const officialPrice = Number(activeServicio?.Tarifas?.[0]?.precio || 180);
     const isStudent = lead.DatosAcademicos?.[0]?.aplica === true || Boolean(lead.DatosAcademicos?.[0]?.universidad);
@@ -291,11 +293,37 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     if (altPrecio === '150.00' || !altPrecio) {
       if (isStudent) {
         setAltPrecio(Math.round(officialPrice * 0.85).toFixed(2));
+        setAltCondiciones('Convenio Universitario: Presentar Carnet Universitario vigente al asistir');
       } else {
         setAltPrecio(officialPrice.toFixed(2));
       }
     }
   }, [lead, catalogs]);
+
+  // Cálculo en vivo de la fecha límite de vigencia de la oferta comercial
+  const calculatedExpiry = useMemo(() => {
+    const today = startOfDay(new Date());
+    if (altVigencia === '24h') return addDays(today, 1);
+    if (altVigencia === '48h') return addDays(today, 2);
+    if (altVigencia === '72h') return addDays(today, 3);
+    if (altVigencia === '7d') return addDays(today, 7);
+    if (altVigencia === 'custom' && altVigenciaCustom) {
+      try {
+        return parseISO(altVigenciaCustom);
+      } catch {
+        return addDays(today, 2);
+      }
+    }
+    return addDays(today, 2);
+  }, [altVigencia, altVigenciaCustom]);
+
+  const getVigenciaLabel = (vig: string, customVal: string) => {
+    if (vig === '24h') return '24 horas (Oferta Flash)';
+    if (vig === '48h') return '48 horas (Recomendado)';
+    if (vig === '72h') return '72 horas (3 días)';
+    if (vig === '7d') return '7 días (Semanal)';
+    return `Hasta ${customVal || 'Personalizado'}`;
+  };
 
   // Precio de lista oficial del servicio actualmente seleccionado
   const currentOfficialPrice = useMemo(() => {
@@ -333,22 +361,19 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     setAltServicioId('');
     setAltProfesionalId('');
     setAltSedeId('');
-    setAltFecha('');
-    setAltDisponibilidadId('');
-    setAltCustomTime({ startTime: '09:00', endTime: '10:00' });
-    setIsCustomMode(false);
+    setAltVigencia('48h');
+    setAltVigenciaCustom('');
+    setAltFranja('Horario Flexible (A elección del paciente al confirmar)');
     setAltPrecio('150.00');
     setAltCondiciones('');
     setOfferErrors({});
   };
 
   const handleAddAlternative = async () => {
+    if (!leadId) return;
     const errors: Record<string, string> = {};
-    if (!isCustomMode && !altDisponibilidadId) {
-      errors.disp = 'Por favor selecciona un horario disponible en el calendario interactivo.';
-    }
-    if (isCustomMode && !altFecha) {
-      errors.disp = 'Selecciona una fecha en el calendario para el horario personalizado.';
+    if (!altServicioId) {
+      errors.servicio = 'Selecciona un servicio para la promoción.';
     }
     if (!altPrecio || isNaN(Number(altPrecio)) || Number(altPrecio) <= 0) {
       errors.precio = 'Ingresa una tarifa válida mayor a 0';
@@ -361,23 +386,25 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     setOfferErrors({});
     setAddingAlternative(true);
     const ultimaSolicitud = lead?.Solicitudes?.[0];
+    const expiryStr = format(calculatedExpiry, 'yyyy-MM-dd');
+    const fullCondiciones = `[Vigencia: ${getVigenciaLabel(altVigencia, altVigenciaCustom)} - Vence: ${format(calculatedExpiry, 'dd/MM/yyyy')}] [Franja: ${altFranja}] ${altCondiciones ? `| ${altCondiciones}` : ''}`.trim();
+
     try {
-      await leadService.addAlternative(leadId!, {
+      await leadService.addAlternative(leadId.toString(), {
         id_solicitud: ultimaSolicitud?.id_solicitud,
-        id_disponibilidad: (!isCustomMode && altDisponibilidadId) ? altDisponibilidadId : undefined,
-        fecha: altFecha,
-        hora_inicio: altCustomTime.startTime,
-        hora_fin: altCustomTime.endTime,
+        fecha: expiryStr,
+        hora_inicio: altFranja.includes('Tarde') ? '14:00' : '09:00',
+        hora_fin: altFranja.includes('Tarde') ? '19:00' : '13:00',
         id_profesional: (altProfesionalId && altProfesionalId !== 'ALL_PROFESSIONALS') ? altProfesionalId : undefined,
         id_sede: (altSedeId && altSedeId !== 'ALL_SEDES') ? altSedeId : undefined,
         precio_ofrecido: altPrecio,
-        condiciones: altCondiciones,
+        condiciones: fullCondiciones,
       });
       fetchData();
       resetAltForm();
-      toast({ title: 'Alternativa Agregada 🎉', description: 'La propuesta horaria ha sido añadida al tablero de negociación.' });
+      toast({ title: '¡Promoción Registrada! 🎉', description: 'La oferta comercial con vigencia activa ha sido añadida al tablero.' });
     } catch {
-      toast({ title: 'Error', description: 'No se pudo añadir la alternativa.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'No se pudo añadir la oferta comercial.', variant: 'destructive' });
     } finally {
       setAddingAlternative(false);
     }
@@ -391,7 +418,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     const ultimaSolicitud = lead?.Solicitudes?.[0];
     setReserving(true);
     try {
-      await leadService.reserve(leadId, { id_solicitud: ultimaSolicitud?.id_solicitud || 1, id_opcion: selectedOpcion });
+      await leadService.reserve(leadId.toString(), { id_solicitud: ultimaSolicitud?.id_solicitud || 1, id_opcion: selectedOpcion });
       toast({ title: '¡Trato Cerrado! 🎉', description: 'El paciente pasa a la etapa PAYER.' });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
@@ -458,45 +485,47 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
   const generateWhatsAppMessage = () => {
     const patientFirstName = lead?.nombres || 'Paciente';
-    const serviceName = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
+    const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
 
     const convenioPrompt = !isStudent
       ? `\n\n💡 *Beneficio Exclusivo:* ¿Eres estudiante universitario o cuentas con convenio en tu centro laboral? Indícanoslo para activar tu *15% de descuento especial* presentando tu carnet o fotocheck.`
       : '';
 
     if (selectedOptData) {
-      const fecha = selectedOptData.Disponibilidad?.fecha?.split('T')[0] || '';
-      const hora = `${String(selectedOptData.Disponibilidad?.hora_inicio).substring(11, 16)} - ${String(selectedOptData.Disponibilidad?.hora_fin).substring(11, 16)}`;
-      const sede = selectedOptData.Disponibilidad?.Sede?.nombre || 'Sede Principal';
-      const doctor = `Esp. ${selectedOptData.Disponibilidad?.Profesional?.nombres || ''} ${selectedOptData.Disponibilidad?.Profesional?.apellidos || ''}`.trim();
       const precio = Number(selectedOptData.precio_ofrecido).toFixed(2);
-      const cond = selectedOptData.condiciones ? `\n📌 *Condición / Beneficio:* ${selectedOptData.condiciones}` : '';
+      const sede = selectedOptData.Disponibilidad?.Sede?.nombre || 'Sede Principal';
+      const doctor = selectedOptData.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}` : 'Especialistas colegiados';
+      const fechaVigencia = selectedOptData.Disponibilidad?.fecha?.split('T')[0] || '';
+      const cond = selectedOptData.condiciones ? `\n📌 *Detalles de la oferta:* ${selectedOptData.condiciones}` : '';
 
       return `¡Hola ${patientFirstName}! 👋 Te saludamos de NexoSalud Dental.\n\n` +
-        `De acuerdo a lo coordinado para tu atención de *${serviceName}*, te dejamos los detalles de tu pre-reserva:\n` +
-        `📅 *Fecha:* ${fecha}\n` +
-        `⏰ *Horario:* ${hora}\n` +
+        `Diseñamos una *Oferta Comercial Exclusiva* para tu atención de *${reqServicio}*:\n\n` +
+        `💰 *Tarifa Promocional:* S/ ${precio}\n` +
+        `⏳ *Margen de Vigencia:* Válido hasta el ${fechaVigencia}\n` +
         `📍 *Sede:* ${sede}\n` +
-        `👨‍⚕️ *Especialista:* ${doctor}\n` +
-        `💰 *Tarifa acordada:* S/ ${precio}` +
+        `👨‍⚕️ *Atención:* ${doctor}\n` +
         `${cond}\n\n` +
-        `Para formalizar tu reserva y asegurar el sillón odontológico, indícanos tu método de pago preferido (Yape, Transferencia o Tarjeta) para enviarte la proforma oficial. ¡Te esperamos! ✨`;
+        `Para asegurar este precio con descuento, puedes separar tu turno en el siguiente enlace:\n` +
+        `🔗 *https://nexosalud.pe/pre-reserva/${leadId}*\n\n` +
+        `¡Quedamos atentos a tu confirmación para brindarte la mejor atención! ✨`;
     }
 
     if (opciones.length > 0) {
-      const resumenOpciones = opciones.map((o: any, idx: number) => 
-        `• *Opción ${idx + 1}:* ${o.Disponibilidad?.fecha?.split('T')[0]} (${String(o.Disponibilidad?.hora_inicio).substring(11, 16)} hrs) en Sede ${o.Disponibilidad?.Sede?.nombre} — S/ ${Number(o.precio_ofrecido).toFixed(2)}${o.condiciones ? ` [${o.condiciones}]` : ''}`
-      ).join('\n');
+      const resumenOpciones = opciones.map((o: any, idx: number) => {
+        const p = Number(o.precio_ofrecido).toFixed(2);
+        const f = o.Disponibilidad?.fecha?.split('T')[0] || '';
+        return `• *Propuesta ${idx + 1}:* S/ ${p} (Válido hasta ${f}) — Sede ${o.Disponibilidad?.Sede?.nombre || 'Principal'}${o.condiciones ? ` [${o.condiciones}]` : ''}`;
+      }).join('\n');
 
       return `¡Hola ${patientFirstName}! 👋 De NexoSalud Dental.\n\n` +
-        `Tenemos disponibles las siguientes alternativas personalizadas para tu servicio de *${serviceName}*:\n\n` +
+        `Tenemos disponibles las siguientes promociones personalizadas para tu servicio de *${reqServicio}*:\n\n` +
         `${resumenOpciones}\n\n` +
         `${isStudent ? '🎓 *Aplica tu descuento especial de convenio universitario (-15%).*\n' : ''}` +
         `${convenioPrompt}\n\n` +
-        `¿Cuál de estos horarios se acomoda mejor para ti? Quedamos atentos para reservar tu turno. 😊`;
+        `¿Cuál de estas alternativas se acomoda mejor a ti? Indícanos tu DNI para formalizar tu pre-reserva. 😊`;
     }
 
-    return `¡Hola ${patientFirstName}! 👋 Te saludamos de NexoSalud Dental. Vemos tu solicitud para el servicio de *${serviceName}*. ¿Te gustaría coordinar una cita preferencial para esta semana?${convenioPrompt}\n\nQuedamos atentos a tus comentarios. ✨`;
+    return `¡Hola ${patientFirstName}! 👋 Te saludamos de NexoSalud Dental. Vemos tu interés en el servicio de *${reqServicio}*. Tenemos promociones activas con descuentos preferenciales para esta semana.${convenioPrompt}\n\n¿Te gustaría conocer la propuesta comercial? Quedamos atentos a tus comentarios. ✨`;
   };
 
   const handleSendWhatsApp = () => {
@@ -510,11 +539,21 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     toast({ title: 'WhatsApp Abierto', description: 'Redirigiendo a WhatsApp con la propuesta comercial.' });
   };
 
+  const handleSendEmail = () => {
+    const patientFirstName = lead?.nombres || 'Paciente';
+    const email = lead?.email || '';
+    const subject = encodeURIComponent(`Propuesta Comercial Exclusiva - NexoSalud Dental para ${patientFirstName}`);
+    const body = encodeURIComponent(generateWhatsAppMessage().replace(/\*/g, ''));
+    const mailtoUrl = email ? `mailto:${email}?subject=${subject}&body=${body}` : `mailto:?subject=${subject}&body=${body}`;
+    window.open(mailtoUrl, '_blank');
+    toast({ title: 'Correo Preparado', description: 'Se abrió tu cliente de correo con la propuesta comercial.' });
+  };
+
   const handleCopyWhatsApp = () => {
     const message = generateWhatsAppMessage();
     navigator.clipboard.writeText(message);
     setCopiedWhatsApp(true);
-    toast({ title: '¡Mensaje Copiado!', description: 'Texto copiado al portapapeles para enviar por chat.' });
+    toast({ title: '¡Mensaje Copiado!', description: 'Texto copiado al portapapeles para enviar por chat o correo.' });
     setTimeout(() => setCopiedWhatsApp(false), 2000);
   };
 
@@ -534,7 +573,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                   Mesa de Negociación (LEAD)
                 </DialogTitle>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
-                  Configura alternativas de atención personalizadas y cierra el trato comercial con el paciente.
+                  Configura ofertas comerciales con margen de vigencia activo y cierra el trato con el paciente.
                 </p>
               </div>
             </div>
@@ -742,7 +781,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                         </div>
                         <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
                           {hasUrgentPain
-                            ? `Dolor ${saludOdonto?.nivel_dolor}. Priorizar turno más cercano (mín. 72h).`
+                            ? `Dolor ${saludOdonto?.nivel_dolor}. Priorizar turno cercano.`
                             : 'Chequeo preventivo o estético estándar.'}
                         </p>
                       </div>
@@ -787,18 +826,116 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                   </div>
                 )}
 
-                {/* 1. Diseñar oferta */}
+                {/* 1. Diseñar oferta comercial / promoción */}
                 <div>
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">1</span>
-                    Diseñar Oferta Comercial
-                  </h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">1</span>
+                      Diseñar Oferta Comercial / Promoción
+                    </h3>
+                    <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/60 flex items-center gap-1">
+                      <Timer className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                      Válida hasta: {format(calculatedExpiry, 'dd/MM/yyyy')}
+                    </span>
+                  </div>
 
                   <div className="space-y-4 p-4 bg-white dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/90 rounded-2xl shadow-sm">
-                    {/* Servicio, Profesional, Sede */}
+                    
+                    {/* A. Margen de Vigencia Activo de la Promoción */}
+                    <div className="p-3 rounded-xl bg-slate-50/90 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/70 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <Timer className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                          Margen de Vigencia Activo de la Oferta:
+                        </Label>
+                        <span className="text-[11px] font-bold text-teal-700 dark:text-teal-300">
+                          {getVigenciaLabel(altVigencia, altVigenciaCustom)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => setAltVigencia('24h')}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
+                            altVigencia === '24h'
+                              ? 'bg-amber-600 text-white shadow-2xs'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          <Zap className="w-3 h-3 text-amber-400" />
+                          24 Horas (Flash)
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setAltVigencia('48h')}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
+                            altVigencia === '48h'
+                              ? 'bg-teal-600 text-white shadow-2xs'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          <Sparkles className="w-3 h-3 text-teal-300" />
+                          48 Horas (Recomendado)
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setAltVigencia('72h')}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
+                            altVigencia === '72h'
+                              ? 'bg-teal-600 text-white shadow-2xs'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          <Calendar className="w-3 h-3" />
+                          72 Horas (3 Días)
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setAltVigencia('7d')}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
+                            altVigencia === '7d'
+                              ? 'bg-indigo-600 text-white shadow-2xs'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          <Tag className="w-3 h-3" />
+                          7 Días (Campaña Semanal)
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setAltVigencia('custom')}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
+                            altVigencia === 'custom'
+                              ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 shadow-2xs'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          Personalizado
+                        </button>
+                      </div>
+
+                      {altVigencia === 'custom' && (
+                        <div className="pt-1.5 flex items-center gap-2">
+                          <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Fecha límite de la oferta:</Label>
+                          <input
+                            type="date"
+                            className="h-8 rounded-lg border border-slate-200 dark:border-slate-700 px-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                            value={altVigenciaCustom}
+                            onChange={(e) => setAltVigenciaCustom(e.target.value)}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* B. Servicio, Sede y Especialista de Referencia */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="space-y-1">
-                        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Servicio</Label>
+                        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Servicio Ofertado</Label>
                         <Select
                           onValueChange={(v) => {
                             setAltServicioId(v);
@@ -823,33 +960,17 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                             ))}
                           </SelectContent>
                         </Select>
+                        {offerErrors.servicio && <p className="text-[10px] text-rose-500">{offerErrors.servicio}</p>}
                       </div>
 
                       <div className="space-y-1">
-                        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Profesional</Label>
-                        <Select onValueChange={(v) => { setAltProfesionalId(v); setAltDisponibilidadId(''); }} value={altProfesionalId}>
-                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium [&>span]:text-slate-900 dark:[&>span]:text-slate-100">
-                            <SelectValue placeholder="Todos los especialistas..." />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                            <SelectItem value="ALL_PROFESSIONALS" className="font-semibold text-slate-900 dark:text-slate-100">Todos los especialistas</SelectItem>
-                            {catalogs.profesionales?.map((p: any) => (
-                              <SelectItem key={p.id_profesional} value={p.id_profesional.toString()} className="text-slate-900 dark:text-slate-100">
-                                Esp. {p.nombres} {p.apellidos}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Sede</Label>
-                        <Select onValueChange={(v) => { setAltSedeId(v); setAltDisponibilidadId(''); }} value={altSedeId}>
+                        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Sede Preferencial</Label>
+                        <Select onValueChange={(v) => setAltSedeId(v)} value={altSedeId}>
                           <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium [&>span]:text-slate-900 dark:[&>span]:text-slate-100">
                             <SelectValue placeholder="Todas las sedes..." />
                           </SelectTrigger>
                           <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                            <SelectItem value="ALL_SEDES" className="font-semibold text-slate-900 dark:text-slate-100">Todas las sedes</SelectItem>
+                            <SelectItem value="ALL_SEDES" className="font-semibold text-slate-900 dark:text-slate-100">Todas las sedes (A elección)</SelectItem>
                             {catalogs.sedes?.map((s: any) => (
                               <SelectItem key={s.id_sede} value={s.id_sede.toString()} className="text-slate-900 dark:text-slate-100">
                                 {s.nombre}
@@ -858,56 +979,56 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                           </SelectContent>
                         </Select>
                       </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Especialista Sugerido</Label>
+                        <Select onValueChange={(v) => setAltProfesionalId(v)} value={altProfesionalId}>
+                          <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium [&>span]:text-slate-900 dark:[&>span]:text-slate-100">
+                            <SelectValue placeholder="Cualquier especialista..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                            <SelectItem value="ALL_PROFESSIONALS" className="font-semibold text-slate-900 dark:text-slate-100">Cualquier especialista colegiado</SelectItem>
+                            {catalogs.profesionales?.map((p: any) => (
+                              <SelectItem key={p.id_profesional} value={p.id_profesional.toString()} className="text-slate-900 dark:text-slate-100">
+                                Esp. {p.nombres} {p.apellidos}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
-                    {/* Selector interactivo de calendario y horarios con Match Scoring */}
-                    <div className="pt-1">
-                      <InteractiveAvailabilityPicker
-                        disponibilidades={catalogs.disponibilidades || []}
-                        profesionales={catalogs.profesionales || []}
-                        sedes={catalogs.sedes || []}
-                        selectedProfesionalId={altProfesionalId === 'ALL_PROFESSIONALS' ? '' : altProfesionalId}
-                        selectedSedeId={altSedeId === 'ALL_SEDES' ? '' : altSedeId}
-                        selectedDate={altFecha}
-                        selectedDisponibilidadId={altDisponibilidadId}
-                        customTime={altCustomTime}
-                        isCustomMode={isCustomMode}
-                        patientPreferences={{
-                          sede: pref?.sede_preferida,
-                          profesional: pref?.profesional_preferido,
-                          horario: pref?.Horario ? {
-                            dia_semana: pref.Horario.dia_semana,
-                            hora_inicio: typeof pref.Horario.hora_inicio === 'string'
-                              ? (pref.Horario.hora_inicio.includes('T') ? pref.Horario.hora_inicio.substring(11, 16) : pref.Horario.hora_inicio.substring(0, 5))
-                              : undefined,
-                            hora_fin: typeof pref.Horario.hora_fin === 'string'
-                              ? (pref.Horario.hora_fin.includes('T') ? pref.Horario.hora_fin.substring(11, 16) : pref.Horario.hora_fin.substring(0, 5))
-                              : undefined,
-                          } : undefined,
-                          horarioNombre: pref?.Horario ? `${['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][pref.Horario.dia_semana]} (${String(pref.Horario.hora_inicio).substring(11,16)} - ${String(pref.Horario.hora_fin).substring(11,16)})` : undefined
-                        }}
-                        onSelectDate={(d) => { setAltFecha(d); setAltDisponibilidadId(''); }}
-                        onSelectDisponibilidad={(id, disp) => {
-                          setAltDisponibilidadId(id);
-                          if (disp?.id_profesional && (!altProfesionalId || altProfesionalId === 'ALL_PROFESSIONALS')) {
-                            setAltProfesionalId(disp.id_profesional.toString());
-                          }
-                          if (disp?.id_sede && (!altSedeId || altSedeId === 'ALL_SEDES')) {
-                            setAltSedeId(disp.id_sede.toString());
-                          }
-                          if (offerErrors.disp) setOfferErrors(p => ({ ...p, disp: '' }));
-                        }}
-                        onCustomTimeChange={(ct) => setAltCustomTime(ct)}
-                        onToggleCustomMode={(mode) => {
-                          setIsCustomMode(mode);
-                          if (mode) setAltDisponibilidadId('');
-                          if (offerErrors.disp) setOfferErrors(p => ({ ...p, disp: '' }));
-                        }}
-                        errorMessage={offerErrors.disp}
-                      />
+                    {/* C. Franja Horaria Sugerida para la Promoción */}
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                        Franja Horaria Sugerida para la Promoción
+                      </Label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {[
+                          'Horario Flexible (A elección del paciente al confirmar)',
+                          'Turno Mañana (09:00 - 13:00)',
+                          'Turno Tarde (14:00 - 18:00)',
+                          'Turno Noche (18:00 - 21:00)',
+                          'Sábados Exclusivo',
+                        ].map((franja) => (
+                          <button
+                            key={franja}
+                            type="button"
+                            onClick={() => setAltFranja(franja)}
+                            className={`p-2 rounded-xl text-[11px] font-semibold text-left border transition-all ${
+                              altFranja === franja
+                                ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs'
+                                : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
+                            }`}
+                          >
+                            {franja}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
-                    {/* Comparador Financiero en Vivo & Descuentos Rápidos */}
+                    {/* D. Comparador Financiero en Vivo & Descuentos Rápidos */}
                     <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/70 space-y-3">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
@@ -982,6 +1103,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                       </div>
                     </div>
 
+                    {/* E. Precio editable y condiciones */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                       <div className="space-y-1">
                         <Label className={`text-[11px] font-medium ${offerErrors.precio ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-400'}`}>Precio ofrecido editable (S/)</Label>
@@ -1001,11 +1123,11 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                         {offerErrors.precio && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">{offerErrors.precio}</p>}
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Modalidad / Condiciones</Label>
+                        <Label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Condición / Beneficio adicional</Label>
                         <input
                           type="text"
                           className="flex h-9 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
-                          placeholder="Ej. Convenio estudiante, pago en cuotas, presencial..."
+                          placeholder="Ej. Válido con carnet de estudiante, pago en cuotas..."
                           value={altCondiciones}
                           onChange={(e) => setAltCondiciones(e.target.value)}
                         />
@@ -1015,23 +1137,23 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                     <div className="flex justify-end pt-2">
                       <Button onClick={handleAddAlternative} disabled={addingAlternative} className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs h-9 px-5 shadow-sm font-semibold">
                         <Plus className="h-3.5 w-3.5 mr-1.5" />
-                        {addingAlternative ? 'Registrando...' : 'Añadir al Tablero'}
+                        {addingAlternative ? 'Registrando...' : 'Añadir Oferta al Tablero'}
                       </Button>
                     </div>
                   </div>
                 </div>
 
-                {/* 2. Tablero de alternativas */}
+                {/* 2. Tablero de ofertas comerciales activas */}
                 <div>
                   <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">2</span>
-                    Alternativas sobre la Mesa (Selecciona una para cerrar trato)
+                    Ofertas Comerciales sobre la Mesa (Selecciona una para enviar o cerrar trato)
                   </h3>
 
                   {opciones.length === 0 ? (
                     <div className="py-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30">
-                      <p className="text-xs text-slate-400 dark:text-slate-500">Aún no se han ofrecido turnos al paciente.</p>
-                      <p className="text-[11px] text-slate-300 dark:text-slate-600 mt-1">Usa el formulario de arriba para añadir una propuesta.</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">Aún no se han generado ofertas comerciales para este paciente.</p>
+                      <p className="text-[11px] text-slate-300 dark:text-slate-600 mt-1">Usa el formulario superior para construir una propuesta atractiva con vigencia.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1051,9 +1173,9 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                           )}
 
                           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-2">
-                            <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 text-xs bg-slate-100 dark:bg-slate-700 px-2.5 py-0.5 rounded-lg">
-                              <Calendar className="h-3 w-3 text-slate-400" />
-                              {opt.Disponibilidad?.fecha?.split('T')[0]}
+                            <span className="inline-flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-200 text-xs bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 px-2.5 py-0.5 rounded-lg">
+                              <Clock className="h-3 w-3 text-amber-500" />
+                              Válido hasta: {opt.Disponibilidad?.fecha?.split('T')[0] || 'Vigente'}
                             </span>
 
                             {editingOptionId === opt.id_opcion ? (
@@ -1107,20 +1229,16 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
                           <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
                             <div className="flex items-center gap-1.5">
-                              <Clock className="h-3 w-3 text-slate-400 shrink-0" />
-                              <span>{String(opt.Disponibilidad?.hora_inicio).substring(11,16)} – {String(opt.Disponibilidad?.hora_fin).substring(11,16)}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
                               <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
-                              <span>{opt.Disponibilidad?.Sede?.nombre}</span>
+                              <span>Sede: {opt.Disponibilidad?.Sede?.nombre || 'Todas las sedes'}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <User className="h-3 w-3 text-slate-400 shrink-0" />
-                              <span>Esp. {opt.Disponibilidad?.Profesional?.nombres} {opt.Disponibilidad?.Profesional?.apellidos}</span>
+                              <span>Especialista: {opt.Disponibilidad?.Profesional?.apellidos ? `Esp. ${opt.Disponibilidad?.Profesional?.apellidos}` : 'Por asignar'}</span>
                             </div>
                             {opt.condiciones && (
-                              <div className="text-[11px] text-slate-400 dark:text-slate-500 italic pt-1 border-t border-slate-100 dark:border-slate-800">
-                                Condición: {opt.condiciones}
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 leading-tight">
+                                {opt.condiciones}
                               </div>
                             )}
                           </div>
@@ -1240,7 +1358,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                           Campaña (-20%)
                         </Button>
                         <span className="text-[10px] text-slate-400">
-                          (Recuerda presionar "Añadir al Tablero" para crear la propuesta)
+                          (Recuerda presionar "Añadir Oferta al Tablero" para crear la propuesta)
                         </span>
                       </div>
                     </div>
@@ -1275,7 +1393,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                           Convenio Corporativo (-15%)
                         </Button>
                         <span className="text-[10px] text-slate-400">
-                          (Presiona "Añadir al Tablero" para crear la propuesta)
+                          (Presiona "Añadir Oferta al Tablero" para crear la propuesta)
                         </span>
                       </div>
                     </div>
@@ -1288,15 +1406,15 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                         Flexibilidad Horaria & Turnos Alternos:
                       </div>
                       <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                        Utiliza el botón de <strong>"Personalizado"</strong> en el selector de turnos para pactar un horario especial o consulta fechas en fin de semana (Sábados).
+                        La promoción no exige una cita fija inmediata. El paciente puede elegir <strong>Horario Flexible</strong> o convenir atención en Sábados según su disponibilidad.
                       </p>
                       <Button
                         size="sm"
                         type="button"
-                        onClick={() => setIsCustomMode(true)}
+                        onClick={() => setAltFranja('Horario Flexible (A elección del paciente al confirmar)')}
                         className="bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs h-7 px-2.5 font-medium"
                       >
-                        Activar Horario Personalizado
+                        Pactar Horario Flexible
                       </Button>
                     </div>
                   )}
@@ -1308,13 +1426,13 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                         Red de Sedes & Cobertura:
                       </div>
                       <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                        NexoSalud cuenta con sedes en puntos estratégicos. Cambia la sede en el selector superior para ver qué especialistas atienden más cerca de la zona del paciente ({lead?.zona || 'Trujillo/Lima'}).
+                        NexoSalud cuenta con sedes en puntos estratégicos. Cambia la sede en el selector superior para que la oferta sea válida en la sede más cercana a {lead?.zona || 'Trujillo/Lima'}.
                       </p>
                     </div>
                   )}
                 </div>
 
-                {/* ── 4. Seguimiento Inteligente por WhatsApp (Actividad 4) ── */}
+                {/* ── 4. Envío y Seguimiento Omnicanal (Actividad 4) ── */}
                 <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 shadow-sm space-y-3">
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-2.5">
                     <div className="flex items-center gap-2">
@@ -1322,7 +1440,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                         4
                       </span>
                       <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                        Seguimiento Inteligente por WhatsApp
+                        Envío de Oferta Omnicanal (WhatsApp & Correo)
                       </h3>
                     </div>
                     <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/60">
@@ -1350,14 +1468,22 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                       {generateWhatsAppMessage()}
                     </p>
 
-                    <div className="flex items-center gap-2 pt-1">
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
                       <Button
                         type="button"
                         onClick={handleSendWhatsApp}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm flex items-center gap-2"
                       >
                         <MessageCircle className="w-4 h-4" />
-                        <span>Abrir y Enviar por WhatsApp</span>
+                        <span>Enviar por WhatsApp</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleSendEmail}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm flex items-center gap-2"
+                      >
+                        <Mail className="w-4 h-4" />
+                        <span>Enviar por Correo</span>
                       </Button>
                       <Button
                         type="button"
@@ -1366,7 +1492,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                         className="rounded-xl text-xs h-9 px-3 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
                       >
                         <Copy className="w-3.5 h-3.5 mr-1" />
-                        Copiar
+                        Copiar Mensaje
                       </Button>
                     </div>
                   </div>
@@ -1391,23 +1517,23 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                       <div className="bg-white/90 dark:bg-slate-900/90 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
-                        <span className="text-[10px] text-slate-400 font-semibold block">Fecha & Turno</span>
+                        <span className="text-[10px] text-slate-400 font-semibold block">Vigencia Promoción</span>
                         <span className="font-bold text-slate-900 dark:text-white">
-                          {selectedOptData.Disponibilidad?.fecha?.split('T')[0]} ({String(selectedOptData.Disponibilidad?.hora_inicio).substring(11, 16)})
+                          Hasta {selectedOptData.Disponibilidad?.fecha?.split('T')[0] || 'Vigente'}
                         </span>
                       </div>
 
                       <div className="bg-white/90 dark:bg-slate-900/90 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
                         <span className="text-[10px] text-slate-400 font-semibold block">Sede</span>
                         <span className="font-bold text-slate-900 dark:text-white">
-                          {selectedOptData.Disponibilidad?.Sede?.nombre}
+                          {selectedOptData.Disponibilidad?.Sede?.nombre || 'Todas las sedes'}
                         </span>
                       </div>
 
                       <div className="bg-white/90 dark:bg-slate-900/90 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
                         <span className="text-[10px] text-slate-400 font-semibold block">Especialista</span>
                         <span className="font-bold text-slate-900 dark:text-white truncate block">
-                          Esp. {selectedOptData.Disponibilidad?.Profesional?.apellidos}
+                          {selectedOptData.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad?.Profesional?.apellidos}` : 'Por asignar'}
                         </span>
                       </div>
 
@@ -1445,9 +1571,9 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
           onClose={() => setDeletingOptionTarget(null)}
           onConfirm={handleConfirmDeleteOption}
           isLoading={isDeletingOption}
-          title="¿Remover alternativa del tablero?"
-          description={`Se descartará la propuesta del turno ${deletingOptionTarget?.Disponibilidad?.fecha?.split('T')[0]} (Esp. ${deletingOptionTarget?.Disponibilidad?.Profesional?.apellidos}).`}
-          confirmText="Sí, Remover Alternativa"
+          title="¿Remover oferta comercial del tablero?"
+          description={`Se descartará la propuesta comercial seleccionada (Tarifa S/ ${Number(deletingOptionTarget?.precio_ofrecido || 0).toFixed(2)}).`}
+          confirmText="Sí, Remover Oferta"
           cancelText="Conservar"
           variant="destructive"
         />
