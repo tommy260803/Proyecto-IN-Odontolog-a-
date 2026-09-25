@@ -243,6 +243,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const [generatingCanva, setGeneratingCanva] = useState(false);
   const [canvaResult, setCanvaResult] = useState<any>(null);
   const [flyerImageLoading, setFlyerImageLoading] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const fetchData = () => {
     if (!leadId) return;
@@ -1458,15 +1459,15 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                               alt="Flyer Oficial Canva"
                               onLoad={() => setFlyerImageLoading(false)}
                               className={`w-full h-auto max-h-[360px] object-contain transition-transform duration-300 group-hover:scale-[1.02] cursor-pointer ${flyerImageLoading ? 'opacity-0' : 'opacity-100'}`}
-                              onClick={() => window.open(canvaResult.previewUrl, '_blank')}
-                              title="Haz clic para abrir el flyer en tamaño completo"
+                              onClick={() => setShowPreviewModal(true)}
+                              title="Haz clic para abrir el visor en modal"
                             />
                             <div
-                              onClick={() => window.open(canvaResult.previewUrl, '_blank')}
+                              onClick={() => setShowPreviewModal(true)}
                               className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
                             >
                               <span className="text-[11px] font-bold text-white bg-slate-900/80 px-2.5 py-1 rounded-lg backdrop-blur-xs flex items-center gap-1.5 shadow-sm">
-                                <ImageIcon className="w-3.5 h-3.5" /> Ampliar Imagen
+                                <ImageIcon className="w-3.5 h-3.5" /> Ver en Pantalla Completa
                               </span>
                             </div>
                           </div>
@@ -1735,6 +1736,48 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
           variant="destructive"
         />
       </DialogContent>
+
+      {/* ── Modal de Vista Previa Grande del Flyer ── */}
+      <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
+        <DialogContent className="max-w-3xl max-h-[95vh] p-5 bg-slate-950 text-white border border-slate-800 rounded-2xl flex flex-col items-center z-[150]">
+          <DialogHeader className="w-full flex flex-row items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex items-center gap-2">
+              <CanvaIcon className="w-5 h-5 text-purple-400" />
+              <DialogTitle className="text-sm font-bold text-white">
+                Vista Previa Oficial del Flyer ({lead?.nombres} {lead?.apellidos})
+              </DialogTitle>
+            </div>
+            <div className="flex items-center gap-2 mr-6">
+              <a
+                href={canvaResult?.downloadPngUrl || canvaResult?.previewUrl}
+                download={`Flyer_NexoSalud_${lead?.nombres || 'Oferta'}.png`}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Descargar PNG</span>
+              </a>
+              {canvaResult?.designUrl && canvaResult.designUrl !== 'https://www.canva.com/' && (
+                <a
+                  href={canvaResult.designUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center gap-1.5 transition-colors"
+                >
+                  <span>Abrir en Canva</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
+          </DialogHeader>
+          <div className="w-full flex-1 flex items-center justify-center p-3 bg-slate-900/60 rounded-xl mt-3 overflow-hidden">
+            <img
+              src={canvaResult?.previewUrl}
+              alt="Flyer Oficial Canva Grande"
+              className="max-h-[75vh] w-auto object-contain rounded-lg shadow-2xl"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

@@ -1,15 +1,25 @@
-import sql from 'mssql/msnodesqlv8';
+import sqlDefault, { ConnectionPool } from 'mssql';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+let sql: typeof sqlDefault;
+try {
+  // Permite autenticación de Windows en entornos locales con ODBC
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  sql = require('mssql/msnodesqlv8');
+} catch {
+  // Fallback seguro a mssql estándar en entornos Linux / Render
+  sql = sqlDefault;
+}
 
 const connectionString =
   process.env.MART_CONNECTION_STRING ||
   'Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=NexoSalud_Mart;Trusted_Connection=yes;TrustServerCertificate=yes;';
 
-let poolPromise: Promise<sql.ConnectionPool> | null = null;
+let poolPromise: Promise<ConnectionPool> | null = null;
 
-export async function getMartPool(): Promise<sql.ConnectionPool> {
+export async function getMartPool(): Promise<ConnectionPool> {
   if (!poolPromise) {
     const config: any = {
       connectionString,
@@ -45,9 +55,9 @@ const oltpConnectionString =
   process.env.OLTP_CONNECTION_STRING ||
   'Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=NexoSaludDB;Trusted_Connection=yes;TrustServerCertificate=yes;';
 
-let oltpPoolPromise: Promise<sql.ConnectionPool> | null = null;
+let oltpPoolPromise: Promise<ConnectionPool> | null = null;
 
-export async function getOltpPool(): Promise<sql.ConnectionPool> {
+export async function getOltpPool(): Promise<ConnectionPool> {
   if (!oltpPoolPromise) {
     const pool = new sql.ConnectionPool({ connectionString: oltpConnectionString } as any);
     oltpPoolPromise = pool.connect().then((connectedPool) => {
