@@ -652,7 +652,7 @@ router.post('/', async (req, res) => {
         });
       }
 
-      return persona;
+      return { ...persona, isDuplicate };
     });
 
     res.status(201).json(result);

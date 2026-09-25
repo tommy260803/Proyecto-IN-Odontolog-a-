@@ -30,7 +30,8 @@ import {
   Star,
   Zap,
   Check,
-  AlertCircle
+  AlertCircle,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function BuyerRequestInfoPage() {
@@ -183,8 +184,9 @@ export default function BuyerRequestInfoPage() {
       setSubmittedSuccess(true);
       if (isDup) {
         toast({
-          title: '¡Consulta Registrada (Paciente Frecuente)!',
-          description: 'Identificamos que ya formas parte de nuestra base de datos. Tu consulta ha sido anexada con prioridad a tu ficha existente.',
+          title: '⚠️ Registro Duplicado Detectado',
+          description: 'Identificamos que este contacto ya existe en la base de datos. Se registró con estado DUPLICATED para auditoría y no avanzó a LEAD.',
+          variant: 'destructive',
         });
       } else {
         toast({
@@ -705,39 +707,63 @@ export default function BuyerRequestInfoPage() {
             </div>
           ) : (
             /* Estado de Éxito */
-            <Card className="border border-slate-200/90 shadow-xl lg:shadow-none bg-white rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in duration-400 max-w-md w-full relative">
+            /* Estado de Resultado (Duplicado vs Éxito) */
+            <Card className={`border shadow-xl lg:shadow-none bg-white rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in duration-400 max-w-md w-full relative ${
+              isDuplicateSubmitted ? 'border-amber-300 ring-2 ring-amber-400/20' : 'border-slate-200/90'
+            }`}>
               
-              {/* Contenedor Limpio del Checkmark */}
+              {/* Contenedor del Ícono: Si es duplicado, mostrar Alerta/Duplicado en color ámbar de error; si es único, check verde/teal */}
               <div className="flex justify-center items-center pt-1">
-                <div className={`w-16 h-16 rounded-full bg-white border-2 ${isDuplicateSubmitted ? 'border-purple-500' : 'border-teal-500'} flex items-center justify-center shadow-none animate-circle-fade-in`}>
-                  <svg className="w-9 h-9" viewBox="0 0 48 48" fill="none">
-                    <circle
-                      cx="24"
-                      cy="24"
-                      r="20"
-                      stroke={isDuplicateSubmitted ? "rgba(147, 51, 234, 0.15)" : "rgba(13, 148, 136, 0.15)"}
-                      strokeWidth="2"
-                    />
-                    <path
-                      d="M14 24.5L21 31.5L34 17"
-                      stroke={isDuplicateSubmitted ? "#9333ea" : "#0d9488"}
-                      strokeWidth="3.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="animate-continuous-check"
-                    />
-                  </svg>
-                </div>
+                {isDuplicateSubmitted ? (
+                  <div className="w-16 h-16 rounded-full bg-amber-50 border-2 border-amber-500 flex items-center justify-center shadow-md animate-in zoom-in-75 duration-300">
+                    <AlertTriangle className="w-8 h-8 text-amber-600 stroke-[2.2]" />
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-white border-2 border-teal-500 flex items-center justify-center shadow-none animate-circle-fade-in">
+                    <svg className="w-9 h-9" viewBox="0 0 48 48" fill="none">
+                      <circle
+                        cx="24"
+                        cy="24"
+                        r="20"
+                        stroke="rgba(13, 148, 136, 0.15)"
+                        strokeWidth="2"
+                      />
+                      <path
+                        d="M14 24.5L21 31.5L34 17"
+                        stroke="#0d9488"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="animate-continuous-check"
+                      />
+                    </svg>
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-1.5">
-                <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                  {isDuplicateSubmitted ? '¡Consulta Registrada!' : '¡Solicitud Registrada con Éxito!'}
+              <div className="space-y-2">
+                <div className="flex justify-center">
+                  {isDuplicateSubmitted ? (
+                    <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1.5 shadow-xs">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
+                      ALERTA DE CALIDAD: REGISTRO DUPLICADO
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-teal-100 text-teal-900 border border-teal-300 flex items-center gap-1.5 shadow-xs">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-teal-700" />
+                      REGISTRO ÚNICO CONFIRMADO
+                    </span>
+                  )}
+                </div>
+
+                <h2 className={`text-xl font-black tracking-tight ${isDuplicateSubmitted ? 'text-amber-950' : 'text-slate-900'}`}>
+                  {isDuplicateSubmitted ? 'Registro Duplicado Detectado' : '¡Solicitud Registrada con Éxito!'}
                 </h2>
+                
                 <p className="text-xs text-slate-600 max-w-xs mx-auto leading-relaxed">
                   {isDuplicateSubmitted ? (
                     <>
-                      Hola <span className="font-bold text-purple-700">{fullName}</span>. Identificamos que ya formas parte de nuestra base de datos. Anexamos tu consulta a tu historial con estado <span className="font-bold uppercase text-purple-700">DUPLICATED</span> para brindarte atención preferencial sin duplicar tu ficha.
+                      El contacto con teléfono <strong className="text-slate-900 font-bold">+51 {phone}</strong> ya figuraba en la base clínica. Se registró con estado <span className="font-bold uppercase text-purple-700 bg-purple-100/80 px-1.5 py-0.5 rounded border border-purple-200">DUPLICATED</span> para auditoría interna y <strong className="text-rose-600">no avanzó a LEAD</strong> para prevenir prospectos repetidos.
                     </>
                   ) : (
                     <>
@@ -747,18 +773,24 @@ export default function BuyerRequestInfoPage() {
                 </p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-1.5 max-w-xs mx-auto animate-in fade-in slide-in-from-bottom-3 duration-500 delay-200">
-                <div className="flex items-center justify-between text-slate-600 text-[11px]">
-                  <span>Teléfono:</span>
+              <div className={`p-3.5 rounded-2xl text-left text-xs space-y-1.5 max-w-xs mx-auto animate-in fade-in slide-in-from-bottom-3 duration-500 delay-200 border ${
+                isDuplicateSubmitted ? 'bg-amber-50/70 border-amber-200 text-amber-950' : 'bg-slate-50 border-slate-200 text-slate-600'
+              }`}>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className={isDuplicateSubmitted ? 'text-amber-800 font-medium' : 'text-slate-600'}>Teléfono:</span>
                   <span className="font-mono font-bold text-slate-900">+51 {phone}</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-600 text-[11px]">
-                  <span>Sede preferida:</span>
-                  <span className="font-semibold text-slate-900">{sede || 'San Isidro (Principal)'}</span>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className={isDuplicateSubmitted ? 'text-amber-800 font-medium' : 'text-slate-600'}>Validación de Calidad:</span>
+                  <span className={`font-bold font-mono text-[10.5px] px-2 py-0.5 rounded ${
+                    isDuplicateSubmitted ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                  }`}>
+                    {isDuplicateSubmitted ? '⚠️ Duplicado Detectado' : '✓ Contacto Único'}
+                  </span>
                 </div>
-                <div className="flex items-center justify-between text-slate-600 text-[11px]">
-                  <span>Estado asignado:</span>
-                  <span className={`font-semibold font-mono ${isDuplicateSubmitted ? 'text-purple-700' : 'text-teal-700'}`}>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className={isDuplicateSubmitted ? 'text-amber-800 font-medium' : 'text-slate-600'}>Estado asignado:</span>
+                  <span className={`font-bold font-mono ${isDuplicateSubmitted ? 'text-purple-700 bg-purple-100/70 px-1.5 py-0.5 rounded border border-purple-200' : 'text-teal-700'}`}>
                     {isDuplicateSubmitted ? 'DUPLICATED (Auditoría / Trazabilidad)' : 'Portal Web (LEAD)'}
                   </span>
                 </div>

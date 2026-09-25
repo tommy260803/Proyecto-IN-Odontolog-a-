@@ -29,8 +29,17 @@ export function BuyerCreateModal({ isOpen, onClose }: BuyerCreateModalProps) {
 
   const handleSubmit = (data: BuyerFormValues) => {
     createBuyer.mutate(data, {
-      onSuccess: () => {
-        toast({ title: '¡Éxito!', description: 'Prospecto (BUYER) registrado correctamente.' });
+      onSuccess: (res: any) => {
+        const isDup = res?.isDuplicate || res?.qualityStatus === 'Duplicado' || res?.estado_calidad === 'Duplicado';
+        if (isDup) {
+          toast({ 
+            title: '⚠️ Registro Duplicado Detectado', 
+            description: 'El prospecto ya figuraba en la base de datos. Se registró con estado DUPLICATED para auditoría.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({ title: '¡Éxito!', description: 'Prospecto (BUYER) registrado correctamente.' });
+        }
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUYERS] });
         queryClient.refetchQueries({ queryKey: [QUERY_KEYS.BUYERS] });
         onClose();
