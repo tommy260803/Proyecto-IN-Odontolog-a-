@@ -233,8 +233,6 @@ router.get('/', async (req, res) => {
         const reserva = sol && sol.Reservas.length > 0 ? sol.Reservas[0].id_reserva.toString() : undefined;
         const preferencias = p.Preferencias.length > 0 ? p.Preferencias[0].sede_preferida || '' : '';
 
-        const consultasCount = Math.max(p.Solicitudes.length, 1);
-
         return {
           id: p.id_persona.toString(),
           buyerId: p.id_persona.toString(),
@@ -242,7 +240,7 @@ router.get('/', async (req, res) => {
           state,
           createdAt: p.fecha_registro,
           reservationId: reserva,
-          buyer: { preferences: preferencias, consultasCount },
+          buyer: { preferences: preferencias },
           id_negociacion: sol?.id_solicitud || p.id_persona,
           estado_negociacion,
           resultado_final,

@@ -66,7 +66,6 @@ import {
   ExternalLink,
   Download,
   Image as ImageIcon,
-  History,
 } from 'lucide-react';
 
 interface LeadNegotiationModalProps {
@@ -670,63 +669,6 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                   {lead.numero && <DataRow label="Teléfono" icon={<Phone className="h-3.5 w-3.5" />} value={lead.numero} />}
                   {lead.email && <DataRow label="Correo electrónico" icon={<Mail className="h-3.5 w-3.5" />} value={lead.email} />}
                 </StaticSection>
-
-                {/* Historial de Consultas Recurrentes (Inteligencia de Negociación) */}
-                {lead.Solicitudes && lead.Solicitudes.length > 0 && (
-                  <AccordionSection
-                    title={`Historial de Consultas (${lead.Solicitudes.length})`}
-                    subtitle="Trazabilidad de tratamientos consultados y dudas en web"
-                    icon={<History className="h-3.5 w-3.5 text-amber-500" />}
-                    defaultOpen={lead.Solicitudes.length > 1}
-                  >
-                    <div className="space-y-2">
-                      {lead.Solicitudes.length > 1 && (
-                        <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 flex items-center justify-between text-[11px]">
-                          <span className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1">
-                            🔁 Prospecto Recurrente
-                          </span>
-                          <span className="font-mono font-bold px-2 py-0.5 rounded bg-amber-200/80 dark:bg-amber-900/60 text-amber-950 dark:text-amber-200 text-[10px]">
-                            x{lead.Solicitudes.length} Consultas
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                        {lead.Solicitudes.map((sol: any, idx: number) => (
-                          <div 
-                            key={sol.id_solicitud || idx} 
-                            className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 space-y-1 text-xs"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-mono text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
-                                Consulta #{lead.Solicitudes.length - idx}
-                              </span>
-                              {sol.fecha_solicitud && (
-                                <span className="text-[10px] text-slate-500 font-mono">
-                                  {format(new Date(sol.fecha_solicitud), 'dd MMM yyyy, HH:mm')}
-                                </span>
-                              )}
-                            </div>
-                            <p className="font-semibold text-teal-700 dark:text-teal-400 text-xs">
-                              {sol.Servicio?.nombre || 'Consulta General'}
-                            </p>
-                            {sol.motivo && (
-                              <p className="text-[11px] text-slate-600 dark:text-slate-300 italic bg-white dark:bg-slate-900/60 p-1.5 rounded-md border border-slate-200/60 dark:border-slate-800">
-                                "{sol.motivo}"
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      {lead.Solicitudes.length > 1 && (
-                        <div className="p-2 rounded-lg bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200/60 dark:border-teal-800/50 text-[10.5px] text-teal-900 dark:text-teal-200">
-                          💡 <strong>Tip de Venta:</strong> Este paciente ha consultado varias veces. Aborda directamente sus preguntas anteriores y ofrécele facilidades o promociones en esta negociación.
-                        </div>
-                      )}
-                    </div>
-                  </AccordionSection>
-                )}
 
                 {/* 2. Gustos y preferencias — acordeón */}
                 <AccordionSection

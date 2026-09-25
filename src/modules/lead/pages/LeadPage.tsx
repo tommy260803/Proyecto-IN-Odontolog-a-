@@ -142,19 +142,9 @@ export default function LeadPage() {
   const columns = [
     { 
       header: 'Persona', 
-      cell: (l: any) => (
+      cell: (l: LeadWithDetails) => (
         <div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <p className="font-semibold text-slate-900 dark:text-white">{l.person.firstName} {l.person.lastName}</p>
-            {l.buyer?.consultasCount && l.buyer.consultasCount > 1 ? (
-              <span 
-                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-2xs" 
-                title={`Este lead ha consultado o completado el formulario ${l.buyer.consultasCount} veces`}
-              >
-                🔁 x{l.buyer.consultasCount}
-              </span>
-            ) : null}
-          </div>
+          <p className="font-semibold text-slate-900 dark:text-white">{l.person.firstName} {l.person.lastName}</p>
           <p className="text-xs text-slate-500 dark:text-slate-400">{l.person.documentNumber || l.person.phone || 'Sin Doc'}</p>
         </div>
       )
