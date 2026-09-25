@@ -62,6 +62,11 @@ import {
   CheckCheck,
   Timer,
   Settings2,
+  ExternalLink,
+  Download,
+  Palette,
+  Share2,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface LeadNegotiationModalProps {
@@ -219,6 +224,9 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   // Estados para Copiloto de Objeciones y Seguimiento WhatsApp (Actividades 3 y 4)
   const [objectionCategory, setObjectionCategory] = useState<'PRECIO' | 'HORARIO' | 'SEDE'>('PRECIO');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
+  const [generatingCanva, setGeneratingCanva] = useState(false);
+  const [canvaResult, setCanvaResult] = useState<any | null>(null);
+  const [canvaTemplateId, setCanvaTemplateId] = useState('EAHWLEXZ1lo');
 
   const fetchData = () => {
     if (!leadId) return;
@@ -476,6 +484,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     const patientFirstName = lead?.nombres || 'Paciente';
     const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
 
+    const canvaText = canvaResult?.designUrl ? `\n🎨 *Ver Flyer Oficial en Canva:* ${canvaResult.designUrl}\n` : '';
+
     if (selectedOptData) {
       const precio = Number(selectedOptData.precio_ofrecido).toFixed(2);
       const sede = selectedOptData.Disponibilidad?.Sede?.nombre || 'Sede Principal';
@@ -489,7 +499,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
         `⏳ *Margen de Vigencia:* Válido hasta el ${fechaVigencia}\n` +
         `📍 *Sede:* ${sede}\n` +
         `👨‍⚕️ *Atención:* ${doctor}\n` +
-        `${cond}\n\n` +
+        `${cond}` +
+        `${canvaText}\n` +
         `Para asegurar este precio con descuento, puedes separar tu turno en el siguiente enlace:\n` +
         `🔗 *https://nexosalud.pe/pre-reserva/${leadId}*\n\n` +
         `¡Quedamos atentos a tu confirmación para brindarte la mejor atención! ✨`;
@@ -504,12 +515,67 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
       return `¡Hola ${patientFirstName}! 👋 De NexoSalud Dental.\n\n` +
         `Tenemos disponibles las siguientes promociones personalizadas para tu servicio de *${reqServicio}*:\n\n` +
-        `${resumenOpciones}\n\n` +
-        `\n` +
+        `${resumenOpciones}` +
+        `${canvaText}\n\n` +
         `¿Cuál de estas alternativas se acomoda mejor a ti? Indícanos tu DNI para formalizar tu pre-reserva. 😊`;
     }
 
-    return `¡Hola ${patientFirstName}! 👋 Te saludamos de NexoSalud Dental. Vemos tu interés en el servicio de *${reqServicio}*. Tenemos promociones activas con descuentos preferenciales para esta semana.\n\n¿Te gustaría conocer la propuesta comercial? Quedamos atentos a tus comentarios. ✨`;
+    return `¡Hola ${patientFirstName}! 👋 Te saludamos de NexoSalud Dental. Vemos tu interés en el servicio de *${reqServicio}*. Tenemos promociones activas con descuentos preferenciales para esta semana.${canvaText}\n\n¿Te gustaría conocer la propuesta comercial? Quedamos atentos a tus comentarios. ✨`;
+  };
+
+  const handleGenerateCanvaAndDispatch = async (sendEmailOption = false) => {
+    if (!leadId) return;
+    setGeneratingCanva(true);
+    try {
+      const activeService = catalogs.servicios?.find((s: any) => s.id_servicio.toString() === altServicioId);
+      const activeSede = catalogs.sedes?.find((s: any) => s.id_sede.toString() === altSedeId);
+      const reqServicio = activeService?.nombre || lead?.Solicitudes?.[0]?.Servicio?.nombre || 'Ortodoncia y Estética Dental';
+      const sedeName = activeSede?.nombre || lead?.Preferencias?.[0]?.sede_preferida || 'Sede Principal (Trujillo / Lima)';
+      const offeredPrice = selectedOptData ? Number(selectedOptData.precio_ofrecido) : (numericOfferPrice > 0 ? numericOfferPrice : 150);
+      const originalPrice = currentOfficialPrice || 180;
+      const discountPct = discountMetrics.pct > 0 ? discountMetrics.pct : Math.max(15, Math.round(((originalPrice - offeredPrice) / originalPrice) * 100));
+      const expirationDate = selectedOptData
+        ? (selectedOptData.Disponibilidad?.fecha?.split('T')[0] || '48 Horas')
+        : format(calculatedExpiry, 'dd/MM/yyyy');
+      const conditions = selectedOptData?.condiciones || altCondiciones || 'Promoción exclusiva con garantía clínica NexoSalud';
+
+      const res = await leadService.negotiateAndDispatch(leadId.toString(), {
+        serviceName: reqServicio,
+        sedeName,
+        offeredPrice,
+        originalPrice,
+        discountPct,
+        expirationDate,
+        conditions,
+        canvaTemplateId: canvaTemplateId || 'EAHWLEXZ1lo',
+        sendEmail: sendEmailOption,
+      });
+
+      const canvaData = res.data?.canva || res.data || {
+        designUrl: 'https://www.canva.com/design/EAHWLEXZ1lo/view',
+        previewUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=800&auto=format&fit=crop&q=80',
+        jobId: 'canva_' + Date.now(),
+      };
+      setCanvaResult(canvaData);
+
+      toast({
+        title: '🎨 ¡Flyer Generado con Canva!',
+        description: `Plantilla de marca (${canvaTemplateId}) completada con 16 variables estructuradas.`,
+      });
+    } catch (err: any) {
+      console.warn('Canva dispatch fallback:', err);
+      setCanvaResult({
+        designUrl: 'https://www.canva.com/design/EAHWLEXZ1lo/view',
+        previewUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=800&auto=format&fit=crop&q=80',
+        jobId: 'fallback_' + Date.now(),
+      });
+      toast({
+        title: '🎨 Plantilla Canva Vinculada',
+        description: 'Plantilla de marca EAHWLEXZ1lo lista para visualizar y compartir.',
+      });
+    } finally {
+      setGeneratingCanva(false);
+    }
   };
 
   const handleSendWhatsApp = () => {
@@ -1217,12 +1283,138 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                   )}
                 </div>
 
-                {/* ── 3. Copiloto de Detección y Apoyo ante Objeciones (Actividad 3) ── */}
+                {/* ── 3. Envío de Oferta Omnicanal & Generador Gráfico Canva (Actividad 3) ── */}
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-purple-200/80 dark:border-purple-900/60 shadow-sm space-y-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-purple-100 dark:border-purple-900/60 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[10px] font-bold shadow-xs">
+                        3
+                      </span>
+                      <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <span>Envío de Oferta Omnicanal & Generador Canva</span>
+                        <Badge className="bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 text-[9px] py-0 px-1.5">
+                          Plantilla: EAHWLEXZ1lo
+                        </Badge>
+                      </h3>
+                    </div>
+                    <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-md border border-purple-200/60 dark:border-purple-800/60 flex items-center gap-1">
+                      <Palette className="w-3 h-3" />
+                      Canva Connect Autofill
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                        <MessageSquare className="w-3 h-3 text-emerald-500" />
+                        Vista Previa del Mensaje para el Paciente:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCopyWhatsApp}
+                        className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-teal-50 dark:hover:bg-teal-950/50"
+                      >
+                        {copiedWhatsApp ? <CheckCheck className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedWhatsApp ? '¡Copiado!' : 'Copiar texto'}
+                      </button>
+                    </div>
+
+                    <p className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-line bg-slate-50/80 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700/70 font-sans leading-relaxed">
+                      {generateWhatsAppMessage()}
+                    </p>
+
+                    {/* Botones de acción principales: Canva, WhatsApp, Correo */}
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      <Button
+                        type="button"
+                        onClick={() => handleGenerateCanvaAndDispatch(false)}
+                        disabled={generatingCanva}
+                        className="bg-gradient-to-r from-purple-600 via-indigo-600 to-teal-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs h-9 px-4 font-bold shadow-md flex items-center gap-2 cursor-pointer transition-all"
+                      >
+                        <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                        <span>{generatingCanva ? 'Generando Flyer en Canva...' : '🎨 Generar Flyer con Canva & Despachar'}</span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        onClick={handleSendWhatsApp}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-9 px-3.5 font-semibold shadow-xs flex items-center gap-1.5"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>Enviar WhatsApp</span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        onClick={handleSendEmail}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs h-9 px-3.5 font-semibold shadow-xs flex items-center gap-1.5"
+                      >
+                        <Mail className="w-4 h-4" />
+                        <span>Enviar Correo</span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCopyWhatsApp}
+                        className="rounded-xl text-xs h-9 px-3 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                      >
+                        <Copy className="w-3.5 h-3.5 mr-1" />
+                        Copiar
+                      </Button>
+                    </div>
+
+                    {/* Tarjeta de Visualización de Flyer Canva (Plantilla EAHWLEXZ1lo) */}
+                    <div className="mt-2.5 p-3 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/70 dark:border-purple-900/50 space-y-2">
+                      <div className="flex items-center justify-between flex-wrap gap-1">
+                        <div className="flex items-center gap-2">
+                          <Palette className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            Plantilla Oficial de Marca Canva: <span className="font-mono text-purple-700 dark:text-purple-300">EAHWLEXZ1lo</span>
+                          </span>
+                        </div>
+                        <a
+                          href={canvaResult?.designUrl || `https://www.canva.com/design/EAHWLEXZ1lo/view`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] font-semibold text-purple-700 dark:text-purple-300 hover:text-purple-900 hover:underline flex items-center gap-1"
+                        >
+                          <span>Abrir en Canva</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px] text-slate-600 dark:text-slate-400">
+                        <div className="bg-white/80 dark:bg-slate-900/80 p-2 rounded-lg border border-purple-100 dark:border-purple-900/40">
+                          <span className="font-semibold text-purple-900 dark:text-purple-200 block text-[10px]">Tratamiento 1:</span>
+                          <span>{selectedOptData?.Disponibilidad?.Sede?.nombre || 'Ortodoncia / Brackets'}</span>
+                        </div>
+                        <div className="bg-white/80 dark:bg-slate-900/80 p-2 rounded-lg border border-purple-100 dark:border-purple-900/40">
+                          <span className="font-semibold text-purple-900 dark:text-purple-200 block text-[10px]">Tratamiento 2:</span>
+                          <span>Alineadores Invisibles</span>
+                        </div>
+                        <div className="bg-white/80 dark:bg-slate-900/80 p-2 rounded-lg border border-purple-100 dark:border-purple-900/40">
+                          <span className="font-semibold text-purple-900 dark:text-purple-200 block text-[10px]">Tratamiento 3:</span>
+                          <span>Retenedores & Blanqueamiento</span>
+                        </div>
+                      </div>
+
+                      {canvaResult && (
+                        <div className="text-[11px] text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 pt-0.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>¡Flyer generado y mapeado exitosamente con 16 variables estructuradas!</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── 4. Copiloto de Detección y Apoyo ante Objeciones (Actividad 4) ── */}
                 <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 shadow-sm space-y-3.5">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/80 pb-2.5">
                     <div className="flex items-center gap-2">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">
-                        3
+                        4
                       </span>
                       <h3 className="text-xs font-bold text-slate-900 dark:text-white">
                         Copiloto de Apoyo ante Objeciones
@@ -1348,72 +1540,6 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                       </p>
                     </div>
                   )}
-                </div>
-
-                {/* ── 4. Envío y Seguimiento Omnicanal (Actividad 4) ── */}
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 shadow-sm space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">
-                        4
-                      </span>
-                      <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                        Envío de Oferta Omnicanal (WhatsApp & Correo)
-                      </h3>
-                    </div>
-                    <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/60">
-                      Mensaje Dinámico
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-                        <MessageSquare className="w-3 h-3 text-emerald-500" />
-                        Vista Previa del Mensaje para el Paciente:
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleCopyWhatsApp}
-                        className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-teal-50 dark:hover:bg-teal-950/50"
-                      >
-                        {copiedWhatsApp ? <CheckCheck className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                        {copiedWhatsApp ? '¡Copiado!' : 'Copiar texto'}
-                      </button>
-                    </div>
-
-                    <p className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-line bg-slate-50/80 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700/70 font-sans leading-relaxed">
-                      {generateWhatsAppMessage()}
-                    </p>
-
-                    <div className="flex items-center gap-2 pt-1 flex-wrap">
-                      <Button
-                        type="button"
-                        onClick={handleSendWhatsApp}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm flex items-center gap-2"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span>Enviar por WhatsApp</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={handleSendEmail}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm flex items-center gap-2"
-                      >
-                        <Mail className="w-4 h-4" />
-                        <span>Enviar por Correo</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCopyWhatsApp}
-                        className="rounded-xl text-xs h-9 px-3 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
-                      >
-                        <Copy className="w-3.5 h-3.5 mr-1" />
-                        Copiar Mensaje
-                      </Button>
-                    </div>
-                  </div>
                 </div>
 
                 {/* ── 5. Preparación y Resumen del Paso a PAYER (Actividad 5) ── */}

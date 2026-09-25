@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { prisma, withRetry } from '../db';
+import { NegotiatorAgentService } from '../services/negotiatorAgentService';
+import { CanvaService } from '../services/canvaService';
 
 const router = Router();
 
@@ -207,6 +209,7 @@ router.get('/', async (req, res) => {
         let resultado_final: string | undefined = undefined;
         let motivo_cierre = sol?.motivo || undefined;
         let fecha_cierre = sol?.fecha_cierre ? sol.fecha_cierre.toISOString() : undefined;
+        if (p.Etapa?.nombre === 'PAYER') state = 'PAYMENT_REQUESTED';
 
         if (p.Etapa.nombre === 'PAYER' || sol?.estado === 'Convertida') {
           state = 'PAYMENT_REQUESTED';
@@ -415,32 +418,84 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// ── Agente Negociador: Generar con Canva y Despachar ──────────────────────
-import { executeNegotiatorAndDispatch } from '../services/negotiatorAgentService';
+// ── Negociación Omnicanal & Generación de Flyer en Canva (Actividad 3) ───────
+router.post('/:id/negotiate-and-dispatch', async (req, res) => {
+  const { id } = req.params;
+  const numId = Number(id);
+  const {
+    serviceName,
+    sedeName,
+    offeredPrice,
+    originalPrice,
+    discountPct,
+    expirationDate,
+    conditions,
+    sendEmail,
+    canvaTemplateId
+  } = req.body;
 
-router.post('/negotiate-and-dispatch', async (req, res) => {
   try {
-    const { leadId, patientName, email, phone, serviceName, sedeName, price, originalPrice, discountPercentage, urgencyText, benefitText, persuasiveCopy } = req.body;
-    
-    const result = await executeNegotiatorAndDispatch({
-      leadId: leadId || 1,
-      patientName: patientName || 'Estimado Paciente',
-      email,
-      phone,
-      serviceName: serviceName || 'Evaluación Odontológica',
-      sedeName: sedeName || 'Sede Norte',
-      price: Number(price) || 150,
-      originalPrice: Number(originalPrice) || 200,
-      discountPercentage: Number(discountPercentage) || 25,
-      urgencyText,
-      benefitText,
-      persuasiveCopy
+    const lead = await prisma.personas.findUnique({
+      where: { id_persona: numId },
+      include: { Preferencias: true }
     });
 
-    res.json(result);
+    if (!lead) {
+      return res.status(404).json({ error: 'Lead no encontrado' });
+    }
+
+    const leadName = `${lead.nombres} ${lead.apellidos}`.trim();
+    const result = await NegotiatorAgentService.processAndDispatch({
+      leadId: numId,
+      leadName,
+      leadEmail: lead.email || undefined,
+      leadPhone: lead.numero || undefined,
+      serviceName: serviceName || 'Consulta Dental Especializada',
+      sedeName: sedeName || 'Sede Principal',
+      offeredPrice: Number(offeredPrice) || 150,
+      originalPrice: Number(originalPrice) || 180,
+      discountPct: Number(discountPct) || 15,
+      expirationDate: expirationDate || '48 Horas',
+      conditions: conditions || 'Promoción con garantía clínica',
+      canvaTemplateId: canvaTemplateId || 'EAHWLEXZ1lo',
+      sendEmail: Boolean(sendEmail),
+    });
+
+    // Registrar interacción omnicanal en BD
+    try {
+      const canalWhatsApp = await prisma.canales.findFirst({ where: { nombre: 'WhatsApp' } });
+      await prisma.interacciones.create({
+        data: {
+          id_persona: numId,
+          id_canal: canalWhatsApp?.id_canal || 1,
+          tipo: 'Envío de Propuesta Comercial con Flyer Canva',
+          mensaje_entrante: 'Propuesta comercial generada',
+          respuesta_sistema: result.whatsAppMessage,
+        }
+      });
+    } catch (logErr) {
+      console.warn('⚠️ No se pudo registrar la interacción en BD:', logErr);
+    }
+
+    res.json({
+      message: 'Propuesta comercial y Flyer de Canva generados exitosamente.',
+      data: result
+    });
   } catch (error: any) {
-    console.error('Error en negotiate-and-dispatch:', error);
-    res.status(500).json({ error: error.message || 'Error al procesar propuesta con Canva' });
+    console.error('Error al despachar propuesta:', error);
+    res.status(500).json({ error: error.message || 'Error al procesar propuesta comercial' });
+  }
+});
+
+// ── Generar Flyer Directo Canva Autofill ─────────────────────────────────────
+router.post('/canva/autofill', async (req, res) => {
+  try {
+    const params = req.body;
+    const result = await CanvaService.generateFlyer(params);
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('Error al generar flyer en Canva:', error);
+    res.status(500).json({ error: error.message || 'Error en Canva Autofill' });
   }
 });
 

@@ -3,30 +3,15 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-function getDbConfig(isMart: boolean): sql.config | string {
-  const envUrl = isMart ? process.env.MART_CONNECTION_STRING : (process.env.OLTP_CONNECTION_STRING || process.env.SQLSERVER_URL);
-  if (envUrl && (envUrl.startsWith('sqlserver://') || envUrl.startsWith('mssql://') || envUrl.includes('Server='))) {
-    return envUrl;
-  }
-  return {
-    server: process.env.DB_SERVER || 'localhost',
-    database: isMart ? (process.env.MART_DATABASE || 'NexoSalud_Mart') : (process.env.DB_DATABASE || 'NexoSaludDB'),
-    user: process.env.DB_USER || 'sa',
-    password: process.env.DB_PASSWORD || 'yourStrong(!)Password',
-    options: {
-      encrypt: false,
-      trustServerCertificate: true,
-      enableArithAbort: true,
-    }
-  };
-}
+const connectionString =
+  process.env.MART_CONNECTION_STRING ||
+  'Server=localhost;Database=NexoSalud_Mart;Trusted_Connection=yes;TrustServerCertificate=yes;';
 
 let poolPromise: Promise<sql.ConnectionPool> | null = null;
 
 export async function getMartPool(): Promise<sql.ConnectionPool> {
   if (!poolPromise) {
-    const config = getDbConfig(true);
-    const pool = new sql.ConnectionPool(config);
+    const pool = new sql.ConnectionPool(connectionString);
 
     poolPromise = pool.connect().then((connectedPool) => {
       console.log('✅ [NexoSalud_Mart] Conexión establecida exitosamente al DataMart (sin Prisma).');
@@ -53,12 +38,15 @@ export async function queryMart<T = any>(queryText: string, params?: Record<stri
   return result.recordset as T[];
 }
 
+const oltpConnectionString =
+  process.env.OLTP_CONNECTION_STRING ||
+  'Server=localhost;Database=NexoSaludDB;Trusted_Connection=yes;TrustServerCertificate=yes;';
+
 let oltpPoolPromise: Promise<sql.ConnectionPool> | null = null;
 
 export async function getOltpPool(): Promise<sql.ConnectionPool> {
   if (!oltpPoolPromise) {
-    const config = getDbConfig(false);
-    const pool = new sql.ConnectionPool(config);
+    const pool = new sql.ConnectionPool(oltpConnectionString);
     oltpPoolPromise = pool.connect().then((connectedPool) => {
       console.log('✅ [NexoSaludDB] Conexión establecida exitosamente a la BD Transaccional.');
       return connectedPool;
