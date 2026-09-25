@@ -118,5 +118,16 @@ export const leadService = {
     });
     if (!res.ok) throw new Error('Error al convertir lead a payer');
     return res.json();
+  },
+
+  abandonLead: async (id: string, motivo?: string) => {
+    if (!useApi) return null;
+    const res = await fetch(`${API_URL}/lead/${id}/abandon`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ motivo })
+    });
+    if (!res.ok) throw new Error('Error al registrar abandono del lead');
+    return res.json();
   }
 };

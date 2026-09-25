@@ -10,7 +10,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { useLeads } from '../hooks/useLeadQueries';
 import { LeadState } from '@/domain/enums';
-import { Search, Eye, Trash2, X, RotateCcw, Zap, Flame, Clock, Sparkles } from 'lucide-react';
+import { Search, Eye, Trash2, X, RotateCcw, Zap, Flame, Clock, Sparkles, UserX } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay, differenceInMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { LeadWithDetails } from '@/application/use-cases/lead';
@@ -21,6 +21,8 @@ import { IndicatorCard } from '@/shared/components/data-display/IndicatorCard';
 import { useToast } from '@/shared/hooks/use-toast';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 import { LeadNegotiationModal } from '../components/LeadNegotiationModal';
+import { leadService } from '../services/lead.service';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 
 export default function LeadPage() {
   const queryClient = useQueryClient();
@@ -37,6 +39,9 @@ export default function LeadPage() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LeadWithDetails | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [abandonTarget, setAbandonTarget] = useState<LeadWithDetails | null>(null);
+  const [abandonReason, setAbandonReason] = useState('Precio / Presupuesto elevado');
+  const [isAbandoning, setIsAbandoning] = useState(false);
 
   const filteredLeads = useMemo(() => {
     return leads?.filter((l: any) => {
@@ -199,6 +204,21 @@ export default function LeadPage() {
             <Eye className="w-4 h-4 mr-1" />
             Negociar
           </Button>
+          {l.state !== LeadState.LOST && l.state !== LeadState.CONVERTED && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg text-xs"
+              title="Registrar Abandono / Cierre sin éxito (L3)"
+              onClick={() => {
+                setAbandonReason('Precio / Presupuesto elevado');
+                setAbandonTarget(l);
+              }}
+            >
+              <UserX className="w-4 h-4 text-amber-500 mr-1" />
+              Abandonar
+            </Button>
+          )}
           <Button 
             variant="ghost" 
             size="sm" 
@@ -211,6 +231,30 @@ export default function LeadPage() {
       )
     },
   ];
+
+  const handleConfirmAbandon = async () => {
+    if (!abandonTarget) return;
+    setIsAbandoning(true);
+    try {
+      await leadService.abandonLead(abandonTarget.id, abandonReason);
+      await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
+      await queryClient.refetchQueries({ queryKey: [QUERY_KEYS.LEADS] });
+      toast({
+        title: 'Negociación Finalizada: Abandonado',
+        description: `Se registró el abandono de ${abandonTarget.person.firstName} ${abandonTarget.person.lastName}. Motivo: ${abandonReason}.`,
+      });
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: 'Error',
+        description: 'No se pudo registrar el abandono del lead.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAbandoning(false);
+      setAbandonTarget(null);
+    }
+  };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
@@ -341,6 +385,69 @@ export default function LeadPage() {
         cancelText="Cancelar"
         variant="destructive"
       />
+
+      {/* Modal de Registro de Abandono (L3) */}
+      {abandonTarget && (
+        <Dialog open={!!abandonTarget} onOpenChange={(open) => !open && setAbandonTarget(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-amber-600">
+                <UserX className="w-5 h-5 text-amber-600" />
+                Registrar Abandono de Negociación (L3)
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2 text-sm text-slate-600 dark:text-slate-300">
+              <p>
+                ¿Deseas finalizar la negociación con el paciente{' '}
+                <strong className="text-slate-900 dark:text-white">
+                  {abandonTarget.person.firstName} {abandonTarget.person.lastName}
+                </strong>{' '}
+                como <strong>Abandonado</strong>?
+              </p>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Motivo de Cierre / Pérdida:
+                </label>
+                <Select value={abandonReason} onValueChange={setAbandonReason}>
+                  <SelectTrigger className="w-full text-xs">
+                    <SelectValue placeholder="Selecciona un motivo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Precio / Presupuesto elevado">Precio / Presupuesto elevado</SelectItem>
+                    <SelectItem value="Incompatibilidad de horario o turnos">Incompatibilidad de horario o turnos</SelectItem>
+                    <SelectItem value="Distancia o preferencia de otra sede">Distancia o preferencia de otra sede</SelectItem>
+                    <SelectItem value="Sin respuesta tras múltiples contactos">Sin respuesta tras múltiples contactos</SelectItem>
+                    <SelectItem value="Optó por otra clínica dental">Optó por otra clínica dental</SelectItem>
+                    <SelectItem value="Desistimiento voluntario del paciente">Desistimiento voluntario del paciente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200/80 dark:border-amber-900/50 space-y-1">
+                <p className="font-semibold">Impacto en Indicadores:</p>
+                <p>
+                  Esta acción conmutará el resultado final a <strong>Abandonado</strong> e impactará directamente en la fórmula de <strong>L3. Tasa de abandono de LEADs</strong>:
+                </p>
+                <p className="font-mono text-[10px] text-amber-700 dark:text-amber-400 bg-amber-100/60 dark:bg-amber-900/40 p-1 rounded">
+                  (LEADs Abandonados / Total LEADs con resultado final) × 100
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" size="sm" onClick={() => setAbandonTarget(null)} disabled={isAbandoning}>
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={handleConfirmAbandon}
+                disabled={isAbandoning}
+              >
+                {isAbandoning ? 'Registrando...' : 'Confirmar Abandono'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -172,22 +172,53 @@ router.get('/', async (req, res) => {
       include: {
         Etapa: true,
         Preferencias: true,
-        Solicitudes: { include: { Servicio: true, Reservas: true } }
+        Solicitudes: { 
+          include: { 
+            Servicio: true, 
+            Reservas: { include: { Pagos: true } },
+            Opciones: true 
+          } 
+        },
+        EventosEtapa: {
+          orderBy: { fecha_hora: 'desc' },
+          take: 1
+        }
       }
     });
 
     const leads = personas
       .filter(p => p.Etapa.nombre === 'LEAD' || p.Etapa.nombre === 'PAYER')
       .map(p => {
+        const sol = p.Solicitudes.length > 0 ? p.Solicitudes[0] : null;
+        const lastEvento = p.EventosEtapa.length > 0 ? p.EventosEtapa[0] : null;
+
         let state = 'IN_NEGOTIATION';
-        if (p.Etapa.nombre === 'PAYER') state = 'PAYMENT_REQUESTED';
+        let estado_negociacion = 'En negociación';
+        let resultado_final: string | undefined = undefined;
+        let motivo_cierre = sol?.motivo || undefined;
+        let fecha_cierre = sol?.fecha_cierre ? sol.fecha_cierre.toISOString() : undefined;
 
-        const servicio = p.Solicitudes.length > 0 && p.Solicitudes[0].Servicio
-          ? p.Solicitudes[0].Servicio.nombre : 'General';
+        if (p.Etapa.nombre === 'PAYER' || sol?.estado === 'Convertida') {
+          state = 'PAYMENT_REQUESTED';
+          estado_negociacion = 'Cerrada';
+          resultado_final = 'Convertido';
+        } else if (
+          sol?.estado === 'Abandonada' ||
+          sol?.estado === 'Perdida' ||
+          sol?.estado === 'Cancelada' ||
+          p.estado_calidad === 'Descartado' ||
+          p.estado_calidad === 'Rechazado'
+        ) {
+          state = 'LOST';
+          estado_negociacion = 'Cerrada';
+          resultado_final = 'Abandonado';
+          motivo_cierre = lastEvento?.motivo || sol?.motivo || 'Negociación abandonada por el prospecto';
+        } else if (sol?.Opciones && sol.Opciones.some(o => o.seleccionada)) {
+          state = 'ALTERNATIVE_SELECTED';
+        }
 
-        const reserva = p.Solicitudes.length > 0 && p.Solicitudes[0].Reservas.length > 0
-          ? p.Solicitudes[0].Reservas[0].id_reserva.toString() : undefined;
-
+        const servicio = sol && sol.Servicio ? sol.Servicio.nombre : 'General';
+        const reserva = sol && sol.Reservas.length > 0 ? sol.Reservas[0].id_reserva.toString() : undefined;
         const preferencias = p.Preferencias.length > 0 ? p.Preferencias[0].sede_preferida || '' : '';
 
         return {
@@ -198,6 +229,14 @@ router.get('/', async (req, res) => {
           createdAt: p.fecha_registro,
           reservationId: reserva,
           buyer: { preferences: preferencias },
+          id_negociacion: sol?.id_solicitud || p.id_persona,
+          estado_negociacion,
+          resultado_final,
+          fecha_cierre,
+          motivo_cierre,
+          fecha_hora_solicitud: sol?.fecha_solicitud ? sol.fecha_solicitud.toISOString() : p.fecha_registro.toISOString(),
+          fecha_hora_primera_respuesta_util: sol?.fecha_primera_respuesta ? sol.fecha_primera_respuesta.toISOString() : undefined,
+          firstResponseDate: sol?.fecha_primera_respuesta ? sol.fecha_primera_respuesta.toISOString() : undefined,
           person: {
             firstName: p.nombres,
             lastName: p.apellidos,
@@ -212,6 +251,55 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener leads' });
+  }
+});
+
+// ── Marcar LEAD como Abandonado / Perdido ──────────────────────────────────
+router.post('/:id/abandon', async (req, res) => {
+  const { id } = req.params;
+  const { motivo } = req.body;
+  const numId = Number(id);
+  try {
+    if (isNaN(numId)) return res.status(400).json({ error: 'ID inválido' });
+
+    // 1. Actualizar solicitud si existe
+    const sol = await prisma.solicitudes.findFirst({
+      where: { id_persona: numId },
+      orderBy: { fecha_solicitud: 'desc' }
+    });
+    if (sol) {
+      await prisma.solicitudes.update({
+        where: { id_solicitud: sol.id_solicitud },
+        data: {
+          estado: 'Abandonada',
+          fecha_cierre: new Date(),
+          motivo: motivo || 'Negociación abandonada por el prospecto'
+        }
+      });
+    }
+
+    // 2. Actualizar estado de calidad en Persona
+    await prisma.personas.update({
+      where: { id_persona: numId },
+      data: { estado_calidad: 'Descartado' }
+    });
+
+    // 3. Registrar Evento de Etapa en EventosEtapa
+    const etapaLead = await prisma.etapas.findFirst({ where: { nombre: 'LEAD' } });
+    await prisma.eventosEtapa.create({
+      data: {
+        id_persona: numId,
+        etapa_origen: etapaLead?.id_etapa,
+        etapa_destino: etapaLead?.id_etapa || 2,
+        motivo: motivo ? `Abandonado: ${motivo}` : 'Negociación finalizada: Resultado Abandonado',
+        evidencia: 'Cierre manual en mesa de negociación'
+      }
+    });
+
+    res.json({ message: 'Lead marcado como abandonado con éxito' });
+  } catch (error) {
+    console.error('Error al abandonar lead:', error);
+    res.status(500).json({ error: 'Error al procesar abandono de lead' });
   }
 });
 

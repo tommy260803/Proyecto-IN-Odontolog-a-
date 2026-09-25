@@ -112,6 +112,20 @@ export interface Lead {
   followUpAuthorization?: boolean;
   clinicalDerivationNeeded?: boolean;
   clinicalObservation?: string;
+
+  // Datos específicos de negociación y cierre de LEAD (L1, L2, L3)
+  id_negociacion?: string | number;
+  estado_negociacion?: string;
+  resultado_final?: 'Abandonado' | 'Convertido' | string;
+  fecha_cierre?: string;
+  motivo_cierre?: string;
+  fecha_ingreso_lead?: string;
+  fecha_validacion_pago?: string;
+  estado_pago?: string;
+  etapa_destino?: string;
+  fecha_hora_solicitud?: string;
+  fecha_hora_primera_respuesta_util?: string;
+  minutos_habiles_respuesta?: number;
 }
 
 export interface Reservation {

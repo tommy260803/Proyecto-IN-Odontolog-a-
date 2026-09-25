@@ -34,11 +34,21 @@ export function IndicatorCard({ indicator, period }: { indicator: IndicatorResul
   else if (indicator.format === 'currency') displayValue = 'S/ ' + indicator.value.toFixed(2);
   else if (indicator.format === 'time') displayValue = indicator.value.toFixed(0) + ' ' + (indicator.unit || 'días');
 
+  const tooltipText = [
+    `【${indicator.id}】 ${indicator.name}`,
+    indicator.description ? `Descripción: ${indicator.description}` : '',
+    `Fórmula: ${indicator.formula}`,
+    indicator.dataUsed ? `Datos utilizados: ${indicator.dataUsed}` : '',
+    indicator.dbTables ? `Tablas BD: ${indicator.dbTables}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+
   return (
     <div className="relative group bg-white dark:bg-slate-900 border border-slate-200/85 dark:border-slate-800 hover:border-teal-500/40 dark:hover:border-teal-500/50 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden">
       {/* Top Bar: ID + Name + Tooltip */}
       <div>
-        <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex items-center gap-1.5">
             <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-900 dark:bg-slate-800 text-teal-300 shadow-sm">
               {indicator.id}
@@ -48,14 +58,19 @@ export function IndicatorCard({ indicator, period }: { indicator: IndicatorResul
               {statusBadge.label}
             </span>
           </div>
-          <div title={`Fórmula: ${indicator.formula}`} className="cursor-help text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+          <div title={tooltipText} className="cursor-help text-slate-400 dark:text-slate-500 hover:text-teal-600 dark:hover:text-teal-400 transition-colors p-0.5">
             <HelpCircle className="w-4 h-4 flex-shrink-0" />
           </div>
         </div>
 
-        <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-snug line-clamp-2 min-h-[32px]">
+        <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-snug line-clamp-2">
           {indicator.name}
         </p>
+        {indicator.description && (
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5 font-normal" title={indicator.description}>
+            {indicator.description}
+          </p>
+        )}
       </div>
 
       {/* Main Metric Value */}

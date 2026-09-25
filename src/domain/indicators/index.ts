@@ -13,6 +13,9 @@ export interface IndicatorResult {
   formula: string;
   status: IndicatorStatus;
   format: 'percentage' | 'number' | 'time' | 'currency';
+  description?: string;
+  dataUsed?: string;
+  dbTables?: string;
 }
 
 // B1: Conversión a LEAD en 14 días
@@ -115,7 +118,7 @@ export function calculateB3(buyers: Buyer[], leads: Lead[]): IndicatorResult {
   };
 }
 
-// L1: Conversión a PAYER en 14 días
+// L1: Conversión LEAD → PAYER en ≤ 14 días
 export function calculateL1(leads: Lead[], journeys: CustomerJourney[]): IndicatorResult {
   let convertedIn14Days = 0;
   let evaluated = 0;
@@ -123,18 +126,18 @@ export function calculateL1(leads: Lead[], journeys: CustomerJourney[]): Indicat
 
   leads.forEach(lead => {
     const journey = journeys.find(j => j.leadId === lead.id);
-    const converted = journey?.payerId !== undefined;
+    const converted = journey?.payerId !== undefined || lead.state === LeadState.CONVERTED || lead.resultado_final === 'Convertido';
     
     if (converted) {
       evaluated++;
-      const leadDate = parseISO(lead.createdAt);
-      const convertedDate = parseISO(journey.updatedAt);
+      const leadDate = parseISO(lead.fecha_ingreso_lead || lead.createdAt);
+      const convertedDate = journey?.updatedAt ? parseISO(journey.updatedAt) : parseISO(lead.fecha_cierre || lead.createdAt);
       if (differenceInDays(convertedDate, leadDate) <= 14) {
         convertedIn14Days++;
       }
     } else {
-      const leadDate = parseISO(lead.createdAt);
-      if (differenceInDays(now, leadDate) >= 14 || lead.state === LeadState.LOST) {
+      const leadDate = parseISO(lead.fecha_ingreso_lead || lead.createdAt);
+      if (differenceInDays(now, leadDate) >= 14 || lead.state === LeadState.LOST || lead.resultado_final === 'Abandonado') {
         evaluated++;
       }
     }
@@ -147,27 +150,46 @@ export function calculateL1(leads: Lead[], journeys: CustomerJourney[]): Indicat
 
   return {
     id: 'L1',
-    name: 'Conversión a PAYER en 14 días',
+    name: 'Conversión LEAD → PAYER en ≤ 14 días',
     value,
     unit: '%',
-    formula: 'LEADS convertidos en <=14 días / LEADS evaluados × 100',
+    formula: '(LEADs convertidos a PAYER en ≤ 14 días / Total de LEADs de la cohorte evaluable) × 100',
+    description: 'Mide la proporción de LEADs que validan una reserva dentro de los primeros 14 días desde su ingreso a la etapa LEAD.',
+    dataUsed: 'id_negociacion, fecha_ingreso_lead, fecha_validacion_pago, estado_pago, etapa_destino',
+    dbTables: 'Solicitudes, Pagos, EventosEtapa',
     status,
     format: 'percentage'
   };
 }
 
-// L2: Respuesta útil en 15 minutos hábiles
+// L2: Primera respuesta útil en ≤ 15 minutos hábiles
 export function calculateL2(leads: Lead[]): IndicatorResult {
-  const respondedLeads = leads.filter(l => l.firstResponseDate);
-  if (respondedLeads.length === 0) return { id: 'L2', name: 'Respuesta útil <15m', value: 0, unit: '%', formula: '', status: 'red', format: 'percentage' };
+  const respondedLeads = leads.filter(l => l.firstResponseDate || l.fecha_hora_primera_respuesta_util);
+  if (respondedLeads.length === 0) {
+    return {
+      id: 'L2',
+      name: 'Primera respuesta útil en ≤ 15 minutos hábiles',
+      value: 0,
+      unit: '%',
+      formula: '(LEADs con primera respuesta útil en ≤ 15 min hábiles / Total de LEADs que requieren respuesta) × 100',
+      description: 'Mide la proporción de LEADs que reciben su primera respuesta útil dentro de un máximo de 15 minutos hábiles.',
+      dataUsed: 'id_negociacion, fecha_hora_solicitud, fecha_hora_primera_respuesta_util, minutos_habiles_respuesta, horario_atencion',
+      dbTables: 'Solicitudes, Interacciones, HorarioAtencion',
+      status: 'red',
+      format: 'percentage'
+    };
+  }
   
   let fastResponses = 0;
   respondedLeads.forEach(l => {
-    // Calculamos si fue respondido en < 15 min de horario hábil
-    const start = l.receptionDate || l.createdAt;
-    const end = l.firstResponseDate!;
-    const businessMinutes = calculateBusinessMinutes(start, end);
-    if (businessMinutes <= 15) fastResponses++;
+    if (typeof l.minutos_habiles_respuesta === 'number') {
+      if (l.minutos_habiles_respuesta <= 15) fastResponses++;
+    } else {
+      const start = l.fecha_hora_solicitud || l.receptionDate || l.createdAt;
+      const end = l.fecha_hora_primera_respuesta_util || l.firstResponseDate!;
+      const businessMinutes = calculateBusinessMinutes(start, end);
+      if (businessMinutes <= 15) fastResponses++;
+    }
   });
 
   const value = (fastResponses / respondedLeads.length) * 100;
@@ -177,41 +199,81 @@ export function calculateL2(leads: Lead[]): IndicatorResult {
 
   return {
     id: 'L2',
-    name: 'Respuesta útil en 15m hábiles',
+    name: 'Primera respuesta útil en ≤ 15 minutos hábiles',
     value,
     unit: '%',
-    formula: 'Leads con respuesta <15m hábiles / Leads respondidos × 100',
+    formula: '(LEADs con primera respuesta útil en ≤ 15 min hábiles / Total de LEADs que requieren respuesta) × 100',
+    description: 'Mide la proporción de LEADs que reciben su primera respuesta útil dentro de un máximo de 15 minutos hábiles.',
+    dataUsed: 'id_negociacion, fecha_hora_solicitud, fecha_hora_primera_respuesta_util, minutos_habiles_respuesta, horario_atencion',
+    dbTables: 'Solicitudes, Interacciones, HorarioAtencion',
     status,
     format: 'percentage'
   };
 }
 
-// L3: Integridad del perfil
+// L3: Tasa de abandono de LEADs
 export function calculateL3(leads: Lead[]): IndicatorResult {
-  if (leads.length === 0) return { id: 'L3', name: 'Integridad de Perfil', value: 0, unit: '%', formula: '', status: 'red', format: 'percentage' };
-  
-  let complete = 0;
-  leads.forEach(l => {
-    // Se considera completo si tiene servicio, profesional, sede y fecha preferida 
-    if (l.requestedServiceId && l.professionalId && l.branchId && l.date) {
-      complete++;
-    } else if (l.alternatives && l.alternatives.length > 0) {
-      // O si ya tiene alternativas generadas
-      complete++;
+  if (leads.length === 0) {
+    return {
+      id: 'L3',
+      name: 'Tasa de abandono de LEADs',
+      value: 0,
+      unit: '%',
+      formula: '(LEADs con resultado final = Abandonado / Total de LEADs con resultado final) × 100',
+      description: 'Mide la proporción de negociaciones LEAD finalizadas cuyo resultado es Abandonado.',
+      dataUsed: 'id_negociacion, estado_negociacion, resultado_final, fecha_cierre, motivo_cierre',
+      dbTables: 'Solicitudes, EventosEtapa',
+      status: 'green',
+      format: 'percentage'
+    };
+  }
+
+  let abandoned = 0;
+  let finalized = 0;
+
+  leads.forEach(lead => {
+    // Se considera abandonado si su resultado final es Abandonado o su estado es LOST/Perdido/Cancelado
+    const isAbandoned =
+      lead.resultado_final === 'Abandonado' ||
+      lead.state === LeadState.LOST ||
+      (lead as any).estado === 'Abandonada' ||
+      (lead as any).estado === 'Perdida' ||
+      (lead as any).estado_calidad === 'Descartado';
+
+    // Se considera cerrado con éxito si pasó a PAYER, CONVERTED o tiene reserva validada
+    const isConverted =
+      lead.resultado_final === 'Convertido' ||
+      lead.state === LeadState.CONVERTED ||
+      lead.state === LeadState.PAYMENT_REQUESTED ||
+      Boolean(lead.reservationId);
+
+    const hasFinalResult = isAbandoned || isConverted || Boolean(lead.fecha_cierre);
+
+    if (hasFinalResult) {
+      finalized++;
+      if (isAbandoned) {
+        abandoned++;
+      }
     }
   });
 
-  const value = (complete / leads.length) * 100;
-  let status: IndicatorStatus = 'red';
-  if (value >= 90) status = 'green';
-  else if (value >= 70) status = 'amber';
+  const value = finalized === 0 ? 0 : (abandoned / finalized) * 100;
+
+  // Para tasa de abandono: un menor porcentaje es óptimo
+  // <= 15% Óptimo (Verde), <= 30% Preventivo (Ámbar), > 30% Crítico (Rojo)
+  let status: IndicatorStatus = 'green';
+  if (value > 30) status = 'red';
+  else if (value > 15) status = 'amber';
 
   return {
     id: 'L3',
-    name: 'Integridad del Perfil',
+    name: 'Tasa de abandono de LEADs',
     value,
     unit: '%',
-    formula: 'Perfiles completos / Total LEADS × 100',
+    formula: '(LEADs con resultado final = Abandonado / Total de LEADs con resultado final) × 100',
+    description: 'Mide la proporción de negociaciones LEAD finalizadas cuyo resultado es Abandonado.',
+    dataUsed: 'id_negociacion, estado_negociacion, resultado_final, fecha_cierre, motivo_cierre',
+    dbTables: 'Solicitudes, EventosEtapa',
     status,
     format: 'percentage'
   };
