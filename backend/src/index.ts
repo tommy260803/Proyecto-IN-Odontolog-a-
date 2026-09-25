@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './db';
 import buyerRoutes from './routes/buyer.routes';
 import leadRoutes from './routes/lead.routes';
 import payerRoutes from './routes/payer.routes';
@@ -11,10 +10,7 @@ import turnedRoutes from './routes/turned.routes';
 import reportRoutes from './routes/report.routes';
 import { startDunningScheduler } from './services/dunningScheduler';
 
-dotenv.config();
-
 const app = express();
-const prisma = new PrismaClient();
 const port = process.env.PORT || 3001;
 
 app.use(cors());

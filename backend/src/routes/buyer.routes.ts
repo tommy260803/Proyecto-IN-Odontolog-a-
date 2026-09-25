@@ -1,8 +1,7 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../db';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Helper functions to safely resolve foreign keys
 async function getValidCanalId(tx: any, id: any): Promise<number | null> {
@@ -246,13 +245,18 @@ router.get('/', async (req, res) => {
 
     const personas = await prisma.personas.findMany({
       where: {
-        // En un caso real, podríamos buscar todos los que alguna vez fueron BUYER o los que están en BUYER
-        // Aquí traeremos a todos los que estén en BUYER o LEAD para poder mostrarlos en la tabla histórica
+        OR: [
+          { id_campana_origen: { not: null } },
+          { id_canal_origen: { not: null } },
+          { Etapa: { nombre: { in: ['BUYER', 'LEAD'] } } }
+        ]
       },
       orderBy: { fecha_registro: 'desc' },
       include: {
         Etapa: true,
         CanalOrigen: true,
+        CampanaOrigen: { include: { GastosCampana: true } },
+        EventosEtapa: { include: { EtapaDestino: true }, orderBy: { fecha_hora: 'asc' } },
         Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'asc' } },
         Solicitudes: { include: { Servicio: true } },
         Preferencias: { include: { Canal: true } },
@@ -265,7 +269,14 @@ router.get('/', async (req, res) => {
     // Mapeamos a BuyerWithPerson
     const buyers = personas.map(p => {
       let state = 'NEW';
-      if (p.Etapa.nombre === 'LEAD' || p.Etapa.nombre === 'PAYER') state = 'CONVERTED';
+      if (p.estado_calidad === 'Rechazado') state = 'DISCARDED';
+      else if (p.Etapa.nombre === 'LEAD' || p.Etapa.nombre === 'PAYER' || p.Etapa.nombre === 'CUSTOMER' || p.Etapa.nombre === 'TURNED') state = 'CONVERTED';
+
+      // Buscar fecha real de conversión a LEAD desde EventosEtapa
+      const eventoConversion = p.EventosEtapa.find(e => e.EtapaDestino?.nombre === 'LEAD' || e.EtapaDestino?.nombre === 'PAYER' || e.EtapaDestino?.nombre === 'CUSTOMER');
+      const convertedAt = eventoConversion 
+        ? eventoConversion.fecha_hora.toISOString() 
+        : (state === 'CONVERTED' ? (p.fecha_actualizacion || p.fecha_autorizacion || p.fecha_registro).toISOString() : undefined);
 
       const canalName = p.CanalOrigen?.nombre || 
         (p.Interacciones.length > 0 && p.Interacciones[0].Canal?.nombre) || 
@@ -292,6 +303,10 @@ router.get('/', async (req, res) => {
       const lab = p.DatosLaborales.length > 0 ? p.DatosLaborales[0] : null;
       const sal = p.SaludOdontologica.length > 0 ? p.SaludOdontologica[0] : null;
 
+      const campaignId = p.id_campana_origen?.toString();
+      const campaignName = p.CampanaOrigen?.nombre;
+      const campaignCost = p.CampanaOrigen?.GastosCampana?.reduce((sum, g) => sum + Number(g.importe), 0);
+
       return {
         id: p.id_persona.toString(),
         personId: p.id_persona.toString(),
@@ -306,11 +321,16 @@ router.get('/', async (req, res) => {
         channelId: canalId,
         attractionSource: fuenteName,
         attractionSourceId: fuenteId,
+        campaignId,
+        campaignName,
+        campaignCost,
         serviceOfInterest: servicioName,
         serviceOfInterestId: servicioId,
         contactAuthorization: p.autoriza_contacto,
+        qualityStatus: p.estado_calidad || 'Valido',
         concreteRequest: motivo,
-        createdAt: p.fecha_registro,
+        createdAt: p.fecha_registro.toISOString(),
+        convertedAt,
         state,
 
         // Nuevos campos

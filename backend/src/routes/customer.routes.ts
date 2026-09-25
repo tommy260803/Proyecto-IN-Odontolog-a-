@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { Prisma, PrismaClient, type Atenciones, type Reservas } from '@prisma/client';
+import { Prisma, type Atenciones, type Reservas } from '@prisma/client';
+import { prisma } from '../db';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const customerInclude = Prisma.validator<Prisma.PersonasInclude>()({
   Etapa: true,

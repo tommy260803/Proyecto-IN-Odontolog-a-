@@ -1,11 +1,10 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../db';
 import nodemailer from 'nodemailer';
 import jsPDF from 'jspdf';
 import { runDunningCycle, getLastExecutionStats } from '../services/dunningScheduler';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Ejecutar manualmente el ciclo de cobranza en 3 etapas (Dunning Cron)
 router.post('/run-dunning-cycle', async (req, res) => {

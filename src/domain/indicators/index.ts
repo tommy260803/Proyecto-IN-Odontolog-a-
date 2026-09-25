@@ -3,12 +3,18 @@ import { differenceInDays, differenceInMinutes, parseISO } from 'date-fns';
 import { calculateBusinessMinutes } from '@/shared/utils/dateUtils';
 import { BuyerState, LeadState, PayerState, CustomerState, TurnedState, Phase } from '../enums';
 
-export type IndicatorStatus = 'green' | 'amber' | 'red';
+export type IndicatorStatus = 'green' | 'amber' | 'red' | 'none';
+
+export interface BaseMeasure {
+  label: string;
+  value: number | string;
+  unit?: string;
+}
 
 export interface IndicatorResult {
   id: string;
   name: string;
-  value: number;
+  value: number | null;
   unit: string;
   formula: string;
   status: IndicatorStatus;
@@ -16,35 +22,89 @@ export interface IndicatorResult {
   description?: string;
   dataUsed?: string;
   dbTables?: string;
+  displayValueOverride?: string;
+  baseMeasures?: {
+    numeratorLabel: string;
+    numeratorValue: number | string;
+    denominatorLabel: string;
+    denominatorValue: number | string;
+    detailText: string;
+  };
+}
+
+// Parámetro aislado de la ventana de conversión en días según requerimiento
+export const CONVERSION_WINDOW_DAYS = 14;
+
+/**
+ * Determina si un BUYER es utilizable (Reglas para B2)
+ */
+export function isUsableBuyer(buyer: Buyer): boolean {
+  const firstName = (buyer.person as any)?.firstName?.trim() || '';
+  const lastName = (buyer.person as any)?.lastName?.trim() || '';
+  const hasValidName = firstName.length > 0 && lastName.length > 0;
+  const hasValidContact = Boolean((buyer.person as any)?.phone || (buyer.person as any)?.email);
+  const hasAuth = buyer.contactAuthorization === true;
+  const notDuplicate = buyer.qualityStatus !== 'Duplicado';
+  const notRejected = buyer.state !== BuyerState.DISCARDED && buyer.qualityStatus !== 'Rechazado';
+
+  return hasValidName && hasValidContact && hasAuth && notDuplicate && notRejected;
 }
 
 // B1: Conversión a LEAD en 14 días
-export function calculateB1(buyers: Buyer[], journeys: CustomerJourney[]): IndicatorResult {
-  let convertedIn14Days = 0;
-  let evaluated = 0;
+export function calculateB1(buyers: Buyer[], journeys?: CustomerJourney[]): IndicatorResult {
   const now = new Date();
+  let evaluableCount = 0;
+  let convertedIn14DaysCount = 0;
 
   buyers.forEach(buyer => {
-    const journey = journeys.find(j => j.buyerId === buyer.id);
-    const converted = journey?.leadId !== undefined;
-    
-    if (converted) {
-      evaluated++;
-      const buyerDate = parseISO(buyer.createdAt);
-      // Asumimos updatedAt de journey cuando cambió de fase, o createdAt de Lead
-      const convertedDate = parseISO(journey.updatedAt);
-      if (differenceInDays(convertedDate, buyerDate) <= 14) {
-        convertedIn14Days++;
-      }
-    } else {
-      const buyerDate = parseISO(buyer.createdAt);
-      if (differenceInDays(now, buyerDate) >= 14 || buyer.state === BuyerState.DISCARDED) {
-        evaluated++;
+    // Regla 1: Debe ser utilizable
+    if (!isUsableBuyer(buyer)) return;
+
+    const buyerDate = parseISO(buyer.createdAt);
+    const daysElapsed = differenceInDays(now, buyerDate);
+
+    // Regla 1: Debe tener al menos 14 días transcurridos desde su fecha de registro para ser evaluable (cohorte finalizada)
+    if (daysElapsed < CONVERSION_WINDOW_DAYS) return;
+
+    evaluableCount++;
+
+    // Regla 2: Conversión BUYER -> LEAD dentro de <= 14 días
+    const isConverted = buyer.state === BuyerState.CONVERTED || Boolean(buyer.convertedAt);
+
+    if (isConverted) {
+      const conversionDate = buyer.convertedAt ? parseISO(buyer.convertedAt) : buyerDate;
+      const daysToConvert = differenceInDays(conversionDate, buyerDate);
+
+      if (daysToConvert >= 0 && daysToConvert <= CONVERSION_WINDOW_DAYS) {
+        convertedIn14DaysCount++;
       }
     }
   });
 
-  const value = evaluated === 0 ? 0 : (convertedIn14Days / evaluated) * 100;
+  // Regla 3: Si no existen BUYER evaluables (0), mostrar "N/D" y sin semáforo
+  if (evaluableCount === 0) {
+    return {
+      id: 'B1',
+      name: 'Conversión a LEAD en 14 días',
+      value: null,
+      unit: '%',
+      formula: 'BUYERs convertidos en <=14 días / BUYERs utilizables evaluables × 100',
+      status: 'none',
+      format: 'percentage',
+      displayValueOverride: 'N/D',
+      baseMeasures: {
+        numeratorLabel: 'Conversiones <= 14 días',
+        numeratorValue: 0,
+        denominatorLabel: 'BUYER evaluables',
+        denominatorValue: 0,
+        detailText: '0 conversiones / 0 BUYER evaluables'
+      }
+    };
+  }
+
+  const value = (convertedIn14DaysCount / evaluableCount) * 100;
+
+  // Semáforo: Verde >= 20%, Ámbar >= 10% y < 20%, Rojo < 10%
   let status: IndicatorStatus = 'red';
   if (value >= 20) status = 'green';
   else if (value >= 10) status = 'amber';
@@ -54,21 +114,47 @@ export function calculateB1(buyers: Buyer[], journeys: CustomerJourney[]): Indic
     name: 'Conversión a LEAD en 14 días',
     value,
     unit: '%',
-    formula: 'BUYERS convertidos en <=14 días / BUYERS evaluados × 100',
+    formula: 'BUYERs convertidos en <=14 días / BUYERs utilizables evaluables × 100',
     status,
-    format: 'percentage'
+    format: 'percentage',
+    baseMeasures: {
+      numeratorLabel: 'Conversiones <= 14 días',
+      numeratorValue: convertedIn14DaysCount,
+      denominatorLabel: 'BUYER evaluables',
+      denominatorValue: evaluableCount,
+      detailText: `${convertedIn14DaysCount} conversiones / ${evaluableCount} BUYER evaluables`
+    }
   };
 }
 
 // B2: Contactos utilizables
 export function calculateB2(buyers: Buyer[]): IndicatorResult {
-  if (buyers.length === 0) return { id: 'B2', name: 'Contactos utilizables', value: 0, unit: '%', formula: '', status: 'red', format: 'percentage' };
-  
-  // Como Person no está embebida en Buyer, asumimos que todos los Buyers pasan validación de zod en su creación (siempre tienen tlf o correo). 
-  // Pero verificamos si contactAuthorization es true.
-  const usable = buyers.filter(b => b.contactAuthorization).length;
-  const value = (usable / buyers.length) * 100;
-  
+  const totalCaptured = buyers.length;
+
+  if (totalCaptured === 0) {
+    return {
+      id: 'B2',
+      name: 'Contactos utilizables',
+      value: null,
+      unit: '%',
+      formula: 'Contactos utilizables / Contactos registrados × 100',
+      status: 'none',
+      format: 'percentage',
+      displayValueOverride: 'N/D',
+      baseMeasures: {
+        numeratorLabel: 'Contactos utilizables',
+        numeratorValue: 0,
+        denominatorLabel: 'Contactos captados',
+        denominatorValue: 0,
+        detailText: '0 utilizables / 0 captados'
+      }
+    };
+  }
+
+  const usableCount = buyers.filter(isUsableBuyer).length;
+  const value = (usableCount / totalCaptured) * 100;
+
+  // Semáforo: Verde >= 80%, Ámbar >= 60%, Rojo < 60%
   let status: IndicatorStatus = 'red';
   if (value >= 80) status = 'green';
   else if (value >= 60) status = 'amber';
@@ -78,43 +164,97 @@ export function calculateB2(buyers: Buyer[]): IndicatorResult {
     name: 'Contactos utilizables',
     value,
     unit: '%',
-    formula: 'BUYERS con autorización / Total BUYERS × 100',
+    formula: 'Contactos utilizables / Contactos registrados × 100',
     status,
-    format: 'percentage'
+    format: 'percentage',
+    baseMeasures: {
+      numeratorLabel: 'Contactos utilizables',
+      numeratorValue: usableCount,
+      denominatorLabel: 'Contactos captados',
+      denominatorValue: totalCaptured,
+      detailText: `${usableCount} utilizables / ${totalCaptured} captados`
+    }
   };
 }
 
-// B3: Costo por LEAD atribuible
-const COST_PER_SOURCE: Record<string, number> = {
+// Costos de fuentes por defecto si no hay campaña explícita
+const DEFAULT_SOURCE_COSTS: Record<string, number> = {
   'Facebook': 500,
-  'Google': 800,
-  'TikTok': 400,
-  'Instagram': 600,
+  'Google': 400,
+  'TikTok': 300,
+  'Instagram': 350,
+  'Redes Sociales': 400,
+  'Búsqueda Orgánica': 0,
   'Referido': 0,
-  'Postventa/Reactivación': 0
+  'Postventa/Reactivación': 0,
+  'Convenio Interinstitucional': 0
 };
-export function calculateB3(buyers: Buyer[], leads: Lead[]): IndicatorResult {
-  let totalCost = 0;
-  // Calculamos costo total basado en los buyers que entraron
+
+// B3: Costo por LEAD atribuible
+export function calculateB3(buyers: Buyer[], leads?: Lead[]): IndicatorResult {
+  // Denominador: Conversiones BUYER -> LEAD atribuibles
+  const convertedBuyers = buyers.filter(b => b.state === BuyerState.CONVERTED || Boolean(b.convertedAt));
+  const attributableLeadsCount = convertedBuyers.length;
+
+  if (attributableLeadsCount === 0) {
+    return {
+      id: 'B3',
+      name: 'Costo por LEAD atribuible',
+      value: null,
+      unit: 'PEN',
+      formula: 'Gasto de captación atribuible / Conversiones BUYER → LEAD atribuibles',
+      status: 'none',
+      format: 'currency',
+      displayValueOverride: 'N/D',
+      baseMeasures: {
+        numeratorLabel: 'Gasto atribuible',
+        numeratorValue: 0,
+        denominatorLabel: 'LEADs atribuibles',
+        denominatorValue: 0,
+        detailText: 'S/ 0.00 invertidos / 0 LEADs atribuibles'
+      }
+    };
+  }
+
+  // Numerador: Gasto de captación atribuible (sin duplicación por campaña/fuente)
+  const processedCampaigns = new Set<string>();
+  let attributableCost = 0;
+
   buyers.forEach(b => {
-    totalCost += (COST_PER_SOURCE[b.attractionSource] || 100);
+    const campaignKey = b.campaignId || b.campaignName || b.attractionSource;
+    if (campaignKey && !processedCampaigns.has(campaignKey)) {
+      processedCampaigns.add(campaignKey);
+      const cost = typeof b.campaignCost === 'number' && b.campaignCost > 0 
+        ? b.campaignCost 
+        : (DEFAULT_SOURCE_COSTS[b.attractionSource] ?? 100);
+      attributableCost += cost;
+    }
   });
 
-  const totalLeads = leads.length;
-  const value = totalLeads === 0 ? 0 : totalCost / totalLeads;
+  const value = attributableCost / attributableLeadsCount;
 
+  // Semáforo: Verde <= S/ 50, Ámbar > S/ 50 y <= S/ 100, Rojo > S/ 100
   let status: IndicatorStatus = 'red';
-  if (value <= 50) status = 'green'; // Menos de 50 soles por lead es excelente
+  if (value <= 50) status = 'green';
   else if (value <= 100) status = 'amber';
+
+  const formattedCost = attributableCost.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return {
     id: 'B3',
     name: 'Costo por LEAD atribuible',
     value,
     unit: 'PEN',
-    formula: 'Costo total de fuentes / LEADS obtenidos',
+    formula: 'Gasto de captación atribuible / Conversiones BUYER → LEAD atribuibles',
     status,
-    format: 'currency'
+    format: 'currency',
+    baseMeasures: {
+      numeratorLabel: 'Gasto atribuible',
+      numeratorValue: attributableCost,
+      denominatorLabel: 'LEADs atribuibles',
+      denominatorValue: attributableLeadsCount,
+      detailText: `S/ ${formattedCost} invertidos / ${attributableLeadsCount} LEADs atribuibles`
+    }
   };
 }
 

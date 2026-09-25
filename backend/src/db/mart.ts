@@ -1,4 +1,4 @@
-import sql from 'mssql/msnodesqlv8';
+const sql = require('mssql/msnodesqlv8');
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -7,19 +7,19 @@ const connectionString =
   process.env.MART_CONNECTION_STRING ||
   'Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=NexoSalud_Mart;Trusted_Connection=yes;TrustServerCertificate=yes;';
 
-let poolPromise: Promise<sql.ConnectionPool> | null = null;
+let poolPromise: Promise<any> | null = null;
 
-export async function getMartPool(): Promise<sql.ConnectionPool> {
+export async function getMartPool(): Promise<any> {
   if (!poolPromise) {
     const config: any = {
       connectionString,
     };
     const pool = new sql.ConnectionPool(config);
 
-    poolPromise = pool.connect().then((connectedPool) => {
+    poolPromise = pool.connect().then((connectedPool: any) => {
       console.log('✅ [NexoSalud_Mart] Conexión establecida exitosamente al DataMart (sin Prisma).');
       return connectedPool;
-    }).catch((err) => {
+    }).catch((err: any) => {
       console.error('❌ [NexoSalud_Mart] Error conectando a NexoSalud_Mart:', err.message);
       poolPromise = null;
       throw err;
@@ -45,15 +45,15 @@ const oltpConnectionString =
   process.env.OLTP_CONNECTION_STRING ||
   'Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=NexoSaludDB;Trusted_Connection=yes;TrustServerCertificate=yes;';
 
-let oltpPoolPromise: Promise<sql.ConnectionPool> | null = null;
+let oltpPoolPromise: Promise<any> | null = null;
 
-export async function getOltpPool(): Promise<sql.ConnectionPool> {
+export async function getOltpPool(): Promise<any> {
   if (!oltpPoolPromise) {
     const pool = new sql.ConnectionPool({ connectionString: oltpConnectionString });
-    oltpPoolPromise = pool.connect().then((connectedPool) => {
+    oltpPoolPromise = pool.connect().then((connectedPool: any) => {
       console.log('✅ [NexoSaludDB] Conexión establecida exitosamente a la BD Transaccional.');
       return connectedPool;
-    }).catch((err) => {
+    }).catch((err: any) => {
       console.error('❌ [NexoSaludDB] Error conectando a NexoSaludDB:', err.message);
       oltpPoolPromise = null;
       throw err;

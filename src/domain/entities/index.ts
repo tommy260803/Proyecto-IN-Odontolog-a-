@@ -8,7 +8,7 @@ import {
 } from '../enums';
 
 export interface Person {
-  id: string;
+  id?: string;
   firstName: string;
   lastName: string;
   email?: string;
@@ -38,14 +38,20 @@ export interface Branch {
 export interface Buyer {
   id: string;
   personId: string;
+  person?: Person;
   channel: string;
   channelId?: string;
   attractionSource: string;
   attractionSourceId?: string;
+  campaignId?: string;
+  campaignName?: string;
+  campaignCost?: number;
   serviceOfInterest?: string;
   serviceOfInterestId?: string;
   preferences?: string;
   contactAuthorization: boolean;
+  qualityStatus?: string;
+  convertedAt?: string;
   state: BuyerState;
   createdAt: string;
   concreteRequest?: string; // Requerido para pasar a LEAD
