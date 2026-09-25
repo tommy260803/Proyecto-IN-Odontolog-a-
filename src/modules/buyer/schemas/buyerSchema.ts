@@ -38,7 +38,6 @@ export const buyerSchema = z.object({
   modalidadLaboral: z.string().optional(),
   disponibilidadLaboral: z.string().optional(),
   ultima_visita_odontologica: z.string().optional(),
-  motivo_consulta_odonto: z.string().optional(),
   tratamiento_previo: z.string().optional(),
   nivel_dolor: z.string().optional(),
   presenta_sensibilidad: z.string().optional(),

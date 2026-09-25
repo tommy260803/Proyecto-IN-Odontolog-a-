@@ -555,7 +555,6 @@ router.get('/', async (req, res) => {
         disponibilidadLaboral: lab?.disponibilidad || '',
 
         ultima_visita_odontologica: sal?.ultima_visita_odontologica || '',
-        motivo_consulta_odonto: sal?.motivo_consulta || '',
         tratamiento_previo: sal?.tratamiento_previo || '',
         nivel_dolor: sal?.nivel_dolor || '',
         presenta_sensibilidad: sal?.presenta_sensibilidad || '',
@@ -579,7 +578,7 @@ router.post('/', async (req, res) => {
     pref_id_canal, pref_id_horario, pref_id_modalidad, pref_sede_preferida, pref_profesional_preferido,
     estudianteAplica, universidad, carrera, ciclo,
     laboralAplica, ocupacion, empresa, modalidadLaboral, disponibilidadLaboral,
-    ultima_visita_odontologica, motivo_consulta_odonto, tratamiento_previo, nivel_dolor, presenta_sensibilidad, sangrado_o_inflamacion, usa_aparato_o_protesis, condicion_atencion_especial
+    ultima_visita_odontologica, tratamiento_previo, nivel_dolor, presenta_sensibilidad, sangrado_o_inflamacion, usa_aparato_o_protesis, condicion_atencion_especial
   } = req.body;
   try {
     const dniToSave = documentNumber ? documentNumber.trim() : null;
@@ -703,12 +702,12 @@ router.post('/', async (req, res) => {
       }
 
       // Salud Odontológica
-      if (ultima_visita_odontologica || motivo_consulta_odonto || tratamiento_previo || nivel_dolor || presenta_sensibilidad || sangrado_o_inflamacion || usa_aparato_o_protesis || condicion_atencion_especial) {
+      if (ultima_visita_odontologica || tratamiento_previo || nivel_dolor || presenta_sensibilidad || sangrado_o_inflamacion || usa_aparato_o_protesis || condicion_atencion_especial) {
         await tx.personaSaludOdontologica.create({
           data: {
             id_persona: persona.id_persona,
             ultima_visita_odontologica: ultima_visita_odontologica || null,
-            motivo_consulta: motivo_consulta_odonto || null,
+            motivo_consulta: null,
             tratamiento_previo: tratamiento_previo || null,
             nivel_dolor: nivel_dolor || null,
             presenta_sensibilidad: presenta_sensibilidad || null,
@@ -738,7 +737,7 @@ router.put('/:id', async (req, res) => {
     pref_id_canal, pref_id_horario, pref_id_modalidad, pref_sede_preferida, pref_profesional_preferido,
     estudianteAplica, universidad, carrera, ciclo,
     laboralAplica, ocupacion, empresa, modalidadLaboral, disponibilidadLaboral,
-    ultima_visita_odontologica, motivo_consulta_odonto, tratamiento_previo, nivel_dolor, presenta_sensibilidad, sangrado_o_inflamacion, usa_aparato_o_protesis, condicion_atencion_especial,
+    ultima_visita_odontologica, tratamiento_previo, nivel_dolor, presenta_sensibilidad, sangrado_o_inflamacion, usa_aparato_o_protesis, condicion_atencion_especial,
     ...data 
   } = req.body;
   try {
@@ -875,12 +874,12 @@ router.put('/:id', async (req, res) => {
 
       // Reemplazar Salud Odontológica
       await tx.personaSaludOdontologica.deleteMany({ where: { id_persona: Number(id) } });
-      if (ultima_visita_odontologica || motivo_consulta_odonto || tratamiento_previo || nivel_dolor || presenta_sensibilidad || sangrado_o_inflamacion || usa_aparato_o_protesis || condicion_atencion_especial) {
+      if (ultima_visita_odontologica || tratamiento_previo || nivel_dolor || presenta_sensibilidad || sangrado_o_inflamacion || usa_aparato_o_protesis || condicion_atencion_especial) {
         await tx.personaSaludOdontologica.create({
           data: {
             id_persona: Number(id),
             ultima_visita_odontologica: ultima_visita_odontologica || null,
-            motivo_consulta: motivo_consulta_odonto || null,
+            motivo_consulta: null,
             tratamiento_previo: tratamiento_previo || null,
             nivel_dolor: nivel_dolor || null,
             presenta_sensibilidad: presenta_sensibilidad || null,

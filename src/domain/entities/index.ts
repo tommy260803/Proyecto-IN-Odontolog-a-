@@ -75,7 +75,6 @@ export interface Buyer {
   disponibilidadLaboral?: string;
   
   ultima_visita_odontologica?: string;
-  motivo_consulta_odonto?: string;
   tratamiento_previo?: string;
   nivel_dolor?: string;
   presenta_sensibilidad?: string;
