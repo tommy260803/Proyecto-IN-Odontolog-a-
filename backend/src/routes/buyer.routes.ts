@@ -169,6 +169,18 @@ router.post('/register', async (req, res) => {
       const validServicio = await getValidServicioId(tx, id_servicio);
       const validServicioInteres = (await getValidServicioId(tx, id_servicio_interes)) || validServicio;
 
+      // Verificación de duplicado por teléfono o correo
+      const cleanPhone = (numero || '').replace(/\D/g, '');
+      const existingPerson = await tx.personas.findFirst({
+        where: {
+          OR: [
+            cleanPhone && cleanPhone.length >= 8 ? { numero: { contains: cleanPhone.slice(-8) } } : undefined,
+            email && email.trim() ? { email: email.trim().toLowerCase() } : undefined,
+          ].filter(Boolean) as any
+        }
+      });
+      const finalEstadoCalidad = existingPerson ? 'Duplicado' : (estado_calidad || 'Valido');
+
       const persona = await tx.personas.create({
         data: {
           nombres,
@@ -180,7 +192,7 @@ router.post('/register', async (req, res) => {
           id_campana_origen: validCampana,
           id_canal_origen: validCanalOrigen,
           tipo_persona: tipo_persona || 'Adulto General',
-          estado_calidad: estado_calidad || 'Valido',
+          estado_calidad: finalEstadoCalidad,
           id_etapa_actual: etapaLead.id_etapa,
         }
       });
@@ -266,6 +278,20 @@ router.get('/', async (req, res) => {
       }
     });
 
+    // Pre-calcular frecuencias para deduplicación
+    const phoneCounts = new Map<string, number>();
+    const dniCounts = new Map<string, number>();
+    for (const p of personas) {
+      const cleanP = (p.numero || '').replace(/\D/g, '');
+      if (cleanP.length >= 8) {
+        const key = cleanP.slice(-8);
+        phoneCounts.set(key, (phoneCounts.get(key) || 0) + 1);
+      }
+      if (p.dni && p.dni.trim()) {
+        dniCounts.set(p.dni.trim(), (dniCounts.get(p.dni.trim()) || 0) + 1);
+      }
+    }
+
     // Mapeamos a BuyerWithPerson
     const buyers = personas.map(p => {
       let state = 'NEW';
@@ -307,6 +333,14 @@ router.get('/', async (req, res) => {
       const campaignName = p.CampanaOrigen?.nombre;
       const campaignCost = p.CampanaOrigen?.GastosCampana?.reduce((sum, g) => sum + Number(g.importe), 0);
 
+      const cleanPPhone = (p.numero || '').replace(/\D/g, '');
+      const phoneMatches = cleanPPhone.length >= 8 ? (phoneCounts.get(cleanPPhone.slice(-8)) || 0) : 0;
+      const dniMatches = (p.dni && p.dni.trim()) ? (dniCounts.get(p.dni.trim()) || 0) : 0;
+      const isDuplicate = phoneMatches > 1 || dniMatches > 1 || p.estado_calidad === 'Duplicado';
+      const duplicateReason = isDuplicate
+        ? (phoneMatches > 1 && dniMatches > 1 ? 'Teléfono y DNI coincidentes con otro contacto registrado' : phoneMatches > 1 ? 'Mismo número celular registrado múltiples veces' : 'Mismo documento de identidad registrado previamente')
+        : undefined;
+
       return {
         id: p.id_persona.toString(),
         personId: p.id_persona.toString(),
@@ -317,6 +351,8 @@ router.get('/', async (req, res) => {
           phone: p.numero,
           email: p.email,
         },
+        isDuplicate,
+        duplicateReason,
         channel: canalName,
         channelId: canalId,
         attractionSource: fuenteName,
@@ -398,6 +434,19 @@ router.post('/', async (req, res) => {
       const validPrefHorario = await getValidHorarioId(tx, pref_id_horario);
       const validPrefModalidad = await getValidModalidadId(tx, pref_id_modalidad);
 
+      // Verificación de duplicado por teléfono, DNI o correo
+      const cleanPhone = (phoneToSave || '').replace(/\D/g, '');
+      const existingPerson = await tx.personas.findFirst({
+        where: {
+          OR: [
+            cleanPhone && cleanPhone.length >= 8 ? { numero: { contains: cleanPhone.slice(-8) } } : undefined,
+            dniToSave ? { dni: dniToSave } : undefined,
+            email && email.trim() ? { email: email.trim().toLowerCase() } : undefined,
+          ].filter(Boolean) as any
+        }
+      });
+      const finalEstadoCalidad = existingPerson ? 'Duplicado' : (estado_calidad || 'Valido');
+
       const persona = await tx.personas.create({
         data: {
           nombres: firstName,
@@ -410,7 +459,7 @@ router.post('/', async (req, res) => {
           id_campana_origen: validCampana,
           id_canal_origen: validCanalOrigen,
           tipo_persona: tipo_persona || 'Adulto General',
-          estado_calidad: estado_calidad || 'Valido',
+          estado_calidad: finalEstadoCalidad,
           id_etapa_actual: etapaBuyer.id_etapa,
         }
       });

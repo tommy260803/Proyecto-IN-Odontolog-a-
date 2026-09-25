@@ -378,10 +378,19 @@ export async function callGroqAssistant(ctx: PayerContext): Promise<AiCollection
 // AGENTE DE MARKETING (ETAPA BUYER) — 4 ACTIVIDADES CLAVE DE BUSINESS INTELLIGENCE
 // ============================================================================
 
+export interface BuyerCheckItem {
+  id: string;
+  label: string;
+  status: 'pass' | 'warn' | 'fail';
+  detail: string;
+}
+
 export interface BuyerMarketingContext {
   fullName: string;
   phone?: string;
   email?: string;
+  documentType?: string;
+  documentNumber?: string;
   serviceOfInterest?: string;
   preferredBranch?: string;
   preferredTimeSlot?: string;
@@ -390,14 +399,20 @@ export interface BuyerMarketingContext {
   concreteRequest?: string;
   contactAuthorization?: boolean;
   qualityStatus?: string;
+  isDuplicate?: boolean;
+  duplicateReason?: string;
 }
 
 export interface BuyerMarketingAnalysis {
   dataQuality: {
-    status: 'Valido' | 'Incompleto' | 'Duplicado';
+    status: 'Valido' | 'Observado' | 'Duplicado' | 'Incompleto';
+    score: number;
     isValidPhone: boolean;
+    isPeruvianMobile: boolean;
     hasConsent: boolean;
+    isDuplicate: boolean;
     explanation: string;
+    checks: BuyerCheckItem[];
   };
   preferencesProfile: {
     service: string;
@@ -422,19 +437,144 @@ export interface BuyerMarketingAnalysis {
 
 export async function analyzeBuyerMarketingAgent(ctx: BuyerMarketingContext): Promise<BuyerMarketingAnalysis> {
   const cleanPhone = (ctx.phone || '').replace(/\D/g, '');
-  const isValidPhone = cleanPhone.length === 9;
+  const isNineDigits = cleanPhone.length === 9;
+  const startsWithNine = cleanPhone.startsWith('9');
+  const isPeruvianMobile = isNineDigits && startsWithNine;
+
+  // Filtros de teléfono ficticio o repetitivo
+  const isRepetitiveDigits = /^(\d)\1{8}$/.test(cleanPhone);
+  const knownFakeNumbers = ['987654321', '912345678', '900000000', '901234567', '999999990', '911111111'];
+  const isFakePhone = isRepetitiveDigits || knownFakeNumbers.includes(cleanPhone);
+
   const hasConsent = !!ctx.contactAuthorization;
-  
-  // 1. Actividad 1: Validación y Calidad de Datos
-  let qualityStatus: 'Valido' | 'Incompleto' | 'Duplicado' = 'Valido';
-  let qualityDetails = 'Registro con teléfono de 9 dígitos y consentimiento de Ley N° 29733 verificado.';
-  
-  if (ctx.qualityStatus === 'Duplicado') {
+
+  // Validación de Correo
+  const rawEmail = (ctx.email || '').trim().toLowerCase();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isValidEmailSyntax = Boolean(rawEmail && emailRegex.test(rawEmail));
+  const disposableDomains = ['tempmail', '10minutemail', 'mailinator', 'guerrillamail', 'yopmail', 'trashmail', 'throwawaymail', 'sharklasers', 'dispostable'];
+  const isDisposableEmail = disposableDomains.some(d => rawEmail.includes(d));
+
+  const typoMap: Record<string, string> = {
+    'gmil.com': 'gmail.com',
+    'gmai.com': 'gmail.com',
+    'gmaill.com': 'gmail.com',
+    'gamil.com': 'gmail.com',
+    'hotmial.com': 'hotmail.com',
+    'hotmai.com': 'hotmail.com',
+    'hotmil.com': 'hotmail.com',
+    'outlok.com': 'outlook.com',
+    'outloo.com': 'outlook.com',
+    'yaho.com': 'yahoo.com',
+    'yahooo.com': 'yahoo.com'
+  };
+  const emailDomain = rawEmail.split('@')[1] || '';
+  const emailTypoSuggestion = typoMap[emailDomain];
+
+  // Validación de Nombre / Identidad
+  const cleanName = (ctx.fullName || '').trim();
+  const lowerName = cleanName.toLowerCase();
+  const spamNameKeywords = ['asdasd', 'qwerty', 'test', 'prueba', 'xyz', 'demo', 'null', 'undefined', 'contacto', 'anonimo', 'cliente'];
+  const isSpamName = spamNameKeywords.some(w => lowerName.includes(w)) || (cleanName.length < 3 && cleanName.length > 0);
+  const hasValidName = cleanName.length >= 3 && !isSpamName && /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(cleanName);
+
+  // Validación de Documento (DNI/CE)
+  const docNum = (ctx.documentNumber || '').trim();
+  const isDni = (ctx.documentType || 'DNI').toUpperCase() === 'DNI';
+  const isValidDoc = docNum ? (isDni ? (/^\d{8}$/.test(docNum) && !/^(\d)\1{7}$/.test(docNum)) : docNum.length >= 8) : false;
+
+  // Deduplicación
+  const isDuplicate = Boolean(ctx.isDuplicate || ctx.qualityStatus === 'Duplicado');
+
+  // Construcción de la Matriz de Chequeos
+  const checks: BuyerCheckItem[] = [];
+
+  // Chequeo 1: Teléfono
+  if (!cleanPhone) {
+    checks.push({ id: 'phone', label: 'Celular Móvil MTC', status: 'fail', detail: 'No ingresó número telefónico.' });
+  } else if (isFakePhone) {
+    checks.push({ id: 'phone', label: 'Celular Móvil MTC', status: 'fail', detail: `Número ficticio detectado (${cleanPhone}).` });
+  } else if (!startsWithNine) {
+    checks.push({ id: 'phone', label: 'Celular Móvil MTC', status: 'warn', detail: `No inicia con 9 (Prefijo móvil peruano no detectado).` });
+  } else if (!isNineDigits) {
+    checks.push({ id: 'phone', label: 'Celular Móvil MTC', status: 'fail', detail: `Longitud inválida (${cleanPhone.length} de 9 dígitos).` });
+  } else {
+    checks.push({ id: 'phone', label: 'Celular Móvil MTC', status: 'pass', detail: `Móvil válido: +51 ${cleanPhone.slice(0,3)} ${cleanPhone.slice(3,6)} ${cleanPhone.slice(6)}` });
+  }
+
+  // Chequeo 2: Deduplicación
+  if (isDuplicate) {
+    checks.push({ id: 'dedup', label: 'Deduplicación de Registro', status: 'fail', detail: ctx.duplicateReason || 'Contacto ya registrado previamente en la base de datos.' });
+  } else {
+    checks.push({ id: 'dedup', label: 'Deduplicación de Registro', status: 'pass', detail: 'Registro único: Sin duplicados detectados en BD.' });
+  }
+
+  // Chequeo 3: Consentimiento Legal
+  if (hasConsent) {
+    checks.push({ id: 'consent', label: 'Consentimiento Ley N° 29733', status: 'pass', detail: 'Autorización legal expresa para contacto y tratamiento de datos.' });
+  } else {
+    checks.push({ id: 'consent', label: 'Consentimiento Ley N° 29733', status: 'warn', detail: 'Falta consentimiento expreso de la Ley de Protección de Datos.' });
+  }
+
+  // Chequeo 4: Correo
+  if (!rawEmail) {
+    checks.push({ id: 'email', label: 'Verificación de Correo', status: 'warn', detail: 'Correo no especificado (contacto limitado a WhatsApp/llamadas).' });
+  } else if (isDisposableEmail) {
+    checks.push({ id: 'email', label: 'Verificación de Correo', status: 'fail', detail: 'Dominio temporal/desechable detectado (riesgo de spam).' });
+  } else if (emailTypoSuggestion) {
+    checks.push({ id: 'email', label: 'Verificación de Correo', status: 'warn', detail: `Posible error tipográfico: ¿quisiste decir @${emailTypoSuggestion}?` });
+  } else if (!isValidEmailSyntax) {
+    checks.push({ id: 'email', label: 'Verificación de Correo', status: 'fail', detail: 'Formato de correo no cumple estándar RFC 5322.' });
+  } else {
+    checks.push({ id: 'email', label: 'Verificación de Correo', status: 'pass', detail: `Email corporativo/personal válido (${emailDomain}).` });
+  }
+
+  // Chequeo 5: Identidad
+  if (!hasValidName) {
+    checks.push({ id: 'identity', label: 'Verosimilitud de Identidad', status: 'warn', detail: isSpamName ? 'Nombre sospechoso o de prueba (posible bot).' : 'Nombre incompleto o excesivamente breve.' });
+  } else {
+    checks.push({ id: 'identity', label: 'Verosimilitud de Identidad', status: 'pass', detail: 'Nombre y apellido plausibles con estructura humana válida.' });
+  }
+
+  // Chequeo 6: Documento de Identidad (DNI)
+  if (docNum) {
+    if (isValidDoc) {
+      checks.push({ id: 'document', label: 'Documento de Identidad', status: 'pass', detail: `${ctx.documentType || 'DNI'} válido: ${docNum}` });
+    } else {
+      checks.push({ id: 'document', label: 'Documento de Identidad', status: 'warn', detail: `${ctx.documentType || 'DNI'} con formato irregular (${docNum}).` });
+    }
+  }
+
+  // Cálculo de Score (0 a 100)
+  let score = 100;
+  if (!cleanPhone || !isPeruvianMobile || isFakePhone) score -= 35;
+  if (isDuplicate) score -= 40;
+  if (!hasConsent) score -= 25;
+  if (!rawEmail) score -= 10;
+  else if (isDisposableEmail || !isValidEmailSyntax) score -= 20;
+  else if (emailTypoSuggestion) score -= 5;
+  if (!hasValidName) score -= 20;
+  if (!docNum) score -= 5;
+  else if (!isValidDoc) score -= 10;
+
+  score = Math.max(10, Math.min(100, score));
+
+  // Estatus final consolidado
+  let qualityStatus: 'Valido' | 'Observado' | 'Duplicado' | 'Incompleto' = 'Valido';
+  let qualityDetails = '';
+
+  if (isDuplicate) {
     qualityStatus = 'Duplicado';
-    qualityDetails = 'Contacto ya registrado previamente en la base de datos clínica.';
-  } else if (!isValidPhone || !ctx.fullName || !hasConsent) {
+    qualityDetails = `Registro duplicado (${score}/100): Coincidencia encontrada con un contacto previo. Recomienda fusionar o reactivar.`;
+  } else if (score >= 85) {
+    qualityStatus = 'Valido';
+    qualityDetails = `Lead Calificado con Score ${score}/100: Móvil MTC verificado, consentimiento LPDP conforme y datos de identidad verosímiles.`;
+  } else if (score >= 60) {
+    qualityStatus = 'Observado';
+    qualityDetails = `Lead Apto con Observaciones (${score}/100): Contacto operable vía WhatsApp pero faltan campos secundarios (DNI/correo) o requiere verificación.`;
+  } else {
     qualityStatus = 'Incompleto';
-    qualityDetails = 'Faltan campos obligatorios o el teléfono no cuenta con 9 dígitos.';
+    qualityDetails = `Calidad Insuficiente (${score}/100): Teléfono no verificado, patrones sospechosos o ausencia de consentimiento legal.`;
   }
 
   // 2. Actividad 2: Clasificación de Preferencias
@@ -558,9 +698,13 @@ Responde ÚNICAMENTE un JSON con:
   return {
     dataQuality: {
       status: qualityStatus,
-      isValidPhone,
+      score,
+      isValidPhone: isNineDigits,
+      isPeruvianMobile,
       hasConsent,
-      explanation: qualityDetails
+      isDuplicate,
+      explanation: qualityDetails,
+      checks,
     },
     preferencesProfile: {
       service,

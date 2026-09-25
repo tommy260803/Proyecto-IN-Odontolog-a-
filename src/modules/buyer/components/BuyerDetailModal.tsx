@@ -50,6 +50,8 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
         fullName: `${b.person?.firstName || ''} ${b.person?.lastName || ''}`.trim(),
         phone: b.person?.phone,
         email: b.person?.email,
+        documentType: b.person?.documentType,
+        documentNumber: b.person?.documentNumber,
         serviceOfInterest: b.serviceOfInterest,
         preferredBranch: b.pref_sede_preferida,
         preferredTimeSlot: b.pref_id_horario,
@@ -57,7 +59,9 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
         attractionSource: b.attractionSource,
         concreteRequest: b.concreteRequest,
         contactAuthorization: b.contactAuthorization,
-        qualityStatus: b.state === BuyerState.CONVERTED ? 'Valido' : undefined
+        qualityStatus: b.state === BuyerState.CONVERTED ? 'Valido' : (b as any).estado_calidad || undefined,
+        isDuplicate: (b as any).isDuplicate || (b as any).estado_calidad === 'Duplicado',
+        duplicateReason: (b as any).duplicateReason,
       });
       setAiAnalysis(result);
     } catch (err) {
@@ -313,25 +317,69 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
                   <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-2 border-t border-teal-100/80 dark:border-teal-900/60 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       
-                      {/* Actividad 1: Validación y Calidad de Datos */}
-                      <div className="p-3.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800/90 shadow-2xs space-y-1.5">
+                      {/* Actividad 1: Validación y Calidad de Datos (Enriquecida) */}
+                      <div className="p-3.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800/90 shadow-2xs space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-teal-700 dark:text-teal-400 flex items-center gap-1.5">
-                            <ShieldCheck className="h-3.5 w-3.5" /> 1. Validación de Registro
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-bold text-teal-700 dark:text-teal-400 flex items-center gap-1.5">
+                              <ShieldCheck className="h-3.5 w-3.5" /> 1. Validación de Registro
+                            </span>
+                            {aiAnalysis?.dataQuality.score !== undefined && (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded font-mono ${
+                                aiAnalysis.dataQuality.score >= 85
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                                  : aiAnalysis.dataQuality.score >= 60
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
+                                  : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300'
+                              }`}>
+                                {aiAnalysis.dataQuality.score}/100
+                              </span>
+                            )}
+                          </div>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase border ${
                             aiAnalysis?.dataQuality.status === 'Valido' 
                               ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' 
                               : aiAnalysis?.dataQuality.status === 'Duplicado'
                               ? 'bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
-                              : 'bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                              : aiAnalysis?.dataQuality.status === 'Observado'
+                              ? 'bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                           }`}>
                             {aiAnalysis?.dataQuality.status || 'Válido'}
                           </span>
                         </div>
+
                         <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
                           {aiAnalysis?.dataQuality.explanation || '9 dígitos y consentimiento de Ley N° 29733 validados correctamente.'}
                         </p>
+
+                        {/* Checklist visual de micro-auditorías de calidad */}
+                        {aiAnalysis?.dataQuality.checks && (
+                          <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/80">
+                            {aiAnalysis.dataQuality.checks.map((check) => (
+                              <div
+                                key={check.id}
+                                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] border transition-colors ${
+                                  check.status === 'pass'
+                                    ? 'bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-900/40'
+                                    : check.status === 'warn'
+                                    ? 'bg-amber-50/60 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border-amber-200/60 dark:border-amber-900/40'
+                                    : 'bg-rose-50/60 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300 border-rose-200/60 dark:border-rose-900/40'
+                                }`}
+                                title={check.detail}
+                              >
+                                {check.status === 'pass' ? (
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                ) : check.status === 'warn' ? (
+                                  <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                                ) : (
+                                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
+                                )}
+                                <span className="truncate font-medium">{check.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       {/* Actividad 2: Clasificación de Preferencias */}
