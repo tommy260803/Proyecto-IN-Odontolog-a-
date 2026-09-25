@@ -219,6 +219,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   // Estados para Copiloto de Objeciones y Seguimiento WhatsApp (Actividades 3 y 4)
   const [objectionCategory, setObjectionCategory] = useState<'PRECIO' | 'HORARIO' | 'SEDE'>('PRECIO');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
+  const [isDispatchingCanva, setIsDispatchingCanva] = useState(false);
+  const [canvaPreviewUrl, setCanvaPreviewUrl] = useState<string | null>(null);
 
   const fetchData = () => {
     if (!leadId) return;
@@ -531,6 +533,63 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     const mailtoUrl = email ? `mailto:${email}?subject=${subject}&body=${body}` : `mailto:?subject=${subject}&body=${body}`;
     window.open(mailtoUrl, '_blank');
     toast({ title: 'Correo Preparado', description: 'Se abrió tu cliente de correo con la propuesta comercial.' });
+  };
+
+  const handleDispatchCanvaEmail = async () => {
+    if (!lead?.email) {
+      toast({
+        title: 'Correo no registrado',
+        description: 'El prospecto no cuenta con una dirección de correo para el envío.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsDispatchingCanva(true);
+    try {
+      const selectedBranchObj = catalogs?.sedes?.find((s: any) => s.id_sede?.toString() === altSedeId);
+      const branchName = selectedBranchObj?.nombre || (lead?.zona ? `Sede ${lead.zona}` : 'Sede Principal NexoSalud');
+      
+      const reqServicioName = catalogs?.servicios?.find((s: any) => s.id_servicio?.toString() === altServicioId)?.nombre
+        || lead?.Solicitudes?.[0]?.Servicio?.nombre
+        || 'Consulta Odontológica Especializada';
+
+      const vigHours = altVigencia === '24h' ? 24 : altVigencia === '48h' ? 48 : altVigencia === '72h' ? 72 : 168;
+
+      const category = lead?.DatosAcademicos ? 'ESTUDIANTE' : lead?.DatosLaborales ? 'CONVENIO' : 'REGULAR';
+      const customDiscount = discountMetrics.pct > 0 ? discountMetrics.pct : undefined;
+
+      const res = await leadService.negotiateAndDispatch({
+        leadId: leadId ? Number(leadId) : undefined,
+        patientName: `${lead.nombres} ${lead.primer_apellido || ''}`.trim(),
+        patientEmail: lead.email,
+        patientPhone: lead.telefono || undefined,
+        serviceName: reqServicioName,
+        branchName: branchName,
+        preferredSchedule: altFranja,
+        category,
+        customDiscountPercent: customDiscount,
+        customValidityHours: vigHours,
+      });
+
+      if (res.canva?.imageUrl) {
+        setCanvaPreviewUrl(res.canva.imageUrl);
+      }
+
+      toast({
+        title: '¡Oferta con Canva Enviada al Correo! 🎨✉️',
+        description: res.message || `La propuesta con diseño y botón de pre-reserva fue enviada exitosamente a ${lead.email}.`,
+      });
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: 'Error de Despacho',
+        description: err.message || 'No se pudo completar el envío de la oferta por correo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDispatchingCanva(false);
+    }
   };
 
   const handleCopyWhatsApp = () => {
@@ -1218,26 +1277,93 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                 </div>
 
                 {/* ── 3. Envío y Seguimiento Omnicanal (Actividad 3) ── */}
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 shadow-sm space-y-3">
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 shadow-sm space-y-3.5">
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-2.5">
                     <div className="flex items-center gap-2">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">
                         3
                       </span>
                       <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                        Envío de Oferta Omnicanal (WhatsApp & Correo)
+                        Envío de Oferta Omnicanal (IA + Canva & Correo)
                       </h3>
                     </div>
                     <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/60">
-                      Mensaje Dinámico
+                      Canva Connect API & Nodemailer
                     </span>
                   </div>
 
-                  <div className="space-y-2">
+                  {/* Banner de Acción Inteligente con IA + Canva Connect API */}
+                  <div className="p-3.5 rounded-xl bg-gradient-to-r from-teal-900 via-teal-800 to-emerald-900 text-white space-y-2.5 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                        <span className="text-xs font-bold text-white">
+                          Agente Negociador: Generación Gráfica y Despacho Automatizado
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-semibold bg-white/20 text-teal-100 px-2 py-0.5 rounded-full">
+                        Canva Autofill &lt; 3s
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-teal-100/90 leading-relaxed">
+                      El Agente IA redacta un mensaje de venta personalizado con urgencia y exclusividad, inyecta las variables en tu plantilla de <strong>Canva Pro</strong> y envía el correo formal al paciente con el banner promocional y botón de pre-reserva.
+                    </p>
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      <Button
+                        type="button"
+                        onClick={handleDispatchCanvaEmail}
+                        disabled={isDispatchingCanva}
+                        className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs h-9 px-4 rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all"
+                      >
+                        {isDispatchingCanva ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                            <span>Generando con Canva y Despachando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4 fill-slate-950 text-slate-950" />
+                            <span>🚀 Despachar con Agente IA + Canva & Correo</span>
+                          </>
+                        )}
+                      </Button>
+                      <span className="text-[10px] text-teal-200">
+                        Destinatario: <strong className="text-white">{lead?.email || 'Sin correo'}</strong>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Previsualización del Banner Generado por Canva */}
+                  {canvaPreviewUrl && (
+                    <div className="p-3 bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/80 rounded-xl space-y-2 animate-in fade-in duration-300">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-teal-900 dark:text-teal-200 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          Banner Gráfico Generado por Canva & Adjunto al Correo:
+                        </span>
+                        <a
+                          href={canvaPreviewUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[10px] text-teal-700 dark:text-teal-300 font-semibold underline hover:text-teal-900"
+                        >
+                          Ver en tamaño completo
+                        </a>
+                      </div>
+                      <img
+                        src={canvaPreviewUrl}
+                        alt="Banner Canva Generado"
+                        className="w-full max-h-48 object-cover rounded-lg border border-teal-200 dark:border-teal-800 shadow-2xs"
+                      />
+                    </div>
+                  )}
+
+                  {/* Vista Previa del Mensaje Manual y Opciones Adicionales */}
+                  <div className="space-y-2 pt-1">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
                         <MessageSquare className="w-3 h-3 text-emerald-500" />
-                        Vista Previa del Mensaje para el Paciente:
+                        Vista Previa del Texto de Contacto Directo:
                       </span>
                       <button
                         type="button"
