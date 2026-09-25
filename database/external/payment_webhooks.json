@@ -1,0 +1,5424 @@
+{
+  "source": "pasarela_simulada",
+  "location": "Trujillo, La Libertad, Peru",
+  "events": [
+    {
+      "event_id": "mp-tru-0001",
+      "received_at": "2026-09-11T11:20:00",
+      "reference": "MP-TRU-20260911-001",
+      "email": "mariana.castillo@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "yp-tru-0002",
+      "received_at": "2026-09-12T15:05:00",
+      "reference": "YAPE-TRU-20260912-002",
+      "email": "renzo.alva@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1001",
+      "received_at": "2026-09-01T17:00:00",
+      "reference": "PAGO-TRU-202609-1001",
+      "email": "andrea.benites.1@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1002",
+      "received_at": "2026-09-02T00:00:00",
+      "reference": "PAGO-TRU-202609-1002",
+      "email": "bruno.castañeda.2@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1003",
+      "received_at": "2026-09-02T07:00:00",
+      "reference": "PAGO-TRU-202609-1003",
+      "email": "carla.diaz.3@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1004",
+      "received_at": "2026-09-02T14:00:00",
+      "reference": "PAGO-TRU-202609-1004",
+      "email": "daniel.flores.4@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1005",
+      "received_at": "2026-09-02T21:00:00",
+      "reference": "PAGO-TRU-202609-1005",
+      "email": "elena.herrera.5@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1006",
+      "received_at": "2026-09-03T04:00:00",
+      "reference": "PAGO-TRU-202609-1006",
+      "email": "fabian.mendoza.6@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1007",
+      "received_at": "2026-09-03T11:00:00",
+      "reference": "PAGO-TRU-202609-1007",
+      "email": "gabriela.acuna.7@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1008",
+      "received_at": "2026-09-03T18:00:00",
+      "reference": "PAGO-TRU-202609-1008",
+      "email": "hector.caballero.8@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1009",
+      "received_at": "2026-09-04T01:00:00",
+      "reference": "PAGO-TRU-202609-1009",
+      "email": "irene.cisneros.9@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1010",
+      "received_at": "2026-09-04T08:00:00",
+      "reference": "PAGO-TRU-202609-1010",
+      "email": "javier.espinoza.10@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1011",
+      "received_at": "2026-09-04T15:00:00",
+      "reference": "PAGO-TRU-202609-1011",
+      "email": "karina.gamarra.11@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1012",
+      "received_at": "2026-09-04T22:00:00",
+      "reference": "PAGO-TRU-202609-1012",
+      "email": "luis.huaman.12@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1013",
+      "received_at": "2026-09-05T05:00:00",
+      "reference": "PAGO-TRU-202609-1013",
+      "email": "milagros.morales.13@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1014",
+      "received_at": "2026-09-05T12:00:00",
+      "reference": "PAGO-TRU-202609-1014",
+      "email": "nicolas.aguirre.14@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1015",
+      "received_at": "2026-09-05T19:00:00",
+      "reference": "PAGO-TRU-202609-1015",
+      "email": "olga.campos.15@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1016",
+      "received_at": "2026-09-06T02:00:00",
+      "reference": "PAGO-TRU-202609-1016",
+      "email": "paolo.cueva.16@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1017",
+      "received_at": "2026-09-06T09:00:00",
+      "reference": "PAGO-TRU-202609-1017",
+      "email": "rosa.fernandez.17@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1018",
+      "received_at": "2026-09-06T16:00:00",
+      "reference": "PAGO-TRU-202609-1018",
+      "email": "sergio.gonzales.18@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1019",
+      "received_at": "2026-09-06T23:00:00",
+      "reference": "PAGO-TRU-202609-1019",
+      "email": "tatiana.luna.19@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1020",
+      "received_at": "2026-09-07T06:00:00",
+      "reference": "PAGO-TRU-202609-1020",
+      "email": "victor.navarro.20@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1021",
+      "received_at": "2026-09-07T13:00:00",
+      "reference": "PAGO-TRU-202609-1021",
+      "email": "andrea.benites.21@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1022",
+      "received_at": "2026-09-07T20:00:00",
+      "reference": "PAGO-TRU-202609-1022",
+      "email": "bruno.castañeda.22@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1023",
+      "received_at": "2026-09-08T03:00:00",
+      "reference": "PAGO-TRU-202609-1023",
+      "email": "carla.diaz.23@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1024",
+      "received_at": "2026-09-08T10:00:00",
+      "reference": "PAGO-TRU-202609-1024",
+      "email": "daniel.flores.24@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1025",
+      "received_at": "2026-09-08T17:00:00",
+      "reference": "PAGO-TRU-202609-1025",
+      "email": "elena.herrera.25@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1026",
+      "received_at": "2026-09-09T00:00:00",
+      "reference": "PAGO-TRU-202609-1026",
+      "email": "fabian.mendoza.26@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1027",
+      "received_at": "2026-09-09T07:00:00",
+      "reference": "PAGO-TRU-202609-1027",
+      "email": "gabriela.acuna.27@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1028",
+      "received_at": "2026-09-09T14:00:00",
+      "reference": "PAGO-TRU-202609-1028",
+      "email": "hector.caballero.28@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1029",
+      "received_at": "2026-09-09T21:00:00",
+      "reference": "PAGO-TRU-202609-1029",
+      "email": "irene.cisneros.29@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1030",
+      "received_at": "2026-09-10T04:00:00",
+      "reference": "PAGO-TRU-202609-1030",
+      "email": "javier.espinoza.30@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1031",
+      "received_at": "2026-09-10T11:00:00",
+      "reference": "PAGO-TRU-202609-1031",
+      "email": "karina.gamarra.31@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1032",
+      "received_at": "2026-09-10T18:00:00",
+      "reference": "PAGO-TRU-202609-1032",
+      "email": "luis.huaman.32@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1033",
+      "received_at": "2026-09-11T01:00:00",
+      "reference": "PAGO-TRU-202609-1033",
+      "email": "milagros.morales.33@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1034",
+      "received_at": "2026-09-11T08:00:00",
+      "reference": "PAGO-TRU-202609-1034",
+      "email": "nicolas.aguirre.34@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1035",
+      "received_at": "2026-09-11T15:00:00",
+      "reference": "PAGO-TRU-202609-1035",
+      "email": "olga.campos.35@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1036",
+      "received_at": "2026-09-11T22:00:00",
+      "reference": "PAGO-TRU-202609-1036",
+      "email": "paolo.cueva.36@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1037",
+      "received_at": "2026-09-12T05:00:00",
+      "reference": "PAGO-TRU-202609-1037",
+      "email": "rosa.fernandez.37@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1038",
+      "received_at": "2026-09-12T12:00:00",
+      "reference": "PAGO-TRU-202609-1038",
+      "email": "sergio.gonzales.38@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1039",
+      "received_at": "2026-09-12T19:00:00",
+      "reference": "PAGO-TRU-202609-1039",
+      "email": "tatiana.luna.39@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1040",
+      "received_at": "2026-09-13T02:00:00",
+      "reference": "PAGO-TRU-202609-1040",
+      "email": "victor.navarro.40@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1041",
+      "received_at": "2026-09-13T09:00:00",
+      "reference": "PAGO-TRU-202609-1041",
+      "email": "andrea.benites.41@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1042",
+      "received_at": "2026-09-13T16:00:00",
+      "reference": "PAGO-TRU-202609-1042",
+      "email": "bruno.castañeda.42@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1043",
+      "received_at": "2026-09-13T23:00:00",
+      "reference": "PAGO-TRU-202609-1043",
+      "email": "carla.diaz.43@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1044",
+      "received_at": "2026-09-14T06:00:00",
+      "reference": "PAGO-TRU-202609-1044",
+      "email": "daniel.flores.44@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1045",
+      "received_at": "2026-09-14T13:00:00",
+      "reference": "PAGO-TRU-202609-1045",
+      "email": "elena.herrera.45@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1046",
+      "received_at": "2026-09-14T20:00:00",
+      "reference": "PAGO-TRU-202609-1046",
+      "email": "fabian.mendoza.46@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1047",
+      "received_at": "2026-09-15T03:00:00",
+      "reference": "PAGO-TRU-202609-1047",
+      "email": "gabriela.acuna.47@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1048",
+      "received_at": "2026-09-15T10:00:00",
+      "reference": "PAGO-TRU-202609-1048",
+      "email": "hector.caballero.48@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1049",
+      "received_at": "2026-09-15T17:00:00",
+      "reference": "PAGO-TRU-202609-1049",
+      "email": "irene.cisneros.49@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1050",
+      "received_at": "2026-09-16T00:00:00",
+      "reference": "PAGO-TRU-202609-1050",
+      "email": "javier.espinoza.50@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1051",
+      "received_at": "2026-09-16T07:00:00",
+      "reference": "PAGO-TRU-202609-1051",
+      "email": "karina.gamarra.51@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1052",
+      "received_at": "2026-09-16T14:00:00",
+      "reference": "PAGO-TRU-202609-1052",
+      "email": "luis.huaman.52@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1053",
+      "received_at": "2026-09-16T21:00:00",
+      "reference": "PAGO-TRU-202609-1053",
+      "email": "milagros.morales.53@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1054",
+      "received_at": "2026-09-17T04:00:00",
+      "reference": "PAGO-TRU-202609-1054",
+      "email": "nicolas.aguirre.54@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1055",
+      "received_at": "2026-09-17T11:00:00",
+      "reference": "PAGO-TRU-202609-1055",
+      "email": "olga.campos.55@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1056",
+      "received_at": "2026-09-17T18:00:00",
+      "reference": "PAGO-TRU-202609-1056",
+      "email": "paolo.cueva.56@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1057",
+      "received_at": "2026-09-18T01:00:00",
+      "reference": "PAGO-TRU-202609-1057",
+      "email": "rosa.fernandez.57@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1058",
+      "received_at": "2026-09-18T08:00:00",
+      "reference": "PAGO-TRU-202609-1058",
+      "email": "sergio.gonzales.58@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1059",
+      "received_at": "2026-09-18T15:00:00",
+      "reference": "PAGO-TRU-202609-1059",
+      "email": "tatiana.luna.59@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1060",
+      "received_at": "2026-09-18T22:00:00",
+      "reference": "PAGO-TRU-202609-1060",
+      "email": "victor.navarro.60@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1061",
+      "received_at": "2026-09-19T05:00:00",
+      "reference": "PAGO-TRU-202609-1061",
+      "email": "andrea.benites.61@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1062",
+      "received_at": "2026-09-19T12:00:00",
+      "reference": "PAGO-TRU-202609-1062",
+      "email": "bruno.castañeda.62@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1063",
+      "received_at": "2026-09-19T19:00:00",
+      "reference": "PAGO-TRU-202609-1063",
+      "email": "carla.diaz.63@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1064",
+      "received_at": "2026-09-20T02:00:00",
+      "reference": "PAGO-TRU-202609-1064",
+      "email": "daniel.flores.64@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1065",
+      "received_at": "2026-09-20T09:00:00",
+      "reference": "PAGO-TRU-202609-1065",
+      "email": "elena.herrera.65@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1066",
+      "received_at": "2026-09-20T16:00:00",
+      "reference": "PAGO-TRU-202609-1066",
+      "email": "fabian.mendoza.66@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1067",
+      "received_at": "2026-09-20T23:00:00",
+      "reference": "PAGO-TRU-202609-1067",
+      "email": "gabriela.acuna.67@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1068",
+      "received_at": "2026-09-21T06:00:00",
+      "reference": "PAGO-TRU-202609-1068",
+      "email": "hector.caballero.68@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1069",
+      "received_at": "2026-09-21T13:00:00",
+      "reference": "PAGO-TRU-202609-1069",
+      "email": "irene.cisneros.69@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1070",
+      "received_at": "2026-09-21T20:00:00",
+      "reference": "PAGO-TRU-202609-1070",
+      "email": "javier.espinoza.70@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1071",
+      "received_at": "2026-09-22T03:00:00",
+      "reference": "PAGO-TRU-202609-1071",
+      "email": "karina.gamarra.71@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1072",
+      "received_at": "2026-09-22T10:00:00",
+      "reference": "PAGO-TRU-202609-1072",
+      "email": "luis.huaman.72@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1073",
+      "received_at": "2026-09-22T17:00:00",
+      "reference": "PAGO-TRU-202609-1073",
+      "email": "milagros.morales.73@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1074",
+      "received_at": "2026-09-23T00:00:00",
+      "reference": "PAGO-TRU-202609-1074",
+      "email": "nicolas.aguirre.74@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1075",
+      "received_at": "2026-09-23T07:00:00",
+      "reference": "PAGO-TRU-202609-1075",
+      "email": "olga.campos.75@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1076",
+      "received_at": "2026-09-23T14:00:00",
+      "reference": "PAGO-TRU-202609-1076",
+      "email": "paolo.cueva.76@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1077",
+      "received_at": "2026-09-23T21:00:00",
+      "reference": "PAGO-TRU-202609-1077",
+      "email": "rosa.fernandez.77@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1078",
+      "received_at": "2026-09-24T04:00:00",
+      "reference": "PAGO-TRU-202609-1078",
+      "email": "sergio.gonzales.78@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1079",
+      "received_at": "2026-09-24T11:00:00",
+      "reference": "PAGO-TRU-202609-1079",
+      "email": "tatiana.luna.79@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1080",
+      "received_at": "2026-09-24T18:00:00",
+      "reference": "PAGO-TRU-202609-1080",
+      "email": "victor.navarro.80@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1081",
+      "received_at": "2026-09-25T01:00:00",
+      "reference": "PAGO-TRU-202609-1081",
+      "email": "andrea.benites.81@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1082",
+      "received_at": "2026-09-25T08:00:00",
+      "reference": "PAGO-TRU-202609-1082",
+      "email": "bruno.castañeda.82@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1083",
+      "received_at": "2026-09-25T15:00:00",
+      "reference": "PAGO-TRU-202609-1083",
+      "email": "carla.diaz.83@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1084",
+      "received_at": "2026-09-25T22:00:00",
+      "reference": "PAGO-TRU-202609-1084",
+      "email": "daniel.flores.84@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1085",
+      "received_at": "2026-09-26T05:00:00",
+      "reference": "PAGO-TRU-202609-1085",
+      "email": "elena.herrera.85@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1086",
+      "received_at": "2026-09-26T12:00:00",
+      "reference": "PAGO-TRU-202609-1086",
+      "email": "fabian.mendoza.86@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1087",
+      "received_at": "2026-09-26T19:00:00",
+      "reference": "PAGO-TRU-202609-1087",
+      "email": "gabriela.acuna.87@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1088",
+      "received_at": "2026-09-27T02:00:00",
+      "reference": "PAGO-TRU-202609-1088",
+      "email": "hector.caballero.88@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1089",
+      "received_at": "2026-09-27T09:00:00",
+      "reference": "PAGO-TRU-202609-1089",
+      "email": "irene.cisneros.89@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1090",
+      "received_at": "2026-09-27T16:00:00",
+      "reference": "PAGO-TRU-202609-1090",
+      "email": "javier.espinoza.90@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1091",
+      "received_at": "2026-09-27T23:00:00",
+      "reference": "PAGO-TRU-202609-1091",
+      "email": "karina.gamarra.91@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1092",
+      "received_at": "2026-09-28T06:00:00",
+      "reference": "PAGO-TRU-202609-1092",
+      "email": "luis.huaman.92@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1093",
+      "received_at": "2026-09-28T13:00:00",
+      "reference": "PAGO-TRU-202609-1093",
+      "email": "milagros.morales.93@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1094",
+      "received_at": "2026-09-28T20:00:00",
+      "reference": "PAGO-TRU-202609-1094",
+      "email": "nicolas.aguirre.94@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1095",
+      "received_at": "2026-09-29T03:00:00",
+      "reference": "PAGO-TRU-202609-1095",
+      "email": "olga.campos.95@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1096",
+      "received_at": "2026-09-29T10:00:00",
+      "reference": "PAGO-TRU-202609-1096",
+      "email": "paolo.cueva.96@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1097",
+      "received_at": "2026-09-29T17:00:00",
+      "reference": "PAGO-TRU-202609-1097",
+      "email": "rosa.fernandez.97@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1098",
+      "received_at": "2026-09-30T00:00:00",
+      "reference": "PAGO-TRU-202609-1098",
+      "email": "sergio.gonzales.98@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1099",
+      "received_at": "2026-09-30T07:00:00",
+      "reference": "PAGO-TRU-202609-1099",
+      "email": "tatiana.luna.99@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1100",
+      "received_at": "2026-09-30T14:00:00",
+      "reference": "PAGO-TRU-202609-1100",
+      "email": "victor.navarro.100@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1101",
+      "received_at": "2026-09-30T21:00:00",
+      "reference": "PAGO-TRU-202609-1101",
+      "email": "andrea.benites.101@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1102",
+      "received_at": "2026-10-01T04:00:00",
+      "reference": "PAGO-TRU-202609-1102",
+      "email": "bruno.castañeda.102@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1103",
+      "received_at": "2026-09-01T12:00:00",
+      "reference": "PAGO-TRU-202609-1103",
+      "email": "carla.diaz.103@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1104",
+      "received_at": "2026-09-01T19:00:00",
+      "reference": "PAGO-TRU-202609-1104",
+      "email": "daniel.flores.104@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1105",
+      "received_at": "2026-09-02T02:00:00",
+      "reference": "PAGO-TRU-202609-1105",
+      "email": "elena.herrera.105@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1106",
+      "received_at": "2026-09-02T09:00:00",
+      "reference": "PAGO-TRU-202609-1106",
+      "email": "fabian.mendoza.106@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1107",
+      "received_at": "2026-09-02T16:00:00",
+      "reference": "PAGO-TRU-202609-1107",
+      "email": "gabriela.acuna.107@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1108",
+      "received_at": "2026-09-02T23:00:00",
+      "reference": "PAGO-TRU-202609-1108",
+      "email": "hector.caballero.108@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1109",
+      "received_at": "2026-09-03T06:00:00",
+      "reference": "PAGO-TRU-202609-1109",
+      "email": "irene.cisneros.109@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1110",
+      "received_at": "2026-09-03T13:00:00",
+      "reference": "PAGO-TRU-202609-1110",
+      "email": "javier.espinoza.110@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1111",
+      "received_at": "2026-09-03T20:00:00",
+      "reference": "PAGO-TRU-202609-1111",
+      "email": "karina.gamarra.111@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1112",
+      "received_at": "2026-09-04T03:00:00",
+      "reference": "PAGO-TRU-202609-1112",
+      "email": "luis.huaman.112@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1113",
+      "received_at": "2026-09-04T10:00:00",
+      "reference": "PAGO-TRU-202609-1113",
+      "email": "milagros.morales.113@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1114",
+      "received_at": "2026-09-04T17:00:00",
+      "reference": "PAGO-TRU-202609-1114",
+      "email": "nicolas.aguirre.114@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1115",
+      "received_at": "2026-09-05T00:00:00",
+      "reference": "PAGO-TRU-202609-1115",
+      "email": "olga.campos.115@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1116",
+      "received_at": "2026-09-05T07:00:00",
+      "reference": "PAGO-TRU-202609-1116",
+      "email": "paolo.cueva.116@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1117",
+      "received_at": "2026-09-05T14:00:00",
+      "reference": "PAGO-TRU-202609-1117",
+      "email": "rosa.fernandez.117@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1118",
+      "received_at": "2026-09-05T21:00:00",
+      "reference": "PAGO-TRU-202609-1118",
+      "email": "sergio.gonzales.118@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1119",
+      "received_at": "2026-09-06T04:00:00",
+      "reference": "PAGO-TRU-202609-1119",
+      "email": "tatiana.luna.119@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1120",
+      "received_at": "2026-09-06T11:00:00",
+      "reference": "PAGO-TRU-202609-1120",
+      "email": "victor.navarro.120@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1121",
+      "received_at": "2026-09-06T18:00:00",
+      "reference": "PAGO-TRU-202609-1121",
+      "email": "andrea.benites.121@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1122",
+      "received_at": "2026-09-07T01:00:00",
+      "reference": "PAGO-TRU-202609-1122",
+      "email": "bruno.castañeda.122@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1123",
+      "received_at": "2026-09-07T08:00:00",
+      "reference": "PAGO-TRU-202609-1123",
+      "email": "carla.diaz.123@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1124",
+      "received_at": "2026-09-07T15:00:00",
+      "reference": "PAGO-TRU-202609-1124",
+      "email": "daniel.flores.124@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1125",
+      "received_at": "2026-09-07T22:00:00",
+      "reference": "PAGO-TRU-202609-1125",
+      "email": "elena.herrera.125@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1126",
+      "received_at": "2026-09-08T05:00:00",
+      "reference": "PAGO-TRU-202609-1126",
+      "email": "fabian.mendoza.126@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1127",
+      "received_at": "2026-09-08T12:00:00",
+      "reference": "PAGO-TRU-202609-1127",
+      "email": "gabriela.acuna.127@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1128",
+      "received_at": "2026-09-08T19:00:00",
+      "reference": "PAGO-TRU-202609-1128",
+      "email": "hector.caballero.128@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1129",
+      "received_at": "2026-09-09T02:00:00",
+      "reference": "PAGO-TRU-202609-1129",
+      "email": "irene.cisneros.129@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1130",
+      "received_at": "2026-09-09T09:00:00",
+      "reference": "PAGO-TRU-202609-1130",
+      "email": "javier.espinoza.130@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1131",
+      "received_at": "2026-09-09T16:00:00",
+      "reference": "PAGO-TRU-202609-1131",
+      "email": "karina.gamarra.131@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1132",
+      "received_at": "2026-09-09T23:00:00",
+      "reference": "PAGO-TRU-202609-1132",
+      "email": "luis.huaman.132@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1133",
+      "received_at": "2026-09-10T06:00:00",
+      "reference": "PAGO-TRU-202609-1133",
+      "email": "milagros.morales.133@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1134",
+      "received_at": "2026-09-10T13:00:00",
+      "reference": "PAGO-TRU-202609-1134",
+      "email": "nicolas.aguirre.134@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1135",
+      "received_at": "2026-09-10T20:00:00",
+      "reference": "PAGO-TRU-202609-1135",
+      "email": "olga.campos.135@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1136",
+      "received_at": "2026-09-11T03:00:00",
+      "reference": "PAGO-TRU-202609-1136",
+      "email": "paolo.cueva.136@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1137",
+      "received_at": "2026-09-11T10:00:00",
+      "reference": "PAGO-TRU-202609-1137",
+      "email": "rosa.fernandez.137@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1138",
+      "received_at": "2026-09-11T17:00:00",
+      "reference": "PAGO-TRU-202609-1138",
+      "email": "sergio.gonzales.138@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1139",
+      "received_at": "2026-09-12T00:00:00",
+      "reference": "PAGO-TRU-202609-1139",
+      "email": "tatiana.luna.139@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1140",
+      "received_at": "2026-09-12T07:00:00",
+      "reference": "PAGO-TRU-202609-1140",
+      "email": "victor.navarro.140@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1141",
+      "received_at": "2026-09-12T14:00:00",
+      "reference": "PAGO-TRU-202609-1141",
+      "email": "andrea.benites.141@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1142",
+      "received_at": "2026-09-12T21:00:00",
+      "reference": "PAGO-TRU-202609-1142",
+      "email": "bruno.castañeda.142@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1143",
+      "received_at": "2026-09-13T04:00:00",
+      "reference": "PAGO-TRU-202609-1143",
+      "email": "carla.diaz.143@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1144",
+      "received_at": "2026-09-13T11:00:00",
+      "reference": "PAGO-TRU-202609-1144",
+      "email": "daniel.flores.144@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1145",
+      "received_at": "2026-09-13T18:00:00",
+      "reference": "PAGO-TRU-202609-1145",
+      "email": "elena.herrera.145@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1146",
+      "received_at": "2026-09-14T01:00:00",
+      "reference": "PAGO-TRU-202609-1146",
+      "email": "fabian.mendoza.146@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1147",
+      "received_at": "2026-09-14T08:00:00",
+      "reference": "PAGO-TRU-202609-1147",
+      "email": "gabriela.acuna.147@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1148",
+      "received_at": "2026-09-14T15:00:00",
+      "reference": "PAGO-TRU-202609-1148",
+      "email": "hector.caballero.148@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1149",
+      "received_at": "2026-09-14T22:00:00",
+      "reference": "PAGO-TRU-202609-1149",
+      "email": "irene.cisneros.149@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1150",
+      "received_at": "2026-09-15T05:00:00",
+      "reference": "PAGO-TRU-202609-1150",
+      "email": "javier.espinoza.150@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1151",
+      "received_at": "2026-09-15T12:00:00",
+      "reference": "PAGO-TRU-202609-1151",
+      "email": "karina.gamarra.151@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1152",
+      "received_at": "2026-09-15T19:00:00",
+      "reference": "PAGO-TRU-202609-1152",
+      "email": "luis.huaman.152@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1153",
+      "received_at": "2026-09-16T02:00:00",
+      "reference": "PAGO-TRU-202609-1153",
+      "email": "milagros.morales.153@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1154",
+      "received_at": "2026-09-16T09:00:00",
+      "reference": "PAGO-TRU-202609-1154",
+      "email": "nicolas.aguirre.154@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1155",
+      "received_at": "2026-09-16T16:00:00",
+      "reference": "PAGO-TRU-202609-1155",
+      "email": "olga.campos.155@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1156",
+      "received_at": "2026-09-16T23:00:00",
+      "reference": "PAGO-TRU-202609-1156",
+      "email": "paolo.cueva.156@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1157",
+      "received_at": "2026-09-17T06:00:00",
+      "reference": "PAGO-TRU-202609-1157",
+      "email": "rosa.fernandez.157@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1158",
+      "received_at": "2026-09-17T13:00:00",
+      "reference": "PAGO-TRU-202609-1158",
+      "email": "sergio.gonzales.158@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1159",
+      "received_at": "2026-09-17T20:00:00",
+      "reference": "PAGO-TRU-202609-1159",
+      "email": "tatiana.luna.159@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1160",
+      "received_at": "2026-09-18T03:00:00",
+      "reference": "PAGO-TRU-202609-1160",
+      "email": "victor.navarro.160@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1161",
+      "received_at": "2026-09-18T10:00:00",
+      "reference": "PAGO-TRU-202609-1161",
+      "email": "andrea.benites.161@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1162",
+      "received_at": "2026-09-18T17:00:00",
+      "reference": "PAGO-TRU-202609-1162",
+      "email": "bruno.castañeda.162@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1163",
+      "received_at": "2026-09-19T00:00:00",
+      "reference": "PAGO-TRU-202609-1163",
+      "email": "carla.diaz.163@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1164",
+      "received_at": "2026-09-19T07:00:00",
+      "reference": "PAGO-TRU-202609-1164",
+      "email": "daniel.flores.164@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1165",
+      "received_at": "2026-09-19T14:00:00",
+      "reference": "PAGO-TRU-202609-1165",
+      "email": "elena.herrera.165@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1166",
+      "received_at": "2026-09-19T21:00:00",
+      "reference": "PAGO-TRU-202609-1166",
+      "email": "fabian.mendoza.166@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1167",
+      "received_at": "2026-09-20T04:00:00",
+      "reference": "PAGO-TRU-202609-1167",
+      "email": "gabriela.acuna.167@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1168",
+      "received_at": "2026-09-20T11:00:00",
+      "reference": "PAGO-TRU-202609-1168",
+      "email": "hector.caballero.168@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1169",
+      "received_at": "2026-09-20T18:00:00",
+      "reference": "PAGO-TRU-202609-1169",
+      "email": "irene.cisneros.169@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1170",
+      "received_at": "2026-09-21T01:00:00",
+      "reference": "PAGO-TRU-202609-1170",
+      "email": "javier.espinoza.170@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1171",
+      "received_at": "2026-09-21T08:00:00",
+      "reference": "PAGO-TRU-202609-1171",
+      "email": "karina.gamarra.171@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1172",
+      "received_at": "2026-09-21T15:00:00",
+      "reference": "PAGO-TRU-202609-1172",
+      "email": "luis.huaman.172@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1173",
+      "received_at": "2026-09-21T22:00:00",
+      "reference": "PAGO-TRU-202609-1173",
+      "email": "milagros.morales.173@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1174",
+      "received_at": "2026-09-22T05:00:00",
+      "reference": "PAGO-TRU-202609-1174",
+      "email": "nicolas.aguirre.174@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1175",
+      "received_at": "2026-09-22T12:00:00",
+      "reference": "PAGO-TRU-202609-1175",
+      "email": "olga.campos.175@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1176",
+      "received_at": "2026-09-22T19:00:00",
+      "reference": "PAGO-TRU-202609-1176",
+      "email": "paolo.cueva.176@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1177",
+      "received_at": "2026-09-23T02:00:00",
+      "reference": "PAGO-TRU-202609-1177",
+      "email": "rosa.fernandez.177@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1178",
+      "received_at": "2026-09-23T09:00:00",
+      "reference": "PAGO-TRU-202609-1178",
+      "email": "sergio.gonzales.178@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1179",
+      "received_at": "2026-09-23T16:00:00",
+      "reference": "PAGO-TRU-202609-1179",
+      "email": "tatiana.luna.179@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1180",
+      "received_at": "2026-09-23T23:00:00",
+      "reference": "PAGO-TRU-202609-1180",
+      "email": "victor.navarro.180@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1181",
+      "received_at": "2026-09-24T06:00:00",
+      "reference": "PAGO-TRU-202609-1181",
+      "email": "andrea.benites.181@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1182",
+      "received_at": "2026-09-24T13:00:00",
+      "reference": "PAGO-TRU-202609-1182",
+      "email": "bruno.castañeda.182@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1183",
+      "received_at": "2026-09-24T20:00:00",
+      "reference": "PAGO-TRU-202609-1183",
+      "email": "carla.diaz.183@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1184",
+      "received_at": "2026-09-25T03:00:00",
+      "reference": "PAGO-TRU-202609-1184",
+      "email": "daniel.flores.184@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1185",
+      "received_at": "2026-09-25T10:00:00",
+      "reference": "PAGO-TRU-202609-1185",
+      "email": "elena.herrera.185@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1186",
+      "received_at": "2026-09-25T17:00:00",
+      "reference": "PAGO-TRU-202609-1186",
+      "email": "fabian.mendoza.186@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1187",
+      "received_at": "2026-09-26T00:00:00",
+      "reference": "PAGO-TRU-202609-1187",
+      "email": "gabriela.acuna.187@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1188",
+      "received_at": "2026-09-26T07:00:00",
+      "reference": "PAGO-TRU-202609-1188",
+      "email": "hector.caballero.188@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1189",
+      "received_at": "2026-09-26T14:00:00",
+      "reference": "PAGO-TRU-202609-1189",
+      "email": "irene.cisneros.189@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1190",
+      "received_at": "2026-09-26T21:00:00",
+      "reference": "PAGO-TRU-202609-1190",
+      "email": "javier.espinoza.190@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1191",
+      "received_at": "2026-09-27T04:00:00",
+      "reference": "PAGO-TRU-202609-1191",
+      "email": "karina.gamarra.191@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1192",
+      "received_at": "2026-09-27T11:00:00",
+      "reference": "PAGO-TRU-202609-1192",
+      "email": "luis.huaman.192@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1193",
+      "received_at": "2026-09-27T18:00:00",
+      "reference": "PAGO-TRU-202609-1193",
+      "email": "milagros.morales.193@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1194",
+      "received_at": "2026-09-28T01:00:00",
+      "reference": "PAGO-TRU-202609-1194",
+      "email": "nicolas.aguirre.194@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1195",
+      "received_at": "2026-09-28T08:00:00",
+      "reference": "PAGO-TRU-202609-1195",
+      "email": "olga.campos.195@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1196",
+      "received_at": "2026-09-28T15:00:00",
+      "reference": "PAGO-TRU-202609-1196",
+      "email": "paolo.cueva.196@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1197",
+      "received_at": "2026-09-28T22:00:00",
+      "reference": "PAGO-TRU-202609-1197",
+      "email": "rosa.fernandez.197@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1198",
+      "received_at": "2026-09-29T05:00:00",
+      "reference": "PAGO-TRU-202609-1198",
+      "email": "sergio.gonzales.198@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1199",
+      "received_at": "2026-09-29T12:00:00",
+      "reference": "PAGO-TRU-202609-1199",
+      "email": "tatiana.luna.199@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1200",
+      "received_at": "2026-09-29T19:00:00",
+      "reference": "PAGO-TRU-202609-1200",
+      "email": "victor.navarro.200@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1201",
+      "received_at": "2026-09-30T02:00:00",
+      "reference": "PAGO-TRU-202609-1201",
+      "email": "andrea.benites.201@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1202",
+      "received_at": "2026-09-30T09:00:00",
+      "reference": "PAGO-TRU-202609-1202",
+      "email": "bruno.castañeda.202@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1203",
+      "received_at": "2026-09-30T16:00:00",
+      "reference": "PAGO-TRU-202609-1203",
+      "email": "carla.diaz.203@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1204",
+      "received_at": "2026-09-30T23:00:00",
+      "reference": "PAGO-TRU-202609-1204",
+      "email": "daniel.flores.204@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1205",
+      "received_at": "2026-10-01T06:00:00",
+      "reference": "PAGO-TRU-202609-1205",
+      "email": "elena.herrera.205@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1206",
+      "received_at": "2026-09-01T14:00:00",
+      "reference": "PAGO-TRU-202609-1206",
+      "email": "fabian.mendoza.206@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1207",
+      "received_at": "2026-09-01T21:00:00",
+      "reference": "PAGO-TRU-202609-1207",
+      "email": "gabriela.acuna.207@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1208",
+      "received_at": "2026-09-02T04:00:00",
+      "reference": "PAGO-TRU-202609-1208",
+      "email": "hector.caballero.208@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1209",
+      "received_at": "2026-09-02T11:00:00",
+      "reference": "PAGO-TRU-202609-1209",
+      "email": "irene.cisneros.209@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1210",
+      "received_at": "2026-09-02T18:00:00",
+      "reference": "PAGO-TRU-202609-1210",
+      "email": "javier.espinoza.210@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1211",
+      "received_at": "2026-09-03T01:00:00",
+      "reference": "PAGO-TRU-202609-1211",
+      "email": "karina.gamarra.211@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1212",
+      "received_at": "2026-09-03T08:00:00",
+      "reference": "PAGO-TRU-202609-1212",
+      "email": "luis.huaman.212@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1213",
+      "received_at": "2026-09-03T15:00:00",
+      "reference": "PAGO-TRU-202609-1213",
+      "email": "milagros.morales.213@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1214",
+      "received_at": "2026-09-03T22:00:00",
+      "reference": "PAGO-TRU-202609-1214",
+      "email": "nicolas.aguirre.214@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1215",
+      "received_at": "2026-09-04T05:00:00",
+      "reference": "PAGO-TRU-202609-1215",
+      "email": "olga.campos.215@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1216",
+      "received_at": "2026-09-04T12:00:00",
+      "reference": "PAGO-TRU-202609-1216",
+      "email": "paolo.cueva.216@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1217",
+      "received_at": "2026-09-04T19:00:00",
+      "reference": "PAGO-TRU-202609-1217",
+      "email": "rosa.fernandez.217@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1218",
+      "received_at": "2026-09-05T02:00:00",
+      "reference": "PAGO-TRU-202609-1218",
+      "email": "sergio.gonzales.218@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1219",
+      "received_at": "2026-09-05T09:00:00",
+      "reference": "PAGO-TRU-202609-1219",
+      "email": "tatiana.luna.219@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1220",
+      "received_at": "2026-09-05T16:00:00",
+      "reference": "PAGO-TRU-202609-1220",
+      "email": "victor.navarro.220@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1221",
+      "received_at": "2026-09-05T23:00:00",
+      "reference": "PAGO-TRU-202609-1221",
+      "email": "andrea.benites.221@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1222",
+      "received_at": "2026-09-06T06:00:00",
+      "reference": "PAGO-TRU-202609-1222",
+      "email": "bruno.castañeda.222@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1223",
+      "received_at": "2026-09-06T13:00:00",
+      "reference": "PAGO-TRU-202609-1223",
+      "email": "carla.diaz.223@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1224",
+      "received_at": "2026-09-06T20:00:00",
+      "reference": "PAGO-TRU-202609-1224",
+      "email": "daniel.flores.224@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1225",
+      "received_at": "2026-09-07T03:00:00",
+      "reference": "PAGO-TRU-202609-1225",
+      "email": "elena.herrera.225@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1226",
+      "received_at": "2026-09-07T10:00:00",
+      "reference": "PAGO-TRU-202609-1226",
+      "email": "fabian.mendoza.226@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1227",
+      "received_at": "2026-09-07T17:00:00",
+      "reference": "PAGO-TRU-202609-1227",
+      "email": "gabriela.acuna.227@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1228",
+      "received_at": "2026-09-08T00:00:00",
+      "reference": "PAGO-TRU-202609-1228",
+      "email": "hector.caballero.228@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1229",
+      "received_at": "2026-09-08T07:00:00",
+      "reference": "PAGO-TRU-202609-1229",
+      "email": "irene.cisneros.229@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1230",
+      "received_at": "2026-09-08T14:00:00",
+      "reference": "PAGO-TRU-202609-1230",
+      "email": "javier.espinoza.230@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1231",
+      "received_at": "2026-09-08T21:00:00",
+      "reference": "PAGO-TRU-202609-1231",
+      "email": "karina.gamarra.231@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1232",
+      "received_at": "2026-09-09T04:00:00",
+      "reference": "PAGO-TRU-202609-1232",
+      "email": "luis.huaman.232@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1233",
+      "received_at": "2026-09-09T11:00:00",
+      "reference": "PAGO-TRU-202609-1233",
+      "email": "milagros.morales.233@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1234",
+      "received_at": "2026-09-09T18:00:00",
+      "reference": "PAGO-TRU-202609-1234",
+      "email": "nicolas.aguirre.234@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1235",
+      "received_at": "2026-09-10T01:00:00",
+      "reference": "PAGO-TRU-202609-1235",
+      "email": "olga.campos.235@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1236",
+      "received_at": "2026-09-10T08:00:00",
+      "reference": "PAGO-TRU-202609-1236",
+      "email": "paolo.cueva.236@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1237",
+      "received_at": "2026-09-10T15:00:00",
+      "reference": "PAGO-TRU-202609-1237",
+      "email": "rosa.fernandez.237@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1238",
+      "received_at": "2026-09-10T22:00:00",
+      "reference": "PAGO-TRU-202609-1238",
+      "email": "sergio.gonzales.238@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1239",
+      "received_at": "2026-09-11T05:00:00",
+      "reference": "PAGO-TRU-202609-1239",
+      "email": "tatiana.luna.239@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1240",
+      "received_at": "2026-09-11T12:00:00",
+      "reference": "PAGO-TRU-202609-1240",
+      "email": "victor.navarro.240@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1241",
+      "received_at": "2026-09-11T19:00:00",
+      "reference": "PAGO-TRU-202609-1241",
+      "email": "andrea.benites.241@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1242",
+      "received_at": "2026-09-12T02:00:00",
+      "reference": "PAGO-TRU-202609-1242",
+      "email": "bruno.castañeda.242@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1243",
+      "received_at": "2026-09-12T09:00:00",
+      "reference": "PAGO-TRU-202609-1243",
+      "email": "carla.diaz.243@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1244",
+      "received_at": "2026-09-12T16:00:00",
+      "reference": "PAGO-TRU-202609-1244",
+      "email": "daniel.flores.244@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1245",
+      "received_at": "2026-09-12T23:00:00",
+      "reference": "PAGO-TRU-202609-1245",
+      "email": "elena.herrera.245@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1246",
+      "received_at": "2026-09-13T06:00:00",
+      "reference": "PAGO-TRU-202609-1246",
+      "email": "fabian.mendoza.246@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1247",
+      "received_at": "2026-09-13T13:00:00",
+      "reference": "PAGO-TRU-202609-1247",
+      "email": "gabriela.acuna.247@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1248",
+      "received_at": "2026-09-13T20:00:00",
+      "reference": "PAGO-TRU-202609-1248",
+      "email": "hector.caballero.248@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1249",
+      "received_at": "2026-09-14T03:00:00",
+      "reference": "PAGO-TRU-202609-1249",
+      "email": "irene.cisneros.249@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1250",
+      "received_at": "2026-09-14T10:00:00",
+      "reference": "PAGO-TRU-202609-1250",
+      "email": "javier.espinoza.250@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1251",
+      "received_at": "2026-09-14T17:00:00",
+      "reference": "PAGO-TRU-202609-1251",
+      "email": "karina.gamarra.251@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1252",
+      "received_at": "2026-09-15T00:00:00",
+      "reference": "PAGO-TRU-202609-1252",
+      "email": "luis.huaman.252@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1253",
+      "received_at": "2026-09-15T07:00:00",
+      "reference": "PAGO-TRU-202609-1253",
+      "email": "milagros.morales.253@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1254",
+      "received_at": "2026-09-15T14:00:00",
+      "reference": "PAGO-TRU-202609-1254",
+      "email": "nicolas.aguirre.254@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1255",
+      "received_at": "2026-09-15T21:00:00",
+      "reference": "PAGO-TRU-202609-1255",
+      "email": "olga.campos.255@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1256",
+      "received_at": "2026-09-16T04:00:00",
+      "reference": "PAGO-TRU-202609-1256",
+      "email": "paolo.cueva.256@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1257",
+      "received_at": "2026-09-16T11:00:00",
+      "reference": "PAGO-TRU-202609-1257",
+      "email": "rosa.fernandez.257@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1258",
+      "received_at": "2026-09-16T18:00:00",
+      "reference": "PAGO-TRU-202609-1258",
+      "email": "sergio.gonzales.258@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1259",
+      "received_at": "2026-09-17T01:00:00",
+      "reference": "PAGO-TRU-202609-1259",
+      "email": "tatiana.luna.259@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1260",
+      "received_at": "2026-09-17T08:00:00",
+      "reference": "PAGO-TRU-202609-1260",
+      "email": "victor.navarro.260@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1261",
+      "received_at": "2026-09-17T15:00:00",
+      "reference": "PAGO-TRU-202609-1261",
+      "email": "andrea.benites.261@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1262",
+      "received_at": "2026-09-17T22:00:00",
+      "reference": "PAGO-TRU-202609-1262",
+      "email": "bruno.castañeda.262@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1263",
+      "received_at": "2026-09-18T05:00:00",
+      "reference": "PAGO-TRU-202609-1263",
+      "email": "carla.diaz.263@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1264",
+      "received_at": "2026-09-18T12:00:00",
+      "reference": "PAGO-TRU-202609-1264",
+      "email": "daniel.flores.264@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1265",
+      "received_at": "2026-09-18T19:00:00",
+      "reference": "PAGO-TRU-202609-1265",
+      "email": "elena.herrera.265@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1266",
+      "received_at": "2026-09-19T02:00:00",
+      "reference": "PAGO-TRU-202609-1266",
+      "email": "fabian.mendoza.266@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1267",
+      "received_at": "2026-09-19T09:00:00",
+      "reference": "PAGO-TRU-202609-1267",
+      "email": "gabriela.acuna.267@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1268",
+      "received_at": "2026-09-19T16:00:00",
+      "reference": "PAGO-TRU-202609-1268",
+      "email": "hector.caballero.268@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1269",
+      "received_at": "2026-09-19T23:00:00",
+      "reference": "PAGO-TRU-202609-1269",
+      "email": "irene.cisneros.269@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1270",
+      "received_at": "2026-09-20T06:00:00",
+      "reference": "PAGO-TRU-202609-1270",
+      "email": "javier.espinoza.270@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1271",
+      "received_at": "2026-09-20T13:00:00",
+      "reference": "PAGO-TRU-202609-1271",
+      "email": "karina.gamarra.271@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1272",
+      "received_at": "2026-09-20T20:00:00",
+      "reference": "PAGO-TRU-202609-1272",
+      "email": "luis.huaman.272@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1273",
+      "received_at": "2026-09-21T03:00:00",
+      "reference": "PAGO-TRU-202609-1273",
+      "email": "milagros.morales.273@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1274",
+      "received_at": "2026-09-21T10:00:00",
+      "reference": "PAGO-TRU-202609-1274",
+      "email": "nicolas.aguirre.274@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1275",
+      "received_at": "2026-09-21T17:00:00",
+      "reference": "PAGO-TRU-202609-1275",
+      "email": "olga.campos.275@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1276",
+      "received_at": "2026-09-22T00:00:00",
+      "reference": "PAGO-TRU-202609-1276",
+      "email": "paolo.cueva.276@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1277",
+      "received_at": "2026-09-22T07:00:00",
+      "reference": "PAGO-TRU-202609-1277",
+      "email": "rosa.fernandez.277@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1278",
+      "received_at": "2026-09-22T14:00:00",
+      "reference": "PAGO-TRU-202609-1278",
+      "email": "sergio.gonzales.278@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1279",
+      "received_at": "2026-09-22T21:00:00",
+      "reference": "PAGO-TRU-202609-1279",
+      "email": "tatiana.luna.279@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1280",
+      "received_at": "2026-09-23T04:00:00",
+      "reference": "PAGO-TRU-202609-1280",
+      "email": "victor.navarro.280@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1281",
+      "received_at": "2026-09-23T11:00:00",
+      "reference": "PAGO-TRU-202609-1281",
+      "email": "andrea.benites.281@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1282",
+      "received_at": "2026-09-23T18:00:00",
+      "reference": "PAGO-TRU-202609-1282",
+      "email": "bruno.castañeda.282@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1283",
+      "received_at": "2026-09-24T01:00:00",
+      "reference": "PAGO-TRU-202609-1283",
+      "email": "carla.diaz.283@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1284",
+      "received_at": "2026-09-24T08:00:00",
+      "reference": "PAGO-TRU-202609-1284",
+      "email": "daniel.flores.284@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1285",
+      "received_at": "2026-09-24T15:00:00",
+      "reference": "PAGO-TRU-202609-1285",
+      "email": "elena.herrera.285@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1286",
+      "received_at": "2026-09-24T22:00:00",
+      "reference": "PAGO-TRU-202609-1286",
+      "email": "fabian.mendoza.286@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1287",
+      "received_at": "2026-09-25T05:00:00",
+      "reference": "PAGO-TRU-202609-1287",
+      "email": "gabriela.acuna.287@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1288",
+      "received_at": "2026-09-25T12:00:00",
+      "reference": "PAGO-TRU-202609-1288",
+      "email": "hector.caballero.288@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1289",
+      "received_at": "2026-09-25T19:00:00",
+      "reference": "PAGO-TRU-202609-1289",
+      "email": "irene.cisneros.289@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1290",
+      "received_at": "2026-09-26T02:00:00",
+      "reference": "PAGO-TRU-202609-1290",
+      "email": "javier.espinoza.290@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1291",
+      "received_at": "2026-09-26T09:00:00",
+      "reference": "PAGO-TRU-202609-1291",
+      "email": "karina.gamarra.291@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1292",
+      "received_at": "2026-09-26T16:00:00",
+      "reference": "PAGO-TRU-202609-1292",
+      "email": "luis.huaman.292@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1293",
+      "received_at": "2026-09-26T23:00:00",
+      "reference": "PAGO-TRU-202609-1293",
+      "email": "milagros.morales.293@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1294",
+      "received_at": "2026-09-27T06:00:00",
+      "reference": "PAGO-TRU-202609-1294",
+      "email": "nicolas.aguirre.294@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1295",
+      "received_at": "2026-09-27T13:00:00",
+      "reference": "PAGO-TRU-202609-1295",
+      "email": "olga.campos.295@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1296",
+      "received_at": "2026-09-27T20:00:00",
+      "reference": "PAGO-TRU-202609-1296",
+      "email": "paolo.cueva.296@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1297",
+      "received_at": "2026-09-28T03:00:00",
+      "reference": "PAGO-TRU-202609-1297",
+      "email": "rosa.fernandez.297@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1298",
+      "received_at": "2026-09-28T10:00:00",
+      "reference": "PAGO-TRU-202609-1298",
+      "email": "sergio.gonzales.298@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1299",
+      "received_at": "2026-09-28T17:00:00",
+      "reference": "PAGO-TRU-202609-1299",
+      "email": "tatiana.luna.299@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1300",
+      "received_at": "2026-09-29T00:00:00",
+      "reference": "PAGO-TRU-202609-1300",
+      "email": "victor.navarro.300@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1301",
+      "received_at": "2026-09-29T07:00:00",
+      "reference": "PAGO-TRU-202609-1301",
+      "email": "andrea.benites.301@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1302",
+      "received_at": "2026-09-29T14:00:00",
+      "reference": "PAGO-TRU-202609-1302",
+      "email": "bruno.castañeda.302@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1303",
+      "received_at": "2026-09-29T21:00:00",
+      "reference": "PAGO-TRU-202609-1303",
+      "email": "carla.diaz.303@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1304",
+      "received_at": "2026-09-30T04:00:00",
+      "reference": "PAGO-TRU-202609-1304",
+      "email": "daniel.flores.304@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1305",
+      "received_at": "2026-09-30T11:00:00",
+      "reference": "PAGO-TRU-202609-1305",
+      "email": "elena.herrera.305@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1306",
+      "received_at": "2026-09-30T18:00:00",
+      "reference": "PAGO-TRU-202609-1306",
+      "email": "fabian.mendoza.306@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1307",
+      "received_at": "2026-10-01T01:00:00",
+      "reference": "PAGO-TRU-202609-1307",
+      "email": "gabriela.acuna.307@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1308",
+      "received_at": "2026-10-01T08:00:00",
+      "reference": "PAGO-TRU-202609-1308",
+      "email": "hector.caballero.308@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1309",
+      "received_at": "2026-09-01T16:00:00",
+      "reference": "PAGO-TRU-202609-1309",
+      "email": "irene.cisneros.309@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1310",
+      "received_at": "2026-09-01T23:00:00",
+      "reference": "PAGO-TRU-202609-1310",
+      "email": "javier.espinoza.310@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1311",
+      "received_at": "2026-09-02T06:00:00",
+      "reference": "PAGO-TRU-202609-1311",
+      "email": "karina.gamarra.311@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1312",
+      "received_at": "2026-09-02T13:00:00",
+      "reference": "PAGO-TRU-202609-1312",
+      "email": "luis.huaman.312@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1313",
+      "received_at": "2026-09-02T20:00:00",
+      "reference": "PAGO-TRU-202609-1313",
+      "email": "milagros.morales.313@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1314",
+      "received_at": "2026-09-03T03:00:00",
+      "reference": "PAGO-TRU-202609-1314",
+      "email": "nicolas.aguirre.314@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1315",
+      "received_at": "2026-09-03T10:00:00",
+      "reference": "PAGO-TRU-202609-1315",
+      "email": "olga.campos.315@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1316",
+      "received_at": "2026-09-03T17:00:00",
+      "reference": "PAGO-TRU-202609-1316",
+      "email": "paolo.cueva.316@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1317",
+      "received_at": "2026-09-04T00:00:00",
+      "reference": "PAGO-TRU-202609-1317",
+      "email": "rosa.fernandez.317@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1318",
+      "received_at": "2026-09-04T07:00:00",
+      "reference": "PAGO-TRU-202609-1318",
+      "email": "sergio.gonzales.318@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1319",
+      "received_at": "2026-09-04T14:00:00",
+      "reference": "PAGO-TRU-202609-1319",
+      "email": "tatiana.luna.319@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1320",
+      "received_at": "2026-09-04T21:00:00",
+      "reference": "PAGO-TRU-202609-1320",
+      "email": "victor.navarro.320@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1321",
+      "received_at": "2026-09-05T04:00:00",
+      "reference": "PAGO-TRU-202609-1321",
+      "email": "andrea.benites.321@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1322",
+      "received_at": "2026-09-05T11:00:00",
+      "reference": "PAGO-TRU-202609-1322",
+      "email": "bruno.castañeda.322@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1323",
+      "received_at": "2026-09-05T18:00:00",
+      "reference": "PAGO-TRU-202609-1323",
+      "email": "carla.diaz.323@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1324",
+      "received_at": "2026-09-06T01:00:00",
+      "reference": "PAGO-TRU-202609-1324",
+      "email": "daniel.flores.324@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1325",
+      "received_at": "2026-09-06T08:00:00",
+      "reference": "PAGO-TRU-202609-1325",
+      "email": "elena.herrera.325@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1326",
+      "received_at": "2026-09-06T15:00:00",
+      "reference": "PAGO-TRU-202609-1326",
+      "email": "fabian.mendoza.326@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1327",
+      "received_at": "2026-09-06T22:00:00",
+      "reference": "PAGO-TRU-202609-1327",
+      "email": "gabriela.acuna.327@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1328",
+      "received_at": "2026-09-07T05:00:00",
+      "reference": "PAGO-TRU-202609-1328",
+      "email": "hector.caballero.328@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1329",
+      "received_at": "2026-09-07T12:00:00",
+      "reference": "PAGO-TRU-202609-1329",
+      "email": "irene.cisneros.329@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1330",
+      "received_at": "2026-09-07T19:00:00",
+      "reference": "PAGO-TRU-202609-1330",
+      "email": "javier.espinoza.330@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1331",
+      "received_at": "2026-09-08T02:00:00",
+      "reference": "PAGO-TRU-202609-1331",
+      "email": "karina.gamarra.331@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1332",
+      "received_at": "2026-09-08T09:00:00",
+      "reference": "PAGO-TRU-202609-1332",
+      "email": "luis.huaman.332@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1333",
+      "received_at": "2026-09-08T16:00:00",
+      "reference": "PAGO-TRU-202609-1333",
+      "email": "milagros.morales.333@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1334",
+      "received_at": "2026-09-08T23:00:00",
+      "reference": "PAGO-TRU-202609-1334",
+      "email": "nicolas.aguirre.334@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1335",
+      "received_at": "2026-09-09T06:00:00",
+      "reference": "PAGO-TRU-202609-1335",
+      "email": "olga.campos.335@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1336",
+      "received_at": "2026-09-09T13:00:00",
+      "reference": "PAGO-TRU-202609-1336",
+      "email": "paolo.cueva.336@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1337",
+      "received_at": "2026-09-09T20:00:00",
+      "reference": "PAGO-TRU-202609-1337",
+      "email": "rosa.fernandez.337@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1338",
+      "received_at": "2026-09-10T03:00:00",
+      "reference": "PAGO-TRU-202609-1338",
+      "email": "sergio.gonzales.338@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1339",
+      "received_at": "2026-09-10T10:00:00",
+      "reference": "PAGO-TRU-202609-1339",
+      "email": "tatiana.luna.339@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1340",
+      "received_at": "2026-09-10T17:00:00",
+      "reference": "PAGO-TRU-202609-1340",
+      "email": "victor.navarro.340@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1341",
+      "received_at": "2026-09-11T00:00:00",
+      "reference": "PAGO-TRU-202609-1341",
+      "email": "andrea.benites.341@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1342",
+      "received_at": "2026-09-11T07:00:00",
+      "reference": "PAGO-TRU-202609-1342",
+      "email": "bruno.castañeda.342@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1343",
+      "received_at": "2026-09-11T14:00:00",
+      "reference": "PAGO-TRU-202609-1343",
+      "email": "carla.diaz.343@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1344",
+      "received_at": "2026-09-11T21:00:00",
+      "reference": "PAGO-TRU-202609-1344",
+      "email": "daniel.flores.344@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1345",
+      "received_at": "2026-09-12T04:00:00",
+      "reference": "PAGO-TRU-202609-1345",
+      "email": "elena.herrera.345@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1346",
+      "received_at": "2026-09-12T11:00:00",
+      "reference": "PAGO-TRU-202609-1346",
+      "email": "fabian.mendoza.346@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1347",
+      "received_at": "2026-09-12T18:00:00",
+      "reference": "PAGO-TRU-202609-1347",
+      "email": "gabriela.acuna.347@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1348",
+      "received_at": "2026-09-13T01:00:00",
+      "reference": "PAGO-TRU-202609-1348",
+      "email": "hector.caballero.348@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1349",
+      "received_at": "2026-09-13T08:00:00",
+      "reference": "PAGO-TRU-202609-1349",
+      "email": "irene.cisneros.349@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1350",
+      "received_at": "2026-09-13T15:00:00",
+      "reference": "PAGO-TRU-202609-1350",
+      "email": "javier.espinoza.350@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1351",
+      "received_at": "2026-09-13T22:00:00",
+      "reference": "PAGO-TRU-202609-1351",
+      "email": "karina.gamarra.351@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1352",
+      "received_at": "2026-09-14T05:00:00",
+      "reference": "PAGO-TRU-202609-1352",
+      "email": "luis.huaman.352@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1353",
+      "received_at": "2026-09-14T12:00:00",
+      "reference": "PAGO-TRU-202609-1353",
+      "email": "milagros.morales.353@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1354",
+      "received_at": "2026-09-14T19:00:00",
+      "reference": "PAGO-TRU-202609-1354",
+      "email": "nicolas.aguirre.354@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1355",
+      "received_at": "2026-09-15T02:00:00",
+      "reference": "PAGO-TRU-202609-1355",
+      "email": "olga.campos.355@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1356",
+      "received_at": "2026-09-15T09:00:00",
+      "reference": "PAGO-TRU-202609-1356",
+      "email": "paolo.cueva.356@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1357",
+      "received_at": "2026-09-15T16:00:00",
+      "reference": "PAGO-TRU-202609-1357",
+      "email": "rosa.fernandez.357@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1358",
+      "received_at": "2026-09-15T23:00:00",
+      "reference": "PAGO-TRU-202609-1358",
+      "email": "sergio.gonzales.358@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1359",
+      "received_at": "2026-09-16T06:00:00",
+      "reference": "PAGO-TRU-202609-1359",
+      "email": "tatiana.luna.359@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1360",
+      "received_at": "2026-09-16T13:00:00",
+      "reference": "PAGO-TRU-202609-1360",
+      "email": "victor.navarro.360@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1361",
+      "received_at": "2026-09-16T20:00:00",
+      "reference": "PAGO-TRU-202609-1361",
+      "email": "andrea.benites.361@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1362",
+      "received_at": "2026-09-17T03:00:00",
+      "reference": "PAGO-TRU-202609-1362",
+      "email": "bruno.castañeda.362@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1363",
+      "received_at": "2026-09-17T10:00:00",
+      "reference": "PAGO-TRU-202609-1363",
+      "email": "carla.diaz.363@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1364",
+      "received_at": "2026-09-17T17:00:00",
+      "reference": "PAGO-TRU-202609-1364",
+      "email": "daniel.flores.364@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1365",
+      "received_at": "2026-09-18T00:00:00",
+      "reference": "PAGO-TRU-202609-1365",
+      "email": "elena.herrera.365@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1366",
+      "received_at": "2026-09-18T07:00:00",
+      "reference": "PAGO-TRU-202609-1366",
+      "email": "fabian.mendoza.366@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1367",
+      "received_at": "2026-09-18T14:00:00",
+      "reference": "PAGO-TRU-202609-1367",
+      "email": "gabriela.acuna.367@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1368",
+      "received_at": "2026-09-18T21:00:00",
+      "reference": "PAGO-TRU-202609-1368",
+      "email": "hector.caballero.368@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1369",
+      "received_at": "2026-09-19T04:00:00",
+      "reference": "PAGO-TRU-202609-1369",
+      "email": "irene.cisneros.369@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1370",
+      "received_at": "2026-09-19T11:00:00",
+      "reference": "PAGO-TRU-202609-1370",
+      "email": "javier.espinoza.370@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1371",
+      "received_at": "2026-09-19T18:00:00",
+      "reference": "PAGO-TRU-202609-1371",
+      "email": "karina.gamarra.371@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1372",
+      "received_at": "2026-09-20T01:00:00",
+      "reference": "PAGO-TRU-202609-1372",
+      "email": "luis.huaman.372@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1373",
+      "received_at": "2026-09-20T08:00:00",
+      "reference": "PAGO-TRU-202609-1373",
+      "email": "milagros.morales.373@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1374",
+      "received_at": "2026-09-20T15:00:00",
+      "reference": "PAGO-TRU-202609-1374",
+      "email": "nicolas.aguirre.374@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1375",
+      "received_at": "2026-09-20T22:00:00",
+      "reference": "PAGO-TRU-202609-1375",
+      "email": "olga.campos.375@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1376",
+      "received_at": "2026-09-21T05:00:00",
+      "reference": "PAGO-TRU-202609-1376",
+      "email": "paolo.cueva.376@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1377",
+      "received_at": "2026-09-21T12:00:00",
+      "reference": "PAGO-TRU-202609-1377",
+      "email": "rosa.fernandez.377@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1378",
+      "received_at": "2026-09-21T19:00:00",
+      "reference": "PAGO-TRU-202609-1378",
+      "email": "sergio.gonzales.378@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1379",
+      "received_at": "2026-09-22T02:00:00",
+      "reference": "PAGO-TRU-202609-1379",
+      "email": "tatiana.luna.379@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1380",
+      "received_at": "2026-09-22T09:00:00",
+      "reference": "PAGO-TRU-202609-1380",
+      "email": "victor.navarro.380@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1381",
+      "received_at": "2026-09-22T16:00:00",
+      "reference": "PAGO-TRU-202609-1381",
+      "email": "andrea.benites.381@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1382",
+      "received_at": "2026-09-22T23:00:00",
+      "reference": "PAGO-TRU-202609-1382",
+      "email": "bruno.castañeda.382@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1383",
+      "received_at": "2026-09-23T06:00:00",
+      "reference": "PAGO-TRU-202609-1383",
+      "email": "carla.diaz.383@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1384",
+      "received_at": "2026-09-23T13:00:00",
+      "reference": "PAGO-TRU-202609-1384",
+      "email": "daniel.flores.384@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1385",
+      "received_at": "2026-09-23T20:00:00",
+      "reference": "PAGO-TRU-202609-1385",
+      "email": "elena.herrera.385@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1386",
+      "received_at": "2026-09-24T03:00:00",
+      "reference": "PAGO-TRU-202609-1386",
+      "email": "fabian.mendoza.386@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1387",
+      "received_at": "2026-09-24T10:00:00",
+      "reference": "PAGO-TRU-202609-1387",
+      "email": "gabriela.acuna.387@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1388",
+      "received_at": "2026-09-24T17:00:00",
+      "reference": "PAGO-TRU-202609-1388",
+      "email": "hector.caballero.388@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1389",
+      "received_at": "2026-09-25T00:00:00",
+      "reference": "PAGO-TRU-202609-1389",
+      "email": "irene.cisneros.389@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1390",
+      "received_at": "2026-09-25T07:00:00",
+      "reference": "PAGO-TRU-202609-1390",
+      "email": "javier.espinoza.390@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1391",
+      "received_at": "2026-09-25T14:00:00",
+      "reference": "PAGO-TRU-202609-1391",
+      "email": "karina.gamarra.391@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1392",
+      "received_at": "2026-09-25T21:00:00",
+      "reference": "PAGO-TRU-202609-1392",
+      "email": "luis.huaman.392@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1393",
+      "received_at": "2026-09-26T04:00:00",
+      "reference": "PAGO-TRU-202609-1393",
+      "email": "milagros.morales.393@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1394",
+      "received_at": "2026-09-26T11:00:00",
+      "reference": "PAGO-TRU-202609-1394",
+      "email": "nicolas.aguirre.394@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1395",
+      "received_at": "2026-09-26T18:00:00",
+      "reference": "PAGO-TRU-202609-1395",
+      "email": "olga.campos.395@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1396",
+      "received_at": "2026-09-27T01:00:00",
+      "reference": "PAGO-TRU-202609-1396",
+      "email": "paolo.cueva.396@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1397",
+      "received_at": "2026-09-27T08:00:00",
+      "reference": "PAGO-TRU-202609-1397",
+      "email": "rosa.fernandez.397@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1398",
+      "received_at": "2026-09-27T15:00:00",
+      "reference": "PAGO-TRU-202609-1398",
+      "email": "sergio.gonzales.398@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1399",
+      "received_at": "2026-09-27T22:00:00",
+      "reference": "PAGO-TRU-202609-1399",
+      "email": "tatiana.luna.399@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1400",
+      "received_at": "2026-09-28T05:00:00",
+      "reference": "PAGO-TRU-202609-1400",
+      "email": "victor.navarro.400@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1401",
+      "received_at": "2026-09-28T12:00:00",
+      "reference": "PAGO-TRU-202609-1401",
+      "email": "andrea.benites.401@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1402",
+      "received_at": "2026-09-28T19:00:00",
+      "reference": "PAGO-TRU-202609-1402",
+      "email": "bruno.castañeda.402@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1403",
+      "received_at": "2026-09-29T02:00:00",
+      "reference": "PAGO-TRU-202609-1403",
+      "email": "carla.diaz.403@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1404",
+      "received_at": "2026-09-29T09:00:00",
+      "reference": "PAGO-TRU-202609-1404",
+      "email": "daniel.flores.404@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1405",
+      "received_at": "2026-09-29T16:00:00",
+      "reference": "PAGO-TRU-202609-1405",
+      "email": "elena.herrera.405@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1406",
+      "received_at": "2026-09-29T23:00:00",
+      "reference": "PAGO-TRU-202609-1406",
+      "email": "fabian.mendoza.406@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1407",
+      "received_at": "2026-09-30T06:00:00",
+      "reference": "PAGO-TRU-202609-1407",
+      "email": "gabriela.acuna.407@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1408",
+      "received_at": "2026-09-30T13:00:00",
+      "reference": "PAGO-TRU-202609-1408",
+      "email": "hector.caballero.408@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1409",
+      "received_at": "2026-09-30T20:00:00",
+      "reference": "PAGO-TRU-202609-1409",
+      "email": "irene.cisneros.409@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1410",
+      "received_at": "2026-10-01T03:00:00",
+      "reference": "PAGO-TRU-202609-1410",
+      "email": "javier.espinoza.410@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1411",
+      "received_at": "2026-09-01T11:00:00",
+      "reference": "PAGO-TRU-202609-1411",
+      "email": "karina.gamarra.411@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1412",
+      "received_at": "2026-09-01T18:00:00",
+      "reference": "PAGO-TRU-202609-1412",
+      "email": "luis.huaman.412@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1413",
+      "received_at": "2026-09-02T01:00:00",
+      "reference": "PAGO-TRU-202609-1413",
+      "email": "milagros.morales.413@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1414",
+      "received_at": "2026-09-02T08:00:00",
+      "reference": "PAGO-TRU-202609-1414",
+      "email": "nicolas.aguirre.414@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1415",
+      "received_at": "2026-09-02T15:00:00",
+      "reference": "PAGO-TRU-202609-1415",
+      "email": "olga.campos.415@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1416",
+      "received_at": "2026-09-02T22:00:00",
+      "reference": "PAGO-TRU-202609-1416",
+      "email": "paolo.cueva.416@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1417",
+      "received_at": "2026-09-03T05:00:00",
+      "reference": "PAGO-TRU-202609-1417",
+      "email": "rosa.fernandez.417@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1418",
+      "received_at": "2026-09-03T12:00:00",
+      "reference": "PAGO-TRU-202609-1418",
+      "email": "sergio.gonzales.418@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1419",
+      "received_at": "2026-09-03T19:00:00",
+      "reference": "PAGO-TRU-202609-1419",
+      "email": "tatiana.luna.419@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1420",
+      "received_at": "2026-09-04T02:00:00",
+      "reference": "PAGO-TRU-202609-1420",
+      "email": "victor.navarro.420@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1421",
+      "received_at": "2026-09-04T09:00:00",
+      "reference": "PAGO-TRU-202609-1421",
+      "email": "andrea.benites.421@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1422",
+      "received_at": "2026-09-04T16:00:00",
+      "reference": "PAGO-TRU-202609-1422",
+      "email": "bruno.castañeda.422@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1423",
+      "received_at": "2026-09-04T23:00:00",
+      "reference": "PAGO-TRU-202609-1423",
+      "email": "carla.diaz.423@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1424",
+      "received_at": "2026-09-05T06:00:00",
+      "reference": "PAGO-TRU-202609-1424",
+      "email": "daniel.flores.424@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1425",
+      "received_at": "2026-09-05T13:00:00",
+      "reference": "PAGO-TRU-202609-1425",
+      "email": "elena.herrera.425@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1426",
+      "received_at": "2026-09-05T20:00:00",
+      "reference": "PAGO-TRU-202609-1426",
+      "email": "fabian.mendoza.426@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1427",
+      "received_at": "2026-09-06T03:00:00",
+      "reference": "PAGO-TRU-202609-1427",
+      "email": "gabriela.acuna.427@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1428",
+      "received_at": "2026-09-06T10:00:00",
+      "reference": "PAGO-TRU-202609-1428",
+      "email": "hector.caballero.428@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1429",
+      "received_at": "2026-09-06T17:00:00",
+      "reference": "PAGO-TRU-202609-1429",
+      "email": "irene.cisneros.429@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1430",
+      "received_at": "2026-09-07T00:00:00",
+      "reference": "PAGO-TRU-202609-1430",
+      "email": "javier.espinoza.430@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1431",
+      "received_at": "2026-09-07T07:00:00",
+      "reference": "PAGO-TRU-202609-1431",
+      "email": "karina.gamarra.431@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1432",
+      "received_at": "2026-09-07T14:00:00",
+      "reference": "PAGO-TRU-202609-1432",
+      "email": "luis.huaman.432@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1433",
+      "received_at": "2026-09-07T21:00:00",
+      "reference": "PAGO-TRU-202609-1433",
+      "email": "milagros.morales.433@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1434",
+      "received_at": "2026-09-08T04:00:00",
+      "reference": "PAGO-TRU-202609-1434",
+      "email": "nicolas.aguirre.434@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1435",
+      "received_at": "2026-09-08T11:00:00",
+      "reference": "PAGO-TRU-202609-1435",
+      "email": "olga.campos.435@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1436",
+      "received_at": "2026-09-08T18:00:00",
+      "reference": "PAGO-TRU-202609-1436",
+      "email": "paolo.cueva.436@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1437",
+      "received_at": "2026-09-09T01:00:00",
+      "reference": "PAGO-TRU-202609-1437",
+      "email": "rosa.fernandez.437@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1438",
+      "received_at": "2026-09-09T08:00:00",
+      "reference": "PAGO-TRU-202609-1438",
+      "email": "sergio.gonzales.438@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1439",
+      "received_at": "2026-09-09T15:00:00",
+      "reference": "PAGO-TRU-202609-1439",
+      "email": "tatiana.luna.439@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1440",
+      "received_at": "2026-09-09T22:00:00",
+      "reference": "PAGO-TRU-202609-1440",
+      "email": "victor.navarro.440@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1441",
+      "received_at": "2026-09-10T05:00:00",
+      "reference": "PAGO-TRU-202609-1441",
+      "email": "andrea.benites.441@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1442",
+      "received_at": "2026-09-10T12:00:00",
+      "reference": "PAGO-TRU-202609-1442",
+      "email": "bruno.castañeda.442@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1443",
+      "received_at": "2026-09-10T19:00:00",
+      "reference": "PAGO-TRU-202609-1443",
+      "email": "carla.diaz.443@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1444",
+      "received_at": "2026-09-11T02:00:00",
+      "reference": "PAGO-TRU-202609-1444",
+      "email": "daniel.flores.444@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1445",
+      "received_at": "2026-09-11T09:00:00",
+      "reference": "PAGO-TRU-202609-1445",
+      "email": "elena.herrera.445@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1446",
+      "received_at": "2026-09-11T16:00:00",
+      "reference": "PAGO-TRU-202609-1446",
+      "email": "fabian.mendoza.446@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1447",
+      "received_at": "2026-09-11T23:00:00",
+      "reference": "PAGO-TRU-202609-1447",
+      "email": "gabriela.acuna.447@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1448",
+      "received_at": "2026-09-12T06:00:00",
+      "reference": "PAGO-TRU-202609-1448",
+      "email": "hector.caballero.448@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1449",
+      "received_at": "2026-09-12T13:00:00",
+      "reference": "PAGO-TRU-202609-1449",
+      "email": "irene.cisneros.449@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1450",
+      "received_at": "2026-09-12T20:00:00",
+      "reference": "PAGO-TRU-202609-1450",
+      "email": "javier.espinoza.450@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1451",
+      "received_at": "2026-09-13T03:00:00",
+      "reference": "PAGO-TRU-202609-1451",
+      "email": "karina.gamarra.451@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1452",
+      "received_at": "2026-09-13T10:00:00",
+      "reference": "PAGO-TRU-202609-1452",
+      "email": "luis.huaman.452@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1453",
+      "received_at": "2026-09-13T17:00:00",
+      "reference": "PAGO-TRU-202609-1453",
+      "email": "milagros.morales.453@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1454",
+      "received_at": "2026-09-14T00:00:00",
+      "reference": "PAGO-TRU-202609-1454",
+      "email": "nicolas.aguirre.454@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1455",
+      "received_at": "2026-09-14T07:00:00",
+      "reference": "PAGO-TRU-202609-1455",
+      "email": "olga.campos.455@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1456",
+      "received_at": "2026-09-14T14:00:00",
+      "reference": "PAGO-TRU-202609-1456",
+      "email": "paolo.cueva.456@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1457",
+      "received_at": "2026-09-14T21:00:00",
+      "reference": "PAGO-TRU-202609-1457",
+      "email": "rosa.fernandez.457@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1458",
+      "received_at": "2026-09-15T04:00:00",
+      "reference": "PAGO-TRU-202609-1458",
+      "email": "sergio.gonzales.458@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1459",
+      "received_at": "2026-09-15T11:00:00",
+      "reference": "PAGO-TRU-202609-1459",
+      "email": "tatiana.luna.459@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1460",
+      "received_at": "2026-09-15T18:00:00",
+      "reference": "PAGO-TRU-202609-1460",
+      "email": "victor.navarro.460@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1461",
+      "received_at": "2026-09-16T01:00:00",
+      "reference": "PAGO-TRU-202609-1461",
+      "email": "andrea.benites.461@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1462",
+      "received_at": "2026-09-16T08:00:00",
+      "reference": "PAGO-TRU-202609-1462",
+      "email": "bruno.castañeda.462@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1463",
+      "received_at": "2026-09-16T15:00:00",
+      "reference": "PAGO-TRU-202609-1463",
+      "email": "carla.diaz.463@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1464",
+      "received_at": "2026-09-16T22:00:00",
+      "reference": "PAGO-TRU-202609-1464",
+      "email": "daniel.flores.464@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1465",
+      "received_at": "2026-09-17T05:00:00",
+      "reference": "PAGO-TRU-202609-1465",
+      "email": "elena.herrera.465@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1466",
+      "received_at": "2026-09-17T12:00:00",
+      "reference": "PAGO-TRU-202609-1466",
+      "email": "fabian.mendoza.466@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1467",
+      "received_at": "2026-09-17T19:00:00",
+      "reference": "PAGO-TRU-202609-1467",
+      "email": "gabriela.acuna.467@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1468",
+      "received_at": "2026-09-18T02:00:00",
+      "reference": "PAGO-TRU-202609-1468",
+      "email": "hector.caballero.468@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1469",
+      "received_at": "2026-09-18T09:00:00",
+      "reference": "PAGO-TRU-202609-1469",
+      "email": "irene.cisneros.469@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1470",
+      "received_at": "2026-09-18T16:00:00",
+      "reference": "PAGO-TRU-202609-1470",
+      "email": "javier.espinoza.470@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1471",
+      "received_at": "2026-09-18T23:00:00",
+      "reference": "PAGO-TRU-202609-1471",
+      "email": "karina.gamarra.471@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1472",
+      "received_at": "2026-09-19T06:00:00",
+      "reference": "PAGO-TRU-202609-1472",
+      "email": "luis.huaman.472@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1473",
+      "received_at": "2026-09-19T13:00:00",
+      "reference": "PAGO-TRU-202609-1473",
+      "email": "milagros.morales.473@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1474",
+      "received_at": "2026-09-19T20:00:00",
+      "reference": "PAGO-TRU-202609-1474",
+      "email": "nicolas.aguirre.474@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1475",
+      "received_at": "2026-09-20T03:00:00",
+      "reference": "PAGO-TRU-202609-1475",
+      "email": "olga.campos.475@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1476",
+      "received_at": "2026-09-20T10:00:00",
+      "reference": "PAGO-TRU-202609-1476",
+      "email": "paolo.cueva.476@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1477",
+      "received_at": "2026-09-20T17:00:00",
+      "reference": "PAGO-TRU-202609-1477",
+      "email": "rosa.fernandez.477@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1478",
+      "received_at": "2026-09-21T00:00:00",
+      "reference": "PAGO-TRU-202609-1478",
+      "email": "sergio.gonzales.478@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1479",
+      "received_at": "2026-09-21T07:00:00",
+      "reference": "PAGO-TRU-202609-1479",
+      "email": "tatiana.luna.479@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1480",
+      "received_at": "2026-09-21T14:00:00",
+      "reference": "PAGO-TRU-202609-1480",
+      "email": "victor.navarro.480@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1481",
+      "received_at": "2026-09-21T21:00:00",
+      "reference": "PAGO-TRU-202609-1481",
+      "email": "andrea.benites.481@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1482",
+      "received_at": "2026-09-22T04:00:00",
+      "reference": "PAGO-TRU-202609-1482",
+      "email": "bruno.castañeda.482@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1483",
+      "received_at": "2026-09-22T11:00:00",
+      "reference": "PAGO-TRU-202609-1483",
+      "email": "carla.diaz.483@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1484",
+      "received_at": "2026-09-22T18:00:00",
+      "reference": "PAGO-TRU-202609-1484",
+      "email": "daniel.flores.484@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1485",
+      "received_at": "2026-09-23T01:00:00",
+      "reference": "PAGO-TRU-202609-1485",
+      "email": "elena.herrera.485@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1486",
+      "received_at": "2026-09-23T08:00:00",
+      "reference": "PAGO-TRU-202609-1486",
+      "email": "fabian.mendoza.486@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1487",
+      "received_at": "2026-09-23T15:00:00",
+      "reference": "PAGO-TRU-202609-1487",
+      "email": "gabriela.acuna.487@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1488",
+      "received_at": "2026-09-23T22:00:00",
+      "reference": "PAGO-TRU-202609-1488",
+      "email": "hector.caballero.488@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1489",
+      "received_at": "2026-09-24T05:00:00",
+      "reference": "PAGO-TRU-202609-1489",
+      "email": "irene.cisneros.489@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1490",
+      "received_at": "2026-09-24T12:00:00",
+      "reference": "PAGO-TRU-202609-1490",
+      "email": "javier.espinoza.490@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1491",
+      "received_at": "2026-09-24T19:00:00",
+      "reference": "PAGO-TRU-202609-1491",
+      "email": "karina.gamarra.491@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1492",
+      "received_at": "2026-09-25T02:00:00",
+      "reference": "PAGO-TRU-202609-1492",
+      "email": "luis.huaman.492@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1493",
+      "received_at": "2026-09-25T09:00:00",
+      "reference": "PAGO-TRU-202609-1493",
+      "email": "milagros.morales.493@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1494",
+      "received_at": "2026-09-25T16:00:00",
+      "reference": "PAGO-TRU-202609-1494",
+      "email": "nicolas.aguirre.494@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1495",
+      "received_at": "2026-09-25T23:00:00",
+      "reference": "PAGO-TRU-202609-1495",
+      "email": "olga.campos.495@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1496",
+      "received_at": "2026-09-26T06:00:00",
+      "reference": "PAGO-TRU-202609-1496",
+      "email": "paolo.cueva.496@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1497",
+      "received_at": "2026-09-26T13:00:00",
+      "reference": "PAGO-TRU-202609-1497",
+      "email": "rosa.fernandez.497@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1498",
+      "received_at": "2026-09-26T20:00:00",
+      "reference": "PAGO-TRU-202609-1498",
+      "email": "sergio.gonzales.498@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1499",
+      "received_at": "2026-09-27T03:00:00",
+      "reference": "PAGO-TRU-202609-1499",
+      "email": "tatiana.luna.499@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1500",
+      "received_at": "2026-09-27T10:00:00",
+      "reference": "PAGO-TRU-202609-1500",
+      "email": "victor.navarro.500@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1501",
+      "received_at": "2026-09-27T17:00:00",
+      "reference": "PAGO-TRU-202609-1501",
+      "email": "andrea.benites.501@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1502",
+      "received_at": "2026-09-28T00:00:00",
+      "reference": "PAGO-TRU-202609-1502",
+      "email": "bruno.castañeda.502@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1503",
+      "received_at": "2026-09-28T07:00:00",
+      "reference": "PAGO-TRU-202609-1503",
+      "email": "carla.diaz.503@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1504",
+      "received_at": "2026-09-28T14:00:00",
+      "reference": "PAGO-TRU-202609-1504",
+      "email": "daniel.flores.504@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1505",
+      "received_at": "2026-09-28T21:00:00",
+      "reference": "PAGO-TRU-202609-1505",
+      "email": "elena.herrera.505@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1506",
+      "received_at": "2026-09-29T04:00:00",
+      "reference": "PAGO-TRU-202609-1506",
+      "email": "fabian.mendoza.506@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1507",
+      "received_at": "2026-09-29T11:00:00",
+      "reference": "PAGO-TRU-202609-1507",
+      "email": "gabriela.acuna.507@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1508",
+      "received_at": "2026-09-29T18:00:00",
+      "reference": "PAGO-TRU-202609-1508",
+      "email": "hector.caballero.508@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1509",
+      "received_at": "2026-09-30T01:00:00",
+      "reference": "PAGO-TRU-202609-1509",
+      "email": "irene.cisneros.509@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1510",
+      "received_at": "2026-09-30T08:00:00",
+      "reference": "PAGO-TRU-202609-1510",
+      "email": "javier.espinoza.510@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1511",
+      "received_at": "2026-09-30T15:00:00",
+      "reference": "PAGO-TRU-202609-1511",
+      "email": "karina.gamarra.511@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1512",
+      "received_at": "2026-09-30T22:00:00",
+      "reference": "PAGO-TRU-202609-1512",
+      "email": "luis.huaman.512@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1513",
+      "received_at": "2026-10-01T05:00:00",
+      "reference": "PAGO-TRU-202609-1513",
+      "email": "milagros.morales.513@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1514",
+      "received_at": "2026-09-01T13:00:00",
+      "reference": "PAGO-TRU-202609-1514",
+      "email": "nicolas.aguirre.514@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1515",
+      "received_at": "2026-09-01T20:00:00",
+      "reference": "PAGO-TRU-202609-1515",
+      "email": "olga.campos.515@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1516",
+      "received_at": "2026-09-02T03:00:00",
+      "reference": "PAGO-TRU-202609-1516",
+      "email": "paolo.cueva.516@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1517",
+      "received_at": "2026-09-02T10:00:00",
+      "reference": "PAGO-TRU-202609-1517",
+      "email": "rosa.fernandez.517@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1518",
+      "received_at": "2026-09-02T17:00:00",
+      "reference": "PAGO-TRU-202609-1518",
+      "email": "sergio.gonzales.518@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1519",
+      "received_at": "2026-09-03T00:00:00",
+      "reference": "PAGO-TRU-202609-1519",
+      "email": "tatiana.luna.519@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1520",
+      "received_at": "2026-09-03T07:00:00",
+      "reference": "PAGO-TRU-202609-1520",
+      "email": "victor.navarro.520@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1521",
+      "received_at": "2026-09-03T14:00:00",
+      "reference": "PAGO-TRU-202609-1521",
+      "email": "andrea.benites.521@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1522",
+      "received_at": "2026-09-03T21:00:00",
+      "reference": "PAGO-TRU-202609-1522",
+      "email": "bruno.castañeda.522@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1523",
+      "received_at": "2026-09-04T04:00:00",
+      "reference": "PAGO-TRU-202609-1523",
+      "email": "carla.diaz.523@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1524",
+      "received_at": "2026-09-04T11:00:00",
+      "reference": "PAGO-TRU-202609-1524",
+      "email": "daniel.flores.524@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1525",
+      "received_at": "2026-09-04T18:00:00",
+      "reference": "PAGO-TRU-202609-1525",
+      "email": "elena.herrera.525@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1526",
+      "received_at": "2026-09-05T01:00:00",
+      "reference": "PAGO-TRU-202609-1526",
+      "email": "fabian.mendoza.526@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1527",
+      "received_at": "2026-09-05T08:00:00",
+      "reference": "PAGO-TRU-202609-1527",
+      "email": "gabriela.acuna.527@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1528",
+      "received_at": "2026-09-05T15:00:00",
+      "reference": "PAGO-TRU-202609-1528",
+      "email": "hector.caballero.528@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1529",
+      "received_at": "2026-09-05T22:00:00",
+      "reference": "PAGO-TRU-202609-1529",
+      "email": "irene.cisneros.529@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1530",
+      "received_at": "2026-09-06T05:00:00",
+      "reference": "PAGO-TRU-202609-1530",
+      "email": "javier.espinoza.530@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1531",
+      "received_at": "2026-09-06T12:00:00",
+      "reference": "PAGO-TRU-202609-1531",
+      "email": "karina.gamarra.531@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1532",
+      "received_at": "2026-09-06T19:00:00",
+      "reference": "PAGO-TRU-202609-1532",
+      "email": "luis.huaman.532@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1533",
+      "received_at": "2026-09-07T02:00:00",
+      "reference": "PAGO-TRU-202609-1533",
+      "email": "milagros.morales.533@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1534",
+      "received_at": "2026-09-07T09:00:00",
+      "reference": "PAGO-TRU-202609-1534",
+      "email": "nicolas.aguirre.534@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1535",
+      "received_at": "2026-09-07T16:00:00",
+      "reference": "PAGO-TRU-202609-1535",
+      "email": "olga.campos.535@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1536",
+      "received_at": "2026-09-07T23:00:00",
+      "reference": "PAGO-TRU-202609-1536",
+      "email": "paolo.cueva.536@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1537",
+      "received_at": "2026-09-08T06:00:00",
+      "reference": "PAGO-TRU-202609-1537",
+      "email": "rosa.fernandez.537@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1538",
+      "received_at": "2026-09-08T13:00:00",
+      "reference": "PAGO-TRU-202609-1538",
+      "email": "sergio.gonzales.538@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1539",
+      "received_at": "2026-09-08T20:00:00",
+      "reference": "PAGO-TRU-202609-1539",
+      "email": "tatiana.luna.539@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1540",
+      "received_at": "2026-09-09T03:00:00",
+      "reference": "PAGO-TRU-202609-1540",
+      "email": "victor.navarro.540@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1541",
+      "received_at": "2026-09-09T10:00:00",
+      "reference": "PAGO-TRU-202609-1541",
+      "email": "andrea.benites.541@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1542",
+      "received_at": "2026-09-09T17:00:00",
+      "reference": "PAGO-TRU-202609-1542",
+      "email": "bruno.castañeda.542@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1543",
+      "received_at": "2026-09-10T00:00:00",
+      "reference": "PAGO-TRU-202609-1543",
+      "email": "carla.diaz.543@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1544",
+      "received_at": "2026-09-10T07:00:00",
+      "reference": "PAGO-TRU-202609-1544",
+      "email": "daniel.flores.544@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1545",
+      "received_at": "2026-09-10T14:00:00",
+      "reference": "PAGO-TRU-202609-1545",
+      "email": "elena.herrera.545@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1546",
+      "received_at": "2026-09-10T21:00:00",
+      "reference": "PAGO-TRU-202609-1546",
+      "email": "fabian.mendoza.546@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1547",
+      "received_at": "2026-09-11T04:00:00",
+      "reference": "PAGO-TRU-202609-1547",
+      "email": "gabriela.acuna.547@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1548",
+      "received_at": "2026-09-11T11:00:00",
+      "reference": "PAGO-TRU-202609-1548",
+      "email": "hector.caballero.548@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1549",
+      "received_at": "2026-09-11T18:00:00",
+      "reference": "PAGO-TRU-202609-1549",
+      "email": "irene.cisneros.549@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1550",
+      "received_at": "2026-09-12T01:00:00",
+      "reference": "PAGO-TRU-202609-1550",
+      "email": "javier.espinoza.550@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1551",
+      "received_at": "2026-09-12T08:00:00",
+      "reference": "PAGO-TRU-202609-1551",
+      "email": "karina.gamarra.551@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1552",
+      "received_at": "2026-09-12T15:00:00",
+      "reference": "PAGO-TRU-202609-1552",
+      "email": "luis.huaman.552@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1553",
+      "received_at": "2026-09-12T22:00:00",
+      "reference": "PAGO-TRU-202609-1553",
+      "email": "milagros.morales.553@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1554",
+      "received_at": "2026-09-13T05:00:00",
+      "reference": "PAGO-TRU-202609-1554",
+      "email": "nicolas.aguirre.554@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1555",
+      "received_at": "2026-09-13T12:00:00",
+      "reference": "PAGO-TRU-202609-1555",
+      "email": "olga.campos.555@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1556",
+      "received_at": "2026-09-13T19:00:00",
+      "reference": "PAGO-TRU-202609-1556",
+      "email": "paolo.cueva.556@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1557",
+      "received_at": "2026-09-14T02:00:00",
+      "reference": "PAGO-TRU-202609-1557",
+      "email": "rosa.fernandez.557@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1558",
+      "received_at": "2026-09-14T09:00:00",
+      "reference": "PAGO-TRU-202609-1558",
+      "email": "sergio.gonzales.558@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1559",
+      "received_at": "2026-09-14T16:00:00",
+      "reference": "PAGO-TRU-202609-1559",
+      "email": "tatiana.luna.559@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1560",
+      "received_at": "2026-09-14T23:00:00",
+      "reference": "PAGO-TRU-202609-1560",
+      "email": "victor.navarro.560@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1561",
+      "received_at": "2026-09-15T06:00:00",
+      "reference": "PAGO-TRU-202609-1561",
+      "email": "andrea.benites.561@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1562",
+      "received_at": "2026-09-15T13:00:00",
+      "reference": "PAGO-TRU-202609-1562",
+      "email": "bruno.castañeda.562@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1563",
+      "received_at": "2026-09-15T20:00:00",
+      "reference": "PAGO-TRU-202609-1563",
+      "email": "carla.diaz.563@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1564",
+      "received_at": "2026-09-16T03:00:00",
+      "reference": "PAGO-TRU-202609-1564",
+      "email": "daniel.flores.564@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1565",
+      "received_at": "2026-09-16T10:00:00",
+      "reference": "PAGO-TRU-202609-1565",
+      "email": "elena.herrera.565@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1566",
+      "received_at": "2026-09-16T17:00:00",
+      "reference": "PAGO-TRU-202609-1566",
+      "email": "fabian.mendoza.566@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1567",
+      "received_at": "2026-09-17T00:00:00",
+      "reference": "PAGO-TRU-202609-1567",
+      "email": "gabriela.acuna.567@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1568",
+      "received_at": "2026-09-17T07:00:00",
+      "reference": "PAGO-TRU-202609-1568",
+      "email": "hector.caballero.568@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1569",
+      "received_at": "2026-09-17T14:00:00",
+      "reference": "PAGO-TRU-202609-1569",
+      "email": "irene.cisneros.569@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1570",
+      "received_at": "2026-09-17T21:00:00",
+      "reference": "PAGO-TRU-202609-1570",
+      "email": "javier.espinoza.570@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1571",
+      "received_at": "2026-09-18T04:00:00",
+      "reference": "PAGO-TRU-202609-1571",
+      "email": "karina.gamarra.571@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1572",
+      "received_at": "2026-09-18T11:00:00",
+      "reference": "PAGO-TRU-202609-1572",
+      "email": "luis.huaman.572@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1573",
+      "received_at": "2026-09-18T18:00:00",
+      "reference": "PAGO-TRU-202609-1573",
+      "email": "milagros.morales.573@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1574",
+      "received_at": "2026-09-19T01:00:00",
+      "reference": "PAGO-TRU-202609-1574",
+      "email": "nicolas.aguirre.574@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1575",
+      "received_at": "2026-09-19T08:00:00",
+      "reference": "PAGO-TRU-202609-1575",
+      "email": "olga.campos.575@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1576",
+      "received_at": "2026-09-19T15:00:00",
+      "reference": "PAGO-TRU-202609-1576",
+      "email": "paolo.cueva.576@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1577",
+      "received_at": "2026-09-19T22:00:00",
+      "reference": "PAGO-TRU-202609-1577",
+      "email": "rosa.fernandez.577@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1578",
+      "received_at": "2026-09-20T05:00:00",
+      "reference": "PAGO-TRU-202609-1578",
+      "email": "sergio.gonzales.578@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1579",
+      "received_at": "2026-09-20T12:00:00",
+      "reference": "PAGO-TRU-202609-1579",
+      "email": "tatiana.luna.579@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1580",
+      "received_at": "2026-09-20T19:00:00",
+      "reference": "PAGO-TRU-202609-1580",
+      "email": "victor.navarro.580@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1581",
+      "received_at": "2026-09-21T02:00:00",
+      "reference": "PAGO-TRU-202609-1581",
+      "email": "andrea.benites.581@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1582",
+      "received_at": "2026-09-21T09:00:00",
+      "reference": "PAGO-TRU-202609-1582",
+      "email": "bruno.castañeda.582@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1583",
+      "received_at": "2026-09-21T16:00:00",
+      "reference": "PAGO-TRU-202609-1583",
+      "email": "carla.diaz.583@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1584",
+      "received_at": "2026-09-21T23:00:00",
+      "reference": "PAGO-TRU-202609-1584",
+      "email": "daniel.flores.584@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1585",
+      "received_at": "2026-09-22T06:00:00",
+      "reference": "PAGO-TRU-202609-1585",
+      "email": "elena.herrera.585@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1586",
+      "received_at": "2026-09-22T13:00:00",
+      "reference": "PAGO-TRU-202609-1586",
+      "email": "fabian.mendoza.586@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1587",
+      "received_at": "2026-09-22T20:00:00",
+      "reference": "PAGO-TRU-202609-1587",
+      "email": "gabriela.acuna.587@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1588",
+      "received_at": "2026-09-23T03:00:00",
+      "reference": "PAGO-TRU-202609-1588",
+      "email": "hector.caballero.588@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1589",
+      "received_at": "2026-09-23T10:00:00",
+      "reference": "PAGO-TRU-202609-1589",
+      "email": "irene.cisneros.589@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1590",
+      "received_at": "2026-09-23T17:00:00",
+      "reference": "PAGO-TRU-202609-1590",
+      "email": "javier.espinoza.590@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1591",
+      "received_at": "2026-09-24T00:00:00",
+      "reference": "PAGO-TRU-202609-1591",
+      "email": "karina.gamarra.591@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1592",
+      "received_at": "2026-09-24T07:00:00",
+      "reference": "PAGO-TRU-202609-1592",
+      "email": "luis.huaman.592@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1593",
+      "received_at": "2026-09-24T14:00:00",
+      "reference": "PAGO-TRU-202609-1593",
+      "email": "milagros.morales.593@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1594",
+      "received_at": "2026-09-24T21:00:00",
+      "reference": "PAGO-TRU-202609-1594",
+      "email": "nicolas.aguirre.594@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1595",
+      "received_at": "2026-09-25T04:00:00",
+      "reference": "PAGO-TRU-202609-1595",
+      "email": "olga.campos.595@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "rejected"
+    },
+    {
+      "event_id": "pay-tru-1596",
+      "received_at": "2026-09-25T11:00:00",
+      "reference": "PAGO-TRU-202609-1596",
+      "email": "paolo.cueva.596@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1597",
+      "received_at": "2026-09-25T18:00:00",
+      "reference": "PAGO-TRU-202609-1597",
+      "email": "rosa.fernandez.597@example.com",
+      "amount": 60.0,
+      "payment_channel": "MercadoPago",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1598",
+      "received_at": "2026-09-26T01:00:00",
+      "reference": "PAGO-TRU-202609-1598",
+      "email": "sergio.gonzales.598@example.com",
+      "amount": 100.0,
+      "payment_channel": "Yape",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1599",
+      "received_at": "2026-09-26T08:00:00",
+      "reference": "PAGO-TRU-202609-1599",
+      "email": "tatiana.luna.599@example.com",
+      "amount": 150.0,
+      "payment_channel": "Plin",
+      "status": "approved"
+    },
+    {
+      "event_id": "pay-tru-1600",
+      "received_at": "2026-09-26T15:00:00",
+      "reference": "PAGO-TRU-202609-1600",
+      "email": "victor.navarro.600@example.com",
+      "amount": 350.0,
+      "payment_channel": "Transferencia bancaria",
+      "status": "rejected"
+    }
+  ]
+}
