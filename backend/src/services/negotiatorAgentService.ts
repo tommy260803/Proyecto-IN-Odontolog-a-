@@ -26,6 +26,7 @@ export interface NegotiatorDispatchResult {
   flyerUrl: string;
   emailSent: boolean;
   canvaSource: string;
+  templateId: string;
   generatedCopy: string;
   details?: any;
 }
@@ -40,7 +41,7 @@ export async function executeNegotiatorAndDispatch(data: NegotiatorDispatchReque
   const sede = data.sedeName || 'Sede Principal';
   const price = data.price || 150;
   const originalPrice = data.originalPrice || Math.round(price * 1.25);
-  const discount = data.discountPercentage || 20;
+  const discount = data.discountPercentage || 25;
 
   // 1. Redacción persuasiva del Agente de IA
   const persuasiveCopy = data.persuasiveCopy || 
@@ -51,7 +52,7 @@ export async function executeNegotiatorAndDispatch(data: NegotiatorDispatchReque
     `⏳ **Vigencia Exclusiva:** ${data.urgencyText || 'Cupo reservado únicamente por las próximas 48 horas'}.\n\n` +
     `Adjuntamos tu credencial / flyer promocional personalizado. Para confirmar tu horario preferido con el especialista, pulsa el botón en el correo o responde a este mensaje.`;
 
-  // 2. Generar Flyer con Canva Connect API (Autofill)
+  // 2. Generar Flyer con Canva Connect API (Autofill) usando la plantilla maestra EAHWLEXZ1lo
   const canvaResult = await generateCanvaFlyer({
     patientName: patient,
     serviceName: service,
@@ -139,7 +140,7 @@ export async function executeNegotiatorAndDispatch(data: NegotiatorDispatchReque
           data: {
             id_persona: numId,
             tipo: 'Oferta Canva & Negociación IA',
-            mensaje: `[Agente Negociador] Enviado flyer Canva (${canvaResult.source}) con propuesta de S/ ${price} para ${service} en ${sede}. Email enviado: ${emailSent ? 'Sí' : 'No (Simulación)'}`,
+            mensaje: `[Agente Negociador] Enviado flyer Canva (${canvaResult.source} / ${canvaResult.templateId}) con propuesta de S/ ${price} para ${service} en ${sede}. Email enviado: ${emailSent ? 'Sí' : 'No (Simulación)'}`,
             id_canal: canalEmail?.id_canal || 1,
           }
         });
@@ -157,6 +158,7 @@ export async function executeNegotiatorAndDispatch(data: NegotiatorDispatchReque
     flyerUrl: canvaResult.flyerUrl,
     emailSent,
     canvaSource: canvaResult.source,
+    templateId: canvaResult.templateId,
     generatedCopy: persuasiveCopy,
     details: canvaResult.details
   };
