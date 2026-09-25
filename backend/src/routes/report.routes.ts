@@ -496,6 +496,7 @@ async function getCustomerMatrix(measure: string = 'citas_evaluables'): Promise<
     grandTotalLabel: '** Totales **',
     isCurrency: false,
     sourceMart: 'NexoSalud_Mart.Fact_AtencionCustomer',
+    preferredColumnsOrder: ['Sede Centro Historico', 'Sede California'],
   });
 }
 
