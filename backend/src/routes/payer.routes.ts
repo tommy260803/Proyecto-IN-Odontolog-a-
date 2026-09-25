@@ -262,24 +262,24 @@ router.post('/:id/validate', async (req, res) => {
           { id_persona: isNaN(numId) ? -1 : numId }
         ]
       },
-      include: { 
+      include: {
         Persona: true,
-        Opcion: { 
-          include: { 
+        Opcion: {
+          include: {
             Disponibilidad: {
               include: {
                 Sede: true,
                 Profesional: true
               }
-            } 
-          } 
-        }, 
+            }
+          }
+        },
         Solicitud: {
           include: {
             Servicio: true
           }
-        }, 
-        Pagos: true 
+        },
+        Pagos: true
       }
     });
 
@@ -380,8 +380,8 @@ router.post('/:id/validate', async (req, res) => {
       });
     }
 
-    res.json({ 
-      message: 'Pago validado exitosamente, paciente transferido a CUSTOMER y constancia enviada al correo', 
+    res.json({
+      message: 'Pago validado exitosamente, paciente transferido a CUSTOMER y constancia enviada al correo',
       pago,
       personaId: persona.id_persona,
       emailSentTo: patientEmail || null
@@ -506,12 +506,12 @@ router.post('/:id/convert-customer', async (req, res) => {
   try {
     let etapaCustomer = await prisma.etapas.findFirst({ where: { nombre: 'CUSTOMER' } });
     if (!etapaCustomer) etapaCustomer = await prisma.etapas.create({ data: { nombre: 'CUSTOMER', descripcion: 'Atencion' } });
-    
+
     const reserva = await prisma.reservas.findUnique({
       where: { id_reserva: Number(id) },
       include: { Opcion: { include: { Disponibilidad: true } }, Solicitud: true, Pagos: true }
     });
-    
+
     if (!reserva) {
       return res.status(404).json({ error: 'Reserva no encontrada' });
     }
@@ -524,7 +524,7 @@ router.post('/:id/convert-customer', async (req, res) => {
       where: { id_persona: reserva.id_persona },
       data: { id_etapa_actual: etapaCustomer.id_etapa }
     });
-    
+
     const existingAtencion = await prisma.atenciones.findFirst({ where: { id_reserva: reserva.id_reserva } });
     if (!existingAtencion) {
       // Obtener un profesional y sede por defecto si no están definidos
@@ -586,7 +586,7 @@ export function generateBackendPdfBase64(params: {
   const lightBg = [248, 250, 252];
   const formattedAmount = Number(params.amount || 0).toFixed(2);
 
-  // Cabecera Institucional
+  // Cabecera del comprobante
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -833,10 +833,10 @@ export async function sendPaymentNoticeOrConfirmation(params: {
   }
 
   const formattedAmount = Number(amount || 0).toFixed(2);
-  const emailSubject = subject || (isValidated 
+  const emailSubject = subject || (isValidated
     ? `Constancia Oficial de Pago y Confirmación de Cita - Clínica NexoSalud`
     : `Aviso de Cobro y Proforma Oficial - Clínica NexoSalud`);
-  
+
   const titleHeader = isValidated ? 'Constancia Oficial de Pago & Reserva' : 'Aviso de Cobranza & Proforma de Tratamiento';
   const defaultBody = isValidated
     ? `Nos complace confirmarle que su pago por un importe de S/ ${formattedAmount} ha sido validado exitosamente. Su cita odontológica se encuentra confirmada y programada en nuestra agenda.`
@@ -981,12 +981,12 @@ export async function sendPaymentNoticeOrConfirmation(params: {
     });
 
     let resendData: any = await resendRes.json();
-    
+
     // Si Resend rechaza por estar en cuenta Sandbox de prueba sin dominio propio
     if (!resendRes.ok && (resendData.message?.includes('only send testing emails') || resendData.name === 'validation_error')) {
       const fallbackTestEmail = process.env.TEST_RECEIVER_EMAIL || 'benkr7@gmail.com';
       console.warn(`[RESEND SANDBOX] Redirigiendo correo de prueba de (${toEmail}) hacia (${fallbackTestEmail})`);
-      
+
       const sandboxPayload = {
         ...resendPayload,
         to: [fallbackTestEmail],

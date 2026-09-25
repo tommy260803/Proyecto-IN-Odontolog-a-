@@ -20,9 +20,9 @@ UNION ALL SELECT 'Reservas', COUNT(*) FROM Reservas
 UNION ALL SELECT 'Pagos', COUNT(*) FROM Pagos;
 
 -- Estas consultas deben devolver cero filas.
-SELECT 'Canal fuera del reporte' AS validacion, id_canal, nombre
+SELECT 'Canal fuera del catalogo permitido' AS validacion, id_canal, nombre
 FROM Canales
-WHERE nombre = 'Convenio Institucional';
+WHERE nombre NOT IN ('WhatsApp', 'Instagram', 'Facebook', 'Página Web');
 
 SELECT 'Personas sin etapa' AS validacion, p.id_persona
 FROM Personas p

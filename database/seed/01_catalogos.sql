@@ -29,14 +29,21 @@ WHERE NOT EXISTS (SELECT 1 FROM Canales c WHERE c.nombre = v.nombre);
 
 -- Normaliza datos de ejecuciones anteriores al catalogo del reporte.
 DECLARE @canalWhatsApp INT = (SELECT id_canal FROM Canales WHERE nombre = 'WhatsApp');
-DECLARE @canalConvenio INT = (SELECT id_canal FROM Canales WHERE nombre = 'Convenio Institucional');
-IF @canalConvenio IS NOT NULL
+DECLARE @canalFueraReporte INT;
+SELECT TOP 1 @canalFueraReporte = id_canal
+FROM Canales
+WHERE nombre NOT IN ('WhatsApp', 'Instagram', 'Facebook', 'Página Web');
+WHILE @canalFueraReporte IS NOT NULL
 BEGIN
-    UPDATE Personas SET id_canal_origen = @canalWhatsApp WHERE id_canal_origen = @canalConvenio;
-    UPDATE Interacciones SET id_canal = @canalWhatsApp WHERE id_canal = @canalConvenio;
-    UPDATE PersonaPreferencias SET id_canal = @canalWhatsApp WHERE id_canal = @canalConvenio;
-    UPDATE Campanas SET id_canal = @canalWhatsApp WHERE id_canal = @canalConvenio;
-    DELETE FROM Canales WHERE id_canal = @canalConvenio;
+    UPDATE Personas SET id_canal_origen = @canalWhatsApp WHERE id_canal_origen = @canalFueraReporte;
+    UPDATE Interacciones SET id_canal = @canalWhatsApp WHERE id_canal = @canalFueraReporte;
+    UPDATE PersonaPreferencias SET id_canal = @canalWhatsApp WHERE id_canal = @canalFueraReporte;
+    UPDATE Campanas SET id_canal = @canalWhatsApp WHERE id_canal = @canalFueraReporte;
+    DELETE FROM Canales WHERE id_canal = @canalFueraReporte;
+    SET @canalFueraReporte = NULL;
+    SELECT TOP 1 @canalFueraReporte = id_canal
+    FROM Canales
+    WHERE nombre NOT IN ('WhatsApp', 'Instagram', 'Facebook', 'Página Web');
 END;
 
 INSERT INTO Fuentes (nombre, descripcion)

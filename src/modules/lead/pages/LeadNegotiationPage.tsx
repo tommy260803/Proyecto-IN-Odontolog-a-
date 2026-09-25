@@ -15,7 +15,7 @@ import { leadService } from '../services/lead.service';
 import { useToast } from '@/shared/hooks/use-toast';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 
-import { 
+import {
   CheckCircle2,
   Calendar,
   Clock,
@@ -76,7 +76,7 @@ export default function LeadNegotiationPage() {
   const [isDeletingOption, setIsDeletingOption] = useState(false);
 
   // Estados para Copiloto de Objeciones y Seguimiento WhatsApp (Actividades 3 y 4)
-  const [objectionCategory, setObjectionCategory] = useState<'PRECIO' | 'HORARIO' | 'SEDE' | 'CONVENIO'>('PRECIO');
+  const [objectionCategory, setObjectionCategory] = useState<'PRECIO' | 'HORARIO' | 'SEDE'>('PRECIO');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
 
   const fetchLeadData = () => {
@@ -84,12 +84,12 @@ export default function LeadNegotiationPage() {
       leadService.getLeadDetails(id!),
       leadService.getAvailabilityOptions()
     ])
-    .then(([leadData, optionsData]) => {
-      setLead(leadData);
-      setOptions(optionsData);
-    })
-    .catch(console.error)
-    .finally(() => setLoading(false));
+      .then(([leadData, optionsData]) => {
+        setLead(leadData);
+        setOptions(optionsData);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
@@ -147,15 +147,8 @@ export default function LeadNegotiationPage() {
     // 4. Precio oficial de lista & Descuento inteligente
     const activeServicio = options.servicios?.find((s: any) => s.id_servicio.toString() === initialServicioId);
     const officialPrice = Number(activeServicio?.Tarifas?.[0]?.precio || 180);
-    const isStudent = lead.DatosAcademicos?.[0]?.aplica === true || Boolean(lead.DatosAcademicos?.[0]?.universidad);
-
     if (precioOfrecido === '150.00' || !precioOfrecido) {
-      if (isStudent) {
-        setPrecioOfrecido(Math.round(officialPrice * 0.85).toFixed(2));
-        setCondiciones('Convenio Universitario: Presentar Carnet Universitario vigente al asistir');
-      } else {
-        setPrecioOfrecido(officialPrice.toFixed(2));
-      }
+      setPrecioOfrecido(officialPrice.toFixed(2));
     }
   }, [lead, options]);
 
@@ -201,14 +194,10 @@ export default function LeadNegotiationPage() {
     return { saving, pct };
   }, [currentOfficialPrice, numericOfferPrice]);
 
-  const applyQuickDiscount = (pct: number, type?: 'ESTUDIANTE' | 'LABORAL' | 'CAMPANA' | 'REGULAR') => {
+  const applyQuickDiscount = (pct: number, type?: 'CAMPANA' | 'REGULAR') => {
     const discounted = currentOfficialPrice * (1 - pct / 100);
     setPrecioOfrecido(discounted.toFixed(2));
-    if (type === 'ESTUDIANTE') {
-      setCondiciones('Convenio Universitario: Presentar Carnet Universitario vigente al asistir');
-    } else if (type === 'LABORAL') {
-      setCondiciones('Convenio Corporativo: Presentar Fotocheck laboral de empresa aliada');
-    } else if (type === 'CAMPANA') {
+    if (type === 'CAMPANA') {
       setCondiciones('Campaña Promocional Especial por tiempo limitado');
     } else if (type === 'REGULAR') {
       setCondiciones('');
@@ -298,13 +287,13 @@ export default function LeadNegotiationPage() {
       toast({ title: 'Atención', description: 'Selecciona una de las ofertas del tablero antes de cerrar el trato.' });
       return;
     }
-    
+
     const ultimaSolicitud = lead.Solicitudes[lead.Solicitudes.length - 1];
 
     setReserving(true);
     try {
       await leadService.reserve(id!, {
-        id_solicitud: ultimaSolicitud?.id_solicitud || 1, 
+        id_solicitud: ultimaSolicitud?.id_solicitud || 1,
         id_opcion: selectedOpcion
       });
       setIsSuccess(true);
@@ -327,7 +316,7 @@ export default function LeadNegotiationPage() {
             <p className="text-slate-600 dark:text-slate-300 mb-8 leading-relaxed text-sm">
               La reserva ha sido confirmada exitosamente. El paciente ahora se encuentra en la etapa <span className="font-semibold text-emerald-700 dark:text-emerald-400">PAYER</span> esperando la conciliación de su pago.
             </p>
-            <Button 
+            <Button
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-6 text-base font-bold shadow-md rounded-xl transition-all hover:shadow-lg hover:-translate-y-0.5"
               onClick={() => navigate(`/payer`)}
             >
@@ -358,10 +347,6 @@ export default function LeadNegotiationPage() {
     const ultimaSolicitud = lead.Solicitudes?.[lead.Solicitudes.length - 1];
     const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
 
-    const convenioPrompt = !isStudent
-      ? `\n\n💡 *Beneficio Exclusivo:* ¿Eres estudiante universitario o cuentas con convenio en tu centro laboral? Indícanoslo para activar tu *15% de descuento especial* presentando tu carnet o fotocheck.`
-      : '';
-
     if (selectedOptData) {
       const precio = Number(selectedOptData.precio_ofrecido).toFixed(2);
       const sede = selectedOptData.Disponibilidad?.Sede?.nombre || 'Sede Principal';
@@ -391,12 +376,11 @@ export default function LeadNegotiationPage() {
       return `¡Hola ${patientFirstName}! 👋 De NexoSalud Dental.\n\n` +
         `Tenemos disponibles las siguientes promociones personalizadas para tu servicio de *${reqServicio}*:\n\n` +
         `${resumenOpciones}\n\n` +
-        `${isStudent ? '🎓 *Aplica tu descuento especial de convenio universitario (-15%).*\n' : ''}` +
-        `${convenioPrompt}\n\n` +
+        `\n` +
         `¿Cuál de estas alternativas se acomoda mejor a ti? Indícanos tu DNI para formalizar tu pre-reserva. 😊`;
     }
 
-    return `¡Hola ${patientFirstName}! 👋 Te saludamos de NexoSalud Dental. Vemos tu interés en el servicio de *${reqServicio}*. Tenemos promociones activas con descuentos preferenciales para esta semana.${convenioPrompt}\n\n¿Te gustaría conocer la propuesta comercial? Quedamos atentos a tus comentarios. ✨`;
+    return `¡Hola ${patientFirstName}! 👋 Te saludamos de NexoSalud Dental. Vemos tu interés en el servicio de *${reqServicio}*. Tenemos promociones activas con descuentos preferenciales para esta semana.\n\n¿Te gustaría conocer la propuesta comercial? Quedamos atentos a tus comentarios. ✨`;
   };
 
   const handleSendWhatsApp = () => {
@@ -430,7 +414,7 @@ export default function LeadNegotiationPage() {
 
   return (
     <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-      
+
       {/* ══ COLUMNA 1: Perfil del Paciente ══ */}
       <div className="lg:col-span-1 space-y-6">
         <Card className="h-full shadow-sm border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
@@ -446,7 +430,7 @@ export default function LeadNegotiationPage() {
               <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nombre Completo</Label>
               <p className="font-bold text-slate-900 dark:text-white text-base">{lead.nombres} {lead.apellidos}</p>
             </div>
-            
+
             <div className="p-5 space-y-3">
               <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contacto</Label>
               <div className="space-y-2 text-slate-700 dark:text-slate-300">
@@ -478,7 +462,7 @@ export default function LeadNegotiationPage() {
                 <div className="space-y-2">
                   <Badge variant="outline" className="text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 flex items-center gap-1 font-semibold w-fit">
                     <Award className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    Estudiante Activo (-15% Convenio)
+                    Estudiante Activo
                   </Badge>
                   <p className="text-slate-800 dark:text-slate-200"><span className="font-semibold">Universidad:</span> {datAcad.universidad}</p>
                   <p className="text-slate-800 dark:text-slate-200"><span className="font-semibold">Carrera:</span> {datAcad.carrera} ({datAcad.ciclo})</p>
@@ -502,7 +486,7 @@ export default function LeadNegotiationPage() {
 
       {/* ══ COLUMNA 2 y 3: Negociación Inteligente ══ */}
       <div className="lg:col-span-2 space-y-6">
-        
+
         {/* ── Tarjeta de Estrategia Comercial ── */}
         <div className="p-4 rounded-2xl bg-gradient-to-br from-teal-50/90 via-white to-slate-50 dark:from-teal-950/40 dark:via-slate-900 dark:to-slate-950 border border-teal-200/90 dark:border-teal-800/80 shadow-sm relative overflow-hidden">
           <div className="relative z-10 space-y-3">
@@ -528,7 +512,7 @@ export default function LeadNegotiationPage() {
                   <span>Perfil Universitario</span>
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
-                  {isStudent ? `Convenio activo (${datAcad?.universidad || 'Universidad'}). Aplicar -15% desc.` : 'Tarifa regular sugerida.'}
+                  {isStudent ? `Perfil universitario identificado (${datAcad?.universidad || 'Universidad'}).` : 'Tarifa regular sugerida.'}
                 </p>
               </div>
 
@@ -567,7 +551,7 @@ export default function LeadNegotiationPage() {
           </CardHeader>
 
           <CardContent className="p-6 space-y-6 text-xs">
-            
+
             {/* 1. Diseñar Oferta Comercial */}
             <section>
               <div className="flex items-center justify-between mb-4">
@@ -582,7 +566,7 @@ export default function LeadNegotiationPage() {
               </div>
 
               <div className="space-y-4 p-4 bg-white dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/90 rounded-2xl shadow-sm">
-                
+
                 {/* A. Margen de Vigencia Activo de la Promoción */}
                 <div className="p-3 rounded-xl bg-slate-50/90 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/70 space-y-2">
                   <div className="flex items-center justify-between">
@@ -599,11 +583,10 @@ export default function LeadNegotiationPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedVigencia('24h')}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
-                        selectedVigencia === '24h'
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${selectedVigencia === '24h'
                           ? 'bg-amber-600 text-white shadow-2xs'
                           : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       <Zap className="w-3 h-3 text-amber-400" />
                       24 Horas (Flash)
@@ -612,11 +595,10 @@ export default function LeadNegotiationPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedVigencia('48h')}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
-                        selectedVigencia === '48h'
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${selectedVigencia === '48h'
                           ? 'bg-teal-600 text-white shadow-2xs'
                           : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       <Sparkles className="w-3 h-3 text-teal-300" />
                       48 Horas (Recomendado)
@@ -625,11 +607,10 @@ export default function LeadNegotiationPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedVigencia('72h')}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
-                        selectedVigencia === '72h'
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${selectedVigencia === '72h'
                           ? 'bg-teal-600 text-white shadow-2xs'
                           : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       <Calendar className="w-3 h-3" />
                       72 Horas (3 Días)
@@ -638,11 +619,10 @@ export default function LeadNegotiationPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedVigencia('7d')}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
-                        selectedVigencia === '7d'
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${selectedVigencia === '7d'
                           ? 'bg-indigo-600 text-white shadow-2xs'
                           : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       <Tag className="w-3 h-3" />
                       7 Días (Campaña Semanal)
@@ -651,11 +631,10 @@ export default function LeadNegotiationPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedVigencia('custom')}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
-                        selectedVigencia === 'custom'
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${selectedVigencia === 'custom'
                           ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 shadow-2xs'
                           : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       Personalizado
                     </button>
@@ -758,11 +737,10 @@ export default function LeadNegotiationPage() {
                         key={franja}
                         type="button"
                         onClick={() => setSelectedFranja(franja)}
-                        className={`p-2 rounded-xl text-[11px] font-semibold text-left border transition-all ${
-                          selectedFranja === franja
+                        className={`p-2 rounded-xl text-[11px] font-semibold text-left border transition-all ${selectedFranja === franja
                             ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs'
                             : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
-                        }`}
+                          }`}
                       >
                         {franja}
                       </button>
@@ -783,21 +761,12 @@ export default function LeadNegotiationPage() {
                       <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mr-1">Aplicar:</span>
                       <button
                         type="button"
-                        onClick={() => applyQuickDiscount(15, 'ESTUDIANTE')}
+                        onClick={() => applyQuickDiscount(15, 'CAMPANA')}
                         className="px-2 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200 transition-colors flex items-center gap-1"
-                        title="Descuento de Convenio Estudiantil (-15%)"
+                        title="Descuento promocional (-15%)"
                       >
                         <GraduationCap className="w-3 h-3" />
-                        Estudiante (-15%)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyQuickDiscount(15, 'LABORAL')}
-                        className="px-2 py-1 rounded-lg text-[11px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-700 hover:bg-blue-200 transition-colors flex items-center gap-1"
-                        title="Descuento de Convenio Corporativo / Laboral (-15%)"
-                      >
-                        <Briefcase className="w-3 h-3" />
-                        Convenio Laboral (-15%)
+                        Promoción (-15%)
                       </button>
                       <button
                         type="button"
@@ -851,35 +820,35 @@ export default function LeadNegotiationPage() {
                     <Label className={`text-xs font-medium ${offerErrors.precio ? 'text-rose-600' : 'text-slate-600 dark:text-slate-300'}`}>Tarifa Ofrecida Editable (S/)</Label>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         step="0.5"
-                        className={`flex h-9 w-full rounded-xl border bg-slate-50 dark:bg-slate-800 pl-9 pr-3 text-xs font-semibold focus:outline-none focus:ring-2 ${offerErrors.precio ? 'border-rose-500 ring-rose-500/20' : 'border-slate-200 dark:border-slate-700 focus:ring-teal-500/20 focus:border-teal-500'}`} 
-                        value={precioOfrecido} 
+                        className={`flex h-9 w-full rounded-xl border bg-slate-50 dark:bg-slate-800 pl-9 pr-3 text-xs font-semibold focus:outline-none focus:ring-2 ${offerErrors.precio ? 'border-rose-500 ring-rose-500/20' : 'border-slate-200 dark:border-slate-700 focus:ring-teal-500/20 focus:border-teal-500'}`}
+                        value={precioOfrecido}
                         onChange={(e) => {
                           setPrecioOfrecido(e.target.value);
                           if (offerErrors.precio) setOfferErrors(p => ({ ...p, precio: '' }));
-                        }} 
+                        }}
                       />
                     </div>
                     {offerErrors.precio && <p className="text-[11px] text-rose-600 font-medium">{offerErrors.precio}</p>}
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">Condición / Beneficio adicional</Label>
-                    <input 
-                      type="text" 
-                      placeholder="Ej. Válido con carnet de estudiante, pago en cuotas..." 
+                    <input
+                      type="text"
+                      placeholder="Ej. Válido con carnet de estudiante, pago en cuotas..."
                       className="flex h-9 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-slate-900 dark:text-white"
-                      value={condiciones} 
-                      onChange={(e) => setCondiciones(e.target.value)} 
+                      value={condiciones}
+                      onChange={(e) => setCondiciones(e.target.value)}
                     />
                   </div>
                 </div>
 
                 <div className="flex justify-end pt-2">
-                  <Button 
-                    onClick={handleAddAlternative} 
-                    disabled={addingAlternative} 
+                  <Button
+                    onClick={handleAddAlternative}
+                    disabled={addingAlternative}
                     className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs h-9 px-5 shadow-sm font-semibold transition-colors"
                   >
                     <Plus className="h-4 w-4 mr-1.5" />
@@ -902,45 +871,44 @@ export default function LeadNegotiationPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {lead.Solicitudes[lead.Solicitudes.length - 1].Opciones.map((opt: any) => (
-                    <div 
-                      key={opt.id_opcion} 
-                      onClick={() => setSelectedOpcion(opt.id_opcion)} 
-                      className={`relative p-4 border-2 rounded-2xl cursor-pointer transition-all flex flex-col justify-between gap-3 ${
-                        selectedOpcion === opt.id_opcion 
-                          ? 'bg-teal-50/50 dark:bg-teal-950/40 border-teal-600 dark:border-teal-500 shadow-md' 
+                    <div
+                      key={opt.id_opcion}
+                      onClick={() => setSelectedOpcion(opt.id_opcion)}
+                      className={`relative p-4 border-2 rounded-2xl cursor-pointer transition-all flex flex-col justify-between gap-3 ${selectedOpcion === opt.id_opcion
+                          ? 'bg-teal-50/50 dark:bg-teal-950/40 border-teal-600 dark:border-teal-500 shadow-md'
                           : 'bg-white dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-600'
-                      }`}
+                        }`}
                     >
                       {selectedOpcion === opt.id_opcion && (
                         <div className="absolute -top-3 -right-3 bg-teal-600 rounded-full p-1 shadow-md z-10">
                           <CheckCircle2 className="h-4 w-4 text-white" />
                         </div>
                       )}
-                      
+
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
                         <span className="inline-flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-200 text-xs bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 px-2.5 py-1 rounded-lg">
                           <Clock className="h-3.5 w-3.5 text-amber-500" />
                           Válido hasta: {opt.Disponibilidad?.fecha?.split('T')[0] || 'Vigente'}
                         </span>
-                        
+
                         {editingOptionId === opt.id_opcion ? (
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                             <span className="text-xs font-semibold text-slate-400">S/</span>
-                            <input 
-                              type="number" 
+                            <input
+                              type="number"
                               className="w-20 px-2 py-0.5 text-xs font-bold border border-teal-500 rounded bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                               value={editingPrice}
                               onChange={(e) => setEditingPrice(e.target.value)}
                               autoFocus
                             />
-                            <button 
-                              onClick={(e) => handleSaveEdit(e, opt.id_opcion)} 
+                            <button
+                              onClick={(e) => handleSaveEdit(e, opt.id_opcion)}
                               disabled={savingEdit}
                               className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition"
                             >
                               <Check className="h-3.5 w-3.5" />
                             </button>
-                            <button 
+                            <button
                               onClick={(e) => { e.stopPropagation(); setEditingOptionId(null); }}
                               className="p-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 transition"
                             >
@@ -953,15 +921,15 @@ export default function LeadNegotiationPage() {
                               S/ {Number(opt.precio_ofrecido).toFixed(2)}
                             </span>
                             <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-                              <button 
-                                title="Editar tarifa" 
+                              <button
+                                title="Editar tarifa"
                                 onClick={(e) => { e.stopPropagation(); setEditingOptionId(opt.id_opcion); setEditingPrice(opt.precio_ofrecido?.toString() || ''); }}
                                 className="p-1 rounded text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950 transition"
                               >
                                 <Edit2 className="h-3.5 w-3.5" />
                               </button>
-                              <button 
-                                title="Eliminar alternativa" 
+                              <button
+                                title="Eliminar alternativa"
                                 onClick={(e) => { e.stopPropagation(); setDeletingOptionTarget(opt); }}
                                 className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 transition"
                               >
@@ -1015,11 +983,10 @@ export default function LeadNegotiationPage() {
                 <button
                   type="button"
                   onClick={() => setObjectionCategory('PRECIO')}
-                  className={`text-[11px] font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${
-                    objectionCategory === 'PRECIO'
+                  className={`text-[11px] font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${objectionCategory === 'PRECIO'
                       ? 'bg-teal-600 text-white border-teal-600 shadow-2xs'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   <DollarSign className="w-3.5 h-3.5" />
                   <span>Objeción: "Está caro"</span>
@@ -1027,25 +994,11 @@ export default function LeadNegotiationPage() {
 
                 <button
                   type="button"
-                  onClick={() => setObjectionCategory('CONVENIO')}
-                  className={`text-[11px] font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${
-                    objectionCategory === 'CONVENIO'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <GraduationCap className="w-3.5 h-3.5" />
-                  <span>Convenios & Alianzas</span>
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => setObjectionCategory('HORARIO')}
-                  className={`text-[11px] font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${
-                    objectionCategory === 'HORARIO'
+                  className={`text-[11px] font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${objectionCategory === 'HORARIO'
                       ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   <Clock className="w-3.5 h-3.5" />
                   <span>Objeción: "No puedo a esa hora"</span>
@@ -1054,11 +1007,10 @@ export default function LeadNegotiationPage() {
                 <button
                   type="button"
                   onClick={() => setObjectionCategory('SEDE')}
-                  className={`text-[11px] font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${
-                    objectionCategory === 'SEDE'
+                  className={`text-[11px] font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${objectionCategory === 'SEDE'
                       ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   <MapPin className="w-3.5 h-3.5" />
                   <span>Objeción: "Me queda lejos"</span>
@@ -1079,20 +1031,11 @@ export default function LeadNegotiationPage() {
                     <Button
                       size="sm"
                       type="button"
-                      onClick={() => applyQuickDiscount(15, 'ESTUDIANTE')}
+                      onClick={() => applyQuickDiscount(15, 'CAMPANA')}
                       className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs h-7 px-2.5 font-medium flex items-center gap-1"
                     >
                       <GraduationCap className="w-3 h-3" />
-                      Aplicar Univ. (-15%)
-                    </Button>
-                    <Button
-                      size="sm"
-                      type="button"
-                      onClick={() => applyQuickDiscount(15, 'LABORAL')}
-                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs h-7 px-2.5 font-medium flex items-center gap-1"
-                    >
-                      <Briefcase className="w-3 h-3" />
-                      Aplicar Corp. (-15%)
+                      Aplicar promoción (-15%)
                     </Button>
                     <Button
                       size="sm"
@@ -1105,41 +1048,6 @@ export default function LeadNegotiationPage() {
                     </Button>
                     <span className="text-[10px] text-slate-400">
                       (Recuerda presionar "Añadir Oferta al Tablero" para crear la propuesta)
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {objectionCategory === 'CONVENIO' && (
-                <div className="p-3 bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/70 rounded-xl space-y-2 text-xs">
-                  <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                    Alianzas Institucionales (Universidades & Empresas):
-                  </div>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                    NexoSalud ofrece tarifa preferencial del -15% a estudiantes universitarios y colaboradores de empresas aliadas. Al activar la opción, se añade automáticamente la condición de acreditación para el día de la cita:
-                  </p>
-                  <div className="flex items-center gap-2 pt-1 flex-wrap">
-                    <Button
-                      size="sm"
-                      type="button"
-                      onClick={() => applyQuickDiscount(15, 'ESTUDIANTE')}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs h-7 px-2.5 font-medium flex items-center gap-1"
-                    >
-                      <GraduationCap className="w-3 h-3" />
-                      Convenio Universitario (-15%)
-                    </Button>
-                    <Button
-                      size="sm"
-                      type="button"
-                      onClick={() => applyQuickDiscount(15, 'LABORAL')}
-                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs h-7 px-2.5 font-medium flex items-center gap-1"
-                    >
-                      <Briefcase className="w-3 h-3" />
-                      Convenio Corporativo (-15%)
-                    </Button>
-                    <span className="text-[10px] text-slate-400">
-                      (Presiona "Añadir Oferta al Tablero" para crear la propuesta)
                     </span>
                   </div>
                 </div>
@@ -1295,9 +1203,9 @@ export default function LeadNegotiationPage() {
 
             {/* Acción de Cierre */}
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-              <Button 
-                onClick={handleReserve} 
-                disabled={reserving || !selectedOpcion} 
+              <Button
+                onClick={handleReserve}
+                disabled={reserving || !selectedOpcion}
                 className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-sm text-xs font-semibold px-6 py-2.5 h-10"
               >
                 {reserving ? 'Cerrando trato...' : 'Cerrar Trato (Pasar a PAYER)'}
