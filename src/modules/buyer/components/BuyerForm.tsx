@@ -37,6 +37,7 @@ export interface BuyerFormProps {
   isEdit?: boolean;
   formId?: string;
   hideSubmitButton?: boolean;
+  excludeId?: string | number;
 }
 
 export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
@@ -45,7 +46,8 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
   isLoading,
   isEdit,
   formId = 'buyer-form',
-  hideSubmitButton = false
+  hideSubmitButton = false,
+  excludeId,
 }, ref) => {
   const { toast } = useToast();
   const [catalogs, setCatalogs] = useState<{
@@ -99,12 +101,19 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
     if (rawDigits.length >= 9 || (cleanEmail.includes('@') && cleanEmail.includes('.'))) {
       const timer = setTimeout(async () => {
         try {
+          const effectiveExcludeId = excludeId || (initialValues as any)?.id || (initialValues as any)?.personId;
           const res = await buyerService.checkDuplicate({
             phone: rawDigits.length >= 9 ? rawDigits : undefined,
             email: cleanEmail.includes('@') ? cleanEmail : undefined,
-            excludeId: (initialValues as any)?.id,
+            excludeId: effectiveExcludeId,
           });
-          if (res?.isDuplicate) {
+
+          // Si el ID del duplicado encontrado es el mismo que se está editando, no es un duplicado
+          const isSamePerson = Boolean(
+            effectiveExcludeId && res?.person?.id && String(res.person.id) === String(effectiveExcludeId)
+          );
+
+          if (res?.isDuplicate && !isSamePerson) {
             setDuplicateWarning(res);
           } else {
             setDuplicateWarning(null);
@@ -117,7 +126,7 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
     } else {
       setDuplicateWarning(null);
     }
-  }, [watchedPhone, watchedEmail, initialValues]);
+  }, [watchedPhone, watchedEmail, excludeId, initialValues]);
 
   useImperativeHandle(ref, () => ({
     submit: () => {
@@ -265,7 +274,15 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-200 dark:bg-purple-900 text-purple-900 dark:text-purple-200 font-bold">DUPLICATED</span>
                   </p>
                   <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
-                    El {duplicateWarning.matchedBy === 'dni' ? 'DNI' : duplicateWarning.matchedBy === 'email' ? 'correo' : 'número telefónico'} ya se encuentra registrado a nombre de <strong>{duplicateWarning.person?.firstName} {duplicateWarning.person?.lastName}</strong> ({duplicateWarning.person?.etapa}). Al guardar, este registro se guardará con estado <strong className="font-mono bg-purple-200/80 dark:bg-purple-900/80 px-1 py-0.5 rounded">DUPLICATED</strong> para trazabilidad sin promover a LEAD.
+                    {isEdit ? (
+                      <>
+                        El {duplicateWarning.matchedBy === 'dni' ? 'DNI' : duplicateWarning.matchedBy === 'email' ? 'correo' : 'número telefónico'} ya se encuentra registrado a nombre de <strong>{duplicateWarning.person?.firstName} {duplicateWarning.person?.lastName}</strong> ({duplicateWarning.person?.etapa}). Verifica que no estés ingresando los datos de otro paciente existente.
+                      </>
+                    ) : (
+                      <>
+                        El {duplicateWarning.matchedBy === 'dni' ? 'DNI' : duplicateWarning.matchedBy === 'email' ? 'correo' : 'número telefónico'} ya se encuentra registrado a nombre de <strong>{duplicateWarning.person?.firstName} {duplicateWarning.person?.lastName}</strong> ({duplicateWarning.person?.etapa}). Al guardar, este registro se guardará con estado <strong className="font-mono bg-purple-200/80 dark:bg-purple-900/80 px-1 py-0.5 rounded">DUPLICATED</strong> para trazabilidad sin promover a LEAD.
+                      </>
+                    )}
                   </p>
                 </div>
               </div>

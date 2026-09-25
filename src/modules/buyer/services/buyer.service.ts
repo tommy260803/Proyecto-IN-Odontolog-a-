@@ -47,12 +47,12 @@ export const buyerService = {
     return res.json();
   },
 
-  checkDuplicate: async (params: { phone?: string; email?: string; dni?: string; excludeId?: string }) => {
+  checkDuplicate: async (params: { phone?: string; email?: string; dni?: string; excludeId?: string | number }) => {
     const query = new URLSearchParams();
     if (params.phone) query.append('phone', params.phone);
     if (params.email) query.append('email', params.email);
     if (params.dni) query.append('dni', params.dni);
-    if (params.excludeId) query.append('excludeId', params.excludeId);
+    if (params.excludeId !== undefined && params.excludeId !== null) query.append('excludeId', String(params.excludeId));
 
     try {
       const res = await fetch(`${API_URL}/buyer/check-duplicate?${query.toString()}`);

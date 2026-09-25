@@ -506,6 +506,7 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
               <BuyerForm 
                 ref={buyerFormRef}
                 isEdit 
+                excludeId={buyer.id || buyerId || undefined}
                 formId="buyer-edit-form"
                 hideSubmitButton
                 initialValues={{
