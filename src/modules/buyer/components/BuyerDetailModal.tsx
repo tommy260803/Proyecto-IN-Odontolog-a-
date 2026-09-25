@@ -19,8 +19,10 @@ import { canTransitionBuyerToLead } from '@/domain/transitions';
 import { BuyerState } from '@/domain/enums';
 import { StatusBadge } from '@/shared/components/feedback/StatusBadge';
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
-import { UserCheck, ArrowRight, Save, Loader2, Sparkles, ShieldCheck, Stethoscope, MapPin, Clock, Radio, Tag, CheckCircle2, AlertTriangle, HelpCircle, ChevronDown, ChevronUp, RefreshCw, Flame, Zap } from 'lucide-react';
+import { UserCheck, ArrowRight, Save, Loader2, Sparkles, ShieldCheck, Stethoscope, MapPin, Clock, Radio, Tag, CheckCircle2, AlertTriangle, HelpCircle, ChevronDown, ChevronUp, RefreshCw, Flame, Zap, History } from 'lucide-react';
 import { analyzeBuyerMarketingAgent, type BuyerMarketingAnalysis } from '@/shared/services/groqService';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface BuyerDetailModalProps {
   buyerId: string | null;
@@ -39,6 +41,7 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
   const journeys: any[] = [];
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
   const [isAgentExpanded, setIsAgentExpanded] = useState(true);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(true);
   const [aiAnalysis, setAiAnalysis] = useState<BuyerMarketingAnalysis | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
 
@@ -408,6 +411,88 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
               {journeys.find(j => j.buyerId === buyer.id) && (
                 <div className="py-2">
                   <JourneyStepper journey={journeys.find(j => j.buyerId === buyer.id)!} />
+                </div>
+              )}
+
+              {/* Historial de Consultas Recurrentes e Interacciones Web (BI & Negociación LEAD) */}
+              {((buyer.consultasCount && buyer.consultasCount > 1) || (buyer.solicitudesHistory && buyer.solicitudesHistory.length > 0)) && (
+                <div className="rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-gradient-to-br from-amber-50/70 via-white to-amber-50/30 dark:from-amber-950/20 dark:via-slate-900/40 dark:to-slate-900/60 p-4 sm:p-5 shadow-2xs space-y-3.5">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shadow-2xs border border-amber-200 dark:border-amber-700/60 shrink-0">
+                        <History className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100">
+                            Historial de Consultas Recurrentes
+                          </h4>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                            🔁 {buyer.consultasCount || (buyer.solicitudesHistory?.length || 1)} Consultas Web
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          Trazabilidad de tratamientos consultados y dudas del prospecto para negociación en LEAD
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsHistoryExpanded(prev => !prev)}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-3 py-1.5 rounded-xl transition-all shadow-2xs border border-slate-200 dark:border-slate-700 cursor-pointer"
+                    >
+                      <span>{isHistoryExpanded ? 'Ocultar' : 'Ver detalle'}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isHistoryExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+                  </div>
+
+                  {isHistoryExpanded && (
+                    <div className="space-y-2.5 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        {buyer.solicitudesHistory && buyer.solicitudesHistory.length > 0 ? (
+                          buyer.solicitudesHistory.map((s: any, idx: number) => (
+                            <div 
+                              key={s.id || idx} 
+                              className="p-3 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-amber-100 dark:border-amber-900/40 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                            >
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                    Consulta #{buyer.solicitudesHistory!.length - idx}
+                                  </span>
+                                  <span className="text-xs font-bold text-teal-700 dark:text-teal-400">
+                                    {s.servicio || 'Evaluación Odontológica'}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                                  <span className="font-medium text-slate-500 dark:text-slate-400">Duda / Motivo: </span>
+                                  <span className="italic">{s.motivo}</span>
+                                </p>
+                              </div>
+                              {s.fecha && (
+                                <div className="text-[10px] text-slate-500 font-mono whitespace-nowrap self-start sm:self-center">
+                                  {format(new Date(s.fecha), 'dd MMM yyyy, HH:mm', { locale: es })}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200 text-xs text-slate-600">
+                            Consulta inicial registrada: {buyer.concreteRequest || buyer.serviceOfInterest || 'Sin detalle adicional'}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Insight Comercial */}
+                      <div className="p-2.5 rounded-xl bg-amber-100/60 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/50 text-[11px] text-amber-900 dark:text-amber-200 flex items-start gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                        <p className="leading-relaxed">
+                          <strong>Estrategia de Cierre en LEAD:</strong> Este prospecto muestra alto interés reiterado. Al contactarlo, revisa cada una de sus consultas para resolver sus objeciones de costo o tiempo y proponer facilidades de pago o citas en su franja horaria preferida.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -82,6 +82,11 @@ export interface Buyer {
   sangrado_o_inflamacion?: string;
   usa_aparato_o_protesis?: string;
   condicion_atencion_especial?: string;
+
+  // Inteligencia de Consultas Recurrentes
+  consultasCount?: number;
+  solicitudesHistory?: Array<{ id: string; servicio?: string; motivo?: string; fecha?: string }>;
+  interaccionesHistory?: Array<{ id: string; tipo: string; mensaje: string; canal?: string; fuente?: string; fecha: string }>;
 }
 
 export interface NegotiationAlternative {

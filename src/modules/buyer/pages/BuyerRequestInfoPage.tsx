@@ -31,7 +31,9 @@ import {
   Zap,
   Check,
   AlertCircle,
-  AlertTriangle
+  AlertTriangle,
+  HelpCircle,
+  History
 } from 'lucide-react';
 
 export default function BuyerRequestInfoPage() {
@@ -47,6 +49,8 @@ export default function BuyerRequestInfoPage() {
   const [loading, setLoading] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
   const [isDuplicateSubmitted, setIsDuplicateSubmitted] = useState(false);
+  const [isRecurringSubmitted, setIsRecurringSubmitted] = useState(false);
+  const [consultationCount, setConsultationCount] = useState<number>(1);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<{
     isDuplicate: boolean;
@@ -59,6 +63,7 @@ export default function BuyerRequestInfoPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [serviceId, setServiceId] = useState('');
+  const [dudaEspecifica, setDudaEspecifica] = useState('');
   const [timeSlot, setTimeSlot] = useState('');
   const [sede, setSede] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -176,22 +181,27 @@ export default function BuyerRequestInfoPage() {
         sede_preferida: sede || undefined,
         tipo_persona: 'Adulto General',
         estado_calidad: 'Valido',
-        concreteRequest: `Solicitud de Información y Evaluación Odontológica (Portal Web). Sede: ${sede || 'No especificada'}. Franja Horaria: ${timeSlot || 'Flexible'}`,
+        duda_especifica: dudaEspecifica.trim() || undefined,
+        concreteRequest: dudaEspecifica.trim()
+          ? `[Duda/Consulta Web] ${dudaEspecifica.trim()}`
+          : `Solicitud de Información Odontológica (Portal Web). Sede: ${sede || 'No especificada'}. Franja: ${timeSlot || 'Flexible'}`,
       });
 
-      const isDup = Boolean(res?.isDuplicate || duplicateWarning?.isDuplicate);
-      setIsDuplicateSubmitted(isDup);
+      const isRec = Boolean(res?.isRecurring || res?.isDuplicate);
+      const count = res?.consultationCount || (isRec ? 2 : 1);
+      setConsultationCount(count);
+      setIsRecurringSubmitted(isRec);
+      setIsDuplicateSubmitted(isRec);
       setSubmittedSuccess(true);
-      if (isDup) {
+      if (isRec) {
         toast({
-          title: '⚠️ Registro Duplicado Detectado',
-          description: 'Identificamos que este contacto ya existe en la base de datos. Se registró con estado DUPLICATED para auditoría y no avanzó a LEAD.',
-          variant: 'destructive',
+          title: `🔁 ¡Consulta Recurrente Anexada! (#${count})`,
+          description: `¡Hola de nuevo! Anexamos tu nueva consulta a tu historial clínico. Tu caso fue priorizado para seguimiento comercial en LEAD.`,
         });
       } else {
         toast({
           title: '¡Solicitud Recibida con Éxito!',
-          description: 'Un asesor comercial odontológico se pondrá en contacto contigo en breve.',
+          description: 'Un asesor comercial odontológico se pondrá en contacto contigo en breve para coordinar tu cita.',
         });
       }
     } catch (error: any) {
@@ -454,19 +464,19 @@ export default function BuyerRequestInfoPage() {
                     </div>
                   </div>
 
-                  {/* Alerta interactiva en el mismo formulario si detecta duplicidad */}
+                  {/* Reconocimiento interactivo de paciente recurrente */}
                   {duplicateWarning?.isDuplicate && (
-                    <div className="p-3 rounded-2xl bg-purple-50 border border-purple-200 text-purple-900 text-xs flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1">
-                      <div className="p-1 rounded-lg bg-purple-100 text-purple-700 shrink-0 mt-0.5">
-                        <Sparkles className="w-3.5 h-3.5" />
+                    <div className="p-3 rounded-2xl bg-teal-50/90 border border-teal-200 text-teal-950 text-xs flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1">
+                      <div className="p-1 rounded-lg bg-teal-100 text-teal-700 shrink-0 mt-0.5">
+                        <Sparkles className="w-3.5 h-3.5 text-teal-600" />
                       </div>
-                      <div className="space-y-0.5">
-                        <p className="font-bold text-[11.5px] text-purple-900 flex items-center gap-1.5">
-                          <span>¡Hola {duplicateWarning.person?.firstName || 'paciente'}! Identificamos que ya estás registrado</span>
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-200 text-purple-900 font-bold">DUPLICATED</span>
+                      <div className="space-y-1">
+                        <p className="font-bold text-[11.5px] text-teal-950 flex items-center gap-1.5 flex-wrap">
+                          <span>¡Hola de nuevo{duplicateWarning.person?.firstName ? `, ${duplicateWarning.person.firstName}` : ''}! Reconocemos tu contacto</span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-200 text-teal-900 font-bold">RECURRENTE</span>
                         </p>
-                        <p className="text-[10.5px] text-purple-700 leading-relaxed">
-                          Tu {duplicateWarning.matchedBy === 'email' ? 'correo electrónico' : 'número de WhatsApp'} ya figura en nuestra base clínica. Puedes enviar tu consulta con confianza: se anexará con prioridad a tu ficha existente bajo el estado <strong className="text-purple-950 font-bold">DUPLICATED</strong>.
+                        <p className="text-[10.5px] text-teal-800 leading-relaxed">
+                          Puedes cambiar tu servicio de interés o detallar una nueva duda abajo. Anexaremos esta nueva consulta a tu historial para que el equipo comercial en <strong className="text-teal-950 font-bold">LEAD</strong> te brinde una respuesta a tu medida con mejores facilidades.
                         </p>
                       </div>
                     </div>
@@ -539,6 +549,28 @@ export default function BuyerRequestInfoPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+
+                  {/* Duda o Consulta Específica (Historial de Preguntas) */}
+                  <div className="space-y-1">
+                    <Label htmlFor="dudaEspecifica" className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <HelpCircle className="h-3 w-3 text-teal-600" />
+                        ¿Tienes alguna duda o consulta específica?
+                      </span>
+                      <span className="text-[9.5px] text-slate-500 font-normal">Opcional</span>
+                    </Label>
+                    <Input
+                      id="dudaEspecifica"
+                      placeholder="Ej: ¿Tienen pago en cuotas?, ¿atienden emergencias?, ¿costo aproximado?"
+                      value={dudaEspecifica}
+                      onChange={(e) => setDudaEspecifica(e.target.value)}
+                      maxLength={180}
+                      className="rounded-xl h-9 text-xs bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-teal-500 focus:bg-white shadow-sm"
+                    />
+                    <p className="text-[9.5px] text-slate-500">
+                      Tus dudas se registran en tu historial para que tu asesor responda cada una al contactarte.
+                    </p>
                   </div>
 
                   {/* 6: Franja Horaria Preferida */}
@@ -707,16 +739,16 @@ export default function BuyerRequestInfoPage() {
             </div>
           ) : (
             /* Estado de Éxito */
-            /* Estado de Resultado (Duplicado vs Éxito) */
+            /* Estado de Resultado (Consulta Recurrente vs Registro Nuevo) */
             <Card className={`border shadow-xl lg:shadow-none bg-white rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in duration-400 max-w-md w-full relative ${
-              isDuplicateSubmitted ? 'border-amber-300 ring-2 ring-amber-400/20' : 'border-slate-200/90'
+              isRecurringSubmitted ? 'border-teal-300 ring-2 ring-teal-400/20' : 'border-slate-200/90'
             }`}>
               
-              {/* Contenedor del Ícono: Si es duplicado, mostrar Alerta/Duplicado en color ámbar de error; si es único, check verde/teal */}
+              {/* Contenedor del Ícono */}
               <div className="flex justify-center items-center pt-1">
-                {isDuplicateSubmitted ? (
-                  <div className="w-16 h-16 rounded-full bg-amber-50 border-2 border-amber-500 flex items-center justify-center shadow-md animate-in zoom-in-75 duration-300">
-                    <AlertTriangle className="w-8 h-8 text-amber-600 stroke-[2.2]" />
+                {isRecurringSubmitted ? (
+                  <div className="w-16 h-16 rounded-full bg-teal-50 border-2 border-teal-500 flex items-center justify-center shadow-md animate-in zoom-in-75 duration-300">
+                    <History className="w-8 h-8 text-teal-600 stroke-[2.2]" />
                   </div>
                 ) : (
                   <div className="w-16 h-16 rounded-full bg-white border-2 border-teal-500 flex items-center justify-center shadow-none animate-circle-fade-in">
@@ -743,10 +775,10 @@ export default function BuyerRequestInfoPage() {
 
               <div className="space-y-2">
                 <div className="flex justify-center">
-                  {isDuplicateSubmitted ? (
-                    <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1.5 shadow-xs">
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
-                      ALERTA DE CALIDAD: REGISTRO DUPLICADO
+                  {isRecurringSubmitted ? (
+                    <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-teal-100 text-teal-900 border border-teal-300 flex items-center gap-1.5 shadow-xs">
+                      <History className="w-3.5 h-3.5 text-teal-700" />
+                      CONSULTA RECURRENTE ANEXADA (#{consultationCount})
                     </span>
                   ) : (
                     <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-teal-100 text-teal-900 border border-teal-300 flex items-center gap-1.5 shadow-xs">
@@ -756,42 +788,46 @@ export default function BuyerRequestInfoPage() {
                   )}
                 </div>
 
-                <h2 className={`text-xl font-black tracking-tight ${isDuplicateSubmitted ? 'text-amber-950' : 'text-slate-900'}`}>
-                  {isDuplicateSubmitted ? 'Registro Duplicado Detectado' : '¡Solicitud Registrada con Éxito!'}
+                <h2 className="text-xl font-black tracking-tight text-slate-900">
+                  {isRecurringSubmitted ? '¡Nueva Consulta Anexada a tu Historial!' : '¡Solicitud Registrada con Éxito!'}
                 </h2>
                 
                 <p className="text-xs text-slate-600 max-w-xs mx-auto leading-relaxed">
-                  {isDuplicateSubmitted ? (
+                  {isRecurringSubmitted ? (
                     <>
-                      El contacto con teléfono <strong className="text-slate-900 font-bold">+51 {phone}</strong> ya figuraba en la base clínica. Se registró con estado <span className="font-bold uppercase text-purple-700 bg-purple-100/80 px-1.5 py-0.5 rounded border border-purple-200">DUPLICATED</span> para auditoría interna y <strong className="text-rose-600">no avanzó a LEAD</strong> para prevenir prospectos repetidos.
+                      ¡Hola de nuevo <strong className="text-slate-900 font-bold">{fullName}</strong>! Registramos tu nueva duda/interés en tu expediente. Al reiterar tu consulta, tu caso fue priorizado en la etapa <span className="font-bold uppercase text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">LEAD</span> para ofrecerte una propuesta personalizada.
                     </>
                   ) : (
                     <>
-                      Gracias <span className="font-bold text-teal-600">{fullName}</span>. Tus datos fueron transferidos a la etapa <span className="font-bold uppercase text-teal-700">LEAD</span> para atención prioritaria.
+                      Gracias <span className="font-bold text-teal-600">{fullName}</span>. Tus datos fueron recibidos y transferidos a la etapa <span className="font-bold uppercase text-teal-700">LEAD</span> para atención prioritaria.
                     </>
                   )}
                 </p>
               </div>
 
-              <div className={`p-3.5 rounded-2xl text-left text-xs space-y-1.5 max-w-xs mx-auto animate-in fade-in slide-in-from-bottom-3 duration-500 delay-200 border ${
-                isDuplicateSubmitted ? 'bg-amber-50/70 border-amber-200 text-amber-950' : 'bg-slate-50 border-slate-200 text-slate-600'
-              }`}>
+              <div className="p-3.5 rounded-2xl text-left text-xs space-y-2 max-w-xs mx-auto animate-in fade-in slide-in-from-bottom-3 duration-500 delay-200 border bg-slate-50 border-slate-200 text-slate-600">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className={isDuplicateSubmitted ? 'text-amber-800 font-medium' : 'text-slate-600'}>Teléfono:</span>
+                  <span className="text-slate-600">Teléfono:</span>
                   <span className="font-mono font-bold text-slate-900">+51 {phone}</span>
                 </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className={isDuplicateSubmitted ? 'text-amber-800 font-medium' : 'text-slate-600'}>Validación de Calidad:</span>
-                  <span className={`font-bold font-mono text-[10.5px] px-2 py-0.5 rounded ${
-                    isDuplicateSubmitted ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                  }`}>
-                    {isDuplicateSubmitted ? '⚠️ Duplicado Detectado' : '✓ Contacto Único'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className={isDuplicateSubmitted ? 'text-amber-800 font-medium' : 'text-slate-600'}>Estado asignado:</span>
-                  <span className={`font-bold font-mono ${isDuplicateSubmitted ? 'text-purple-700 bg-purple-100/70 px-1.5 py-0.5 rounded border border-purple-200' : 'text-teal-700'}`}>
-                    {isDuplicateSubmitted ? 'DUPLICATED (Auditoría / Trazabilidad)' : 'Portal Web (LEAD)'}
+                {isRecurringSubmitted && (
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-600">Historial de consultas:</span>
+                    <span className="font-mono font-bold px-2 py-0.5 rounded bg-teal-100 text-teal-800 border border-teal-200">
+                      🔁 Intento #{consultationCount}
+                    </span>
+                  </div>
+                )}
+                {dudaEspecifica.trim() && (
+                  <div className="text-[10.5px] pt-1 border-t border-slate-200/80">
+                    <span className="font-semibold text-slate-700 block">Duda registrada:</span>
+                    <p className="text-slate-600 italic mt-0.5 line-clamp-2">"{dudaEspecifica.trim()}"</p>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/80">
+                  <span className="text-slate-600">Estado asignado:</span>
+                  <span className="font-bold font-mono text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
+                    Portal Web (LEAD)
                   </span>
                 </div>
               </div>
@@ -801,16 +837,20 @@ export default function BuyerRequestInfoPage() {
                   variant="outline"
                   onClick={() => {
                     setSubmittedSuccess(false);
+                    setIsRecurringSubmitted(false);
+                    setIsDuplicateSubmitted(false);
+                    setConsultationCount(1);
                     setFullName('');
                     setPhone('');
                     setEmail('');
                     setServiceId('');
+                    setDudaEspecifica('');
                     setTimeSlot('');
                     setTermsAccepted(false);
                   }}
                   className="w-full sm:w-auto rounded-xl text-xs font-semibold px-4 h-9 border-slate-200 text-slate-700 bg-slate-50 hover:bg-slate-100 cursor-pointer transition-all"
                 >
-                  Enviar otra solicitud
+                  Enviar otra consulta
                 </Button>
 
                 <Button

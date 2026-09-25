@@ -256,80 +256,126 @@ router.post('/register', async (req, res) => {
       const validServicio = await getValidServicioId(tx, id_servicio);
       const validServicioInteres = (await getValidServicioId(tx, id_servicio_interes)) || validServicio;
 
-      // REGLA CLAVE: Si es duplicado, SE QUEDA EN BUYER con estado_calidad 'Duplicado'.
-      // Si es único, avanza a etapa LEAD con estado_calidad 'Valido'.
-      const targetEtapaId = isDuplicate ? etapaBuyer.id_etapa : etapaLead.id_etapa;
-      const finalCalidad = isDuplicate ? 'Duplicado' : (estado_calidad || 'Valido');
+      let persona;
+      let totalConsultas = 1;
 
-      const persona = await tx.personas.create({
-        data: {
-          nombres,
-          apellidos,
-          email: email ? String(email).trim() : null,
-          numero: numero ? String(numero).trim() : null,
-          autoriza_contacto: autoriza_contacto || false,
-          fecha_autorizacion: autoriza_contacto ? new Date() : null,
-          id_campana_origen: validCampana,
-          id_canal_origen: validCanalOrigen,
-          tipo_persona: tipo_persona || 'Adulto General',
-          estado_calidad: finalCalidad,
-          id_etapa_actual: targetEtapaId,
-        }
-      });
+      if (isDuplicate && existingPerson) {
+        // ARQUITECTURA LIMPIA: No duplicamos la fila de persona. Anexamos la nueva consulta a su historial.
+        const prevCount = await tx.solicitudes.count({ where: { id_persona: existingPerson.id_persona } });
+        totalConsultas = prevCount + 1;
 
-      await tx.interacciones.create({
-        data: {
-          id_persona: persona.id_persona,
-          id_canal: validCanal,
-          id_fuente: validFuente,
-          tipo: isDuplicate ? 'Consulta Web (Duplicado Registrado)' : 'Registro y Solicitud de Info',
-          mensaje: isDuplicate 
-            ? 'El usuario reingresó datos ya existentes en el formulario web. Se guardó para trazabilidad e histórico con estado DUPLICATED sin promover a LEAD.'
-            : 'El usuario llenó el formulario público de solicitud de información.'
-        }
-      });
-
-      if (sede_preferida || validCanal || validServicioInteres) {
-        await tx.personaPreferencias.create({
+        persona = await tx.personas.update({
+          where: { id_persona: existingPerson.id_persona },
           data: {
-            id_persona: persona.id_persona,
-            id_canal: validCanal,
-            id_servicio_interes: validServicioInteres,
-            sede_preferida: sede_preferida || null,
+            email: email ? String(email).trim() : existingPerson.email,
+            fecha_actualizacion: new Date(),
+            // Al reiterar consulta, se reactiva y promueve a LEAD para negociación comercial
+            id_etapa_actual: etapaLead.id_etapa,
+            estado_calidad: 'Valido',
           }
         });
-      }
 
-      const solicitud = await tx.solicitudes.create({
-        data: {
-          id_persona: persona.id_persona,
-          id_servicio: validServicio,
-          motivo: isDuplicate 
-            ? 'Consulta recurrente / datos duplicados desde formulario web' 
-            : 'Solicitud de información desde formulario web',
+        // Registrar evento de cambio de etapa si estaba en BUYER
+        if (existingPerson.id_etapa_actual === etapaBuyer.id_etapa) {
+          await tx.eventosEtapa.create({
+            data: {
+              id_persona: persona.id_persona,
+              etapa_origen: etapaBuyer.id_etapa,
+              etapa_destino: etapaLead.id_etapa,
+              motivo: `Reactivación y avance a LEAD por consulta recurrente (#${totalConsultas})`,
+            }
+          });
         }
-      });
+      } else {
+        // Paciente nuevo: Creamos el registro único
+        persona = await tx.personas.create({
+          data: {
+            nombres,
+            apellidos,
+            email: email ? String(email).trim() : null,
+            numero: numero ? String(numero).trim() : null,
+            autoriza_contacto: autoriza_contacto || false,
+            fecha_autorizacion: autoriza_contacto ? new Date() : null,
+            id_campana_origen: validCampana,
+            id_canal_origen: validCanalOrigen,
+            tipo_persona: tipo_persona || 'Adulto General',
+            estado_calidad: 'Valido',
+            id_etapa_actual: etapaLead.id_etapa,
+          }
+        });
 
-      // Solo crea EventosEtapa si NO es duplicado
-      if (!isDuplicate) {
         await tx.eventosEtapa.create({
           data: {
             id_persona: persona.id_persona,
             etapa_origen: etapaBuyer.id_etapa,
             etapa_destino: etapaLead.id_etapa,
-            motivo: 'Solicitud de información concreta',
+            motivo: 'Solicitud de información concreta (Ingreso web inicial)',
           }
         });
       }
 
-      return { persona, solicitud, isDuplicate, existingPerson };
+      // Detalle de la duda o consulta específica ingresada por el paciente
+      const motivoRaw = req.body.duda_especifica 
+        ? `[Consulta #${totalConsultas}] ${req.body.duda_especifica}`
+        : (req.body.concreteRequest || (isDuplicate ? `Consulta recurrente #${totalConsultas} desde portal web` : 'Solicitud de información desde formulario web'));
+      const motivoConsulta = String(motivoRaw).slice(0, 195);
+
+      // 1. Guardar la nueva Solicitud en su historial
+      const solicitud = await tx.solicitudes.create({
+        data: {
+          id_persona: persona.id_persona,
+          id_servicio: validServicio,
+          motivo: motivoConsulta,
+        }
+      });
+
+      // 2. Registrar la Interacción con trazabilidad de fecha y detalle
+      await tx.interacciones.create({
+        data: {
+          id_persona: persona.id_persona,
+          id_canal: validCanal,
+          id_fuente: validFuente,
+          tipo: isDuplicate ? `Consulta Web Recurrente (#${totalConsultas})` : 'Registro y Solicitud de Info (Consulta #1)',
+          mensaje: isDuplicate 
+            ? `El usuario reiteró consulta vía web (Intento #${totalConsultas}). Duda/Motivo: ${motivoConsulta}. Sede preferida: ${sede_preferida || 'No especificada'}.`
+            : `El usuario llenó el formulario público de solicitud de información. Duda/Motivo: ${motivoConsulta}.`
+        }
+      });
+
+      // 3. Preferencias del paciente (Upsert)
+      if (sede_preferida || validCanal || validServicioInteres) {
+        const existingPref = await tx.personaPreferencias.findFirst({ where: { id_persona: persona.id_persona } });
+        if (existingPref) {
+          await tx.personaPreferencias.update({
+            where: { id_preferencia: existingPref.id_preferencia },
+            data: {
+              id_canal: validCanal || existingPref.id_canal,
+              id_servicio_interes: validServicioInteres || existingPref.id_servicio_interes,
+              sede_preferida: sede_preferida || existingPref.sede_preferida,
+            }
+          });
+        } else {
+          await tx.personaPreferencias.create({
+            data: {
+              id_persona: persona.id_persona,
+              id_canal: validCanal,
+              id_servicio_interes: validServicioInteres,
+              sede_preferida: sede_preferida || null,
+            }
+          });
+        }
+      }
+
+      return { persona, solicitud, isDuplicate, existingPerson, totalConsultas };
     });
 
     if (result.isDuplicate) {
       return res.status(200).json({ 
         success: true, 
         isDuplicate: true, 
-        message: '¡Gracias por volver a escribirnos! Identificamos que ya formas parte de nuestra base de datos. Tu consulta ha sido anexada con prioridad a tu ficha existente.', 
+        isRecurring: true,
+        consultationCount: result.totalConsultas,
+        message: `¡Hola de nuevo! Anexamos tu nueva consulta a tu historial (Consulta #${result.totalConsultas}). Tu caso fue priorizado para atención en la etapa LEAD.`, 
         data: result 
       });
     }
@@ -337,6 +383,8 @@ router.post('/register', async (req, res) => {
     res.status(201).json({ 
       success: true, 
       isDuplicate: false, 
+      isRecurring: false,
+      consultationCount: 1,
       message: 'Solicitud registrada correctamente. Pasado a estado LEAD.', 
       data: result 
     });
@@ -369,8 +417,8 @@ router.get('/', async (req, res) => {
         CanalOrigen: true,
         CampanaOrigen: { include: { GastosCampana: true } },
         EventosEtapa: { include: { EtapaDestino: true }, orderBy: { fecha_hora: 'asc' } },
-        Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'asc' } },
-        Solicitudes: { include: { Servicio: true } },
+        Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'desc' } },
+        Solicitudes: { include: { Servicio: true }, orderBy: { id_solicitud: 'desc' } },
         Preferencias: { include: { Canal: true } },
         DatosAcademicos: true,
         DatosLaborales: true,
@@ -443,6 +491,22 @@ router.get('/', async (req, res) => {
       const campaignName = p.CampanaOrigen?.nombre;
       const campaignCost = p.CampanaOrigen?.GastosCampana?.reduce((sum, g) => sum + Number(g.importe), 0);
 
+      const consultasCount = Math.max(p.Solicitudes.length, p.Interacciones.length, 1);
+      const solicitudesHistory = p.Solicitudes.map(s => ({
+        id: s.id_solicitud.toString(),
+        servicio: s.Servicio?.nombre || 'Consulta General',
+        motivo: s.motivo || 'Sin detalle',
+        fecha: s.fecha_solicitud ? s.fecha_solicitud.toISOString() : undefined,
+      }));
+      const interaccionesHistory = p.Interacciones.map(i => ({
+        id: i.id_interaccion.toString(),
+        tipo: i.tipo,
+        mensaje: i.mensaje || '',
+        canal: i.Canal?.nombre,
+        fuente: i.Fuente?.nombre,
+        fecha: i.fecha_hora.toISOString(),
+      }));
+
       return {
         id: p.id_persona.toString(),
         personId: p.id_persona.toString(),
@@ -468,6 +532,9 @@ router.get('/', async (req, res) => {
         createdAt: p.fecha_registro.toISOString(),
         convertedAt,
         state,
+        consultasCount,
+        solicitudesHistory,
+        interaccionesHistory,
 
         // Nuevos campos
         pref_id_canal: prefs?.id_canal?.toString() || '',
