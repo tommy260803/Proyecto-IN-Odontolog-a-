@@ -160,52 +160,56 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   border-color: #334155 !important;
 }
 
-/* Animated Continuous Checkmark Trace Keyframes */
-@keyframes circleFadeIn {
+/* Modern Professional Checkmark Animations (Single-shot, Organic & Satisfying) */
+@keyframes checkmarkRipple {
   0% {
-    opacity: 0;
-    transform: scale(0.85);
+    transform: scale(0.8);
+    opacity: 0.8;
   }
   100% {
-    opacity: 1;
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+
+@keyframes checkmarkPop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  80% {
+    transform: scale(0.96);
+  }
+  100% {
     transform: scale(1);
+    opacity: 1;
   }
 }
 
-@keyframes continuousCheckTrace {
+@keyframes checkmarkDraw {
   0% {
-    stroke-dashoffset: 45;
-    opacity: 0;
-  }
-  12% {
-    opacity: 1;
-  }
-  42% {
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
-  75% {
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
-  88% {
-    stroke-dashoffset: 0;
-    opacity: 0.1;
+    stroke-dashoffset: 48;
   }
   100% {
-    stroke-dashoffset: 45;
-    opacity: 0;
+    stroke-dashoffset: 0;
   }
 }
 
-.animate-circle-fade-in {
-  animation: circleFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.animate-checkmark-ripple {
+  animation: checkmarkRipple 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.animate-continuous-check {
-  stroke-dasharray: 45;
-  stroke-dashoffset: 45;
-  animation: continuousCheckTrace 2.4s cubic-bezier(0.4, 0, 0.2, 1) 0.45s infinite both;
+.animate-checkmark-pop {
+  animation: checkmarkPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.animate-checkmark-draw {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: checkmarkDraw 0.45s cubic-bezier(0.65, 0, 0.45, 1) 0.15s forwards;
 }
 
 

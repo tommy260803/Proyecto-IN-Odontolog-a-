@@ -196,8 +196,8 @@ export default function BuyerRequestInfoPage() {
       setSubmittedSuccess(true);
       if (isRec) {
         toast({
-          title: `¡Consulta Recurrente Anexada! (#${count})`,
-          description: `¡Hola de nuevo! Anexamos tu nueva consulta a tu historial clínico. Tu caso fue priorizado para seguimiento comercial en LEAD.`,
+          title: `¡Consulta Odontológica Recibida! (#${count})`,
+          description: `¡Hola de nuevo! Anexamos tu nueva consulta a tu expediente odontológico. Nos comunicaremos contigo en breve para coordinar tu atención.`,
         });
       } else {
         toast({
@@ -477,7 +477,7 @@ export default function BuyerRequestInfoPage() {
                           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-200 text-teal-900 font-bold">RECURRENTE</span>
                         </p>
                         <p className="text-[10.5px] text-teal-800 leading-relaxed">
-                          Puedes cambiar tu servicio de interés o detallar una nueva duda abajo. Anexaremos esta nueva consulta a tu historial para que el equipo comercial en <strong className="text-teal-950 font-bold">LEAD</strong> te brinde una respuesta a tu medida con mejores facilidades.
+                          Puedes cambiar tu servicio de interés o detallar una nueva duda abajo. Anexaremos esta solicitud a tu ficha para que nuestro equipo odontológico te brinde una propuesta personalizada y las mejores facilidades de atención.
                         </p>
                       </div>
                     </div>
@@ -745,31 +745,26 @@ export default function BuyerRequestInfoPage() {
               isRecurringSubmitted ? 'border-teal-300 ring-2 ring-teal-400/20' : 'border-slate-200/90'
             }`}>
               
-              {/* Contenedor del Ícono */}
-              <div className="flex justify-center items-center pt-1">
+              {/* Contenedor del Ícono con animación moderna y orgánica */}
+              <div className="flex justify-center items-center pt-2">
                 {isRecurringSubmitted ? (
-                  <div className="w-16 h-16 rounded-full bg-teal-50 border-2 border-teal-500 flex items-center justify-center shadow-md animate-in zoom-in-75 duration-300">
-                    <History className="w-8 h-8 text-teal-600 stroke-[2.2]" />
+                  <div className="relative flex items-center justify-center">
+                    {/* Halo de ripple suave */}
+                    <div className="absolute w-20 h-20 rounded-full bg-teal-400/25 animate-checkmark-ripple" />
+                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-tr from-teal-600 via-teal-500 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-teal-600/30 ring-4 ring-teal-50 dark:ring-teal-950/50 animate-checkmark-pop">
+                      <RotateCw className="w-8 h-8 stroke-[2.4]" />
+                    </div>
                   </div>
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-white border-2 border-teal-500 flex items-center justify-center shadow-none animate-circle-fade-in">
-                    <svg className="w-9 h-9" viewBox="0 0 48 48" fill="none">
-                      <circle
-                        cx="24"
-                        cy="24"
-                        r="20"
-                        stroke="rgba(13, 148, 136, 0.15)"
-                        strokeWidth="2"
-                      />
-                      <path
-                        d="M14 24.5L21 31.5L34 17"
-                        stroke="#0d9488"
-                        strokeWidth="3.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="animate-continuous-check"
-                      />
-                    </svg>
+                  <div className="relative flex items-center justify-center">
+                    {/* Halo de confirmación expansivo */}
+                    <div className="absolute w-20 h-20 rounded-full bg-teal-400/25 animate-checkmark-ripple" />
+                    {/* Badge circular con gradiente profesional */}
+                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-tr from-teal-600 via-teal-500 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-teal-600/30 ring-4 ring-teal-50 dark:ring-teal-950/50 animate-checkmark-pop">
+                      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" className="animate-checkmark-draw" />
+                      </svg>
+                    </div>
                   </div>
                 )}
               </div>
@@ -778,29 +773,29 @@ export default function BuyerRequestInfoPage() {
                 <div className="flex justify-center">
                   {isRecurringSubmitted ? (
                     <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-teal-100 text-teal-900 border border-teal-300 flex items-center gap-1.5 shadow-xs">
-                      <History className="w-3.5 h-3.5 text-teal-700" />
-                      CONSULTA RECURRENTE ANEXADA (#{consultationCount})
+                      <RotateCw className="w-3 h-3 text-teal-700 shrink-0" />
+                      NUEVA CONSULTA REGISTRADA (#{consultationCount})
                     </span>
                   ) : (
                     <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-teal-100 text-teal-900 border border-teal-300 flex items-center gap-1.5 shadow-xs">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-teal-700" />
-                      REGISTRO ÚNICO CONFIRMADO
+                      <CheckCircle2 className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+                      SOLICITUD DE CITA REGISTRADA
                     </span>
                   )}
                 </div>
 
                 <h2 className="text-xl font-black tracking-tight text-slate-900">
-                  {isRecurringSubmitted ? '¡Nueva Consulta Anexada a tu Historial!' : '¡Solicitud Registrada con Éxito!'}
+                  {isRecurringSubmitted ? '¡Nueva Consulta Registrada con Éxito!' : '¡Hemos Recibido tu Solicitud!'}
                 </h2>
                 
                 <p className="text-xs text-slate-600 max-w-xs mx-auto leading-relaxed">
                   {isRecurringSubmitted ? (
                     <>
-                      ¡Hola de nuevo <strong className="text-slate-900 font-bold">{fullName}</strong>! Registramos tu nueva duda/interés en tu expediente. Al reiterar tu consulta, tu caso fue priorizado en la etapa <span className="font-bold uppercase text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">LEAD</span> para ofrecerte una propuesta personalizada.
+                      ¡Hola de nuevo, <strong className="text-slate-900 font-bold">{fullName}</strong>! Registramos esta nueva consulta en tu expediente odontológico. Nuestro equipo se comunicará contigo muy pronto para responder tus dudas y coordinar tu atención.
                     </>
                   ) : (
                     <>
-                      Gracias <span className="font-bold text-teal-600">{fullName}</span>. Tus datos fueron recibidos y transferidos a la etapa <span className="font-bold uppercase text-teal-700">LEAD</span> para atención prioritaria.
+                      Muchas gracias, <strong className="text-slate-900 font-bold">{fullName}</strong>. Tus datos han sido recibidos para coordinar tu cita odontológica. Un asesor de nuestra clínica se comunicará contigo vía WhatsApp o llamada telefónica.
                     </>
                   )}
                 </p>
@@ -808,11 +803,31 @@ export default function BuyerRequestInfoPage() {
 
               <div className="p-3.5 rounded-2xl text-left text-xs space-y-2 max-w-xs mx-auto animate-in fade-in slide-in-from-bottom-3 duration-500 delay-200 border bg-slate-50 border-slate-200 text-slate-600">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-600">Teléfono:</span>
+                  <span className="text-slate-600">Teléfono de contacto:</span>
                   <span className="font-mono font-bold text-slate-900">+51 {phone}</span>
                 </div>
+                {catalogs.servicios?.find(s => String(s.id_servicio) === String(serviceId))?.nombre && (
+                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/80">
+                    <span className="text-slate-600">Tratamiento de interés:</span>
+                    <span className="font-semibold text-teal-800 text-right">
+                      {catalogs.servicios.find(s => String(s.id_servicio) === String(serviceId))?.nombre}
+                    </span>
+                  </div>
+                )}
+                {sede && (
+                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/80">
+                    <span className="text-slate-600">Sede preferida:</span>
+                    <span className="font-semibold text-slate-800">{sede}</span>
+                  </div>
+                )}
+                {timeSlot && (
+                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/80">
+                    <span className="text-slate-600">Horario preferido:</span>
+                    <span className="font-semibold text-slate-800">{timeSlot}</span>
+                  </div>
+                )}
                 {isRecurringSubmitted && (
-                  <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/80">
                     <span className="text-slate-600">Historial de consultas:</span>
                     <span className="font-mono font-bold px-2 py-0.5 rounded bg-teal-100 text-teal-800 border border-teal-200 inline-flex items-center gap-1">
                       <RotateCw className="w-2.5 h-2.5 text-teal-700 shrink-0" />
@@ -822,14 +837,15 @@ export default function BuyerRequestInfoPage() {
                 )}
                 {dudaEspecifica.trim() && (
                   <div className="text-[10.5px] pt-1 border-t border-slate-200/80">
-                    <span className="font-semibold text-slate-700 block">Duda registrada:</span>
+                    <span className="font-semibold text-slate-700 block">Duda o consulta registrada:</span>
                     <p className="text-slate-600 italic mt-0.5 line-clamp-2">"{dudaEspecifica.trim()}"</p>
                   </div>
                 )}
                 <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/80">
-                  <span className="text-slate-600">Estado asignado:</span>
-                  <span className="font-bold font-mono text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
-                    Portal Web (LEAD)
+                  <span className="text-slate-600">Estado de tu atención:</span>
+                  <span className="font-bold text-[10.5px] text-teal-800 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200 inline-flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-teal-600 shrink-0" />
+                    En espera de confirmación de cita
                   </span>
                 </div>
               </div>
@@ -859,7 +875,7 @@ export default function BuyerRequestInfoPage() {
                   onClick={() => navigate('/buyer')}
                   className="w-full sm:w-auto rounded-xl text-xs font-semibold px-5 h-9 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white shadow-md shadow-teal-700/20 cursor-pointer transition-all"
                 >
-                  Ir al Dashboard
+                  Volver al inicio
                 </Button>
               </div>
             </Card>
