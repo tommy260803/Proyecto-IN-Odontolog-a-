@@ -8,6 +8,7 @@ import payerRoutes from './routes/payer.routes';
 import paymentRoutes from './routes/payment.routes';
 import customerRoutes from './routes/customer.routes';
 import turnedRoutes from './routes/turned.routes';
+import reportRoutes from './routes/report.routes';
 import { startDunningScheduler } from './services/dunningScheduler';
 
 dotenv.config();
@@ -26,6 +27,8 @@ app.use('/api/payer', payerRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/customer', customerRoutes);
 app.use('/api/turned', turnedRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/mart', reportRoutes);
 
 // Ruta de prueba
 app.get('/api/ping', async (req, res) => {
