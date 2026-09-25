@@ -19,6 +19,7 @@ app.use(express.json());
 // Registrar rutas
 app.use('/api/buyer', buyerRoutes);
 app.use('/api/lead', leadRoutes);
+app.use('/api/leads', leadRoutes);
 app.use('/api/payer', payerRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/customer', customerRoutes);

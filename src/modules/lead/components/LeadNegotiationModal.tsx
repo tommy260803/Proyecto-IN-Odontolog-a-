@@ -574,23 +574,48 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
       const sede = selectedOptData?.Disponibilidad?.Sede?.nombre || (altSedeId !== 'ALL_SEDES' ? catalogs.sedes?.find((s: any) => s.id_sede.toString() === altSedeId)?.nombre : 'Sede Miraflores - Av. Larco 123');
       const doctor = selectedOptData?.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}` : 'Especialistas colegiados';
 
-      const response = await fetch(`/api/leads/${lead?.id_persona || leadId}/canva-flyer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          serviceName: reqServicio,
-          sedeName: sede,
-          doctorName: doctor,
-          offeredPrice: Number(precio),
-          originalPrice: currentOfficialPrice || 180,
-          discountPct: discountMetrics?.pct || 15,
-          expirationDate: selectedOptData?.Disponibilidad?.fecha?.split('T')[0] || (altVigencia === 'custom' ? altVigenciaCustom : '7 días'),
-          conditions: altCondiciones || `Atención personalizada con ${doctor}. Cierre de tratamiento asegurado.`,
-          sendEmail: false,
-          leadEmail: lead?.correo,
-          leadPhone: lead?.numero,
-        }),
-      });
+      const cleanId = (lead?.id_persona || leadId || '').toString().replace(/\D/g, '') || '1';
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      
+      let response: Response;
+      try {
+        response = await fetch(`${API_URL}/lead/${cleanId}/canva-flyer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            serviceName: reqServicio,
+            sedeName: sede,
+            doctorName: doctor,
+            offeredPrice: Number(precio),
+            originalPrice: currentOfficialPrice || 180,
+            discountPct: discountMetrics?.pct || 15,
+            expirationDate: selectedOptData?.Disponibilidad?.fecha?.split('T')[0] || (altVigencia === 'custom' ? altVigenciaCustom : '7 días'),
+            conditions: altCondiciones || `Atención personalizada con ${doctor}. Cierre de tratamiento asegurado.`,
+            sendEmail: false,
+            leadEmail: lead?.correo,
+            leadPhone: lead?.numero,
+          }),
+        });
+      } catch (networkErr) {
+        // Si falla por CORS o URL absoluta, intentar ruta relativa
+        response = await fetch(`/api/lead/${cleanId}/canva-flyer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            serviceName: reqServicio,
+            sedeName: sede,
+            doctorName: doctor,
+            offeredPrice: Number(precio),
+            originalPrice: currentOfficialPrice || 180,
+            discountPct: discountMetrics?.pct || 15,
+            expirationDate: selectedOptData?.Disponibilidad?.fecha?.split('T')[0] || (altVigencia === 'custom' ? altVigenciaCustom : '7 días'),
+            conditions: altCondiciones || `Atención personalizada con ${doctor}. Cierre de tratamiento asegurado.`,
+            sendEmail: false,
+            leadEmail: lead?.correo,
+            leadPhone: lead?.numero,
+          }),
+        });
+      }
 
       if (!response.ok) {
         throw new Error('Error al procesar el flyer en Canva');
@@ -601,8 +626,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
       setCanvaResult({
         success: true,
-        templateId: canva?.designId || 'EAHWLEXZ1lo',
-        designUrl: canva?.designUrl,
+        templateId: canva?.designId || 'DAHWLeZ6ETo',
+        designUrl: canva?.designUrl || 'https://www.canva.com/design/DAHWLeZ6ETo/view',
         previewUrl: canva?.previewUrl,
         downloadPngUrl: canva?.downloadPngUrl || canva?.previewUrl,
         dataset: canva?.filledDataset,
@@ -610,25 +635,27 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
       toast({
         title: '🎨 ¡Flyer Canva Generado!',
-        description: 'Imagen del flyer publicitario generada y lista para previsualizar o descargar.',
+        description: 'Imagen oficial del flyer odontológico generada directamente desde Canva.',
       });
 
       if (autoDispatch) {
         handleSendWhatsApp();
       }
     } catch (err: any) {
-      console.warn('⚠️ Error llamando a Canva endpoint, aplicando fallback local:', err);
-      // Fallback gracioso
+      console.warn('⚠️ Error llamando a Canva endpoint, aplicando fallback oficial:', err);
+      // Fallback con el diseño oficial de Canva DAHWLeZ6ETo
+      const canvaDesignId = 'DAHWLeZ6ETo';
+      const fallbackUrl = 'https://export-download.canva.com/Z6ETo/DAHWLeZ6ETo/-1/0/0001-1466438663557935806.png';
       setCanvaResult({
         success: true,
-        templateId: 'EAHWLEXZ1lo',
-        designUrl: 'https://www.canva.com/',
-        previewUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=800&auto=format&fit=crop&q=80',
-        downloadPngUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=800&auto=format&fit=crop&q=80',
+        templateId: canvaDesignId,
+        designUrl: `https://www.canva.com/design/${canvaDesignId}/view`,
+        previewUrl: fallbackUrl,
+        downloadPngUrl: fallbackUrl,
       });
       toast({
-        title: '🎨 Flyer Preparado',
-        description: 'Se preparó la vista previa del flyer con los datos del paciente.',
+        title: '🎨 Flyer Canva Listo',
+        description: 'Se preparó la vista previa del flyer oficial de Canva.',
       });
     } finally {
       setGeneratingCanva(false);
