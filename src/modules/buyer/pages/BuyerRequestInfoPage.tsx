@@ -9,6 +9,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { buyerService } from '../services/buyer.service';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/shared/hooks/use-toast';
+import { Toaster } from '@/shared/components/ui/toaster';
 import { 
   Sparkles, 
   Phone, 
@@ -797,6 +798,7 @@ export default function BuyerRequestInfoPage() {
       <footer className="max-w-7xl mx-auto w-full text-center py-1 text-[10px] text-slate-500 shrink-0">
         <p>© 2026 NexoSalud Odontología Especializada · Sistema de Inteligencia de Negocios · Privacidad Protegida</p>
       </footer>
+      <Toaster />
     </div>
   );
 }

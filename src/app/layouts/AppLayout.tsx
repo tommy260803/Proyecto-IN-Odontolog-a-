@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import { Header } from '@/shared/components/layout/Header';
 import { Sidebar } from '@/shared/components/layout/Sidebar';
+import { Toaster } from '@/shared/components/ui/toaster';
 import { useSidebar } from '@/shared/context/SidebarContext';
 import { useTheme } from '@/shared/context/ThemeContext';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
@@ -85,6 +86,7 @@ export default function AppLayout() {
           </div>
         </main>
       </div>
+      <Toaster />
     </div>
   );
 }

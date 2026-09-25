@@ -119,7 +119,7 @@ router.get('/check-duplicate', async (req, res) => {
       orConditions.push({ numero: { contains: cleanPhone } });
     }
     if (cleanEmail && cleanEmail.includes('@')) {
-      orConditions.push({ email: { equals: cleanEmail, mode: 'insensitive' } });
+      orConditions.push({ email: cleanEmail });
     }
     if (cleanDni && cleanDni.length >= 8) {
       orConditions.push({ dni: cleanDni });
@@ -206,7 +206,7 @@ router.post('/register', async (req, res) => {
 
       const dupChecks: any[] = [];
       if (cleanPhone) dupChecks.push({ numero: { contains: cleanPhone } });
-      if (cleanEmail && cleanEmail.includes('@')) dupChecks.push({ email: { equals: cleanEmail, mode: 'insensitive' } });
+      if (cleanEmail && cleanEmail.includes('@')) dupChecks.push({ email: cleanEmail });
 
       if (dupChecks.length > 0) {
         existingPerson = await tx.personas.findFirst({
@@ -533,7 +533,7 @@ router.post('/', async (req, res) => {
       const dupChecks: any[] = [];
       if (last9) dupChecks.push({ numero: { contains: last9 } });
       if (dniToSave) dupChecks.push({ dni: dniToSave });
-      if (email && email.trim()) dupChecks.push({ email: { equals: email.trim(), mode: 'insensitive' } });
+      if (email && email.trim()) dupChecks.push({ email: email.trim() });
 
       if (dupChecks.length > 0) {
         const existing = await tx.personas.findFirst({
