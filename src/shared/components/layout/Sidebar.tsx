@@ -8,7 +8,8 @@ import {
   Building2,
   Sparkles,
   Globe,
-  ExternalLink
+  ExternalLink,
+  BarChart3
 } from 'lucide-react';
 import { useSidebar } from '@/shared/context/SidebarContext';
 
@@ -163,6 +164,52 @@ export function Sidebar({ onClickItem }: { onClickItem?: () => void }) {
             {!isCollapsed && (
               <span className="text-[9px] font-bold uppercase tracking-wider bg-teal-200/70 dark:bg-teal-900 text-teal-800 dark:text-teal-200 px-1.5 py-0.5 rounded-md font-mono shrink-0">
                 Web
+              </span>
+            )}
+          </NavLink>
+        </div>
+
+        {/* Sección DataMart NexoSalud_Mart */}
+        <div className="pt-2 border-t border-slate-200/70 dark:border-slate-800/80">
+          {!isCollapsed && (
+            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2 transition-opacity duration-300 animate-in fade-in flex items-center gap-1.5">
+              <BarChart3 className="h-3 w-3" /> DataMart Dimensional
+            </p>
+          )}
+          <NavLink
+            to="/reportes"
+            onClick={onClickItem}
+            title={isCollapsed ? 'Reportes DataMart (NexoSalud_Mart)' : undefined}
+            className={({ isActive }) =>
+              `group relative flex items-center rounded-xl transition-all duration-300 ease-in-out border border-indigo-200/60 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100/60 dark:hover:bg-indigo-900/50 ${
+                isCollapsed ? 'justify-center p-3' : 'justify-between px-3.5 py-2.5'
+              } ${
+                isActive
+                  ? 'ring-2 ring-indigo-500/40 text-indigo-950 dark:text-indigo-200 font-bold bg-indigo-100/80 dark:bg-indigo-900/60'
+                  : 'text-indigo-900 dark:text-indigo-300'
+              }`
+            }
+          >
+            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} overflow-hidden`}>
+              <div className="p-1.5 rounded-lg bg-indigo-600 text-white shrink-0 shadow-sm shadow-indigo-600/30">
+                <BarChart3 className="h-4 w-4" />
+              </div>
+
+              {!isCollapsed && (
+                <div className="flex flex-col text-left truncate animate-in fade-in duration-300">
+                  <span className="text-xs font-bold tracking-tight text-indigo-950 dark:text-indigo-200 truncate flex items-center gap-1">
+                    Reportes DataMart
+                  </span>
+                  <span className="text-[10px] text-indigo-700/80 dark:text-indigo-400/80 truncate font-mono">
+                    NexoSalud_Mart (4 Etapas)
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {!isCollapsed && (
+              <span className="text-[9px] font-bold uppercase tracking-wider bg-indigo-200/70 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-1.5 py-0.5 rounded-md font-mono shrink-0">
+                BI
               </span>
             )}
           </NavLink>

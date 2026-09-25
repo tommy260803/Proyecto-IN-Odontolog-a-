@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { PageHeader } from '@/shared/components/data-display/PageHeader';
 import { BaseTable } from '@/shared/components/data-display/BaseTable';
 import { StatusBadge } from '@/shared/components/feedback/StatusBadge';
@@ -10,7 +11,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { usePayers } from '../hooks/usePayerQueries';
 import { PayerState } from '@/domain/enums';
-import { Search, Eye, AlertTriangle, Trash2, X, RotateCcw, Zap, Bot, Sparkles, CheckCircle2, Clock, Mail, ShieldCheck, RefreshCw, Radio, Play, Pause, Filter, Terminal } from 'lucide-react';
+import { Search, Eye, AlertTriangle, Trash2, X, RotateCcw, Zap, Bot, Sparkles, CheckCircle2, Clock, Mail, ShieldCheck, RefreshCw, Radio, Play, Pause, Filter, Terminal, BarChart3 } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
@@ -445,6 +446,14 @@ export default function PayerPage() {
         />
 
         <div className="flex items-center gap-2.5 shrink-0">
+          <Link
+            to="/reportes?tab=payer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all shadow-sm"
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            Reporte DataMart
+          </Link>
+
           <button
             type="button"
             onClick={() => handleOpenDunningAudit(false)}

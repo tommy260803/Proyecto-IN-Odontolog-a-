@@ -12,6 +12,7 @@ import CustomerPage from '@/modules/customer/pages/CustomerPage';
 import CustomerDetailPage from '@/modules/customer/pages/CustomerDetailPage';
 import TurnedPage from '@/modules/turned/pages/TurnedPage';
 import TurnedDetailPage from '@/modules/turned/pages/TurnedDetailPage';
+import ReportsPage from '@/modules/reports/pages/ReportsPage';
 import AppLayout from '@/app/layouts/AppLayout';
 
 export const router = createBrowserRouter([
@@ -74,6 +75,10 @@ export const router = createBrowserRouter([
       {
         path: 'turned/:id',
         element: <TurnedDetailPage />,
+      },
+      {
+        path: 'reportes',
+        element: <ReportsPage />,
       },
     ],
   },

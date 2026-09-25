@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { PageHeader } from '@/shared/components/data-display/PageHeader';
 import { BaseTable } from '@/shared/components/data-display/BaseTable';
 import { StatusBadge } from '@/shared/components/feedback/StatusBadge';
@@ -10,7 +11,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { useBuyers, useConvertBuyerToLead } from '../hooks/useBuyerQueries';
 import { BuyerState } from '@/domain/enums';
-import { Plus, Search, Eye, Trash2, X, RotateCcw, ArrowRight, Loader2 } from 'lucide-react';
+import { Plus, Search, Eye, Trash2, X, RotateCcw, ArrowRight, Loader2, BarChart3 } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -211,10 +212,19 @@ export default function BuyerPage() {
         title="Módulo BUYER" 
         description="Gestión de interesados iniciales y captación de potenciales leads."
         actions={
-          <Button onClick={() => setIsCreateOpen(true)} className="bg-slate-900 dark:bg-teal-600 hover:bg-slate-800 dark:hover:bg-teal-500 text-white rounded-xl shadow-sm">
-            <Plus className="w-4 h-4 mr-2" />
-            Registrar BUYER
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/reportes?tab=buyer"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all shadow-sm"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              Reporte DataMart
+            </Link>
+            <Button onClick={() => setIsCreateOpen(true)} className="bg-slate-900 dark:bg-teal-600 hover:bg-slate-800 dark:hover:bg-teal-500 text-white rounded-xl shadow-sm text-xs">
+              <Plus className="w-4 h-4 mr-1.5" />
+              Registrar BUYER
+            </Button>
+          </div>
         }
       />
 

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { PageHeader } from '@/shared/components/data-display/PageHeader';
 import { BaseTable } from '@/shared/components/data-display/BaseTable';
 import { StatusBadge } from '@/shared/components/feedback/StatusBadge';
@@ -10,7 +11,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { useCustomers } from '../hooks/useCustomerQueries';
 import { CustomerState } from '@/domain/enums';
-import { Search, Eye, X, RotateCcw } from 'lucide-react';
+import { Search, Eye, X, RotateCcw, BarChart3 } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, isValid, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { CustomerWithDetails } from '@/application/use-cases/customer';
@@ -178,6 +179,15 @@ export default function CustomerPage() {
       <PageHeader 
         title="Módulo CUSTOMER" 
         description="Gestión de citas confirmadas y flujo de atención clínica básica."
+        actions={
+          <Link
+            to="/reportes?tab=customer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all shadow-sm"
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            Reporte DataMart
+          </Link>
+        }
       />
 
       <div className="flex flex-col gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
