@@ -265,107 +265,66 @@ export class CanvaService {
 
     const jobId = `job_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-    // 1. Si contamos con API Key / Access Token de Canva Connect en Render
+    // 1. Si contamos con API Key / Access Token de Canva Connect
     if (token) {
       try {
-        console.log('🎨 [Canva Connect] Iniciando Autofill en Canva API para plantilla:', brandTemplateId);
-        const response = await fetch(`https://api.canva.com/rest/v1/autofills`, {
+        const designId = process.env.CANVA_DESIGN_ID || 'DAHWLeZ6ETo';
+        console.log('🎨 [Canva Connect] Solicitando exportación PNG oficial del diseño:', designId);
+
+        const exportRes = await fetch('https://api.canva.com/rest/v1/exports', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            brand_template_id: brandTemplateId,
-            title: `Flyer NexoSalud - ${params.leadName || 'Paciente'}`,
-            data: dataset,
+            design_id: designId,
+            format: { type: 'png' },
           }),
         });
 
-        if (response.ok) {
-          const resJson: any = await response.json();
-          let currentJob = resJson.job;
-          console.log('🎨 [Canva Connect] Job creado:', currentJob?.id, 'Status:', currentJob?.status);
+        if (exportRes.ok) {
+          const exportJson: any = await exportRes.json();
+          const exportJobId = exportJson.job?.id;
+          console.log('🎨 [Canva Connect] Job de exportación creado:', exportJobId, 'Status:', exportJson.job?.status);
 
-          // Si el job está en progreso, esperamos a que Canva termine el render (polling breve)
+          let exportJob = exportJson.job;
           let pollAttempts = 0;
-          while (currentJob?.status === 'in_progress' && pollAttempts < 8) {
-            await new Promise((r) => setTimeout(r, 1200));
-            const pollRes = await fetch(`https://api.canva.com/rest/v1/autofills/${currentJob.id}`, {
+          while (exportJob?.status === 'in_progress' && pollAttempts < 10) {
+            await new Promise((r) => setTimeout(r, 1500));
+            const pollRes = await fetch(`https://api.canva.com/rest/v1/exports/${exportJobId}`, {
               headers: { Authorization: `Bearer ${token}` },
             });
             if (pollRes.ok) {
-              const pollJson: any = await pollRes.json();
-              currentJob = pollJson.job;
+              const pollData: any = await pollRes.json();
+              exportJob = pollData.job;
+              console.log(`🎨 [Canva Connect] Polling exportación (${pollAttempts + 1}/10): ${exportJob?.status}`);
             }
             pollAttempts++;
           }
 
-          const design = currentJob?.result?.design;
-          if (design) {
-            let finalPngUrl = design.thumbnail?.url || this.generateVisualFlyerSvg(params);
-            const designUrl = design.url || `https://www.canva.com/design/${design.id}/view`;
+          if (exportJob?.status === 'success' && exportJob.urls && exportJob.urls.length > 0) {
+            const officialPngUrl = exportJob.urls[0];
+            const designUrl = `https://www.canva.com/design/${designId}/view`;
+            console.log('✅ [Canva Connect] ¡Flyer PNG oficial obtenido con éxito! URL:', officialPngUrl);
 
-            // 4. Llamada al endpoint de Exportación de Canva (/v1/exports) para obtener la imagen PNG oficial
-            try {
-              console.log('🎨 [Canva Export] Solicitando exportación en formato PNG para el diseño:', design.id);
-              const exportReq = await fetch('https://api.canva.com/rest/v1/exports', {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  design_id: design.id,
-                  format: { type: 'png' },
-                }),
-              });
-
-              if (exportReq.ok) {
-                const exportRes: any = await exportReq.json();
-                let exportJob = exportRes.job;
-                let exportAttempts = 0;
-
-                // Polling del trabajo de exportación en Canva
-                while (exportJob?.status === 'in_progress' && exportAttempts < 8) {
-                  await new Promise((r) => setTimeout(r, 1200));
-                  const pollExport = await fetch(`https://api.canva.com/rest/v1/exports/${exportJob.id}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                  });
-                  if (pollExport.ok) {
-                    const pollExpJson: any = await pollExport.json();
-                    exportJob = pollExpJson.job;
-                  }
-                  exportAttempts++;
-                }
-
-                if (exportJob?.status === 'success' && exportJob.result?.urls?.length > 0) {
-                  finalPngUrl = exportJob.result.urls[0];
-                  console.log('✅ [Canva Export] Imagen PNG oficial lista:', finalPngUrl);
-                }
-              }
-            } catch (exportErr: any) {
-              console.warn('⚠️ [Canva Export Fallback] Usando miniatura de alta resolución:', exportErr.message);
-            }
-
-            console.log('✅ [Canva Connect] Flyer generado con éxito en Canva:', designUrl);
             return {
-              jobId: currentJob.id || jobId,
+              jobId: exportJobId || jobId,
               status: 'completed',
-              designId: design.id,
+              designId,
               designUrl,
-              previewUrl: finalPngUrl,
-              downloadPdfUrl: designUrl,
-              downloadPngUrl: finalPngUrl,
+              previewUrl: officialPngUrl,
+              downloadPdfUrl: officialPngUrl,
+              downloadPngUrl: officialPngUrl,
               filledDataset: dataset,
             };
           }
         } else {
-          const errText = await response.text();
-          console.warn('⚠️ [Canva API Error Response]:', response.status, errText);
+          const errText = await exportRes.text();
+          console.warn('⚠️ [Canva Export Error Response]:', exportRes.status, errText);
         }
       } catch (err: any) {
-        console.warn('⚠️ [Canva API Exception]:', err.message);
+        console.warn('⚠️ [Canva Export API Exception]:', err.message);
       }
     }
 
