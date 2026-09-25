@@ -48,12 +48,6 @@ async function main() {
     create: { nombre: 'Facebook' }
   });
 
-  const canalConvenio = await prisma.canales.upsert({
-    where: { nombre: 'Convenio Interinstitucional' },
-    update: {},
-    create: { nombre: 'Convenio Interinstitucional' }
-  });
-
   const fuenteOrg = await prisma.fuentes.upsert({
     where: { nombre: 'Búsqueda Orgánica' },
     update: {},
@@ -175,15 +169,15 @@ async function main() {
   };
   const t = (h: number, m = 0) => new Date(new Date().setHours(h, m, 0, 0));
 
-  const disp1  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedeNorte.id_sede,  fecha: d(0), hora_inicio: t(9),  hora_fin: t(10) } });
-  const disp2  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedeNorte.id_sede,  fecha: d(0), hora_inicio: t(10), hora_fin: t(11) } });
-  const disp3  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedeSur.id_sede,    fecha: d(1), hora_inicio: t(15), hora_fin: t(16) } });
-  const disp4  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedeSur.id_sede,    fecha: d(1), hora_inicio: t(9),  hora_fin: t(10) } });
-  const disp5  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedeNorte.id_sede,  fecha: d(7), hora_inicio: t(11), hora_fin: t(12) } });
-  const disp6  = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeCentro.id_sede, fecha: d(2), hora_inicio: t(9),  hora_fin: t(10) } });
-  const disp7  = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeCentro.id_sede, fecha: d(2), hora_inicio: t(10), hora_fin: t(11) } });
-  const disp8  = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeNorte.id_sede,  fecha: d(3), hora_inicio: t(14), hora_fin: t(15) } });
-  const disp9  = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeNorte.id_sede,  fecha: d(5), hora_inicio: t(16), hora_fin: t(17) } });
+  const disp1 = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional, id_sede: sedeNorte.id_sede, fecha: d(0), hora_inicio: t(9), hora_fin: t(10) } });
+  const disp2 = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional, id_sede: sedeNorte.id_sede, fecha: d(0), hora_inicio: t(10), hora_fin: t(11) } });
+  const disp3 = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional, id_sede: sedeSur.id_sede, fecha: d(1), hora_inicio: t(15), hora_fin: t(16) } });
+  const disp4 = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional, id_sede: sedeSur.id_sede, fecha: d(1), hora_inicio: t(9), hora_fin: t(10) } });
+  const disp5 = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional, id_sede: sedeNorte.id_sede, fecha: d(7), hora_inicio: t(11), hora_fin: t(12) } });
+  const disp6 = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeCentro.id_sede, fecha: d(2), hora_inicio: t(9), hora_fin: t(10) } });
+  const disp7 = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeCentro.id_sede, fecha: d(2), hora_inicio: t(10), hora_fin: t(11) } });
+  const disp8 = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeNorte.id_sede, fecha: d(3), hora_inicio: t(14), hora_fin: t(15) } });
+  const disp9 = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeNorte.id_sede, fecha: d(5), hora_inicio: t(16), hora_fin: t(17) } });
 
   // ========================================================
   // PACIENTES MOCK (Flujo completo)
@@ -202,13 +196,13 @@ async function main() {
       autoriza_contacto: true,
       fecha_autorizacion: new Date(),
       id_etapa_actual: createdEtapas['LEAD'].id_etapa,
-      id_canal_origen: canalConvenio.id_canal,
+      id_canal_origen: canalWpp.id_canal,
       Interacciones: {
         create: [
           {
             tipo: 'Contacto inicial',
             mensaje: 'Contacto inicial completado. Persona muy ocupada en horario de la tarde: no contactar pasadas las 14:00.',
-            id_canal: canalConvenio.id_canal,
+            id_canal: canalWpp.id_canal,
             id_fuente: fuenteOrg.id_fuente,
             id_usuario: usuario1.id_usuario,
           },
