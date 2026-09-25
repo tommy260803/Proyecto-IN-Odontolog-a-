@@ -567,36 +567,26 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const handleGenerateCanvaAndDispatch = async (autoDispatch = false) => {
     setGeneratingCanva(true);
     try {
-      const patientFirstName = lead?.nombres || 'Paciente';
       const ultimaSolicitud = lead?.Solicitudes?.[lead?.Solicitudes?.length - 1];
       const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
       const precio = selectedOptData ? Number(selectedOptData.precio_ofrecido).toFixed(2) : (numericOfferPrice ? numericOfferPrice.toFixed(2) : '150.00');
       const sede = selectedOptData?.Disponibilidad?.Sede?.nombre || (altSedeId !== 'ALL_SEDES' ? catalogs.sedes?.find((s: any) => s.id_sede.toString() === altSedeId)?.nombre : 'Sede Miraflores - Av. Larco 123');
       const doctor = selectedOptData?.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}` : 'Especialistas colegiados';
 
-      const response = await fetch(`/api/leads/${lead?.id_persona || leadId}/canva-flyer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          serviceName: reqServicio,
-          sedeName: sede,
-          doctorName: doctor,
-          offeredPrice: Number(precio),
-          originalPrice: currentOfficialPrice || 180,
-          discountPct: discountMetrics?.pct || 15,
-          expirationDate: selectedOptData?.Disponibilidad?.fecha?.split('T')[0] || (altVigencia === 'custom' ? altVigenciaCustom : '7 días'),
-          conditions: altCondiciones || `Atención personalizada con ${doctor}. Cierre de tratamiento asegurado.`,
-          sendEmail: false,
-          leadEmail: lead?.correo,
-          leadPhone: lead?.numero,
-        }),
+      const resData = await leadService.generateCanvaFlyer(lead?.id_persona || leadId, {
+        serviceName: reqServicio,
+        sedeName: sede,
+        doctorName: doctor,
+        offeredPrice: Number(precio),
+        originalPrice: currentOfficialPrice || 180,
+        discountPct: discountMetrics?.pct || 15,
+        expirationDate: selectedOptData?.Disponibilidad?.fecha?.split('T')[0] || (altVigencia === 'custom' ? altVigenciaCustom : '7 días'),
+        conditions: altCondiciones || `Atención personalizada con ${doctor}. Cierre de tratamiento asegurado.`,
+        sendEmail: false,
+        leadEmail: lead?.correo || lead?.email,
+        leadPhone: lead?.numero,
       });
 
-      if (!response.ok) {
-        throw new Error('Error al procesar el flyer en Canva');
-      }
-
-      const resData = await response.json();
       const canva = resData.canva;
 
       setCanvaResult({
@@ -617,18 +607,11 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
         handleSendWhatsApp();
       }
     } catch (err: any) {
-      console.warn('⚠️ Error llamando a Canva endpoint, aplicando fallback local:', err);
-      // Fallback gracioso
-      setCanvaResult({
-        success: true,
-        templateId: 'EAHWLEXZ1lo',
-        designUrl: 'https://www.canva.com/',
-        previewUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=800&auto=format&fit=crop&q=80',
-        downloadPngUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=800&auto=format&fit=crop&q=80',
-      });
+      console.warn('⚠️ Error llamando a Canva endpoint:', err);
       toast({
-        title: '🎨 Flyer Preparado',
-        description: 'Se preparó la vista previa del flyer con los datos del paciente.',
+        title: 'Atención con Canva Connect',
+        description: 'No se pudo conectar con Canva API. Si expiró la sesión, haz clic en "Conectar Canva".',
+        variant: 'destructive',
       });
     } finally {
       setGeneratingCanva(false);
@@ -1358,6 +1341,19 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                       >
                         <CanvaIcon className="w-4 h-4 shrink-0 text-white" />
                         <span>{generatingCanva ? 'Generando en Canva...' : 'Generar Flyer con Canva & Despachar'}</span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={async () => {
+                          const url = await leadService.getCanvaAuthUrl();
+                          window.location.href = url;
+                        }}
+                        className="border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50 rounded-xl text-xs h-9 px-3 font-semibold flex items-center gap-1.5 shadow-none"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                        <span>Conectar Canva</span>
                       </Button>
 
                       <Button

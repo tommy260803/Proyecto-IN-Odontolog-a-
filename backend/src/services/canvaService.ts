@@ -3,7 +3,7 @@ import path from 'path';
 
 /**
  * Canva Connect API Service
- * Integración con Canva Autofill API para Brand Template: EAHWLEXZ1lo
+ * Integración oficial con Canva Autofill API para Brand Template: EAHWLEXZ1lo
  * Rellena las variables dinámicas de la plantilla de clínica odontológica y exporta el PNG oficial.
  */
 
@@ -49,6 +49,30 @@ export class CanvaService {
   private static BRAND_TEMPLATE_ID = 'EAHWLEXZ1lo';
   private static cachedAccessToken: string | null = null;
   private static tokenExpiresAt: number = 0;
+
+  /**
+   * Actualiza en memoria y en variables de entorno los tokens recibidos tras un intercambio OAuth
+   */
+  public static setTokens(accessToken: string, refreshToken?: string, expiresIn?: number) {
+    this.cachedAccessToken = accessToken;
+    this.tokenExpiresAt = Date.now() + ((expiresIn || 14400) * 1000);
+    process.env.CANVA_ACCESS_TOKEN = accessToken;
+    if (refreshToken) {
+      process.env.CANVA_REFRESH_TOKEN = refreshToken;
+    }
+    try {
+      const envPath = path.resolve(__dirname, '../../.env');
+      if (fs.existsSync(envPath)) {
+        let content = fs.readFileSync(envPath, 'utf8');
+        content = content.replace(/CANVA_ACCESS_TOKEN=.*/g, `CANVA_ACCESS_TOKEN=${accessToken}`);
+        if (refreshToken) {
+          content = content.replace(/CANVA_REFRESH_TOKEN=.*/g, `CANVA_REFRESH_TOKEN=${refreshToken}`);
+        }
+        fs.writeFileSync(envPath, content, 'utf8');
+      }
+    } catch (_) {}
+    console.log('🔑 [Canva Connect] Tokens actualizados en memoria.');
+  }
 
   /**
    * Obtiene un Access Token válido, renovándolo automáticamente mediante el Refresh Token si es necesario
@@ -242,7 +266,7 @@ export class CanvaService {
     <text x="572" y="77" font-family="system-ui, sans-serif" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">${t3Precio}</text>
   </g>
   <g transform="translate(60, 780)">
-    <rect x="0" y="0" width="680" height="120" rx="16" fill="#1e293b" stroke="#334155" />
+    <rect x="0" y="0" width="680" height="120" rx="16" fill="1e293b" stroke="#334155" />
     <text x="30" y="40" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#38bdf8">📍 ${sede}</text>
     <text x="30" y="68" font-family="system-ui, sans-serif" font-size="12" font-weight="500" fill="#cbd5e1">🕒 ${horario}</text>
     <text x="30" y="94" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#34d399">💬 ${contacto}</text>

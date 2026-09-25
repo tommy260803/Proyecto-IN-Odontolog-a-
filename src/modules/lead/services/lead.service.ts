@@ -155,5 +155,79 @@ export const leadService = {
     });
     if (!res.ok) throw new Error('Error al registrar abandono del lead');
     return res.json();
+  },
+
+  generateCanvaFlyer: async (leadId: string | number, payload: any) => {
+    const endpoints = [
+      `${API_URL}/leads/${leadId}/canva-flyer`,
+      `${API_URL}/lead/${leadId}/canva-flyer`,
+      `/api/leads/${leadId}/canva-flyer`,
+      `/api/lead/${leadId}/canva-flyer`,
+      `https://proyecto-odontologia-backend.onrender.com/api/leads/${leadId}/canva-flyer`,
+      `https://proyecto-odontologia-backend.onrender.com/api/lead/${leadId}/canva-flyer`,
+    ];
+
+    let lastError: any = null;
+    for (const ep of endpoints) {
+      try {
+        const res = await fetch(ep, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          const contentType = res.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            return await res.json();
+          }
+        }
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError || new Error('No se pudo conectar con el servicio de Canva');
+  },
+
+  exchangeCanvaCode: async (code: string) => {
+    const endpoints = [
+      `${API_URL}/canva/exchange`,
+      `${API_URL}/canva-exchange`,
+      `/api/canva/exchange`,
+      `/api/canva-exchange`,
+      `https://proyecto-odontologia-backend.onrender.com/api/canva/exchange`,
+    ];
+    for (const ep of endpoints) {
+      try {
+        const res = await fetch(ep, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+        if (res.ok) return await res.json();
+      } catch (_) {}
+    }
+    throw new Error('Error al intercambiar código de Canva');
+  },
+
+  getCanvaAuthUrl: async () => {
+    const endpoints = [
+      `${API_URL}/canva/auth-url`,
+      `/api/canva/auth-url`,
+      `https://proyecto-odontologia-backend.onrender.com/api/canva/auth-url`,
+    ];
+    for (const ep of endpoints) {
+      try {
+        const res = await fetch(ep);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authUrl) return data.authUrl;
+        }
+      } catch (_) {}
+    }
+    const clientId = 'OC-AaDW_EAnA5pf';
+    const redirectUri = encodeURIComponent('https://proyecto-in-odontologia.vercel.app/lead');
+    const scopes = encodeURIComponent('brandtemplate:content:read brandtemplate:meta:read design:content:read design:content:write design:meta:read asset:read asset:write');
+    const codeChallenge = 'Lbn6gs4NoMLnUCyrIV9yLsreYNFd1XtBOt8Cx5igIbI';
+    return `https://www.canva.com/api/oauth/authorize?code_challenge_method=s256&response_type=code&client_id=${clientId}&scope=${scopes}&code_challenge=${codeChallenge}&redirect_uri=${redirectUri}`;
   }
 };

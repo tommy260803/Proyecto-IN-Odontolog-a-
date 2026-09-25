@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '@/shared/components/data-display/PageHeader';
 import { BaseTable } from '@/shared/components/data-display/BaseTable';
@@ -43,6 +43,34 @@ export default function LeadPage() {
   const [abandonTarget, setAbandonTarget] = useState<LeadWithDetails | null>(null);
   const [abandonReason, setAbandonReason] = useState('Precio / Presupuesto elevado');
   const [isAbandoning, setIsAbandoning] = useState(false);
+
+  // Escuchar si Canva nos redirigió con ?code= para autorizar OAuth de inmediato
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (code) {
+      toast({
+        title: '🔄 Conectando con Canva Connect...',
+        description: 'Intercambiando código de autorización oficial.',
+      });
+      leadService.exchangeCanvaCode(code)
+        .then(() => {
+          toast({
+            title: '🎉 ¡Canva Oficial Conectado!',
+            description: 'Las credenciales de diseño y autofill están listas en el servidor.',
+          });
+          window.history.replaceState({}, document.title, window.location.pathname);
+        })
+        .catch((err: any) => {
+          console.error('Error al intercambiar código:', err);
+          toast({
+            title: 'Error de Autorización en Canva',
+            description: 'El código expiró o no se pudo intercambiar. Puedes volver a hacer clic en Conectar Canva.',
+            variant: 'destructive',
+          });
+        });
+    }
+  }, []);
 
   const filteredLeads = useMemo(() => {
     return leads?.filter((l: any) => {
@@ -279,13 +307,27 @@ export default function LeadPage() {
         title="Módulo LEAD" 
         description="Gestión de solicitudes concretas y negociación de alternativas."
         actions={
-          <Link
-            to="/reportes?tab=lead"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all shadow-sm"
-          >
-            <BarChart3 className="w-3.5 h-3.5" />
-            Reporte DataMart
-          </Link>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={async () => {
+                const url = await leadService.getCanvaAuthUrl();
+                window.location.href = url;
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-all shadow-none"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+              <span>Conectar Canva</span>
+            </Button>
+            <Link
+              to="/reportes?tab=lead"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all shadow-sm"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              Reporte DataMart
+            </Link>
+          </div>
         }
       />
 
