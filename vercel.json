@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://proyecto-in-odontologia.onrender.com/api/:path*"
+      "destination": "https://proyecto-odontologia-backend.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",

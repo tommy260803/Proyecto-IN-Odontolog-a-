@@ -155,36 +155,5 @@ export const leadService = {
     });
     if (!res.ok) throw new Error('Error al registrar abandono del lead');
     return res.json();
-  },
-
-  generateCanvaFlyer: async (id: string | number, payload: any) => {
-    const cleanId = String(id).replace(/\D/g, '') || id;
-    const candidates = [
-      `${API_URL}/leads/${cleanId}/canva-flyer`,
-      `${API_URL}/lead/${cleanId}/canva-flyer`,
-      `/api/leads/${cleanId}/canva-flyer`,
-      `/api/lead/${cleanId}/canva-flyer`,
-    ];
-
-    let lastError: any = null;
-    for (const url of candidates) {
-      try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (res.ok) {
-          const contentType = res.headers.get('content-type') || '';
-          if (contentType.includes('application/json')) {
-            return await res.json();
-          }
-        }
-      } catch (err) {
-        lastError = err;
-      }
-    }
-
-    throw new Error(lastError?.message || 'Error al comunicarse con el servicio de Canva Connect');
   }
 };

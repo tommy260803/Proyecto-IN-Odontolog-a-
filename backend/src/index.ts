@@ -19,13 +19,14 @@ app.use(express.json());
 // Registrar rutas
 app.use('/api/buyer', buyerRoutes);
 app.use('/api/lead', leadRoutes);
-app.use('/api/leads', leadRoutes);
 app.use('/api/payer', payerRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/customer', customerRoutes);
 app.use('/api/turned', turnedRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/mart', reportRoutes);
+
+import { CanvaService } from './services/canvaService';
 
 // Ruta de prueba
 app.get('/api/ping', async (req, res) => {
@@ -37,6 +38,36 @@ app.get('/api/ping', async (req, res) => {
     console.error('Error de conexión a la base de datos:', error);
     res.status(500).json({ message: 'Error conectando a la base de datos.', error });
   }
+});
+
+// Diagnóstico de Canva Connect en producción
+app.get('/api/canva-diag', async (req, res) => {
+  const clientId = process.env.CANVA_CLIENT_ID;
+  const clientSecret = process.env.CANVA_CLIENT_SECRET;
+  const refreshToken = process.env.CANVA_REFRESH_TOKEN;
+  const accessToken = process.env.CANVA_ACCESS_TOKEN;
+  const templateId = process.env.CANVA_BRAND_TEMPLATE_ID || process.env.CANVA_TEMPLATE_ID;
+
+  let tokenCheck: any = null;
+  try {
+    const token = await CanvaService.getValidAccessToken();
+    tokenCheck = {
+      obtained: Boolean(token),
+      tokenLength: token?.length,
+    };
+  } catch (e: any) {
+    tokenCheck = { error: e.message };
+  }
+
+  res.json({
+    hasClientId: Boolean(clientId),
+    hasClientSecret: Boolean(clientSecret),
+    hasRefreshToken: Boolean(refreshToken),
+    refreshTokenLength: refreshToken?.length,
+    hasAccessToken: Boolean(accessToken),
+    templateId,
+    tokenCheck,
+  });
 });
 
 // Obtener todas las etapas
