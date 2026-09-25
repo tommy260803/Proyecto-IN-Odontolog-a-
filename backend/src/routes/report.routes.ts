@@ -467,7 +467,7 @@ async function getCustomerMatrix(measure: string = 'citas_evaluables'): Promise<
       ISNULL(s.Sede, 'Sede Principal') AS columna,
       ${measureSQL} AS valor
     FROM Fact_AtencionCustomer fa
-    LEFT JOIN Dim_Sede s ON s.KeySede = f.KeySede
+    LEFT JOIN Dim_Sede s ON s.KeySede = fa.KeySede
     LEFT JOIN Dim_Servicio serv ON serv.KeyServicio = fa.KeyServicio
     GROUP BY serv.Categoria, serv.ServicioOdontologico, s.Sede
   `);
