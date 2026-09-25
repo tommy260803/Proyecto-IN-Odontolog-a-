@@ -303,8 +303,50 @@ export class CanvaService {
 
           const design = currentJob?.result?.design;
           if (design) {
-            const previewImg = design.thumbnail?.url || this.generateVisualFlyerSvg(params);
+            let finalPngUrl = design.thumbnail?.url || this.generateVisualFlyerSvg(params);
             const designUrl = design.url || `https://www.canva.com/design/${design.id}/view`;
+
+            // 4. Llamada al endpoint de Exportación de Canva (/v1/exports) para obtener la imagen PNG oficial
+            try {
+              console.log('🎨 [Canva Export] Solicitando exportación en formato PNG para el diseño:', design.id);
+              const exportReq = await fetch('https://api.canva.com/rest/v1/exports', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  design_id: design.id,
+                  format: { type: 'png' },
+                }),
+              });
+
+              if (exportReq.ok) {
+                const exportRes: any = await exportReq.json();
+                let exportJob = exportRes.job;
+                let exportAttempts = 0;
+
+                // Polling del trabajo de exportación en Canva
+                while (exportJob?.status === 'in_progress' && exportAttempts < 8) {
+                  await new Promise((r) => setTimeout(r, 1200));
+                  const pollExport = await fetch(`https://api.canva.com/rest/v1/exports/${exportJob.id}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  if (pollExport.ok) {
+                    const pollExpJson: any = await pollExport.json();
+                    exportJob = pollExpJson.job;
+                  }
+                  exportAttempts++;
+                }
+
+                if (exportJob?.status === 'success' && exportJob.result?.urls?.length > 0) {
+                  finalPngUrl = exportJob.result.urls[0];
+                  console.log('✅ [Canva Export] Imagen PNG oficial lista:', finalPngUrl);
+                }
+              }
+            } catch (exportErr: any) {
+              console.warn('⚠️ [Canva Export Fallback] Usando miniatura de alta resolución:', exportErr.message);
+            }
 
             console.log('✅ [Canva Connect] Flyer generado con éxito en Canva:', designUrl);
             return {
@@ -312,9 +354,9 @@ export class CanvaService {
               status: 'completed',
               designId: design.id,
               designUrl,
-              previewUrl: previewImg,
+              previewUrl: finalPngUrl,
               downloadPdfUrl: designUrl,
-              downloadPngUrl: previewImg,
+              downloadPngUrl: finalPngUrl,
               filledDataset: dataset,
             };
           }
