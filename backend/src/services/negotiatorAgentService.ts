@@ -28,10 +28,10 @@ export class NegotiatorAgentService {
     const canvaParams: CanvaAutofillParams = {
       brandTemplateId,
       leadName: params.leadName,
-      sedeTexto: params.sedeName || 'Av. Larco 123, Miraflores',
-      descuentoTexto: String(params.discountPct || 20),
-      contactoTexto: '+51 987 654 321\ninfo@nexosalud.pe',
-      horarioTexto: 'Lunes a Sábado\n8:00am a 8:00pm',
+      sedeTexto: `Sede: ${params.sedeName || 'Principal (Trujillo / Lima)'}`,
+      descuentoTexto: `¡${params.discountPct}% DSCTO. EXCLUSIVO!`,
+      contactoTexto: `WhatsApp: +51 999 123 456\ninfo@nexosalud.pe`,
+      horarioTexto: `Lunes a Sábado\n8:00am a 8:00pm`,
       tratamiento1: {
         titulo: params.serviceName || 'Tratamiento Odontológico',
         desc: params.conditions || 'Promoción personalizada con garantía clínica NexoSalud.',
@@ -39,13 +39,13 @@ export class NegotiatorAgentService {
         imgUrl: 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=600&auto=format&fit=crop&q=80',
       },
       tratamiento2: {
-        titulo: 'Limpieza y Diagnóstico Digital 3D',
-        desc: 'Evaluación integral preventiva incluida con tu reserva.',
-        precio: 'GRATIS (con tu reserva)',
+        titulo: 'Limpieza Dental',
+        desc: 'Evaluación preventiva integral y profilaxis profunda.',
+        precio: 'GRATIS (con reserva)',
         imgUrl: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&auto=format&fit=crop&q=80',
       },
       tratamiento3: {
-        titulo: 'Retenedores & Blanqueamiento',
+        titulo: 'Blanqueamiento',
         desc: 'Mantenimiento y brillo estético de alta durabilidad.',
         precio: 'Desde S/ 100',
         imgUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=600&auto=format&fit=crop&q=80',
