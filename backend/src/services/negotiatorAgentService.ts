@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import { CanvaService, CanvaAutofillParams } from './canvaService';
-import { getServicioCommercialInfo } from '../routes/config.routes';
+import { getServicioCommercialInfo, getStoredCompanyConfig } from '../routes/config.routes';
 
 export interface DispatchNegotiationParams {
   leadId: number;
@@ -14,6 +14,8 @@ export interface DispatchNegotiationParams {
   discountPct: number;
   expirationDate: string;
   fechaLimite?: string;
+  diasFaltantes?: number | string;
+  horarioTexto?: string;
   tituloFlyer?: string;
   conditions?: string;
   canvaTemplateId?: string;
@@ -299,6 +301,8 @@ export class NegotiatorAgentService {
     const universalFallbackSlot2 = {
       titulo: 'Profilaxis Dental',
       desc: 'Limpieza ultrasónica y remoción de placa.',
+      precioAnt: 'Antes: S/ 120.00',
+      precioDesp: 'GRATIS',
       precio: 'GRATIS (con reserva)',
       imgUrl: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&auto=format&fit=crop&q=80',
     };
@@ -306,6 +310,8 @@ export class NegotiatorAgentService {
     const universalFallbackSlot3 = {
       titulo: 'Evaluación 3D',
       desc: 'Diagnóstico digital integral y radiografía.',
+      precioAnt: 'Antes: S/ 80.00',
+      precioDesp: 'GRATIS',
       precio: '100% Bonificado',
       imgUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=600&auto=format&fit=crop&q=80',
     };
@@ -314,7 +320,9 @@ export class NegotiatorAgentService {
       ? {
           titulo: relatedServices[0].nombre,
           desc: relatedServices[0].descripcion || 'Tratamiento complementario sugerido.',
-          precio: relatedServices[0].precio ? `Desde S/ ${Number(relatedServices[0].precio).toFixed(2)}` : 'Tarifa preferencial',
+          precioAnt: relatedServices[0].precio ? `Antes: S/ ${Number(relatedServices[0].precio).toFixed(2)}` : 'Tarifa regular',
+          precioDesp: relatedServices[0].precio ? `S/ ${(Number(relatedServices[0].precio) * 0.85).toFixed(2)}` : 'Tarifa preferencial',
+          precio: relatedServices[0].precio ? `Desde S/ ${(Number(relatedServices[0].precio) * 0.85).toFixed(2)}` : 'Tarifa preferencial',
           imgUrl: relatedServices[0].imgUrl || universalFallbackSlot2.imgUrl,
         }
       : universalFallbackSlot2;
@@ -323,24 +331,43 @@ export class NegotiatorAgentService {
       ? {
           titulo: relatedServices[1].nombre,
           desc: relatedServices[1].descripcion || 'Tratamiento complementario sugerido.',
-          precio: relatedServices[1].precio ? `Desde S/ ${Number(relatedServices[1].precio).toFixed(2)}` : 'Tarifa preferencial',
+          precioAnt: relatedServices[1].precio ? `Antes: S/ ${Number(relatedServices[1].precio).toFixed(2)}` : 'Tarifa regular',
+          precioDesp: relatedServices[1].precio ? `S/ ${(Number(relatedServices[1].precio) * 0.85).toFixed(2)}` : 'Tarifa preferencial',
+          precio: relatedServices[1].precio ? `Desde S/ ${(Number(relatedServices[1].precio) * 0.85).toFixed(2)}` : 'Tarifa preferencial',
           imgUrl: relatedServices[1].imgUrl || universalFallbackSlot3.imgUrl,
         }
       : universalFallbackSlot3;
 
-    // 2. Preparar datos para Canva Autofill con títulos cortos de máx 2 palabras y horario 12H
+    // Obtener horario dinámico: prioridad al asignado por el admin, luego al configurado en la clínica (BD/JSON)
+    let resolvedHorario = params.horarioTexto;
+    if (!resolvedHorario) {
+      try {
+        const company = getStoredCompanyConfig();
+        if (company?.horarioAtencion) {
+          resolvedHorario = company.horarioAtencion;
+        }
+      } catch (_) {}
+    }
+    if (!resolvedHorario) {
+      resolvedHorario = 'Lunes a Sábado: 08:00 AM - 08:00 PM';
+    }
+
+    // 2. Preparar datos para Canva Autofill con etiquetas actualizadas
     const canvaParams: CanvaAutofillParams = {
       brandTemplateId,
       leadName: params.leadName,
       tituloFlyer: params.tituloFlyer,
       fechaLimite: params.fechaLimite || params.expirationDate,
+      diasFaltantes: params.diasFaltantes || CanvaService.calculateDiasFaltantes(params.fechaLimite || params.expirationDate),
       sedeTexto: params.sedeName || 'Sede California - Av. Larco 820, Urb. California, Trujillo',
       descuentoTexto: `¡${params.discountPct}% DSCTO. EXCLUSIVO!`,
       contactoTexto: `WhatsApp: +51 970 292 710\ninfo@nexosalud.pe`,
-      horarioTexto: `Lunes a Sábado\n08:00 AM - 08:00 PM`,
+      horarioTexto: resolvedHorario,
       tratamiento1: {
         titulo: params.serviceName || 'Ortodoncia Brackets',
         desc: params.conditions || 'Control mensual y garantía clínica.',
+        precioAnt: `Antes: S/ ${params.originalPrice.toFixed(2)}`,
+        precioDesp: `S/ ${params.offeredPrice.toFixed(2)}`,
         precio: `Desde S/ ${params.offeredPrice.toFixed(2)}`,
         imgUrl: 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=600&auto=format&fit=crop&q=80',
       },

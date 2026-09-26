@@ -22,7 +22,7 @@ const DEFAULT_COMPANY_CONFIG = {
   metodologia: 'IMPULSE Business Intelligence 360',
 };
 
-function getStoredCompanyConfig() {
+export function getStoredCompanyConfig() {
   try {
     if (fs.existsSync(CONFIG_FILE_PATH)) {
       const data = fs.readFileSync(CONFIG_FILE_PATH, 'utf-8');

@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Badge } from '@/shared/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -24,6 +25,7 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { leadService } from '../services/lead.service';
+import { configService } from '@/modules/config/services/config.service';
 import { useToast } from '@/shared/hooks/use-toast';
 import { generateFlyerTitleWithAI } from '@/shared/services/groqService';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
@@ -247,6 +249,9 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const [altVigencia, setAltVigencia] = useState<'24h' | '48h' | '72h' | '7d' | 'custom'>('48h');
   const [altVigenciaCustom, setAltVigenciaCustom] = useState('');
   const [altFranja, setAltFranja] = useState('Horario Flexible (A elección del paciente al confirmar)');
+  const [isCustomHorario, setIsCustomHorario] = useState(false);
+  const [customHorarioText, setCustomHorarioText] = useState('');
+  const [companyHorario, setCompanyHorario] = useState('');
   const [altPrecio, setAltPrecio] = useState('150.00');
   const [altCondiciones, setAltCondiciones] = useState('');
   const [addingAlternative, setAddingAlternative] = useState(false);
@@ -369,10 +374,14 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     Promise.all([
       leadService.getLeadDetails(leadId.toString()),
       leadService.getAvailabilityOptions(),
+      configService.getEmpresa().catch(() => null),
     ])
-      .then(([leadData, catData]) => {
+      .then(([leadData, catData, empData]) => {
         setLead(leadData);
         setCatalogs(catData);
+        if (empData?.horarioAtencion) {
+          setCompanyHorario(empData.horarioAtencion);
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -814,6 +823,36 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
       ? `Esp. ${activeOpt.Disponibilidad.Profesional.apellidos}`
       : 'Especialistas colegiados';
 
+    // Determinar horario asignado por el admin o por la opción seleccionada
+    const currentHorario = isCustomHorario && customHorarioText.trim()
+      ? customHorarioText.trim()
+      : (altFranja || companyHorario || 'Lunes a Sábado: 08:00 AM - 08:00 PM');
+
+    // Calcular días restantes de la oferta para el badge Dias_Faltantes_Dscto
+    const rawTargetDate = activeOpt?.Disponibilidad?.fecha || selectedOptData?.Disponibilidad?.fecha || (opciones.length > 0 ? opciones[0]?.Disponibilidad?.fecha : null);
+    let daysDiff = 5;
+    if (rawTargetDate) {
+      const match = String(rawTargetDate).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const [, y, m, d] = match;
+        const dObj = new Date(Number(y), Number(m) - 1, Number(d), 23, 59, 59);
+        const ms = dObj.getTime() - Date.now();
+        daysDiff = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+      }
+    } else if (altVigencia === '24h') daysDiff = 1;
+    else if (altVigencia === '48h') daysDiff = 2;
+    else if (altVigencia === '72h') daysDiff = 3;
+    else if (altVigencia === '7d') daysDiff = 7;
+    else if (altVigencia === 'custom' && altVigenciaCustom) {
+      try {
+        const dObj = new Date(altVigenciaCustom);
+        const ms = dObj.getTime() - Date.now();
+        daysDiff = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+      } catch (_) {
+        daysDiff = 3;
+      }
+    }
+
     return {
       activeOpt,
       reqServicio,
@@ -822,6 +861,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
       discountPct,
       sede,
       doctor,
+      horario: currentHorario,
+      diasFaltantes: daysDiff,
     };
   };
 
@@ -896,6 +937,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
         originalPrice: Number(offerDetails.precioOriginal),
         discountPct: Number(offerDetails.discountPct),
         expirationDate: fechaLimiteFormatted,
+        horarioTexto: offerDetails.horario,
         conditions,
         leadEmail: lead?.correo || lead?.email,
         leadPhone: lead?.numero,
@@ -954,6 +996,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
         discountPct: Number(offerDetails.discountPct),
         expirationDate: fechaLimiteFormatted,
         fechaLimite: fechaLimiteFormatted,
+        diasFaltantes: offerDetails.diasFaltantes,
+        horarioTexto: offerDetails.horario,
         tituloFlyer: tituloFlyerAI,
         conditions: altCondiciones || `Atención personalizada con ${offerDetails.doctor}. Cierre de tratamiento asegurado.`,
         sendEmail: false,
@@ -1485,27 +1529,55 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                       </div>
                     </div>
 
-                    {/* C. Franja Horaria Sugerida para la Promoción */}
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                        Franja Horaria Sugerida para la Promoción
-                      </Label>
+                    {/* C. Franja Horaria Sugerida para la Promoción & Personalización */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                          Franja Horaria o Turno de la Promoción
+                        </Label>
+                        {isCustomHorario && (
+                          <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 rounded-md border border-teal-200 dark:border-teal-800">
+                            Personalizado
+                          </span>
+                        )}
+                      </div>
+
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {companyHorario && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAltFranja(`Horario Clínica (${companyHorario})`);
+                              setIsCustomHorario(false);
+                              setCustomHorarioText(companyHorario);
+                            }}
+                            className={`p-2 rounded-xl text-[11px] font-semibold text-left border transition-all col-span-2 sm:col-span-3 ${!isCustomHorario && altFranja.includes('Horario Clínica')
+                                ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs'
+                                : 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200/80 dark:border-amber-800/60 text-amber-900 dark:text-amber-300 hover:border-amber-400'
+                              }`}
+                          >
+                            <span className="block font-bold">🏥 Horario Configurado en la Clínica:</span>
+                            <span className="text-[10px] font-normal">{companyHorario}</span>
+                          </button>
+                        )}
                         {[
                           'Horario Flexible (A elección del paciente al confirmar)',
+                          'Turno Tarde (01:00 PM – 09:00 PM)',
                           'Turno Mañana (08:00 AM – 01:00 PM)',
-                          'Turno Tarde (01:00 PM – 06:00 PM)',
                           'Turno Noche (06:00 PM – 09:00 PM)',
-                          'Turno Tarde y Noche (01:00 PM – 09:00 PM)',
                           'Turno Mañana y Tarde (08:00 AM – 06:00 PM)',
                           'Sábados Exclusivo (08:00 AM – 02:00 PM)',
                         ].map((franja) => (
                           <button
                             key={franja}
                             type="button"
-                            onClick={() => setAltFranja(franja)}
-                            className={`p-2 rounded-xl text-[11px] font-semibold text-left border transition-all ${altFranja === franja
+                            onClick={() => {
+                              setAltFranja(franja);
+                              setIsCustomHorario(false);
+                              setCustomHorarioText(franja);
+                            }}
+                            className={`p-2 rounded-xl text-[11px] font-semibold text-left border transition-all ${!isCustomHorario && altFranja === franja
                                 ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs'
                                 : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
                               }`}
@@ -1513,6 +1585,29 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                             {franja}
                           </button>
                         ))}
+                      </div>
+
+                      {/* Input editable para Horario Personalizado por el Administrador */}
+                      <div className="space-y-1 pt-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1">
+                            <Edit2 className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                            Personalizar Horario / Turno para Canva:
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            Escribe cualquier horario específico
+                          </span>
+                        </div>
+                        <Input
+                          value={isCustomHorario ? customHorarioText : altFranja}
+                          onChange={(e) => {
+                            setIsCustomHorario(true);
+                            setCustomHorarioText(e.target.value);
+                            setAltFranja(e.target.value);
+                          }}
+                          placeholder="Ej: Tarde 1:00 pm - 9:00 pm / Lun a Sáb 08:00 AM - 08:00 PM"
+                          className="h-8 text-xs rounded-xl border-teal-300/80 dark:border-teal-700/80 bg-white dark:bg-slate-900 font-medium text-slate-800 dark:text-slate-200"
+                        />
                       </div>
                     </div>
 

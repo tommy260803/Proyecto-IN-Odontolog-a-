@@ -8,11 +8,13 @@ import {
 } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Badge } from '@/shared/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { leadService } from '../services/lead.service';
+import { configService } from '@/modules/config/services/config.service';
 import { useToast } from '@/shared/hooks/use-toast';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 
@@ -87,6 +89,9 @@ export default function LeadNegotiationPage() {
   const [selectedVigencia, setSelectedVigencia] = useState<'24h' | '48h' | '72h' | '7d' | 'custom'>('48h');
   const [selectedVigenciaCustom, setSelectedVigenciaCustom] = useState('');
   const [selectedFranja, setSelectedFranja] = useState('Horario Flexible (A elección del paciente al confirmar)');
+  const [isCustomHorario, setIsCustomHorario] = useState(false);
+  const [customHorarioText, setCustomHorarioText] = useState('');
+  const [companyHorario, setCompanyHorario] = useState('');
   const [precioOfrecido, setPrecioOfrecido] = useState('150.00');
   const [condiciones, setCondiciones] = useState('');
   const [offerErrors, setOfferErrors] = useState<Record<string, string>>({});
@@ -108,11 +113,15 @@ export default function LeadNegotiationPage() {
   const fetchLeadData = () => {
     Promise.all([
       leadService.getLeadDetails(id!),
-      leadService.getAvailabilityOptions()
+      leadService.getAvailabilityOptions(),
+      configService.getEmpresa().catch(() => null),
     ])
-      .then(([leadData, optionsData]) => {
+      .then(([leadData, optionsData, empData]) => {
         setLead(leadData);
         setOptions(optionsData);
+        if (empData?.horarioAtencion) {
+          setCompanyHorario(empData.horarioAtencion);
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -451,6 +460,25 @@ export default function LeadNegotiationPage() {
       const sede = matchedSedeObj ? `${matchedSedeObj.nombre} - ${matchedSedeObj.direccion || ''}`.trim() : 'Sede California - Av. Larco 820, Urb. California, Trujillo';
       const doctor = selectedOptData?.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}` : 'Especialistas colegiados';
 
+      const activeHorario = isCustomHorario && customHorarioText.trim()
+        ? customHorarioText.trim()
+        : (selectedFranja || companyHorario || 'Lunes a Sábado: 08:00 AM - 08:00 PM');
+
+      const rawExpDate = selectedOptData?.Disponibilidad?.fecha?.split('T')[0] || (selectedVigencia === 'custom' ? selectedVigenciaCustom : '7 días');
+      let daysRemaining = 5;
+      if (rawExpDate) {
+        const match = String(rawExpDate).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+          const [, y, m, d] = match;
+          const dObj = new Date(Number(y), Number(m) - 1, Number(d), 23, 59, 59);
+          const ms = dObj.getTime() - Date.now();
+          daysRemaining = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+        } else if (rawExpDate.includes('24h') || rawExpDate.includes('1 día')) daysRemaining = 1;
+        else if (rawExpDate.includes('48h') || rawExpDate.includes('2 días')) daysRemaining = 2;
+        else if (rawExpDate.includes('72h') || rawExpDate.includes('3 días')) daysRemaining = 3;
+        else if (rawExpDate.includes('7 días')) daysRemaining = 7;
+      }
+
       const resData = await leadService.generateCanvaFlyer(id!, {
         serviceName: reqServicio,
         sedeName: sede,
@@ -458,7 +486,10 @@ export default function LeadNegotiationPage() {
         offeredPrice: Number(precio),
         originalPrice: currentOfficialPrice || 180,
         discountPct: discountMetrics?.pct || 15,
-        expirationDate: selectedOptData?.Disponibilidad?.fecha?.split('T')[0] || (selectedVigencia === 'custom' ? selectedVigenciaCustom : '7 días'),
+        expirationDate: rawExpDate,
+        fechaLimite: rawExpDate,
+        diasFaltantes: daysRemaining,
+        horarioTexto: activeHorario,
         conditions: condiciones || `Atención personalizada con ${doctor}. Cierre de tratamiento asegurado.`,
         sendEmail: false,
         leadEmail: lead?.email,
@@ -804,25 +835,55 @@ export default function LeadNegotiationPage() {
                   </div>
                 </div>
 
-                {/* C. Franja Horaria Sugerida para la Promoción */}
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                    Franja Horaria Sugerida para la Promoción
-                  </Label>
+                {/* C. Franja Horaria Sugerida para la Promoción & Personalización */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                      Franja Horaria o Turno de la Promoción
+                    </Label>
+                    {isCustomHorario && (
+                      <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 rounded-md border border-teal-200 dark:border-teal-800">
+                        Personalizado
+                      </span>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {companyHorario && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedFranja(`Horario Clínica (${companyHorario})`);
+                          setIsCustomHorario(false);
+                          setCustomHorarioText(companyHorario);
+                        }}
+                        className={`p-2 rounded-xl text-[11px] font-semibold text-left border transition-all col-span-2 sm:col-span-3 ${!isCustomHorario && selectedFranja.includes('Horario Clínica')
+                            ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs'
+                            : 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200/80 dark:border-amber-800/60 text-amber-900 dark:text-amber-300 hover:border-amber-400'
+                          }`}
+                      >
+                        <span className="block font-bold">🏥 Horario Configurado en la Clínica:</span>
+                        <span className="text-[10px] font-normal">{companyHorario}</span>
+                      </button>
+                    )}
                     {[
                       'Horario Flexible (A elección del paciente al confirmar)',
-                      'Turno Mañana (09:00 - 13:00)',
-                      'Turno Tarde (14:00 - 18:00)',
-                      'Turno Noche (18:00 - 21:00)',
-                      'Sábados Exclusivo',
+                      'Turno Tarde (01:00 PM – 09:00 PM)',
+                      'Turno Mañana (08:00 AM – 01:00 PM)',
+                      'Turno Noche (06:00 PM – 09:00 PM)',
+                      'Turno Mañana y Tarde (08:00 AM – 06:00 PM)',
+                      'Sábados Exclusivo (08:00 AM – 02:00 PM)',
                     ].map((franja) => (
                       <button
                         key={franja}
                         type="button"
-                        onClick={() => setSelectedFranja(franja)}
-                        className={`p-2 rounded-xl text-[11px] font-semibold text-left border transition-all ${selectedFranja === franja
+                        onClick={() => {
+                          setSelectedFranja(franja);
+                          setIsCustomHorario(false);
+                          setCustomHorarioText(franja);
+                        }}
+                        className={`p-2 rounded-xl text-[11px] font-semibold text-left border transition-all ${!isCustomHorario && selectedFranja === franja
                             ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs'
                             : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
                           }`}
@@ -830,6 +891,29 @@ export default function LeadNegotiationPage() {
                         {franja}
                       </button>
                     ))}
+                  </div>
+
+                  {/* Input editable para Horario Personalizado por el Administrador */}
+                  <div className="space-y-1 pt-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1">
+                        <Edit2 className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                        Personalizar Horario / Turno para Canva:
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        Escribe cualquier horario específico
+                      </span>
+                    </div>
+                    <Input
+                      value={isCustomHorario ? customHorarioText : selectedFranja}
+                      onChange={(e) => {
+                        setIsCustomHorario(true);
+                        setCustomHorarioText(e.target.value);
+                        setSelectedFranja(e.target.value);
+                      }}
+                      placeholder="Ej: Tarde 1:00 pm - 9:00 pm / Lun a Sáb 08:00 AM - 08:00 PM"
+                      className="h-8 text-xs rounded-xl border-teal-300/80 dark:border-teal-700/80 bg-white dark:bg-slate-900 font-medium text-slate-800 dark:text-slate-200"
+                    />
                   </div>
                 </div>
 

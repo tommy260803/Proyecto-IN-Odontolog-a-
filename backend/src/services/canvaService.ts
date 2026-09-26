@@ -12,6 +12,7 @@ export interface CanvaAutofillParams {
   leadName?: string;
   tituloFlyer?: string;
   fechaLimite?: string;
+  diasFaltantes?: number | string;
   sedeTexto?: string;
   descuentoTexto?: string;
   contactoTexto?: string;
@@ -20,18 +21,24 @@ export interface CanvaAutofillParams {
     titulo?: string;
     desc?: string;
     precio?: string;
+    precioAnt?: string;
+    precioDesp?: string;
     imgUrl?: string;
   };
   tratamiento2?: {
     titulo?: string;
     desc?: string;
     precio?: string;
+    precioAnt?: string;
+    precioDesp?: string;
     imgUrl?: string;
   };
   tratamiento3?: {
     titulo?: string;
     desc?: string;
     precio?: string;
+    precioAnt?: string;
+    precioDesp?: string;
     imgUrl?: string;
   };
 }
@@ -140,23 +147,57 @@ export class CanvaService {
   /**
    * Convierte un texto de horas a formato 12H (AM/PM) limpio y legible
    */
+  /**
+   * Convierte un texto de horas a formato 12H (AM/PM) limpio y legible sin borrar palabras ni turnos
+   */
   public static formatTo12H(rawHorario?: string): string {
-    if (!rawHorario) return 'Lunes a Sábado\n08:00 AM - 08:00 PM';
+    if (!rawHorario) return 'Lunes a Sábado: 08:00 AM - 08:00 PM';
+    let result = rawHorario.trim();
 
-    // Si ya contiene AM/PM, homogeneizar formato
-    if (/am|pm/i.test(rawHorario)) {
-      return rawHorario.replace(/(\d{1,2}):(\d{2})\s*(am|pm)/gi, (_, h, m, ap) => {
-        return `${h.padStart(2, '0')}:${m} ${ap.toUpperCase()}`;
-      });
-    }
+    // Homogeneizar si ya contiene AM/PM (ej: "1:00 pm - 9:00 pm" -> "01:00 PM - 09:00 PM")
+    result = result.replace(/(\d{1,2}):(\d{2})\s*(am|pm)/gi, (_, h, m, ap) => {
+      return `${h.padStart(2, '0')}:${m} ${ap.toUpperCase()}`;
+    });
 
-    // Convertir horas formato 24H (ej: 08:00 a 20:00) a 12H
-    return rawHorario.replace(/(\d{1,2}):(\d{2})/g, (_, hStr, mStr) => {
+    // Convertir horas en formato 24H (ej: "13:00 - 21:00") que no tengan ya AM/PM
+    result = result.replace(/\b(\d{1,2}):(\d{2})\b(?!\s*[AP]M)/gi, (_, hStr, mStr) => {
       let h = parseInt(hStr, 10);
       const ap = h >= 12 ? 'PM' : 'AM';
       h = h % 12 || 12;
       return `${h.toString().padStart(2, '0')}:${mStr} ${ap}`;
     });
+
+    return result;
+  }
+
+  /**
+   * Calcula los días restantes para la vigencia del descuento para la etiqueta Dias_Faltantes_Dscto
+   */
+  public static calculateDiasFaltantes(rawDate?: string, fallback: number = 5): string {
+    if (!rawDate) return String(fallback);
+    const trimmed = String(rawDate).trim();
+    const matchSimple = trimmed.match(/^(\d+)\s*(d|día|dias|días)?$/i);
+    if (matchSimple) return matchSimple[1];
+
+    const matchWithDays = trimmed.match(/(\d+)\s*(d|día|dias|días)/i);
+    if (matchWithDays) return matchWithDays[1];
+
+    try {
+      let dateObj: Date | null = null;
+      if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+        const parts = trimmed.split('T')[0].split('-');
+        dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 23, 59, 59);
+      } else if (!isNaN(Date.parse(trimmed))) {
+        dateObj = new Date(trimmed);
+      }
+      if (dateObj && !isNaN(dateObj.getTime())) {
+        const diffMs = dateObj.getTime() - Date.now();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        return String(Math.max(1, diffDays));
+      }
+    } catch (_) {}
+
+    return String(fallback);
   }
 
   /**
@@ -246,9 +287,9 @@ export class CanvaService {
    * Genera el payload estructurado con las variables exactas de la plantilla de Canva
    */
   public static buildAutofillDataset(params: CanvaAutofillParams) {
-    // Nuevas variables añadidas en la plantilla
     const cleanTituloFlyer = this.shortenFlyerTitle(params.tituloFlyer, 'MEJOREMOS TU SONRISA');
     const cleanFechaLimite = this.formatFechaLimite(params.fechaLimite);
+    const diasFaltantesTexto = String(params.diasFaltantes || this.calculateDiasFaltantes(params.fechaLimite));
 
     // En la plantilla, Descuento_Texto está sobre 'hasta' y al lado de '% OFF'
     // Se extrae sólo el número para no deformar el texto de tamaño gigante (ej: '20' o '30')
@@ -266,20 +307,24 @@ export class CanvaService {
 
     const t1Titulo = this.shortenTitle(params.tratamiento1?.titulo, 'Brackets Metálicos');
     const t1Desc = this.shortenDesc(params.tratamiento1?.desc, 'Control mensual y garantía.');
-    const t1Precio = params.tratamiento1?.precio || 'Desde S/ 150';
+    const t1PrecioAnt = params.tratamiento1?.precioAnt || 'Antes: S/ 200.00';
+    const t1PrecioDesp = params.tratamiento1?.precioDesp || params.tratamiento1?.precio || 'S/ 150.00';
 
     const t2Titulo = this.shortenTitle(params.tratamiento2?.titulo, 'Limpieza Dental');
     const t2Desc = this.shortenDesc(params.tratamiento2?.desc, 'Profilaxis y diagnóstico 3D.');
-    const t2Precio = params.tratamiento2?.precio || 'GRATIS (con reserva)';
+    const t2PrecioAnt = params.tratamiento2?.precioAnt || 'Antes: S/ 120.00';
+    const t2PrecioDesp = params.tratamiento2?.precioDesp || params.tratamiento2?.precio || 'GRATIS';
 
     const t3Titulo = this.shortenTitle(params.tratamiento3?.titulo, 'Blanqueamiento');
     const t3Desc = this.shortenDesc(params.tratamiento3?.desc, 'Brillo estético y flúor.');
-    const t3Precio = params.tratamiento3?.precio || 'Desde S/ 100';
+    const t3PrecioAnt = params.tratamiento3?.precioAnt || 'Antes: S/ 80.00';
+    const t3PrecioDesp = params.tratamiento3?.precioDesp || params.tratamiento3?.precio || 'GRATIS';
 
     return {
-      // NUEVAS VARIABLES DEL FLYER CANVA (Título publicitario y fecha límite con formato)
+      // NUEVAS VARIABLES DEL FLYER CANVA (Título publicitario, fecha límite y días restantes)
       Titulo_Flyer: { type: 'text', text: cleanTituloFlyer },
       Fecha_Limite: { type: 'text', text: cleanFechaLimite },
+      Dias_Faltantes_Dscto: { type: 'text', text: diasFaltantesTexto },
 
       // INFO GENERAL DE LA CLÍNICA Y GANCHO
       Sede_Texto: { type: 'text', text: cleanSede },
@@ -287,20 +332,26 @@ export class CanvaService {
       Contacto_Texto: { type: 'text', text: contactoTexto },
       Horario_Texto: { type: 'text', text: horarioTexto },
 
-      // BLOQUE DE TRATAMIENTO 1 (SUPERIOR - Máximo 2 palabras de título y descripción corta)
+      // BLOQUE DE TRATAMIENTO 1 (SUPERIOR)
       Tratamiento_1_Titulo: { type: 'text', text: t1Titulo },
       Tratamiento_1_Desc: { type: 'text', text: t1Desc },
-      Tratamiento_1_Precio: { type: 'text', text: t1Precio },
+      Tratamiento_1_Precio_Ant: { type: 'text', text: t1PrecioAnt },
+      Tratamiento_1_Precio_Desp: { type: 'text', text: t1PrecioDesp },
+      Tratamiento_1_Precio: { type: 'text', text: t1PrecioDesp },
 
       // BLOQUE DE TRATAMIENTO 2 (CENTRAL)
       Tratamiento_2_Titulo: { type: 'text', text: t2Titulo },
       Tratamiento_2_Desc: { type: 'text', text: t2Desc },
-      Tratamiento_2_Precio: { type: 'text', text: t2Precio },
+      Tratamiento_2_Precio_Ant: { type: 'text', text: t2PrecioAnt },
+      Tratamiento_2_Precio_Desp: { type: 'text', text: t2PrecioDesp },
+      Tratamiento_2_Precio: { type: 'text', text: t2PrecioDesp },
 
       // BLOQUE DE TRATAMIENTO 3 (INFERIOR)
       Tratamiento_3_Titulo: { type: 'text', text: t3Titulo },
       Tratamiento_3_Desc: { type: 'text', text: t3Desc },
-      Tratamiento_3_Precio: { type: 'text', text: t3Precio },
+      Tratamiento_3_Precio_Ant: { type: 'text', text: t3PrecioAnt },
+      Tratamiento_3_Precio_Desp: { type: 'text', text: t3PrecioDesp },
+      Tratamiento_3_Precio: { type: 'text', text: t3PrecioDesp },
     };
   }
 
@@ -312,18 +363,22 @@ export class CanvaService {
     const descuento = params.descuentoTexto || '30';
     const contacto = params.contactoTexto?.replace(/\n/g, ' • ') || 'WhatsApp: +51 970 292 710';
     const horario = this.formatTo12H(params.horarioTexto?.replace(/\n/g, ' | ') || 'Lun - Sáb: 08:00 AM - 08:00 PM');
+    const diasFaltantes = String(params.diasFaltantes || this.calculateDiasFaltantes(params.fechaLimite));
 
     const t1Title = this.shortenTitle(params.tratamiento1?.titulo, 'Brackets Metálicos');
     const t1Desc = this.shortenDesc(params.tratamiento1?.desc, 'Control mensual y garantía clínica.');
-    const t1Precio = params.tratamiento1?.precio || 'Desde S/ 150';
+    const t1PrecioAnt = params.tratamiento1?.precioAnt || 'Antes: S/ 200.00';
+    const t1PrecioDesp = params.tratamiento1?.precioDesp || params.tratamiento1?.precio || 'S/ 150.00';
 
     const t2Title = this.shortenTitle(params.tratamiento2?.titulo, 'Limpieza Dental');
     const t2Desc = this.shortenDesc(params.tratamiento2?.desc, 'Profilaxis y diagnóstico 3D.');
-    const t2Precio = params.tratamiento2?.precio || 'GRATIS (con reserva)';
+    const t2PrecioAnt = params.tratamiento2?.precioAnt || 'Antes: S/ 120.00';
+    const t2PrecioDesp = params.tratamiento2?.precioDesp || params.tratamiento2?.precio || 'GRATIS';
 
     const t3Title = this.shortenTitle(params.tratamiento3?.titulo, 'Blanqueamiento');
     const t3Desc = this.shortenDesc(params.tratamiento3?.desc, 'Brillo estético y flúor.');
-    const t3Precio = params.tratamiento3?.precio || 'Desde S/ 100';
+    const t3PrecioAnt = params.tratamiento3?.precioAnt || 'Antes: S/ 80.00';
+    const t3PrecioDesp = params.tratamiento3?.precioDesp || params.tratamiento3?.precio || 'GRATIS';
 
     const svg = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1050" width="800" height="1050">
@@ -348,6 +403,11 @@ export class CanvaService {
     <text x="60" y="26" font-family="system-ui, sans-serif" font-size="22" font-weight="900" fill="#ffffff">NEXOSALUD</text>
     <text x="60" y="42" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#94a3b8">ODONTOLOGÍA INTEGRAL</text>
   </g>
+  <g transform="translate(360, 40)">
+    <circle cx="26" cy="26" r="24" fill="#3b82f6" />
+    <text x="26" y="29" font-family="system-ui, sans-serif" font-size="15" font-weight="900" fill="#ffffff" text-anchor="middle">${diasFaltantes}</text>
+    <text x="26" y="42" font-family="system-ui, sans-serif" font-size="8" font-weight="700" fill="#bfdbfe" text-anchor="middle">DAYS LEFT</text>
+  </g>
   <g transform="translate(480, 40)">
     <rect x="0" y="0" width="260" height="52" rx="26" fill="url(#badgeGrad)" />
     <text x="130" y="32" font-family="system-ui, sans-serif" font-size="16" font-weight="900" fill="#ffffff" text-anchor="middle">🔥 ¡HASTA ${descuento}% OFF!</text>
@@ -357,25 +417,28 @@ export class CanvaService {
     <rect x="0" y="0" width="680" height="210" rx="20" fill="url(#cardGrad)" stroke="#7c3aed" stroke-width="2" />
     <text x="50" y="55" font-family="system-ui, sans-serif" font-size="22" font-weight="900" fill="#ffffff">${t1Title}</text>
     <text x="50" y="90" font-family="system-ui, sans-serif" font-size="14" fill="#94a3b8">${t1Desc}</text>
-    <rect x="50" y="130" width="200" height="46" rx="12" fill="#0d9488" />
-    <text x="150" y="159" font-family="system-ui, sans-serif" font-size="18" font-weight="900" fill="#ffffff" text-anchor="middle">${t1Precio}</text>
+    <text x="50" y="145" font-family="system-ui, sans-serif" font-size="14" font-weight="600" fill="#ef4444" text-decoration="line-through">${t1PrecioAnt}</text>
+    <rect x="50" y="155" width="200" height="42" rx="12" fill="#0d9488" />
+    <text x="150" y="182" font-family="system-ui, sans-serif" font-size="17" font-weight="900" fill="#ffffff" text-anchor="middle">${t1PrecioDesp}</text>
   </g>
   <g transform="translate(60, 435)">
     <rect x="0" y="0" width="680" height="150" rx="18" fill="url(#cardGrad)" stroke="#334155" stroke-width="1.5" />
     <text x="50" y="52" font-family="system-ui, sans-serif" font-size="18" font-weight="800" fill="#ffffff">${t2Title}</text>
     <text x="50" y="80" font-family="system-ui, sans-serif" font-size="13" fill="#94a3b8">${t2Desc}</text>
-    <rect x="490" y="50" width="165" height="42" rx="10" fill="#3b82f6" />
-    <text x="572" y="77" font-family="system-ui, sans-serif" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">${t2Precio}</text>
+    <text x="480" y="52" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#94a3b8" text-decoration="line-through">${t2PrecioAnt}</text>
+    <rect x="480" y="62" width="175" height="40" rx="10" fill="#3b82f6" />
+    <text x="567" y="87" font-family="system-ui, sans-serif" font-size="15" font-weight="800" fill="#ffffff" text-anchor="middle">${t2PrecioDesp}</text>
   </g>
   <g transform="translate(60, 605)">
     <rect x="0" y="0" width="680" height="150" rx="18" fill="url(#cardGrad)" stroke="#334155" stroke-width="1.5" />
     <text x="50" y="52" font-family="system-ui, sans-serif" font-size="18" font-weight="800" fill="#ffffff">${t3Title}</text>
     <text x="50" y="80" font-family="system-ui, sans-serif" font-size="13" fill="#94a3b8">${t3Desc}</text>
-    <rect x="490" y="50" width="165" height="42" rx="10" fill="#059669" />
-    <text x="572" y="77" font-family="system-ui, sans-serif" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">${t3Precio}</text>
+    <text x="480" y="52" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#94a3b8" text-decoration="line-through">${t3PrecioAnt}</text>
+    <rect x="480" y="62" width="175" height="40" rx="10" fill="#059669" />
+    <text x="567" y="87" font-family="system-ui, sans-serif" font-size="15" font-weight="800" fill="#ffffff" text-anchor="middle">${t3PrecioDesp}</text>
   </g>
   <g transform="translate(60, 780)">
-    <rect x="0" y="0" width="680" height="120" rx="16" fill="1e293b" stroke="#334155" />
+    <rect x="0" y="0" width="680" height="120" rx="16" fill="#1e293b" stroke="#334155" />
     <text x="30" y="40" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#38bdf8">📍 ${sede}</text>
     <text x="30" y="68" font-family="system-ui, sans-serif" font-size="12" font-weight="500" fill="#cbd5e1">🕒 ${horario}</text>
     <text x="30" y="94" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#34d399">💬 ${contacto}</text>
