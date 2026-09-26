@@ -7,18 +7,10 @@ export const receiptMetadataSchema = z.object({
 });
 
 export const paymentSchema = z.object({
-  channel: z.enum([
-    'Web',
-    'Enlace de pago',
-    'Transferencia con comprobante',
-    'Asistencia por voz',
-    'Efectivo en clínica',
-    'Yape / Plin',
-    'Tarjeta de Crédito / Débito'
-  ], {
+  channel: z.enum(['Web', 'Enlace de pago', 'Transferencia con comprobante', 'Asistencia por voz'], {
     errorMap: () => ({ message: 'Selecciona un canal válido' })
   }),
-  operationNumber: z.string().min(3, 'El número de operación debe tener al menos 3 caracteres'),
+  operationNumber: z.string().min(4, 'El número de operación debe tener al menos 4 caracteres'),
   operationDate: z.string().min(1, 'La fecha de operación es obligatoria'),
   receiptMetadata: receiptMetadataSchema.optional(),
   observations: z.string().optional(),

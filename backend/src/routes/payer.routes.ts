@@ -82,22 +82,10 @@ router.get('/', async (req, res) => {
       const pago = r.Pagos.length > 0 ? r.Pagos[0] : null;
       let state = 'PENDING';
       if (pago) {
-        if (pago.estado === 'Validado') {
-          state = 'VALIDATED';
-        } else if (pago.estado === 'Rechazado') {
-          state = 'REJECTED';
-        } else if (pago.estado === 'En_Revision' || pago.estado === 'En revisión' || pago.estado === 'IN_REVIEW') {
-          state = 'IN_REVIEW';
-        } else {
-          // 'Pendiente' o cualquier otro estado inicial de pre-reserva
-          state = 'PENDING';
-        }
+        state = pago.estado === 'Validado' ? 'VALIDATED' : pago.estado === 'Rechazado' ? 'REJECTED' : 'IN_REVIEW';
       } else if (r.estado === 'Vencida' || r.estado === 'Cancelada') {
         state = 'REJECTED'; // O Vencida
       }
-
-      const isPendingPayment = !pago || pago.estado === 'Pendiente';
-      const isInternalRef = pago?.referencia_pago?.startsWith('PR-');
 
       return {
         id: r.id_reserva.toString(),
@@ -113,12 +101,11 @@ router.get('/', async (req, res) => {
           payerId: r.id_reserva.toString(),
           amount: Number(pago.importe),
           currency: 'PEN',
-          channel: pago.canal_pago || 'En clínica',
-          operationNumber: (!isPendingPayment && !isInternalRef) ? pago.referencia_pago : undefined,
-          preReservationCode: isInternalRef ? pago.referencia_pago : `PR-${r.id_reserva.toString().padStart(5, '0')}`,
+          channel: pago.canal_pago || 'YAPE',
+          operationNumber: pago.referencia_pago || 'REF-YAPE',
           operationDate: pago.fecha_registro ? pago.fecha_registro.toISOString().split('T')[0] : (r.fecha_reserva ? r.fecha_reserva.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
           validationDate: pago.fecha_validacion ? pago.fecha_validacion.toISOString() : undefined,
-          observations: pago.observaciones || (isPendingPayment ? 'Pre-reserva online pendiente de pago.' : 'Pago verificado')
+          observations: pago.observaciones || 'Pago verificado'
         } : undefined,
         person: {
           firstName: r.Persona.nombres,
@@ -207,22 +194,10 @@ router.get('/:id', async (req, res) => {
     const pago = reserva.Pagos.length > 0 ? reserva.Pagos[0] : null;
     let state = 'PENDING';
     if (pago) {
-      if (pago.estado === 'Validado') {
-        state = 'VALIDATED';
-      } else if (pago.estado === 'Rechazado') {
-        state = 'REJECTED';
-      } else if (pago.estado === 'En_Revision' || pago.estado === 'En revisión' || pago.estado === 'IN_REVIEW') {
-        state = 'IN_REVIEW';
-      } else {
-        // 'Pendiente' o reserva inicial sin pagar aún
-        state = 'PENDING';
-      }
+      state = pago.estado === 'Validado' ? 'VALIDATED' : pago.estado === 'Rechazado' ? 'REJECTED' : 'IN_REVIEW';
     } else if (reserva.estado === 'Vencida' || reserva.estado === 'Cancelada') {
       state = 'REJECTED'; // O Vencida
     }
-
-    const isPendingPayment = !pago || pago.estado === 'Pendiente';
-    const isInternalRef = pago?.referencia_pago?.startsWith('PR-');
 
     const payerDetails = {
       id: reserva.id_reserva.toString(),
@@ -238,12 +213,10 @@ router.get('/:id', async (req, res) => {
         payerId: reserva.id_reserva.toString(),
         amount: Number(pago.importe),
         currency: 'PEN',
-        channel: pago.canal_pago || 'En clínica',
-        operationNumber: (!isPendingPayment && !isInternalRef) ? pago.referencia_pago : undefined,
-        preReservationCode: isInternalRef ? pago.referencia_pago : `PR-${reserva.id_reserva.toString().padStart(5, '0')}`,
+        channel: pago.canal_pago || 'YAPE',
+        operationNumber: pago.referencia_pago || 'REF-YAPE',
         operationDate: pago.fecha_registro ? pago.fecha_registro.toISOString().split('T')[0] : (reserva.fecha_reserva ? reserva.fecha_reserva.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
-        validationDate: pago.fecha_validacion ? pago.fecha_validacion.toISOString() : undefined,
-        observations: pago.observaciones || (isPendingPayment ? 'Pre-reserva online pendiente de pago.' : 'Pago verificado')
+        observations: pago.observaciones || 'Pago verificado'
       } : undefined,
       person: {
         firstName: reserva.Persona.nombres,
@@ -272,75 +245,6 @@ router.get('/:id', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener detalle del payer' });
-  }
-});
-
-// Registrar comprobante manual de pago (voucher, transferencia bancaria o pago en caja)
-router.post('/:id/payment', async (req, res) => {
-  const { id } = req.params;
-  const { channel, operationNumber, operationDate, observations, receiptMetadata } = req.body;
-  const numId = Number(id);
-
-  try {
-    const reserva = await prisma.reservas.findFirst({
-      where: {
-        OR: [
-          { id_reserva: isNaN(numId) ? -1 : numId },
-          { id_persona: isNaN(numId) ? -1 : numId }
-        ]
-      },
-      include: { Pagos: true, Opcion: true }
-    });
-
-    if (!reserva) {
-      return res.status(404).json({ error: 'Reserva no encontrada' });
-    }
-
-    const obsReceipt = receiptMetadata?.name ? ` [Adjunto: ${receiptMetadata.name}]` : '';
-    const fullObservations = `${observations || 'Comprobante registrado para verificación bancaria'}${obsReceipt}`.trim();
-
-    let pago = reserva.Pagos.length > 0 ? reserva.Pagos[0] : null;
-    if (pago) {
-      pago = await prisma.pagos.update({
-        where: { id_pago: pago.id_pago },
-        data: {
-          canal_pago: channel || pago.canal_pago,
-          referencia_pago: operationNumber || `VCH-${Date.now()}`,
-          fecha_pago: operationDate ? new Date(operationDate) : new Date(),
-          observaciones: fullObservations,
-          estado: 'En_Revision' // Pasa a revisión administrativa para que el cajero/auditor lo valide
-        }
-      });
-    } else {
-      pago = await prisma.pagos.create({
-        data: {
-          id_persona: reserva.id_persona,
-          id_reserva: reserva.id_reserva,
-          importe: reserva.Opcion?.precio_ofrecido || 150.00,
-          canal_pago: channel || 'Transferencia con comprobante',
-          referencia_pago: operationNumber || `VCH-${Date.now()}`,
-          fecha_pago: operationDate ? new Date(operationDate) : new Date(),
-          observaciones: fullObservations,
-          estado: 'En_Revision'
-        }
-      });
-    }
-
-    // Registrar interacción en auditoría
-    await prisma.interacciones.create({
-      data: {
-        id_persona: reserva.id_persona,
-        tipo: 'Portal PAYER - Carga de Comprobante',
-        mensaje: `Comprobante registrado: ${channel}. Operación: ${operationNumber || 'N/A'}.`,
-        resultado: 'En espera de validación administrativa',
-        es_respuesta_util: true
-      }
-    });
-
-    res.json({ message: 'Comprobante registrado exitosamente', pago });
-  } catch (error: any) {
-    console.error('Error al registrar pago manual:', error);
-    res.status(500).json({ error: error.message || 'Error al registrar comprobante' });
   }
 });
 

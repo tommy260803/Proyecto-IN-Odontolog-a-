@@ -264,22 +264,12 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
 
   // Alertas estáticas según estado (complementan la IA)
   const getStaticAlerts = (p: PayerWithDetails) => {
-    const alerts: { text: string; variant: 'warning' | 'rose' | 'teal' }[] = [];
-    if (p.state === PayerState.PENDING) {
-      alerts.push({ text: 'Pre-reserva activa · Pendiente de pago (Bloqueo 48h)', variant: 'warning' });
-    }
-    if (p.state === PayerState.IN_REVIEW && !p.payment?.receiptMetadata) {
-      alerts.push({ text: 'Comprobante registrado · En revisión administrativa', variant: 'warning' });
-    }
-    if (p.state === PayerState.IN_REVIEW && p.payment?.receiptMetadata) {
-      alerts.push({ text: `Comprobante adjunto: ${p.payment.receiptMetadata.name}`, variant: 'teal' });
-    }
-    if (p.state === PayerState.REJECTED) {
-      alerts.push({ text: 'Incidencia de cobro abierta', variant: 'rose' });
-    }
-    if (p.state === PayerState.REVERTED) {
-      alerts.push({ text: 'Reversión manual registrada', variant: 'rose' });
-    }
+    const alerts: string[] = [];
+    if (p.state === PayerState.PENDING) alerts.push('Pago pendiente de registro');
+    if (p.state === PayerState.IN_REVIEW && !p.payment?.receiptMetadata) alerts.push('Comprobante sin adjunto');
+    if (p.state === PayerState.IN_REVIEW && p.payment?.receiptMetadata) alerts.push(`Comprobante: ${p.payment.receiptMetadata.name}`);
+    if (p.state === PayerState.REJECTED) alerts.push('Incidencia de cobro abierta');
+    if (p.state === PayerState.REVERTED) alerts.push('Reversión manual registrada');
     return alerts;
   };
 
@@ -641,17 +631,8 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
             {alerts.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-0.5">
                 {alerts.map((a, i) => (
-                  <span 
-                    key={i} 
-                    className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs border ${
-                      a.variant === 'warning'
-                        ? 'text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800'
-                        : a.variant === 'teal'
-                        ? 'text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border-teal-200 dark:border-teal-800'
-                        : 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800'
-                    }`}
-                  >
-                    <AlertCircle className="w-3.5 h-3.5" /> {a.text}
+                  <span key={i} className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs">
+                    <AlertCircle className="w-3.5 h-3.5" /> {a}
                   </span>
                 ))}
               </div>
@@ -687,28 +668,7 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
 
               {payer && (
                 <div className="flex items-center gap-2">
-                  <StatusBadge 
-                    status={
-                      payer.state === PayerState.PENDING 
-                        ? 'PENDIENTE DE PAGO' 
-                        : payer.state === PayerState.IN_REVIEW 
-                        ? 'EN REVISIÓN' 
-                        : payer.state === PayerState.VALIDATED 
-                        ? 'VALIDADO' 
-                        : payer.state === PayerState.REJECTED 
-                        ? 'RECHAZADO' 
-                        : payer.state
-                    } 
-                    variant={
-                      payer.state === PayerState.VALIDATED 
-                        ? 'success' 
-                        : payer.state === PayerState.PENDING 
-                        ? 'warning' 
-                        : payer.state === PayerState.IN_REVIEW 
-                        ? 'primary' 
-                        : 'error'
-                    } 
-                  />
+                  <StatusBadge status={payer.state} />
                 </div>
               )}
             </div>
@@ -784,18 +744,6 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                               Esp. {payer.reservation.professionalId?.replace(/^(Dr\.|Dra\.|Dr\/a\.)\s*/i, '')}
                             </span>
                           </div>
-                        </div>
-                      </div>
-
-                      {/* Código de Pre-Reserva Oficial */}
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                        <div className="p-2.5 rounded-xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/80 flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-teal-800 dark:text-teal-300 uppercase tracking-wider">
-                            Código Pre-Reserva
-                          </span>
-                          <span className="font-mono text-xs font-black text-teal-900 dark:text-teal-200">
-                            {(payer.payment as any)?.preReservationCode || `NEXO-${payer.id.padStart(5, '0')}`}
-                          </span>
                         </div>
                       </div>
 
@@ -926,7 +874,7 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                               )}
                             </div>
                             <p className="font-mono font-bold text-slate-900 dark:text-white mt-1 text-xs truncate">
-                              {payer.payment?.operationNumber ? `#${payer.payment.operationNumber}` : 'Sin número asignado'}
+                              #{payer.payment?.operationNumber || '-'}
                             </p>
                           </div>
 

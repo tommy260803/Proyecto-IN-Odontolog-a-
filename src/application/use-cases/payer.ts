@@ -29,18 +29,12 @@ export class PayerUseCases {
     return res.json();
   }
 
+  // Uses frontend mockup endpoint, usually handled by actual payment provider
   async registerPayment(payerId: string, data: any): Promise<Payment> {
-    const res = await fetch(`${API_URL}/payer/${payerId}/payment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Error al registrar comprobante de pago');
-    }
-    const result = await res.json();
-    return result.pago as Payment;
+    // Currently, the backend handles payment directly via /process-yape or /process-checkout-api
+    // This is just a stub if the frontend needs a local mocked update, but shouldn't be used
+    console.warn('registerPayment is deprecated. Use direct payment gateway endpoints.');
+    return {} as Payment;
   }
 
   async validatePayment(payerId: string): Promise<Payer> {
