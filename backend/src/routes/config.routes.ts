@@ -95,47 +95,12 @@ router.get('/servicios', async (req, res) => {
       precio: s.Tarifas[0] ? Number(s.Tarifas[0].precio) : null,
       id_tarifa: s.Tarifas[0]?.id_tarifa || null,
       especialistas: s.ProfesionalServicio.map((ps) => `${ps.Profesional.nombres} ${ps.Profesional.apellidos}`),
-      especialistasDetalle: s.ProfesionalServicio.map((ps) => ({
-        id_profesional: ps.Profesional.id_profesional,
-        nombres: ps.Profesional.nombres,
-        apellidos: ps.Profesional.apellidos,
-        especialidad: ps.Profesional.especialidad,
-      })),
     }));
 
     res.json(formatted);
   } catch (err: any) {
     console.error('Error fetching servicios:', err);
     res.status(500).json({ error: 'Error al obtener servicios' });
-  }
-});
-
-router.put('/servicios/:id/especialistas', async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    const { profesionalesIds } = req.body;
-
-    if (!Array.isArray(profesionalesIds)) {
-      return res.status(400).json({ error: 'profesionalesIds debe ser un arreglo de IDs' });
-    }
-
-    await prisma.profesionalServicio.deleteMany({
-      where: { id_servicio: id },
-    });
-
-    for (const pId of profesionalesIds) {
-      await prisma.profesionalServicio.create({
-        data: {
-          id_servicio: id,
-          id_profesional: Number(pId),
-        },
-      }).catch(() => {});
-    }
-
-    res.json({ success: true, message: 'Especialistas asignados exitosamente' });
-  } catch (err: any) {
-    console.error('Error assigning especialistas to servicio:', err);
-    res.status(500).json({ error: err.message || 'Error al asignar especialistas' });
   }
 });
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -32,20 +32,23 @@ import {
   Users,
   Plus,
   Edit2,
+  CheckCircle2,
+  XCircle,
   Save,
   Loader2,
   Sparkles,
+  Phone,
+  Mail,
+  FileText,
+  Clock,
   Globe,
-  Search,
-  UserPlus,
-  ChevronLeft,
-  ChevronRight,
-  Check,
+  ShieldCheck,
+  Tag,
+  DollarSign,
+  AlertCircle,
 } from 'lucide-react';
 
 type TabKey = 'empresa' | 'servicios' | 'sedes' | 'profesionales' | 'canales' | 'usuarios';
-
-const ITEMS_PER_PAGE = 9;
 
 export default function ConfigPage() {
   const { toast } = useToast();
@@ -63,22 +66,10 @@ export default function ConfigPage() {
   const [usuarios, setUsuarios] = useState<UsuarioConfig[]>([]);
   const [roles, setRoles] = useState<RolConfig[]>([]);
 
-  // Estados de paginación (máximo 9 por página)
-  const [serviciosPage, setServiciosPage] = useState<number>(1);
-  const [sedesPage, setSedesPage] = useState<number>(1);
-  const [profesionalesPage, setProfesionalesPage] = useState<number>(1);
-  const [usuariosPage, setUsuariosPage] = useState<number>(1);
-
   // Modales
   const [servicioModalOpen, setServicioModalOpen] = useState(false);
   const [editingServicio, setEditingServicio] = useState<ServicioConfig | null>(null);
   const [servicioForm, setServicioForm] = useState({ nombre: '', descripcion: '', precio: '' });
-
-  // Modal para asignar especialistas a un servicio
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [targetServicio, setTargetServicio] = useState<ServicioConfig | null>(null);
-  const [selectedDoctorIds, setSelectedDoctorIds] = useState<number[]>([]);
-  const [doctorSearch, setDoctorSearch] = useState('');
 
   const [sedeModalOpen, setSedeModalOpen] = useState(false);
   const [editingSede, setEditingSede] = useState<SedeConfig | null>(null);
@@ -211,42 +202,6 @@ export default function ConfigPage() {
       toast({ title: `Servicio ${!s.activo ? 'activado' : 'desactivado'}` });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
-    }
-  };
-
-  // Abrir modal de asignación de doctores a un servicio
-  const handleOpenAssignModal = (s: ServicioConfig) => {
-    setTargetServicio(s);
-    setDoctorSearch('');
-    // Extraer IDs de profesionales asignados actualmente
-    const currentAssignedIds = (s.especialistasDetalle || [])
-      .map((ed) => ed.id_profesional)
-      .filter(Boolean);
-    setSelectedDoctorIds(currentAssignedIds);
-    setAssignModalOpen(true);
-  };
-
-  // Guardar asignación de especialistas para el servicio
-  const handleSaveDoctorAssignment = async () => {
-    if (!targetServicio) return;
-    setSaving(true);
-    try {
-      await configService.assignEspecialistas(targetServicio.id_servicio, selectedDoctorIds);
-      toast({
-        title: 'Especialistas asignados',
-        description: `Se actualizaron los doctores asignados a ${targetServicio.nombre}.`,
-      });
-      setAssignModalOpen(false);
-      const updated = await configService.getServicios();
-      setServicios(updated);
-    } catch (err: any) {
-      toast({
-        title: 'Error al asignar',
-        description: err.message,
-        variant: 'destructive',
-      });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -421,100 +376,6 @@ export default function ConfigPage() {
     }
   };
 
-  // Filtrado de doctores para el modal de asignación
-  const filteredDoctors = useMemo(() => {
-    const q = doctorSearch.trim().toLowerCase();
-    if (!q) return profesionales;
-    return profesionales.filter(
-      (p) =>
-        p.nombres.toLowerCase().includes(q) ||
-        p.apellidos.toLowerCase().includes(q) ||
-        p.especialidad.toLowerCase().includes(q) ||
-        (p.numero_colegiatura && p.numero_colegiatura.toLowerCase().includes(q))
-    );
-  }, [profesionales, doctorSearch]);
-
-  // Cálculos de Paginación (Máximo 9 por página)
-  const paginatedServicios = useMemo(() => {
-    const start = (serviciosPage - 1) * ITEMS_PER_PAGE;
-    return servicios.slice(start, start + ITEMS_PER_PAGE);
-  }, [servicios, serviciosPage]);
-  const totalServiciosPages = Math.ceil(servicios.length / ITEMS_PER_PAGE) || 1;
-
-  const paginatedSedes = useMemo(() => {
-    const start = (sedesPage - 1) * ITEMS_PER_PAGE;
-    return sedes.slice(start, start + ITEMS_PER_PAGE);
-  }, [sedes, sedesPage]);
-  const totalSedesPages = Math.ceil(sedes.length / ITEMS_PER_PAGE) || 1;
-
-  const paginatedProfesionales = useMemo(() => {
-    const start = (profesionalesPage - 1) * ITEMS_PER_PAGE;
-    return profesionales.slice(start, start + ITEMS_PER_PAGE);
-  }, [profesionales, profesionalesPage]);
-  const totalProfesionalesPages = Math.ceil(profesionales.length / ITEMS_PER_PAGE) || 1;
-
-  const paginatedUsuarios = useMemo(() => {
-    const start = (usuariosPage - 1) * ITEMS_PER_PAGE;
-    return usuarios.slice(start, start + ITEMS_PER_PAGE);
-  }, [usuarios, usuariosPage]);
-  const totalUsuariosPages = Math.ceil(usuarios.length / ITEMS_PER_PAGE) || 1;
-
-  // Componente Reutilizable de Paginación
-  const renderPagination = (currentPage: number, totalPages: number, setPage: (p: number) => void, totalItems: number) => {
-    if (totalItems <= ITEMS_PER_PAGE) return null;
-
-    const startItem = (currentPage - 1) * ITEMS_PER_PAGE + 1;
-    const endItem = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
-
-    return (
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500">
-        <div>
-          Mostrando <span className="font-semibold text-slate-800 dark:text-slate-200">{startItem}</span> a{' '}
-          <span className="font-semibold text-slate-800 dark:text-slate-200">{endItem}</span> de{' '}
-          <span className="font-semibold text-slate-800 dark:text-slate-200">{totalItems}</span> registros
-        </div>
-
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={currentPage <= 1}
-            onClick={() => setPage(currentPage - 1)}
-            className="h-8 px-2.5 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-40"
-          >
-            <ChevronLeft className="h-3.5 w-3.5 mr-0.5" /> Anterior
-          </Button>
-
-          <div className="flex items-center gap-1 px-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPage(p)}
-                className={`w-8 h-8 rounded-xl text-xs font-semibold transition-all ${
-                  currentPage === p
-                    ? 'bg-teal-700 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={currentPage >= totalPages}
-            onClick={() => setPage(currentPage + 1)}
-            className="h-8 px-2.5 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-40"
-          >
-            Siguiente <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
   const tabsConfig = [
     { key: 'empresa', label: 'Empresa / Clínica', icon: Building2, count: null },
     { key: 'servicios', label: 'Servicios y Tarifas', icon: Stethoscope, count: servicios.length },
@@ -543,10 +404,10 @@ export default function ConfigPage() {
         </div>
 
         <div className="flex items-center gap-2 self-start md:self-auto">
-          <Badge className="pointer-events-none select-none bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs px-3 py-1 font-mono">
+          <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs px-3 py-1 font-mono">
             Modo: IMPULSE BI 360
           </Badge>
-          <Badge className="pointer-events-none select-none bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-xs px-3 py-1">
+          <Badge className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-xs px-3 py-1">
             En línea
           </Badge>
         </div>
@@ -728,7 +589,7 @@ export default function ConfigPage() {
                     Catálogo de Procedimientos y Tratamientos
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Tratamientos disponibles para solicitud en línea, cotización IA y asignación directa de doctores.
+                    Tratamientos disponibles para solicitud en línea, cotización IA y agenda odontológica.
                   </p>
                 </div>
                 <Button
@@ -745,7 +606,7 @@ export default function ConfigPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {paginatedServicios.map((s) => (
+                {servicios.map((s) => (
                   <Card key={s.id_servicio} className="p-4 rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col justify-between hover:border-teal-300 transition-all">
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-2">
@@ -761,11 +622,11 @@ export default function ConfigPage() {
                           </div>
                         </div>
                         <Badge
-                          className={`pointer-events-none select-none text-[10px] font-semibold border ${
+                          className={
                             s.activo
-                              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                          }`}
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]'
+                              : 'bg-slate-100 text-slate-500 border-slate-200 text-[10px]'
+                          }
                         >
                           {s.activo ? 'Activo' : 'Inactivo'}
                         </Badge>
@@ -782,38 +643,12 @@ export default function ConfigPage() {
                         </span>
                       </div>
 
-                      {/* Asignación y badges de especialistas */}
-                      <div className="p-2.5 rounded-xl bg-teal-50/40 dark:bg-teal-950/30 border border-teal-100/80 dark:border-teal-900/40 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10.5px] font-bold text-teal-900 dark:text-teal-200 flex items-center gap-1">
-                            <UserCheck className="h-3 w-3 text-teal-600" /> Especialistas Asignados:
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenAssignModal(s)}
-                            className="text-[10px] font-bold text-teal-700 dark:text-teal-300 hover:text-teal-950 hover:underline flex items-center gap-0.5 cursor-pointer"
-                          >
-                            <UserPlus className="h-2.5 w-2.5" /> Asignar / Cambiar
-                          </button>
+                      {s.especialistas.length > 0 && (
+                        <div className="text-[10.5px] text-slate-500">
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">Staff: </span>
+                          {s.especialistas.join(', ')}
                         </div>
-
-                        {s.especialistas && s.especialistas.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {s.especialistas.map((esp, i) => (
-                              <span
-                                key={i}
-                                className="inline-block text-[9.5px] px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 text-teal-800 dark:text-teal-300 border border-teal-200/60 font-medium"
-                              >
-                                {esp}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-[10px] text-slate-400 italic">
-                            Ningún doctor asignado aún. Haz clic en "Asignar / Cambiar".
-                          </p>
-                        )}
-                      </div>
+                      )}
                     </div>
 
                     <div className="pt-3 border-t border-slate-100 dark:border-slate-800 mt-3 flex items-center justify-between gap-2">
@@ -821,7 +656,11 @@ export default function ConfigPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleToggleServicio(s)}
-                        className="text-[10.5px] h-7 px-2.5 rounded-lg border-slate-200 hover:bg-slate-100 text-slate-700"
+                        className={`text-[10.5px] h-7 px-2.5 rounded-lg font-medium transition-colors border ${
+                          s.activo
+                            ? 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 dark:hover:bg-rose-950/50 dark:hover:text-rose-200'
+                            : 'border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/40 hover:bg-emerald-100 hover:text-emerald-900 hover:border-emerald-300 dark:hover:bg-emerald-900/60 dark:hover:text-emerald-100'
+                        }`}
                       >
                         {s.activo ? 'Desactivar' : 'Activar'}
                       </Button>
@@ -845,9 +684,6 @@ export default function ConfigPage() {
                   </Card>
                 ))}
               </div>
-
-              {/* Paginación de Servicios */}
-              {renderPagination(serviciosPage, totalServiciosPages, setServiciosPage, servicios.length)}
             </div>
           )}
 
@@ -880,7 +716,7 @@ export default function ConfigPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {paginatedSedes.map((sede) => (
+                {sedes.map((sede) => (
                   <Card key={sede.id_sede} className="p-4 rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col justify-between hover:border-teal-300 transition-all">
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-2">
@@ -896,11 +732,11 @@ export default function ConfigPage() {
                           </div>
                         </div>
                         <Badge
-                          className={`pointer-events-none select-none text-[10px] font-semibold border ${
+                          className={
                             sede.activo
-                              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                          }`}
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]'
+                              : 'bg-slate-100 text-slate-500 border-slate-200 text-[10px]'
+                          }
                         >
                           {sede.activo ? 'Activa' : 'Inactiva'}
                         </Badge>
@@ -921,7 +757,11 @@ export default function ConfigPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleToggleSede(sede)}
-                        className="text-[10.5px] h-7 px-2.5 rounded-lg border-slate-200 hover:bg-slate-100 text-slate-700"
+                        className={`text-[10.5px] h-7 px-2.5 rounded-lg font-medium transition-colors border ${
+                          sede.activo
+                            ? 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 dark:hover:bg-rose-950/50 dark:hover:text-rose-200'
+                            : 'border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/40 hover:bg-emerald-100 hover:text-emerald-900 hover:border-emerald-300 dark:hover:bg-emerald-900/60 dark:hover:text-emerald-100'
+                        }`}
                       >
                         {sede.activo ? 'Desactivar' : 'Activar'}
                       </Button>
@@ -945,9 +785,6 @@ export default function ConfigPage() {
                   </Card>
                 ))}
               </div>
-
-              {/* Paginación de Sedes */}
-              {renderPagination(sedesPage, totalSedesPages, setSedesPage, sedes.length)}
             </div>
           )}
 
@@ -986,7 +823,7 @@ export default function ConfigPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {paginatedProfesionales.map((prof) => (
+                {profesionales.map((prof) => (
                   <Card key={prof.id_profesional} className="p-4 rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col justify-between hover:border-teal-300 transition-all">
                     <div className="space-y-2.5">
                       <div className="flex items-start justify-between gap-2">
@@ -1002,11 +839,11 @@ export default function ConfigPage() {
                           </div>
                         </div>
                         <Badge
-                          className={`pointer-events-none select-none text-[10px] font-semibold border ${
+                          className={
                             prof.activo
-                              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                          }`}
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]'
+                              : 'bg-slate-100 text-slate-500 border-slate-200 text-[10px]'
+                          }
                         >
                           {prof.activo ? 'Activo' : 'Inactivo'}
                         </Badge>
@@ -1034,7 +871,11 @@ export default function ConfigPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleToggleProfesional(prof)}
-                        className="text-[10.5px] h-7 px-2.5 rounded-lg border-slate-200 hover:bg-slate-100 text-slate-700"
+                        className={`text-[10.5px] h-7 px-2.5 rounded-lg font-medium transition-colors border ${
+                          prof.activo
+                            ? 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 dark:hover:bg-rose-950/50 dark:hover:text-rose-200'
+                            : 'border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/40 hover:bg-emerald-100 hover:text-emerald-900 hover:border-emerald-300 dark:hover:bg-emerald-900/60 dark:hover:text-emerald-100'
+                        }`}
                       >
                         {prof.activo ? 'Desactivar' : 'Activar'}
                       </Button>
@@ -1060,9 +901,6 @@ export default function ConfigPage() {
                   </Card>
                 ))}
               </div>
-
-              {/* Paginación de Profesionales */}
-              {renderPagination(profesionalesPage, totalProfesionalesPages, setProfesionalesPage, profesionales.length)}
             </div>
           )}
 
@@ -1099,7 +937,7 @@ export default function ConfigPage() {
                       className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between"
                     >
                       <span className="text-xs font-medium text-slate-800 dark:text-slate-200">{c.nombre}</span>
-                      <Badge className="pointer-events-none select-none bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[9.5px] font-semibold hover:bg-emerald-50 hover:text-emerald-700">
+                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[9.5px]">
                         Activo
                       </Badge>
                     </div>
@@ -1138,7 +976,7 @@ export default function ConfigPage() {
                         <p className="text-xs font-medium text-slate-800 dark:text-slate-200">{f.nombre}</p>
                         {f.descripcion && <p className="text-[10px] text-slate-500">{f.descripcion}</p>}
                       </div>
-                      <Badge className="pointer-events-none select-none bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[9.5px] font-semibold hover:bg-emerald-50 hover:text-emerald-700">
+                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[9.5px]">
                         Activo
                       </Badge>
                     </div>
@@ -1177,7 +1015,7 @@ export default function ConfigPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {paginatedUsuarios.map((u) => (
+                {usuarios.map((u) => (
                   <Card key={u.id_usuario} className="p-4 rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col justify-between hover:border-teal-300 transition-all">
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-2">
@@ -1193,11 +1031,11 @@ export default function ConfigPage() {
                           </div>
                         </div>
                         <Badge
-                          className={`pointer-events-none select-none text-[10px] font-semibold border ${
+                          className={
                             u.activo
-                              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                          }`}
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]'
+                              : 'bg-slate-100 text-slate-500 border-slate-200 text-[10px]'
+                          }
                         >
                           {u.activo ? 'Activo' : 'Inactivo'}
                         </Badge>
@@ -1216,7 +1054,11 @@ export default function ConfigPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleToggleUsuario(u)}
-                        className="text-[10.5px] h-7 px-2.5 rounded-lg border-slate-200 hover:bg-slate-100 text-slate-700"
+                        className={`text-[10.5px] h-7 px-2.5 rounded-lg font-medium transition-colors border ${
+                          u.activo
+                            ? 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 dark:hover:bg-rose-950/50 dark:hover:text-rose-200'
+                            : 'border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/40 hover:bg-emerald-100 hover:text-emerald-900 hover:border-emerald-300 dark:hover:bg-emerald-900/60 dark:hover:text-emerald-100'
+                        }`}
                       >
                         {u.activo ? 'Desactivar' : 'Activar'}
                       </Button>
@@ -1241,9 +1083,6 @@ export default function ConfigPage() {
                   </Card>
                 ))}
               </div>
-
-              {/* Paginación de Usuarios */}
-              {renderPagination(usuariosPage, totalUsuariosPages, setUsuariosPage, usuarios.length)}
             </div>
           )}
         </div>
@@ -1252,117 +1091,6 @@ export default function ConfigPage() {
       {/* ─────────────────────────────────────────────────────────────
           MODALES DE CREACIÓN Y EDICIÓN
       ───────────────────────────────────────────────────────────── */}
-
-      {/* Modal Asignar Especialistas a un Servicio */}
-      <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
-        <DialogContent className="max-w-lg rounded-2xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xl">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-              <UserCheck className="h-4 w-4 text-teal-600" />
-              Asignar Especialistas y Doctores
-            </DialogTitle>
-            <p className="text-xs text-slate-500">
-              Tratamiento: <span className="font-bold text-teal-700 dark:text-teal-300">{targetServicio?.nombre}</span>
-            </p>
-          </DialogHeader>
-
-          <div className="space-y-3 py-2">
-            {/* Buscador de doctores */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <Input
-                value={doctorSearch}
-                onChange={(e) => setDoctorSearch(e.target.value)}
-                placeholder="Buscar especialista o doctor por nombre, especialidad o COP..."
-                className="pl-9 text-xs h-9 rounded-xl border-slate-200 focus-visible:ring-teal-500"
-              />
-            </div>
-
-            {/* Lista de especialistas con selección */}
-            <div className="max-h-60 overflow-y-auto space-y-1.5 p-1 rounded-xl border border-slate-100 dark:border-slate-800">
-              {filteredDoctors.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-400">
-                  No se encontraron especialistas con "{doctorSearch}".
-                </div>
-              ) : (
-                filteredDoctors.map((doc) => {
-                  const isAssigned = selectedDoctorIds.includes(doc.id_profesional);
-                  return (
-                    <div
-                      key={doc.id_profesional}
-                      onClick={() => {
-                        if (isAssigned) {
-                          setSelectedDoctorIds((prev) => prev.filter((id) => id !== doc.id_profesional));
-                        } else {
-                          setSelectedDoctorIds((prev) => [...prev, doc.id_profesional]);
-                        }
-                      }}
-                      className={`p-2.5 rounded-xl border transition-all flex items-center justify-between cursor-pointer select-none ${
-                        isAssigned
-                          ? 'bg-teal-50/70 dark:bg-teal-950/40 border-teal-300 dark:border-teal-700 shadow-xs'
-                          : 'bg-white dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <div className="space-y-0.5">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                          Dr(a). {doc.nombres} {doc.apellidos}
-                          {doc.numero_colegiatura && (
-                            <span className="text-[10px] text-slate-400 font-mono font-normal">
-                              ({doc.numero_colegiatura})
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-[10.5px] text-teal-700 dark:text-teal-400 font-medium">
-                          {doc.especialidad || 'Odontología General'}
-                        </p>
-                      </div>
-
-                      <div
-                        className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all ${
-                          isAssigned
-                            ? 'bg-teal-700 text-white'
-                            : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900'
-                        }`}
-                      >
-                        {isAssigned && <Check className="h-3.5 w-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-              <span>
-                Doctores seleccionados: <strong className="text-teal-700 dark:text-teal-300">{selectedDoctorIds.length}</strong>
-              </span>
-              {selectedDoctorIds.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedDoctorIds([])}
-                  className="text-rose-600 hover:underline cursor-pointer"
-                >
-                  Limpiar selección
-                </button>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setAssignModalOpen(false)}>
-              Cancelar
-            </Button>
-            <Button
-              size="sm"
-              disabled={saving}
-              onClick={handleSaveDoctorAssignment}
-              className="bg-teal-700 hover:bg-teal-800 text-white"
-            >
-              {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null} Guardar Asignación
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Modal Servicio */}
       <Dialog open={servicioModalOpen} onOpenChange={setServicioModalOpen}>
