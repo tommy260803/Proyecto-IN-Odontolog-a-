@@ -2202,6 +2202,233 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
         />
       </DialogContent>
 
+            {/* ── Modal de Edición Completa de Oferta Comercial (Precio, Descuento, Sede, Especialista, Fecha) ── */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl z-[160] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Edit2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              Editar Oferta Comercial sobre la Mesa
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveFullEdit} className="space-y-4 pt-2">
+            {/* Descuento y Precio Sincronizados */}
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  Tarifa & Porcentaje de Descuento
+                </Label>
+                <span className="text-xs font-semibold text-slate-400">
+                  Base: S/ {getActiveOfferDetails().precioOriginal?.toFixed(2) || currentOfficialPrice.toFixed(2)}
+                </span>
+              </div>
+
+              {/* Botones de descuento rápido */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] text-slate-400 font-semibold uppercase">Atajo:</span>
+                <button
+                  type="button"
+                  onClick={() => handleEditDiscountChange(15)}
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border transition-colors ${
+                    editDiscountPct === 15
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+                  }`}
+                >
+                  -15% OFF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleEditDiscountChange(20)}
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border transition-colors ${
+                    editDiscountPct === 20
+                      ? 'bg-amber-600 text-white border-amber-600'
+                      : 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-100'
+                  }`}
+                >
+                  -20% OFF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleEditDiscountChange(25)}
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border transition-colors ${
+                    editDiscountPct === 25
+                      ? 'bg-purple-600 text-white border-purple-600'
+                      : 'bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800 hover:bg-purple-100'
+                  }`}
+                >
+                  -25% OFF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleEditDiscountChange(0)}
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border transition-colors ${
+                    editDiscountPct === 0
+                      ? 'bg-slate-700 text-white border-slate-700'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  Regular (0%)
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                    % de Descuento
+                  </Label>
+                  <div className="relative mt-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="90"
+                      value={editDiscountPct}
+                      onChange={(e) => handleEditDiscountChange(Number(e.target.value))}
+                      className="w-full h-9 rounded-xl border border-slate-200 dark:border-slate-700 px-3 text-xs font-bold bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    />
+                    <span className="absolute right-3 top-2 text-xs font-bold text-slate-400">%</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                    Precio Ofrecido (S/)
+                  </Label>
+                  <div className="relative mt-1">
+                    <DollarSign className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={editPrice}
+                      onChange={(e) => handleEditPriceChange(e.target.value)}
+                      className="w-full h-9 rounded-xl border border-slate-200 dark:border-slate-700 pl-7 pr-3 text-xs font-mono font-bold bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Sede y Especialista */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-teal-600" /> Sede
+                </Label>
+                <Select value={editSedeId} onValueChange={setEditSedeId}>
+                  <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium">
+                    <SelectValue placeholder="Seleccionar sede..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                    {catalogs.sedes?.map((s: any) => (
+                      <SelectItem key={s.id_sede} value={s.id_sede.toString()} className="text-slate-900 dark:text-slate-100 text-xs">
+                        {s.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  <User className="w-3.5 h-3.5 text-teal-600" /> Especialista
+                </Label>
+                <Select value={editProfesionalId} onValueChange={setEditProfesionalId}>
+                  <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium">
+                    <SelectValue placeholder="Seleccionar especialista..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                    {catalogs.profesionales?.map((p: any) => (
+                      <SelectItem key={p.id_profesional} value={p.id_profesional.toString()} className="text-slate-900 dark:text-slate-100 text-xs">
+                        Esp. {p.nombres} {p.apellidos}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Fecha Límite (Margen de Vigencia) */}
+            <div className="p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-[11px] font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  Fecha Límite de Vigencia
+                </Label>
+                <span className="text-[10px] text-amber-700 dark:text-amber-300 font-medium">
+                  Margen de la Oferta
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setQuickExpiry(1)}
+                  className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-amber-100 transition-colors"
+                >
+                  +24h (Flash)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickExpiry(2)}
+                  className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-amber-100 transition-colors"
+                >
+                  +48h (Recomendado)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickExpiry(3)}
+                  className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-amber-100 transition-colors"
+                >
+                  +72h (3 Días)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickExpiry(7)}
+                  className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-amber-100 transition-colors"
+                >
+                  +7 Días
+                </button>
+              </div>
+
+              <input
+                type="date"
+                value={editFecha}
+                onChange={(e) => setEditFecha(e.target.value)}
+                className="w-full h-9 rounded-xl border border-amber-200 dark:border-amber-800/80 px-3 text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+            </div>
+
+            {/* Botones de Acción */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setEditModalOpen(false)}
+                className="text-xs h-9 rounded-xl text-slate-600 dark:text-slate-400"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={savingEdit}
+                className="bg-teal-600 hover:bg-teal-700 text-white text-xs h-9 px-4 rounded-xl font-bold shadow-md shadow-teal-600/20 flex items-center gap-1.5"
+              >
+                {savingEdit ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Guardando...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" /> Guardar Cambios
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Modal de Vista Previa Grande del Flyer ── */}
       <Dialog 
         open={showPreviewModal} 
