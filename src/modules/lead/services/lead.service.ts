@@ -190,22 +190,27 @@ export const leadService = {
 
   sendNegotiationEmail: async (leadId: string | number, payload: any) => {
     const endpoints = [
+      `${API_URL}/lead/send-offer-email`,
       `${API_URL}/leads/${leadId}/send-email`,
       `${API_URL}/lead/${leadId}/send-email`,
-      `/api/leads/${leadId}/send-email`,
-      `/api/lead/${leadId}/send-email`,
-      `https://proyecto-odontologia-backend.onrender.com/api/leads/${leadId}/send-email`,
+      `https://proyecto-odontologia-backend.onrender.com/api/lead/send-offer-email`,
       `https://proyecto-odontologia-backend.onrender.com/api/lead/${leadId}/send-email`,
     ];
 
+    const uniqueEndpoints = Array.from(new Set(endpoints));
+
     let lastError: any = null;
-    for (const ep of endpoints) {
+    for (const ep of uniqueEndpoints) {
       try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
         const res = await fetch(ep, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ ...payload, leadId }),
+          signal: controller.signal,
         });
+        clearTimeout(timeout);
         if (res.ok) {
           const contentType = res.headers.get('content-type') || '';
           if (contentType.includes('application/json')) {

@@ -478,8 +478,8 @@ router.post('/:id/canva-flyer', async (req, res) => {
 });
 
 // ── Enviar Correo de Oferta en Modo Simulación (al correo personal/prueba) ─────
-router.post('/:id/send-email', async (req, res) => {
-  const { id } = req.params;
+router.post(['/send-offer-email', '/:id/send-email'], async (req, res) => {
+  const id = req.params.id || req.body.leadId;
   const {
     serviceName,
     sedeName,
@@ -495,18 +495,20 @@ router.post('/:id/send-email', async (req, res) => {
   } = req.body;
 
   try {
-    const lead = await withRetry(() =>
-      prisma.personas.findUnique({
-        where: { id_persona: Number(id) },
-        include: {
-          Solicitudes: {
+    const lead = id
+      ? await withRetry(() =>
+          prisma.personas.findUnique({
+            where: { id_persona: Number(id) },
             include: {
-              Servicio: true,
+              Solicitudes: {
+                include: {
+                  Servicio: true,
+                },
+              },
             },
-          },
-        },
-      })
-    );
+          })
+        )
+      : null;
 
     const leadName = lead ? `${lead.nombres} ${lead.apellidos}` : 'Paciente';
     const finalEmail = leadEmail || lead?.email || undefined;
