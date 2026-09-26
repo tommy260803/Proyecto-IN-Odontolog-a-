@@ -279,7 +279,7 @@ export default function BuyerPage() {
                 <SelectItem value="ALL">Todos</SelectItem>
                 <SelectItem value={BuyerState.NEW}>Nuevo</SelectItem>
                 <SelectItem value={BuyerState.CONTACTED}>Contactado</SelectItem>
-                <SelectItem value={BuyerState.CONVERTED}>Convertido</SelectItem>
+                <SelectItem value={BuyerState.CONVERTED}>Convertido a LEAD</SelectItem>
                 <SelectItem value={BuyerState.DISCARDED}>Descartado</SelectItem>
                 <SelectItem value={BuyerState.DUPLICATED}>Duplicado</SelectItem>
               </SelectContent>

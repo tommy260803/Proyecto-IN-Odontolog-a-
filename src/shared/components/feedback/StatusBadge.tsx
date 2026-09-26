@@ -9,7 +9,7 @@ const statusDictionary: Record<string, { label: string; defaultVariant: StatusVa
   // ── 1. BUYER (Captación) ─────────────────────────────────
   NEW: { label: 'Nuevo', defaultVariant: 'warning' },
   CONTACTED: { label: 'Contactado', defaultVariant: 'primary' },
-  CONVERTED: { label: 'Convertido', defaultVariant: 'success' },
+  CONVERTED: { label: 'Convertido a LEAD', defaultVariant: 'success' },
   DISCARDED: { label: 'Descartado', defaultVariant: 'error' },
   DUPLICATED: { label: 'Duplicado', defaultVariant: 'purple' },
 
