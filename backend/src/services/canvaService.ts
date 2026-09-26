@@ -210,7 +210,7 @@ export class CanvaService {
     if (rawDate) {
       if (/^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
         const parts = rawDate.split('T')[0].split('-');
-        dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 12, 0, 0);
       } else if (!isNaN(Date.parse(rawDate))) {
         dateObj = new Date(rawDate);
       } else if (/(\d+)\s*(h|hora|día|dia)/i.test(rawDate)) {

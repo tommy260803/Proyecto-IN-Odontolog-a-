@@ -12,6 +12,8 @@ export interface DispatchNegotiationParams {
   originalPrice: number;
   discountPct: number;
   expirationDate: string;
+  fechaLimite?: string;
+  tituloFlyer?: string;
   conditions?: string;
   canvaTemplateId?: string;
   sendEmail?: boolean;
@@ -348,6 +350,8 @@ export class NegotiatorAgentService {
     const canvaParams: CanvaAutofillParams = {
       brandTemplateId,
       leadName: params.leadName,
+      tituloFlyer: params.tituloFlyer,
+      fechaLimite: params.fechaLimite || params.expirationDate,
       sedeTexto: `Sede: ${params.sedeName || 'Principal (Trujillo / Lima)'}`,
       descuentoTexto: `¡${params.discountPct}% DSCTO. EXCLUSIVO!`,
       contactoTexto: `WhatsApp: +51 999 123 456\ninfo@nexosalud.pe`,

@@ -271,6 +271,69 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [flyerZoom, setFlyerZoom] = useState<number>(1);
   const flyerContainerRef = useRef<HTMLDivElement>(null);
+  const [panPosition, setPanPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ startX: number; startY: number; initialPanX: number; initialPanY: number }>({
+    startX: 0,
+    startY: 0,
+    initialPanX: 0,
+    initialPanY: 0,
+  });
+
+  const handleResetZoomAndPan = () => {
+    setFlyerZoom(1);
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    setIsDragging(true);
+    dragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialPanX: panPosition.x,
+      initialPanY: panPosition.y,
+    };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStartRef.current.startX;
+    const dy = e.clientY - dragStartRef.current.startY;
+    setPanPosition({
+      x: dragStartRef.current.initialPanX + dx,
+      y: dragStartRef.current.initialPanY + dy,
+    });
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging) setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    setIsDragging(true);
+    dragStartRef.current = {
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      initialPanX: panPosition.x,
+      initialPanY: panPosition.y,
+    };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - dragStartRef.current.startX;
+    const dy = e.touches[0].clientY - dragStartRef.current.startY;
+    setPanPosition({
+      x: dragStartRef.current.initialPanX + dx,
+      y: dragStartRef.current.initialPanY + dy,
+    });
+  };
+
+  const handleTouchEnd = () => {
+    if (isDragging) setIsDragging(false);
+  };
 
   // Zoom interactivo con la rueda del ratón (scroll) en el visor del flyer
   useEffect(() => {
@@ -280,7 +343,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      const zoomStep = 0.12;
+      const zoomStep = 0.15;
       const direction = e.deltaY < 0 ? 1 : -1;
       setFlyerZoom((prev) => {
         const next = Math.round((prev + direction * zoomStep) * 100) / 100;
@@ -581,6 +644,55 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
   const selectedOptData = opciones.find((o: any) => o.id_opcion === selectedOpcion);
 
+  // Formateo de fecha límite sincronizado con la mesa de ofertas
+  const formatCustomExpirationDate = (): string => {
+    const rawDate = selectedOptData?.Disponibilidad?.fecha || (opciones.length > 0 ? opciones[0]?.Disponibilidad?.fecha : null);
+    let targetDate: Date | null = null;
+
+    if (rawDate) {
+      const match = String(rawDate).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const [, y, m, d] = match;
+        // Mediodía local evita desfases de día por husos horarios
+        targetDate = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
+      } else {
+        targetDate = new Date(rawDate);
+      }
+    } else if (altVigencia === '24h') {
+      targetDate = addDays(startOfDay(new Date()), 1);
+    } else if (altVigencia === '48h') {
+      targetDate = addDays(startOfDay(new Date()), 2);
+    } else if (altVigencia === '72h') {
+      targetDate = addDays(startOfDay(new Date()), 3);
+    } else if (altVigencia === '7d') {
+      targetDate = addDays(startOfDay(new Date()), 7);
+    } else if (altVigencia === 'custom' && altVigenciaCustom) {
+      try {
+        const match = String(altVigenciaCustom).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+          const [, y, m, d] = match;
+          targetDate = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
+        } else {
+          targetDate = new Date(altVigenciaCustom);
+        }
+      } catch {
+        targetDate = addDays(startOfDay(new Date()), 2);
+      }
+    }
+
+    if (!targetDate || isNaN(targetDate.getTime())) {
+      targetDate = addDays(startOfDay(new Date()), 2);
+    }
+
+    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const meses = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+
+    return `${diasSemana[targetDate.getDay()]}, ${targetDate.getDate()} de ${meses[targetDate.getMonth()]}`;
+  };
+
   const generateWhatsAppMessage = () => {
     const patientFirstName = lead?.nombres || 'Paciente';
     const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
@@ -643,28 +755,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
       const sede = selectedOptData?.Disponibilidad?.Sede?.nombre || (altSedeId !== 'ALL_SEDES' ? catalogs.sedes?.find((s: any) => s.id_sede.toString() === altSedeId)?.nombre : 'Sede Miraflores - Av. Larco 123');
       const doctor = selectedOptData?.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}` : 'Especialistas colegiados';
 
-      // Fecha límite con formato amigable
-      let targetDate: Date | null = null;
-      const rawDate = selectedOptData?.Disponibilidad?.fecha;
-      if (rawDate) {
-        targetDate = new Date(rawDate);
-      } else if (altVigencia === '24h') {
-        targetDate = new Date(Date.now() + 24 * 3600000);
-      } else if (altVigencia === '48h') {
-        targetDate = new Date(Date.now() + 48 * 3600000);
-      } else if (altVigencia === '72h') {
-        targetDate = new Date(Date.now() + 72 * 3600000);
-      } else if (altVigencia === '7d') {
-        targetDate = new Date(Date.now() + 7 * 24 * 3600000);
-      } else if (altVigencia === 'custom' && altVigenciaCustom) {
-        targetDate = new Date(altVigenciaCustom);
-      }
-      if (!targetDate || isNaN(targetDate.getTime())) {
-        targetDate = new Date(Date.now() + 48 * 3600000);
-      }
-      const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-      const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
-      const fechaLimiteFormatted = `${diasSemana[targetDate.getDay()]}, ${targetDate.getDate()} de ${meses[targetDate.getMonth()]}`;
+      // Fecha límite sincronizada con la mesa de ofertas
+      const fechaLimiteFormatted = formatCustomExpirationDate();
 
       const conditions = altCondiciones || `Atención personalizada con ${doctor}. Cierre de tratamiento asegurado.`;
       const flyerUrl = canvaResult?.previewUrl || canvaResult?.downloadPngUrl || undefined;
@@ -726,28 +818,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
       const sede = selectedOptData?.Disponibilidad?.Sede?.nombre || (altSedeId !== 'ALL_SEDES' ? catalogs.sedes?.find((s: any) => s.id_sede.toString() === altSedeId)?.nombre : 'Sede Miraflores - Av. Larco 123');
       const doctor = selectedOptData?.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}` : 'Especialistas colegiados';
 
-      // 1. Formatear la fecha límite con el formato exacto de la plantilla: "Viernes, 26 de marzo"
-      let targetDate: Date | null = null;
-      const rawDate = selectedOptData?.Disponibilidad?.fecha;
-      if (rawDate) {
-        targetDate = new Date(rawDate);
-      } else if (altVigencia === '24h') {
-        targetDate = new Date(Date.now() + 24 * 3600000);
-      } else if (altVigencia === '48h') {
-        targetDate = new Date(Date.now() + 48 * 3600000);
-      } else if (altVigencia === '72h') {
-        targetDate = new Date(Date.now() + 72 * 3600000);
-      } else if (altVigencia === '7d') {
-        targetDate = new Date(Date.now() + 7 * 24 * 3600000);
-      } else if (altVigencia === 'custom' && altVigenciaCustom) {
-        targetDate = new Date(altVigenciaCustom);
-      }
-      if (!targetDate || isNaN(targetDate.getTime())) {
-        targetDate = new Date(Date.now() + 48 * 3600000);
-      }
-      const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-      const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
-      const fechaLimiteFormatted = `${diasSemana[targetDate.getDay()]}, ${targetDate.getDate()} de ${meses[targetDate.getMonth()]}`;
+      // 1. Formatear la fecha límite sincronizada exactamente con la mesa de ofertas
+      const fechaLimiteFormatted = formatCustomExpirationDate();
 
       // 2. Generar con IA un título publicitario de máximo 3 palabras (ej: "MEJOREMOS TU SONRISA", "SONRÍE CON CONFIANZA")
       const tituloFlyerAI = await generateFlyerTitleWithAI(reqServicio, lead?.nombres);
@@ -1998,14 +2070,14 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
         open={showPreviewModal} 
         onOpenChange={(open) => {
           setShowPreviewModal(open);
-          if (!open) setFlyerZoom(1);
+          if (!open) handleResetZoomAndPan();
         }}
       >
         <DialogContent className="max-w-4xl max-h-[96vh] p-5 sm:p-6 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col items-center z-[150] overflow-hidden">
           {/* Header en Modo Claro con botones limpios y alineados */}
           <DialogHeader className="w-full flex flex-row items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-2.5 min-w-0 pr-2">
-              <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200/80 dark:border-purple-800 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-purple-50 dark:purple-950/60 border border-purple-200/80 dark:border-purple-800 flex items-center justify-center shrink-0">
                 <CanvaIcon className="w-4 h-4 text-[#00C4CC]" />
               </div>
               <div className="min-w-0">
@@ -2045,49 +2117,58 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
             </div>
           </DialogHeader>
 
-          {/* Contenedor del Flyer con Zoom mediante Scroll (Rueda del Ratón) */}
+          {/* Contenedor del Flyer con Zoom mediante Scroll y Arrastre Libre (Pan & Drag) */}
           <div 
             ref={flyerContainerRef}
-            onWheel={(e) => {
-              const zoomStep = 0.15;
-              const direction = e.deltaY < 0 ? 1 : -1;
-              setFlyerZoom((prev) => {
-                const next = Math.round((prev + direction * zoomStep) * 100) / 100;
-                return Math.min(3.0, Math.max(0.6, next));
-              });
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onDoubleClick={() => {
+              if (flyerZoom > 1 || panPosition.x !== 0 || panPosition.y !== 0) {
+                handleResetZoomAndPan();
+              } else {
+                setFlyerZoom(1.75);
+              }
             }}
-            onDoubleClick={() => setFlyerZoom((prev) => (prev > 1 ? 1 : 1.75))}
-            className="relative w-full flex-1 min-h-[50vh] max-h-[75vh] flex items-center justify-center p-4 bg-slate-100/90 dark:bg-slate-950/60 border border-slate-200/90 dark:border-slate-800 rounded-2xl mt-3 overflow-hidden select-none cursor-default"
-            title="Gira la rueda del ratón (scroll) para hacer zoom o doble clic para alternar"
+            className={`relative w-full flex-1 min-h-[50vh] max-h-[75vh] flex items-center justify-center p-4 bg-slate-100/90 dark:bg-slate-950/60 border border-slate-200/90 dark:border-slate-800 rounded-2xl mt-3 overflow-hidden select-none ${
+              isDragging ? 'cursor-grabbing' : 'cursor-grab'
+            }`}
+            title="Usa la rueda (scroll) para zoom y arrastra con el ratón para moverte libremente"
           >
             <div 
-              className="flex items-center justify-center transition-transform duration-100 ease-out"
+              className="flex items-center justify-center pointer-events-none"
               style={{
-                transform: `scale(${flyerZoom})`,
+                transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${flyerZoom})`,
                 transformOrigin: 'center center',
+                transition: isDragging ? 'none' : 'transform 100ms ease-out',
               }}
             >
               <img
                 src={canvaResult?.previewUrl}
                 alt="Flyer Oficial Canva Grande"
-                className="max-h-[68vh] w-auto object-contain rounded-xl shadow-xl pointer-events-none"
+                className="max-h-[68vh] w-auto object-contain rounded-xl shadow-xl pointer-events-none select-none"
+                draggable={false}
               />
             </div>
 
             {/* Píldora inferior flotante pequeña y transparente */}
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/40 hover:bg-slate-900/60 backdrop-blur-md border border-white/15 text-[11px] font-mono text-white/90 shadow-sm transition-all select-none">
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/40 hover:bg-slate-900/60 backdrop-blur-md border border-white/15 text-[11px] font-mono text-white/90 shadow-sm transition-all select-none pointer-events-auto">
               <span>{Math.round(flyerZoom * 100)}%</span>
-              {flyerZoom !== 1 && (
+              {(flyerZoom !== 1 || panPosition.x !== 0 || panPosition.y !== 0) && (
                 <>
                   <span className="text-white/30">|</span>
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setFlyerZoom(1);
+                      handleResetZoomAndPan();
                     }}
                     className="text-[10px] text-teal-300 hover:text-white transition-colors cursor-pointer inline-flex items-center gap-0.5"
-                    title="Restablecer tamaño original (100%)"
+                    title="Restablecer tamaño y posición original (100%)"
                   >
                     <RotateCcw className="w-2.5 h-2.5" />
                     <span>Reset</span>
