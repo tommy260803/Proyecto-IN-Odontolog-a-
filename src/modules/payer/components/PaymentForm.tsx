@@ -81,9 +81,12 @@ export function PaymentForm({ onSubmit, isLoading }: PaymentFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs">
-                    <SelectItem value="Web">Interfaz web</SelectItem>
-                    <SelectItem value="Enlace de pago">Enlace de pago</SelectItem>
+                    <SelectItem value="Efectivo en clínica">Efectivo en clínica</SelectItem>
+                    <SelectItem value="Yape / Plin">Yape / Plin</SelectItem>
+                    <SelectItem value="Tarjeta de Crédito / Débito">Tarjeta de Crédito / Débito</SelectItem>
                     <SelectItem value="Transferencia con comprobante">Transferencia con comprobante</SelectItem>
+                    <SelectItem value="Enlace de pago">Enlace de pago</SelectItem>
+                    <SelectItem value="Web">Interfaz web</SelectItem>
                     <SelectItem value="Asistencia por voz">Asistencia por voz (Prototipo)</SelectItem>
                   </SelectContent>
                 </Select>
