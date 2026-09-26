@@ -656,17 +656,13 @@ export default function ConfigPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleToggleServicio(s)}
-                        className={`text-[10.5px] h-7 px-2.5 rounded-lg font-medium transition-colors border ${
-                          s.activo
-                            ? 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 dark:hover:bg-rose-950/50 dark:hover:text-rose-200'
-                            : 'border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/40 hover:bg-emerald-100 hover:text-emerald-900 hover:border-emerald-300 dark:hover:bg-emerald-900/60 dark:hover:text-emerald-100'
-                        }`}
+                        className="text-[10.5px] h-7 px-2.5 rounded-lg border-slate-200"
                       >
                         {s.activo ? 'Desactivar' : 'Activar'}
                       </Button>
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => {
                           setEditingServicio(s);
                           setServicioForm({
@@ -676,7 +672,7 @@ export default function ConfigPage() {
                           });
                           setServicioModalOpen(true);
                         }}
-                        className="text-[10.5px] h-7 px-2.5 rounded-lg font-medium text-teal-700 dark:text-teal-400 bg-teal-50/40 hover:bg-teal-100 hover:text-teal-900 dark:hover:bg-teal-950/80 dark:hover:text-teal-200 border border-teal-200/80 dark:border-teal-800 transition-colors"
+                        className="text-[10.5px] h-7 px-2.5 text-teal-700 dark:text-teal-400 hover:bg-teal-50"
                       >
                         <Edit2 className="h-3 w-3 mr-1" /> Editar
                       </Button>
@@ -757,17 +753,13 @@ export default function ConfigPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleToggleSede(sede)}
-                        className={`text-[10.5px] h-7 px-2.5 rounded-lg font-medium transition-colors border ${
-                          sede.activo
-                            ? 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 dark:hover:bg-rose-950/50 dark:hover:text-rose-200'
-                            : 'border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/40 hover:bg-emerald-100 hover:text-emerald-900 hover:border-emerald-300 dark:hover:bg-emerald-900/60 dark:hover:text-emerald-100'
-                        }`}
+                        className="text-[10.5px] h-7 px-2.5 rounded-lg border-slate-200"
                       >
                         {sede.activo ? 'Desactivar' : 'Activar'}
                       </Button>
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => {
                           setEditingSede(sede);
                           setSedeForm({
@@ -777,7 +769,7 @@ export default function ConfigPage() {
                           });
                           setSedeModalOpen(true);
                         }}
-                        className="text-[10.5px] h-7 px-2.5 rounded-lg font-medium text-teal-700 dark:text-teal-400 bg-teal-50/40 hover:bg-teal-100 hover:text-teal-900 dark:hover:bg-teal-950/80 dark:hover:text-teal-200 border border-teal-200/80 dark:border-teal-800 transition-colors"
+                        className="text-[10.5px] h-7 px-2.5 text-teal-700 dark:text-teal-400 hover:bg-teal-50"
                       >
                         <Edit2 className="h-3 w-3 mr-1" /> Editar
                       </Button>
@@ -871,17 +863,13 @@ export default function ConfigPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleToggleProfesional(prof)}
-                        className={`text-[10.5px] h-7 px-2.5 rounded-lg font-medium transition-colors border ${
-                          prof.activo
-                            ? 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 dark:hover:bg-rose-950/50 dark:hover:text-rose-200'
-                            : 'border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/40 hover:bg-emerald-100 hover:text-emerald-900 hover:border-emerald-300 dark:hover:bg-emerald-900/60 dark:hover:text-emerald-100'
-                        }`}
+                        className="text-[10.5px] h-7 px-2.5 rounded-lg border-slate-200"
                       >
                         {prof.activo ? 'Desactivar' : 'Activar'}
                       </Button>
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => {
                           setEditingProfesional(prof);
                           setProfesionalForm({
@@ -893,7 +881,7 @@ export default function ConfigPage() {
                           });
                           setProfesionalModalOpen(true);
                         }}
-                        className="text-[10.5px] h-7 px-2.5 rounded-lg font-medium text-teal-700 dark:text-teal-400 bg-teal-50/40 hover:bg-teal-100 hover:text-teal-900 dark:hover:bg-teal-950/80 dark:hover:text-teal-200 border border-teal-200/80 dark:border-teal-800 transition-colors"
+                        className="text-[10.5px] h-7 px-2.5 text-teal-700 dark:text-teal-400 hover:bg-teal-50"
                       >
                         <Edit2 className="h-3 w-3 mr-1" /> Editar
                       </Button>
@@ -1054,17 +1042,13 @@ export default function ConfigPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleToggleUsuario(u)}
-                        className={`text-[10.5px] h-7 px-2.5 rounded-lg font-medium transition-colors border ${
-                          u.activo
-                            ? 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 dark:hover:bg-rose-950/50 dark:hover:text-rose-200'
-                            : 'border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/40 hover:bg-emerald-100 hover:text-emerald-900 hover:border-emerald-300 dark:hover:bg-emerald-900/60 dark:hover:text-emerald-100'
-                        }`}
+                        className="text-[10.5px] h-7 px-2.5 rounded-lg border-slate-200"
                       >
                         {u.activo ? 'Desactivar' : 'Activar'}
                       </Button>
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => {
                           setEditingUsuario(u);
                           setUsuarioForm({
@@ -1075,7 +1059,7 @@ export default function ConfigPage() {
                           });
                           setUsuarioModalOpen(true);
                         }}
-                        className="text-[10.5px] h-7 px-2.5 rounded-lg font-medium text-teal-700 dark:text-teal-400 bg-teal-50/40 hover:bg-teal-100 hover:text-teal-900 dark:hover:bg-teal-950/80 dark:hover:text-teal-200 border border-teal-200/80 dark:border-teal-800 transition-colors"
+                        className="text-[10.5px] h-7 px-2.5 text-teal-700 dark:text-teal-400 hover:bg-teal-50"
                       >
                         <Edit2 className="h-3 w-3 mr-1" /> Editar
                       </Button>

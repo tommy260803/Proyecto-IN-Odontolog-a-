@@ -67,6 +67,182 @@ router.put('/empresa', (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // 2. SERVICIOS Y TARIFAS
 // ─────────────────────────────────────────────────────────────
+// Ruta de persistencia para reglas comerciales de servicios (Descuento Máximo e IDs de tratamientos para venta cruzada)
+const SERVICIOS_RULES_FILE = path.resolve(__dirname, '../../data/serviciosRules.json');
+
+export interface ServicioCommercialRule {
+  descuentoMaximo: number;
+  descuentosPermitidos: number[];
+  serviciosRelacionadosIds: number[];
+}
+
+const DEFAULT_SERVICIOS_RULES: Record<number, ServicioCommercialRule> = {
+  1: {
+    descuentoMaximo: 20,
+    descuentosPermitidos: [10, 15, 20],
+    serviciosRelacionadosIds: [4, 2], // Blanqueamiento dental, Ortodoncia
+  },
+  2: {
+    descuentoMaximo: 20,
+    descuentosPermitidos: [10, 15, 20],
+    serviciosRelacionadosIds: [4, 3], // Blanqueamiento dental, Control odontológico
+  },
+  3: {
+    descuentoMaximo: 15,
+    descuentosPermitidos: [10, 15],
+    serviciosRelacionadosIds: [4, 1], // Blanqueamiento dental, Evaluación odontológica
+  },
+  4: {
+    descuentoMaximo: 25,
+    descuentosPermitidos: [10, 15, 20, 25],
+    serviciosRelacionadosIds: [3, 2], // Control odontológico, Ortodoncia
+  },
+};
+
+export function getStoredServiciosRules(): Record<number, ServicioCommercialRule> {
+  try {
+    if (fs.existsSync(SERVICIOS_RULES_FILE)) {
+      const data = fs.readFileSync(SERVICIOS_RULES_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      const merged: Record<number, ServicioCommercialRule> = { ...DEFAULT_SERVICIOS_RULES };
+      for (const [k, v] of Object.entries(parsed)) {
+        merged[Number(k)] = v as ServicioCommercialRule;
+      }
+      return merged;
+    }
+  } catch (err) {
+    console.warn('Error reading serviciosRules.json, using default rules:', err);
+  }
+  return { ...DEFAULT_SERVICIOS_RULES };
+}
+
+export function saveServiciosRules(rules: Record<number, ServicioCommercialRule>) {
+  try {
+    const dir = path.dirname(SERVICIOS_RULES_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(SERVICIOS_RULES_FILE, JSON.stringify(rules, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving serviciosRules.json:', err);
+  }
+}
+
+export function getCommercialRuleForServicio(id_servicio: number): ServicioCommercialRule {
+  const allRules = getStoredServiciosRules();
+  if (allRules[id_servicio]) {
+    return allRules[id_servicio];
+  }
+  return {
+    descuentoMaximo: 20,
+    descuentosPermitidos: [10, 15, 20],
+    serviciosRelacionadosIds: [],
+  };
+}
+
+export async function getServicioCommercialInfo(serviceIdOrName: number | string) {
+  try {
+    let service = null;
+    if (typeof serviceIdOrName === 'number' || !isNaN(Number(serviceIdOrName))) {
+      service = await prisma.servicios.findUnique({
+        where: { id_servicio: Number(serviceIdOrName) },
+        include: {
+          Tarifas: { where: { activo: true }, take: 1, orderBy: { fecha_inicio: 'desc' } },
+        },
+      });
+    }
+
+    if (!service && typeof serviceIdOrName === 'string') {
+      const cleanName = serviceIdOrName.trim();
+      service = await prisma.servicios.findFirst({
+        where: {
+          OR: [
+            { nombre: { contains: cleanName } },
+            { nombre: { startsWith: cleanName.split(' ')[0] } },
+          ],
+          activo: true,
+        },
+        include: {
+          Tarifas: { where: { activo: true }, take: 1, orderBy: { fecha_inicio: 'desc' } },
+        },
+      });
+    }
+
+    if (!service) {
+      service = await prisma.servicios.findFirst({
+        where: { activo: true },
+        include: {
+          Tarifas: { where: { activo: true }, take: 1, orderBy: { fecha_inicio: 'desc' } },
+        },
+      });
+    }
+
+    const serviceId = service ? service.id_servicio : 1;
+    const rule = getCommercialRuleForServicio(serviceId);
+
+    let relatedServices: any[] = [];
+
+    if (rule.serviciosRelacionadosIds && rule.serviciosRelacionadosIds.length > 0) {
+      const relDb = await prisma.servicios.findMany({
+        where: {
+          id_servicio: { in: rule.serviciosRelacionadosIds },
+          activo: true,
+        },
+        include: {
+          Tarifas: { where: { activo: true }, take: 1, orderBy: { fecha_inicio: 'desc' } },
+        },
+      });
+
+      const imageMap = {
+        blanqueamiento: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=600&auto=format&fit=crop&q=80',
+        ortodoncia: 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=600&auto=format&fit=crop&q=80',
+        limpieza: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&auto=format&fit=crop&q=80',
+        control: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&auto=format&fit=crop&q=80',
+        evaluación: 'https://images.unsplash.com/photo-1598256989800-fe5f95da9787?w=600&auto=format&fit=crop&q=80',
+      };
+
+      relatedServices = relDb.map((r) => {
+        const lower = r.nombre.toLowerCase();
+        let matchedImg = 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&auto=format&fit=crop&q=80';
+        for (const [key, url] of Object.entries(imageMap)) {
+          if (lower.includes(key)) {
+            matchedImg = url;
+            break;
+          }
+        }
+        return {
+          id_servicio: r.id_servicio,
+          nombre: r.nombre,
+          descripcion: r.descripcion || '',
+          precio: r.Tarifas[0] ? Number(r.Tarifas[0].precio) : null,
+          imgUrl: matchedImg,
+        };
+      });
+    }
+
+    return {
+      id_servicio: serviceId,
+      nombre: service?.nombre || (typeof serviceIdOrName === 'string' ? serviceIdOrName : 'Consulta Dental'),
+      descripcion: service?.descripcion || '',
+      precio: service?.Tarifas?.[0] ? Number(service.Tarifas[0].precio) : 150,
+      descuentoMaximo: rule.descuentoMaximo ?? 20,
+      descuentosPermitidos: rule.descuentosPermitidos ?? [10, 15, 20],
+      serviciosRelacionados: relatedServices,
+    };
+  } catch (err) {
+    console.error('Error in getServicioCommercialInfo:', err);
+    return {
+      id_servicio: 1,
+      nombre: typeof serviceIdOrName === 'string' ? serviceIdOrName : 'Consulta Dental',
+      descripcion: '',
+      precio: 150,
+      descuentoMaximo: 20,
+      descuentosPermitidos: [10, 15, 20],
+      serviciosRelacionados: [],
+    };
+  }
+}
+
 router.get('/servicios', async (req, res) => {
   try {
     const servicios = await prisma.servicios.findMany({
@@ -87,15 +263,41 @@ router.get('/servicios', async (req, res) => {
       orderBy: [{ activo: 'desc' }, { nombre: 'asc' }],
     });
 
-    const formatted = servicios.map((s) => ({
-      id_servicio: s.id_servicio,
-      nombre: s.nombre,
-      descripcion: s.descripcion || '',
-      activo: s.activo,
-      precio: s.Tarifas[0] ? Number(s.Tarifas[0].precio) : null,
-      id_tarifa: s.Tarifas[0]?.id_tarifa || null,
-      especialistas: s.ProfesionalServicio.map((ps) => `${ps.Profesional.nombres} ${ps.Profesional.apellidos}`),
-    }));
+    const rules = getStoredServiciosRules();
+    const serviceNameMap = new Map();
+    servicios.forEach((s) => serviceNameMap.set(s.id_servicio, s.nombre));
+
+    const formatted = servicios.map((s) => {
+      const rule = rules[s.id_servicio] || {
+        descuentoMaximo: 20,
+        descuentosPermitidos: [10, 15, 20],
+        serviciosRelacionadosIds: [],
+      };
+
+      const relNombres = (rule.serviciosRelacionadosIds || [])
+        .map((rid) => serviceNameMap.get(rid))
+        .filter(Boolean);
+
+      return {
+        id_servicio: s.id_servicio,
+        nombre: s.nombre,
+        descripcion: s.descripcion || '',
+        activo: s.activo,
+        precio: s.Tarifas[0] ? Number(s.Tarifas[0].precio) : null,
+        id_tarifa: s.Tarifas[0]?.id_tarifa || null,
+        especialistas: s.ProfesionalServicio.map((ps) => `${ps.Profesional.nombres} ${ps.Profesional.apellidos}`),
+        especialistasDetalle: s.ProfesionalServicio.map((ps) => ({
+          id_profesional: ps.Profesional.id_profesional,
+          nombres: ps.Profesional.nombres,
+          apellidos: ps.Profesional.apellidos,
+          especialidad: ps.Profesional.especialidad,
+        })),
+        descuentoMaximo: rule.descuentoMaximo ?? 20,
+        descuentosPermitidos: rule.descuentosPermitidos ?? [10, 15, 20],
+        serviciosRelacionadosIds: rule.serviciosRelacionadosIds ?? [],
+        serviciosRelacionadosNombres: relNombres,
+      };
+    });
 
     res.json(formatted);
   } catch (err: any) {
@@ -104,9 +306,38 @@ router.get('/servicios', async (req, res) => {
   }
 });
 
+router.put('/servicios/:id/especialistas', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { profesionalesIds } = req.body;
+
+    if (!Array.isArray(profesionalesIds)) {
+      return res.status(400).json({ error: 'profesionalesIds debe ser un arreglo de IDs' });
+    }
+
+    await prisma.profesionalServicio.deleteMany({
+      where: { id_servicio: id },
+    });
+
+    for (const pId of profesionalesIds) {
+      await prisma.profesionalServicio.create({
+        data: {
+          id_servicio: id,
+          id_profesional: Number(pId),
+        },
+      }).catch(() => {});
+    }
+
+    res.json({ success: true, message: 'Especialistas asignados exitosamente' });
+  } catch (err: any) {
+    console.error('Error assigning especialistas to servicio:', err);
+    res.status(500).json({ error: err.message || 'Error al asignar especialistas' });
+  }
+});
+
 router.post('/servicios', async (req, res) => {
   try {
-    const { nombre, descripcion, precio, activo } = req.body;
+    const { nombre, descripcion, precio, activo, descuentoMaximo, descuentosPermitidos, serviciosRelacionadosIds } = req.body;
     if (!nombre) return res.status(400).json({ error: 'El nombre del servicio es obligatorio' });
 
     const newServicio = await prisma.servicios.create({
@@ -126,6 +357,14 @@ router.post('/servicios', async (req, res) => {
         },
       });
     }
+
+    const currentRules = getStoredServiciosRules();
+    currentRules[newServicio.id_servicio] = {
+      descuentoMaximo: descuentoMaximo !== undefined ? Number(descuentoMaximo) : 20,
+      descuentosPermitidos: Array.isArray(descuentosPermitidos) ? descuentosPermitidos : [10, 15, 20],
+      serviciosRelacionadosIds: Array.isArray(serviciosRelacionadosIds) ? serviciosRelacionadosIds.map(Number) : [],
+    };
+    saveServiciosRules(currentRules);
 
     res.status(201).json(newServicio);
   } catch (err: any) {
