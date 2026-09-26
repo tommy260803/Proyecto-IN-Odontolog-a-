@@ -6,7 +6,15 @@ import { Label } from '@/shared/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Badge } from '@/shared/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/shared/components/ui/dialog';
 import { buyerService } from '../services/buyer.service';
+import { analyzeIdentityResolutionWithAI } from '@/shared/services/groqService';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/shared/hooks/use-toast';
 import { Toaster } from '@/shared/components/ui/toaster';
@@ -35,6 +43,10 @@ import {
   HelpCircle,
   History,
   RotateCw,
+  Bot,
+  UserCheck,
+  UserPlus,
+  ShieldAlert,
 } from 'lucide-react';
 
 export default function BuyerRequestInfoPage() {
@@ -51,12 +63,17 @@ export default function BuyerRequestInfoPage() {
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
   const [isDuplicateSubmitted, setIsDuplicateSubmitted] = useState(false);
   const [isRecurringSubmitted, setIsRecurringSubmitted] = useState(false);
+  const [isNewSharedSubmitted, setIsNewSharedSubmitted] = useState(false);
   const [consultationCount, setConsultationCount] = useState<number>(1);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [duplicateWarning, setDuplicateWarning] = useState<{
-    isDuplicate: boolean;
-    person?: { firstName: string; lastName: string; etapa: string };
-    matchedBy?: string;
+
+  // Estados para Verificación de Identidad con IA (Agente de Marketing)
+  const [resolvingIdentity, setResolvingIdentity] = useState(false);
+  const [identityModalOpen, setIdentityModalOpen] = useState(false);
+  const [identityModalData, setIdentityModalData] = useState<{
+    matchedType: 'phone' | 'email';
+    registeredPerson?: any;
+    aiReason?: string;
   } | null>(null);
 
   // Form State
@@ -77,32 +94,6 @@ export default function BuyerRequestInfoPage() {
       .then((data) => setCatalogs(data))
       .catch((err) => console.error('Error cargando catálogos:', err));
   }, []);
-
-  // Verificación en vivo de duplicidad al escribir teléfono o correo
-  useEffect(() => {
-    const rawDigits = phone.replace(/\D/g, '');
-    const cleanMail = email.trim();
-    if (rawDigits.length >= 9 || (cleanMail.includes('@') && cleanMail.includes('.'))) {
-      const timer = setTimeout(async () => {
-        try {
-          const res = await buyerService.checkDuplicate({
-            phone: rawDigits.length >= 9 ? rawDigits : undefined,
-            email: cleanMail.includes('@') ? cleanMail : undefined,
-          });
-          if (res?.isDuplicate) {
-            setDuplicateWarning(res);
-          } else {
-            setDuplicateWarning(null);
-          }
-        } catch (err) {
-          console.warn('Error checking duplicate in form:', err);
-        }
-      }, 300);
-      return () => clearTimeout(timer);
-    } else {
-      setDuplicateWarning(null);
-    }
-  }, [phone, email]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -137,17 +128,7 @@ export default function BuyerRequestInfoPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!validateForm()) {
-      toast({
-        title: 'Verifica los campos',
-        description: 'Por favor completa todos los campos requeridos correctamente.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+  const executeRegistration = async (isNewPersonConfirmed: boolean = false) => {
     setLoading(true);
     setSubmitError(null);
     try {
@@ -186,18 +167,29 @@ export default function BuyerRequestInfoPage() {
         concreteRequest: dudaEspecifica.trim()
           ? `[Duda/Consulta Web] ${dudaEspecifica.trim()}`
           : `Solicitud de Información Odontológica (Portal Web). Sede: ${sede || 'No especificada'}. Franja: ${timeSlot || 'Flexible'}`,
+        isNewPersonConfirmed,
       });
 
       const isRec = Boolean(res?.isRecurring || res?.isDuplicate);
+      const isNewShared = Boolean(res?.isNewPersonWithSharedContact || isNewPersonConfirmed);
       const count = res?.consultationCount || (isRec ? 2 : 1);
+
       setConsultationCount(count);
-      setIsRecurringSubmitted(isRec);
-      setIsDuplicateSubmitted(isRec);
+      setIsRecurringSubmitted(isRec && !isNewShared);
+      setIsDuplicateSubmitted(isRec && !isNewShared);
+      setIsNewSharedSubmitted(isNewShared);
       setSubmittedSuccess(true);
-      if (isRec) {
+      setIdentityModalOpen(false);
+
+      if (isRec && !isNewShared) {
         toast({
           title: `¡Consulta Odontológica Recibida! (#${count})`,
           description: `¡Hola de nuevo! Anexamos tu nueva consulta a tu expediente odontológico. Nos comunicaremos contigo en breve para coordinar tu atención.`,
+        });
+      } else if (isNewShared) {
+        toast({
+          title: '¡Expediente de Nuevo Paciente Creado!',
+          description: 'Registramos tus datos como un nuevo paciente independiente. Nos comunicaremos contigo en breve.',
         });
       } else {
         toast({
@@ -216,6 +208,68 @@ export default function BuyerRequestInfoPage() {
       });
     } finally {
       setLoading(false);
+      setResolvingIdentity(false);
+    }
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!validateForm()) {
+      toast({
+        title: 'Verifica los campos',
+        description: 'Por favor completa todos los campos requeridos correctamente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const cleanDigits = phone.replace(/\D/g, '');
+    const cleanMail = email.trim();
+
+    // Verificación inteligente al hacer clic en el botón
+    setResolvingIdentity(true);
+    setSubmitError(null);
+
+    try {
+      const dupRes = await buyerService.checkDuplicate({
+        phone: cleanDigits.length >= 9 ? cleanDigits : undefined,
+        email: cleanMail.includes('@') ? cleanMail : undefined,
+      });
+
+      if (dupRes?.isDuplicate && dupRes?.person) {
+        const registeredName = `${dupRes.person.firstName || ''} ${dupRes.person.lastName || ''}`.trim();
+        
+        // Agente de Marketing: Análisis con IA para resolución de identidad
+        const aiAnalysis = await analyzeIdentityResolutionWithAI({
+          enteredFullName: fullName.trim(),
+          registeredFullName: registeredName,
+        });
+
+        // Si la IA reconoce con alta certidumbre que es la misma persona (variación u ortografía)
+        if (aiAnalysis.isSamePerson && aiAnalysis.confidence >= 0.8) {
+          await executeRegistration(false);
+          return;
+        }
+
+        // Si son personas diferentes (o duda): abrir Modal de Confirmación de Identidad
+        setIdentityModalData({
+          matchedType: dupRes.matchedBy === 'email' ? 'email' : 'phone',
+          registeredPerson: dupRes.person,
+          aiReason: aiAnalysis.reason,
+        });
+        setResolvingIdentity(false);
+        setIdentityModalOpen(true);
+        return;
+      }
+
+      // Si no hay duplicado, registrar directamente
+      await executeRegistration(false);
+    } catch (err: any) {
+      console.error('Error durante la validación de identidad con IA:', err);
+      // Fallback seguro: registrar directamente
+      await executeRegistration(false);
+    } finally {
+      setResolvingIdentity(false);
     }
   };
 
@@ -465,24 +519,6 @@ export default function BuyerRequestInfoPage() {
                     </div>
                   </div>
 
-                  {/* Reconocimiento interactivo de paciente recurrente */}
-                  {duplicateWarning?.isDuplicate && (
-                    <div className="p-3 rounded-2xl bg-teal-50/90 border border-teal-200 text-teal-950 text-xs flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1">
-                      <div className="p-1 rounded-lg bg-teal-100 text-teal-700 shrink-0 mt-0.5">
-                        <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="font-bold text-[11.5px] text-teal-950 flex items-center gap-1.5 flex-wrap">
-                          <span>¡Hola de nuevo{duplicateWarning.person?.firstName ? `, ${duplicateWarning.person.firstName}` : ''}! Reconocemos tu contacto</span>
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-200 text-teal-900 font-bold">RECURRENTE</span>
-                        </p>
-                        <p className="text-[10.5px] text-teal-800 leading-relaxed">
-                          Puedes cambiar tu servicio de interés o detallar una nueva duda abajo. Anexaremos esta solicitud a tu ficha para que nuestro equipo odontológico te brinde una propuesta personalizada y las mejores facilidades de atención.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
                   {/* 4 & 5: Servicio de Interés y Sede */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Servicio de Interés */}
@@ -720,10 +756,15 @@ export default function BuyerRequestInfoPage() {
                 <Button
                   type="button"
                   onClick={() => handleSubmit()}
-                  disabled={loading}
+                  disabled={loading || resolvingIdentity}
                   className="w-full sm:w-auto sm:min-w-[240px] h-10 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl shadow-md shadow-teal-700/20 text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
-                  {loading ? (
+                  {resolvingIdentity ? (
+                    <>
+                      <Bot className="h-3.5 w-3.5 animate-pulse text-teal-200" />
+                      <span>Verificando con Agente IA...</span>
+                    </>
+                  ) : loading ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       <span>Enviando solicitud...</span>
@@ -740,7 +781,7 @@ export default function BuyerRequestInfoPage() {
             </div>
           ) : (
             /* Estado de Éxito */
-            /* Estado de Resultado (Consulta Recurrente vs Registro Nuevo) */
+            /* Estado de Resultado (Consulta Recurrente vs Registro Nuevo vs Nuevo Compartido) */
             <Card className={`border shadow-xl lg:shadow-none bg-white rounded-3xl overflow-hidden p-6 sm:p-8 text-center space-y-5 animate-in fade-in duration-400 max-w-md w-full relative ${
               isRecurringSubmitted ? 'border-teal-300 ring-2 ring-teal-400/20' : 'border-slate-200/90'
             }`}>
@@ -776,6 +817,11 @@ export default function BuyerRequestInfoPage() {
                       <RotateCw className="w-3 h-3 text-teal-700 shrink-0" />
                       NUEVA CONSULTA REGISTRADA (#{consultationCount})
                     </span>
+                  ) : isNewSharedSubmitted ? (
+                    <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-1.5 shadow-xs">
+                      <UserPlus className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                      NUEVO EXPEDIENTE CREADO
+                    </span>
                   ) : (
                     <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-teal-100 text-teal-900 border border-teal-300 flex items-center gap-1.5 shadow-xs">
                       <CheckCircle2 className="w-3.5 h-3.5 text-teal-700 shrink-0" />
@@ -785,13 +831,21 @@ export default function BuyerRequestInfoPage() {
                 </div>
 
                 <h2 className="text-xl font-black tracking-tight text-slate-900">
-                  {isRecurringSubmitted ? '¡Nueva Consulta Registrada con Éxito!' : '¡Hemos Recibido tu Solicitud!'}
+                  {isRecurringSubmitted 
+                    ? '¡Nueva Consulta Registrada con Éxito!' 
+                    : isNewSharedSubmitted
+                      ? '¡Bienvenido(a)! Tu Expediente ha sido Creado'
+                      : '¡Hemos Recibido tu Solicitud!'}
                 </h2>
                 
                 <p className="text-xs text-slate-600 max-w-xs mx-auto leading-relaxed">
                   {isRecurringSubmitted ? (
                     <>
                       ¡Hola de nuevo, <strong className="text-slate-900 font-bold">{fullName}</strong>! Registramos esta nueva consulta en tu expediente odontológico. Nuestro equipo se comunicará contigo muy pronto para responder tus dudas y coordinar tu atención.
+                    </>
+                  ) : isNewSharedSubmitted ? (
+                    <>
+                      ¡Te damos la bienvenida, <strong className="text-slate-900 font-bold">{fullName}</strong>! Registramos tus datos como nuevo paciente independiente. Nuestro equipo odontológico se comunicará contigo para coordinar tu primera evaluación.
                     </>
                   ) : (
                     <>
@@ -857,6 +911,7 @@ export default function BuyerRequestInfoPage() {
                     setSubmittedSuccess(false);
                     setIsRecurringSubmitted(false);
                     setIsDuplicateSubmitted(false);
+                    setIsNewSharedSubmitted(false);
                     setConsultationCount(1);
                     setFullName('');
                     setPhone('');
@@ -881,6 +936,111 @@ export default function BuyerRequestInfoPage() {
             </Card>
           )}
         </div>
+
+        {/* Modal de Confirmación de Identidad y Contacto (Agente Inteligente de Marketing) */}
+        <Dialog open={identityModalOpen} onOpenChange={setIdentityModalOpen}>
+          <DialogContent className="sm:max-w-md bg-white border border-slate-200 text-slate-900 p-0 overflow-hidden rounded-3xl shadow-2xl">
+            {/* Header con gradiente elegante y badge de IA */}
+            <div className="bg-gradient-to-r from-teal-700 via-teal-800 to-emerald-800 px-6 py-5 text-white relative">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-white/20 text-teal-100 backdrop-blur border border-white/20">
+                  <Bot className="w-3.5 h-3.5 text-teal-300" />
+                  Agente Inteligente de Marketing
+                </span>
+                <span className="text-[10px] text-teal-200 font-medium">
+                  • Verificación de Seguridad
+                </span>
+              </div>
+              <DialogTitle className="text-lg font-bold text-white tracking-tight">
+                Confirmación de Identidad y Contacto
+              </DialogTitle>
+              <DialogDescription className="text-xs text-teal-100/90 mt-1 leading-relaxed">
+                Detectamos que el {identityModalData?.matchedType === 'email' ? 'correo electrónico' : 'número de WhatsApp'} ingresado ya se encuentra registrado en nuestra base clínica.
+              </DialogDescription>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Mensaje de la IA */}
+              <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/90 text-amber-950 text-xs flex items-start gap-3">
+                <div className="p-1.5 rounded-xl bg-amber-100 text-amber-800 shrink-0 mt-0.5">
+                  <ShieldAlert className="w-4 h-4 text-amber-700" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-bold text-[11.5px] text-amber-950">
+                    ¿Eres tú o compartes este número con otra persona?
+                  </p>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    Para proteger la confidencialidad médica y evitar mezclar expedientes clínicos de pacientes distintos, por favor confirma tu caso:
+                  </p>
+                </div>
+              </div>
+
+              {/* Opciones de Acción */}
+              <div className="space-y-2.5">
+                {/* Opción 1: Sí soy yo */}
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => executeRegistration(false)}
+                  className="w-full text-left p-3.5 rounded-2xl border-2 border-teal-500/40 bg-teal-50/50 hover:bg-teal-50 hover:border-teal-600 transition-all cursor-pointer group flex items-start gap-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  <div className="p-2 rounded-xl bg-teal-600 text-white shrink-0 group-hover:scale-105 transition-transform mt-0.5 shadow-sm shadow-teal-600/30">
+                    <UserCheck className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-teal-950 group-hover:text-teal-900">
+                        Sí, soy yo (Continuar con mi solicitud)
+                      </span>
+                      <span className="text-[9.5px] font-bold uppercase tracking-wider text-teal-700 bg-teal-100/80 px-2 py-0.5 rounded-full">
+                        Expediente existente
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-teal-800/90 mt-1 leading-snug">
+                      He modificado la escritura de mi nombre o ya me he atendido antes. Deseo anexar esta consulta a mi historial.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Opción 2: No soy yo (Reportar y registrarme como nuevo paciente) */}
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => executeRegistration(true)}
+                  className="w-full text-left p-3.5 rounded-2xl border-2 border-slate-200 bg-slate-50/70 hover:bg-white hover:border-slate-400 transition-all cursor-pointer group flex items-start gap-3 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                >
+                  <div className="p-2 rounded-xl bg-slate-800 text-white shrink-0 group-hover:scale-105 transition-transform mt-0.5 shadow-sm shadow-slate-800/30">
+                    <UserPlus className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-slate-900 group-hover:text-slate-950">
+                        No soy yo (Registrarme como nuevo paciente)
+                      </span>
+                      <span className="text-[9.5px] font-bold uppercase tracking-wider text-slate-700 bg-slate-200/80 px-2 py-0.5 rounded-full">
+                        Nuevo Paciente
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-snug">
+                      Comparto este número con un familiar o soy un paciente nuevo. Deseo crear mi propio expediente clínico independiente.
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              {/* Cancelar / Corregir número */}
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setIdentityModalOpen(false)}
+                  className="text-xs text-slate-500 hover:text-slate-800 font-medium underline underline-offset-4 decoration-slate-300 transition-colors cursor-pointer"
+                >
+                  Deseo corregir el teléfono o correo ingresado
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
       </main>
 

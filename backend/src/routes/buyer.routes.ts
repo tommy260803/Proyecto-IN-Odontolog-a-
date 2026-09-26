@@ -203,12 +203,13 @@ router.post('/register', async (req, res) => {
       // 1. Detectar duplicado por teléfono o correo
       let isDuplicate = false;
       let existingPerson = null;
+      const isNewPersonConfirmed = Boolean(req.body.isNewPersonConfirmed);
 
       const dupChecks: any[] = [];
       if (cleanPhone) dupChecks.push({ numero: { contains: cleanPhone } });
       if (cleanEmail && cleanEmail.includes('@')) dupChecks.push({ email: cleanEmail });
 
-      if (dupChecks.length > 0) {
+      if (dupChecks.length > 0 && !isNewPersonConfirmed) {
         existingPerson = await tx.personas.findFirst({
           where: { OR: dupChecks }
         });
@@ -309,16 +310,19 @@ router.post('/register', async (req, res) => {
             id_persona: persona.id_persona,
             etapa_origen: etapaBuyer.id_etapa,
             etapa_destino: etapaLead.id_etapa,
-            motivo: 'Solicitud de información concreta (Ingreso web inicial)',
+            motivo: isNewPersonConfirmed
+              ? 'Nuevo paciente registrado con contacto compartido (Confirmado vía Agente de Marketing)'
+              : 'Solicitud de información concreta (Ingreso web inicial)',
           }
         });
       }
 
       // Detalle de la duda o consulta específica ingresada por el paciente
+      const prefix = isNewPersonConfirmed ? '[Contacto Compartido] ' : '';
       const motivoRaw = req.body.duda_especifica 
         ? `[Consulta #${totalConsultas}] ${req.body.duda_especifica}`
         : (req.body.concreteRequest || (isDuplicate ? `Consulta recurrente #${totalConsultas} desde portal web` : 'Solicitud de información desde formulario web'));
-      const motivoConsulta = String(motivoRaw).slice(0, 195);
+      const motivoConsulta = String(prefix + motivoRaw).slice(0, 195);
 
       // 1. Guardar la nueva Solicitud en su historial
       const solicitud = await tx.solicitudes.create({
@@ -366,7 +370,7 @@ router.post('/register', async (req, res) => {
         }
       }
 
-      return { persona, solicitud, isDuplicate, existingPerson, totalConsultas };
+      return { persona, solicitud, isDuplicate, existingPerson, totalConsultas, isNewPersonWithSharedContact: isNewPersonConfirmed };
     });
 
     if (result.isDuplicate) {
@@ -377,6 +381,18 @@ router.post('/register', async (req, res) => {
         consultationCount: result.totalConsultas,
         message: `¡Hola de nuevo! Anexamos tu nueva consulta a tu historial (Consulta #${result.totalConsultas}). Tu caso fue priorizado para atención en la etapa LEAD.`, 
         data: result 
+      });
+    }
+
+    if (result.isNewPersonWithSharedContact) {
+      return res.status(201).json({
+        success: true,
+        isDuplicate: false,
+        isRecurring: false,
+        isNewPersonWithSharedContact: true,
+        consultationCount: 1,
+        message: 'Registrado exitosamente como nuevo paciente independiente.',
+        data: result
       });
     }
 

@@ -584,3 +584,105 @@ Responde ÚNICAMENTE un JSON con:
   };
 }
 
+// ── 5. Resolución de Identidad y Desduplicación con IA (Agente de Marketing) ─
+export interface IdentityResolutionResult {
+  isSamePerson: boolean;
+  confidence: number;
+  reason: string;
+  isDifferentPerson: boolean;
+}
+
+export async function analyzeIdentityResolutionWithAI(params: {
+  enteredFullName: string;
+  registeredFullName: string;
+}): Promise<IdentityResolutionResult> {
+  const entered = params.enteredFullName.trim();
+  const registered = params.registeredFullName.trim();
+
+  // 1. Normalización básica
+  const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const eNorm = norm(entered);
+  const rNorm = norm(registered);
+
+  if (eNorm === rNorm) {
+    return { isSamePerson: true, confidence: 1.0, reason: 'Coincidencia exacta de nombres y apellidos.', isDifferentPerson: false };
+  }
+
+  // Tokens
+  const eTokens = eNorm.split(/\s+/).filter(t => t.length > 2);
+  const rTokens = rNorm.split(/\s+/).filter(t => t.length > 2);
+  const matches = eTokens.filter(t => rTokens.some(r => r.includes(t) || t.includes(r)));
+  const overlapRatio = matches.length / Math.max(eTokens.length, 1);
+
+  // Consulta al modelo Groq
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  if (apiKey && apiKey !== 'tu_groq_api_key_aqui') {
+    const prompt = `Actúa como el Agente Inteligente de Marketing Odontológico especializado en Calidad de Datos y Resolución de Identidad de Pacientes.
+Compara estos dos nombres para determinar si corresponden a la misma persona (variación ortográfica, apodo, error tipográfico, omisión de segundo nombre o apellido) o si son personas claramente distintas (ej: familiar, hijo/padre, o titular diferente):
+
+- Nombre ingresado ahora en el formulario web: "${entered}"
+- Nombre previamente registrado en la clínica: "${registered}"
+
+Responde ÚNICAMENTE en JSON válido con este formato:
+{
+  "isSamePerson": true o false,
+  "confidence": número entre 0.0 y 1.0,
+  "reason": "explicación concisa en una sola frase"
+}`;
+
+    for (const model of GROQ_MODELS) {
+      try {
+        const response = await fetch(GROQ_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: 'Eres un sistema de resolución de identidad de pacientes. Responde únicamente JSON.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.1,
+            max_tokens: 150,
+            response_format: { type: 'json_object' }
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
+          if (parsed && typeof parsed.isSamePerson === 'boolean') {
+            return {
+              isSamePerson: parsed.isSamePerson,
+              confidence: Number(parsed.confidence) || (parsed.isSamePerson ? 0.95 : 0.1),
+              reason: parsed.reason || (parsed.isSamePerson ? 'Variación del mismo paciente' : 'Personas distintas detectadas'),
+              isDifferentPerson: !parsed.isSamePerson,
+            };
+          }
+        }
+      } catch {
+        // intentar con el siguiente modelo
+      }
+    }
+  }
+
+  // Heurística de respaldo
+  if (overlapRatio >= 0.5) {
+    return {
+      isSamePerson: true,
+      confidence: 0.85,
+      reason: 'Coincidencia de nombres y/o apellidos principales.',
+      isDifferentPerson: false,
+    };
+  }
+
+  return {
+    isSamePerson: false,
+    confidence: 0.9,
+    reason: 'Nombres y apellidos visiblemente distintos (posible familiar o nuevo paciente).',
+    isDifferentPerson: true,
+  };
+}
+
