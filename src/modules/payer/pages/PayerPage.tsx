@@ -507,8 +507,8 @@ export default function PayerPage() {
               </SelectTrigger>
               <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs">
                 <SelectItem value="ALL">Todos los estados</SelectItem>
-                <SelectItem value={PayerState.PENDING}>Pendiente</SelectItem>
-                <SelectItem value={PayerState.IN_REVIEW}>En revisión</SelectItem>
+                <SelectItem value={PayerState.PENDING}>Pendiente de Pago</SelectItem>
+                <SelectItem value={PayerState.IN_REVIEW}>En Revisión</SelectItem>
                 <SelectItem value={PayerState.VALIDATED}>Validado</SelectItem>
                 <SelectItem value={PayerState.REJECTED}>Rechazado</SelectItem>
                 <SelectItem value={PayerState.REVERTED}>Revertido</SelectItem>
