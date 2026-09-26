@@ -371,9 +371,9 @@ export default function BuyerRequestInfoPage() {
               <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
                 <Building2 className="h-3.5 w-3.5" />
               </div>
-              <h2 className="text-xs font-bold text-white">3 Sedes en Lima</h2>
+              <h2 className="text-xs font-bold text-white">3 Sedes en Trujillo</h2>
               <p className="text-[10.5px] text-slate-400 leading-tight">
-                San Isidro, Surco y Los Olivos.
+                California, Primavera y Centro Histórico.
               </p>
             </div>
 
