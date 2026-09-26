@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   format,
   addDays,
@@ -267,16 +267,17 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const [flyerImageLoading, setFlyerImageLoading] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [flyerZoom, setFlyerZoom] = useState<number>(1);
+  const flyerContainerRef = useRef<HTMLDivElement>(null);
 
   // Zoom interactivo con la rueda del ratón (scroll) en el visor del flyer
-  // Se usa un callback ref para garantizar que el listener no pasivo se vincule exactamente cuando el nodo del Dialog se monta en el DOM
-  const flyerContainerRef = useCallback((node: HTMLDivElement | null) => {
-    if (!node) return;
+  useEffect(() => {
+    const container = flyerContainerRef.current;
+    if (!container || !showPreviewModal) return;
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      const zoomStep = 0.15;
+      const zoomStep = 0.12;
       const direction = e.deltaY < 0 ? 1 : -1;
       setFlyerZoom((prev) => {
         const next = Math.round((prev + direction * zoomStep) * 100) / 100;
@@ -284,8 +285,11 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
       });
     };
 
-    node.addEventListener('wheel', handleWheel, { passive: false });
-  }, []);
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, [showPreviewModal]);
 
   const fetchData = () => {
     if (!leadId) return;
@@ -1898,28 +1902,28 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
               </div>
             </div>
 
-            <div className="flex items-center gap-2 mr-6 shrink-0 flex-nowrap">
+            <div className="flex items-center gap-2.5 mr-6 shrink-0 flex-nowrap">
               {/* Botón Descargar PNG */}
               <a
                 href={canvaResult?.downloadPngUrl || canvaResult?.previewUrl}
                 download={`Flyer_NexoSalud_${lead?.nombres || 'Oferta'}.png`}
-                className="h-8.5 px-3.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all shadow-sm shadow-purple-600/20 whitespace-nowrap cursor-pointer"
+                className="h-9 px-4 rounded-lg bg-purple-600 hover:bg-purple-700 active:scale-[0.98] text-white text-xs font-medium inline-flex items-center justify-center gap-2 transition-all shadow-sm shadow-purple-600/20 whitespace-nowrap cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5 shrink-0" />
-                <span className="leading-none">Descargar PNG</span>
+                <span>Descargar PNG</span>
               </a>
 
-              {/* Botón Abrir en Canva con logo de Canva */}
+              {/* Botón Abrir en Canva con logo oficial de Canva */}
               {canvaResult?.designUrl && canvaResult.designUrl !== 'https://www.canva.com/' && (
                 <a
                   href={canvaResult.designUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="h-8.5 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold inline-flex items-center justify-center gap-2 transition-all shadow-2xs whitespace-nowrap cursor-pointer"
+                  className="h-9 px-4 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 active:scale-[0.98] text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-medium inline-flex items-center justify-center gap-2 transition-all shadow-2xs whitespace-nowrap cursor-pointer"
                 >
                   <CanvaIcon className="w-4 h-4 text-[#00C4CC] shrink-0" />
-                  <span className="leading-none">Abrir en Canva</span>
-                  <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span>Abrir en Canva</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 </a>
               )}
             </div>
@@ -1929,7 +1933,6 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
           <div 
             ref={flyerContainerRef}
             onWheel={(e) => {
-              // Soporte directo complementario por React SyntheticEvent
               const zoomStep = 0.15;
               const direction = e.deltaY < 0 ? 1 : -1;
               setFlyerZoom((prev) => {
@@ -1939,7 +1942,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
             }}
             onDoubleClick={() => setFlyerZoom((prev) => (prev > 1 ? 1 : 1.75))}
             className="relative w-full flex-1 min-h-[50vh] max-h-[75vh] flex items-center justify-center p-4 bg-slate-100/90 dark:bg-slate-950/60 border border-slate-200/90 dark:border-slate-800 rounded-2xl mt-3 overflow-hidden select-none cursor-default"
-            title="Gira la rueda del ratón (scroll) para hacer zoom o doble clic para ampliar"
+            title="Gira la rueda del ratón (scroll) para hacer zoom o doble clic para alternar"
           >
             <div 
               className="flex items-center justify-center transition-transform duration-100 ease-out"
@@ -1955,29 +1958,23 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
               />
             </div>
 
-            {/* Píldora inferior flotante con indicador de zoom e instrucción de scroll */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300 shadow-lg">
-              <span className="font-mono font-bold text-slate-900 dark:text-white">
-                {Math.round(flyerZoom * 100)}%
-              </span>
-              <span className="text-slate-300 dark:text-slate-700">|</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                Usa la rueda del ratón (scroll) para hacer zoom
-              </span>
+            {/* Píldora inferior flotante pequeña y transparente */}
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/40 hover:bg-slate-900/60 backdrop-blur-md border border-white/15 text-[11px] font-mono text-white/90 shadow-sm transition-all select-none">
+              <span>{Math.round(flyerZoom * 100)}%</span>
               {flyerZoom !== 1 && (
                 <>
-                  <span className="text-slate-300 dark:text-slate-700">|</span>
+                  <span className="text-white/30">|</span>
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setFlyerZoom(1);
                     }}
-                    className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 hover:underline cursor-pointer flex items-center gap-1 active:scale-[0.98] transition-transform"
-                    title="Restablecer tamaño original"
+                    className="text-[10px] text-teal-300 hover:text-white transition-colors cursor-pointer inline-flex items-center gap-0.5"
+                    title="Restablecer tamaño original (100%)"
                   >
-                    <RotateCcw className="w-3 h-3" />
-                    Restablecer
+                    <RotateCcw className="w-2.5 h-2.5" />
+                    <span>Reset</span>
                   </button>
                 </>
               )}
