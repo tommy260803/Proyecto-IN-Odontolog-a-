@@ -456,6 +456,17 @@ router.post('/:id/canva-flyer', async (req, res) => {
     const finalEmail = leadEmail || lead?.email || undefined;
     const finalPhone = leadPhone || lead?.numero || undefined;
 
+    const numOffered = Number(offeredPrice) || 150;
+    const numOriginal = Number(originalPrice) || 180;
+    let computedDiscount = Number(discountPct);
+    if (isNaN(computedDiscount) || computedDiscount <= 0) {
+      if (numOriginal > numOffered) {
+        computedDiscount = Math.round(((numOriginal - numOffered) / numOriginal) * 100);
+      } else {
+        computedDiscount = 20;
+      }
+    }
+
     const result = await NegotiatorAgentService.processAndDispatch({
       leadId: Number(id),
       leadName,
@@ -463,9 +474,9 @@ router.post('/:id/canva-flyer', async (req, res) => {
       leadPhone: finalPhone,
       serviceName: serviceName || lead?.Solicitudes?.[0]?.Servicio?.nombre || 'Consulta Odontológica',
       sedeName: sedeName || 'Sede Miraflores - Av. Larco 123',
-      offeredPrice: Number(offeredPrice) || 150,
-      originalPrice: Number(originalPrice) || 180,
-      discountPct: Number(discountPct) || 15,
+      offeredPrice: numOffered,
+      originalPrice: numOriginal,
+      discountPct: computedDiscount,
       expirationDate: expirationDate || 'Vigente por 7 días',
       fechaLimite: fechaLimite || expirationDate,
       tituloFlyer,
@@ -518,6 +529,17 @@ router.post(['/send-offer-email', '/:id/send-email'], async (req, res) => {
     const finalEmail = leadEmail || lead?.email || undefined;
     const finalPhone = leadPhone || lead?.numero || undefined;
 
+    const numOffered = Number(offeredPrice) || 150;
+    const numOriginal = Number(originalPrice) || 180;
+    let computedDiscount = Number(discountPct);
+    if (isNaN(computedDiscount) || computedDiscount <= 0) {
+      if (numOriginal > numOffered) {
+        computedDiscount = Math.round(((numOriginal - numOffered) / numOriginal) * 100);
+      } else {
+        computedDiscount = 20;
+      }
+    }
+
     const result = await NegotiatorAgentService.sendSimulationOfferEmail({
       leadId: Number(id),
       leadName,
@@ -525,9 +547,9 @@ router.post(['/send-offer-email', '/:id/send-email'], async (req, res) => {
       leadPhone: finalPhone,
       serviceName: serviceName || lead?.Solicitudes?.[0]?.Servicio?.nombre || 'Consulta Odontológica',
       sedeName: sedeName || 'Sede Miraflores - Av. Larco 123',
-      offeredPrice: Number(offeredPrice) || 150,
-      originalPrice: Number(originalPrice) || 180,
-      discountPct: Number(discountPct) || 15,
+      offeredPrice: numOffered,
+      originalPrice: numOriginal,
+      discountPct: computedDiscount,
       expirationDate: expirationDate || 'Vigente por 7 días',
       conditions: conditions || 'Garantía clínica y reserva asegurada.',
       canvaFlyerUrl: canvaFlyerUrl || undefined,

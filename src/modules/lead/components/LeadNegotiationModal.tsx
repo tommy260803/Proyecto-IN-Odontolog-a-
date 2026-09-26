@@ -551,7 +551,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     const fullCondiciones = `[Vigencia: ${getVigenciaLabel(altVigencia, altVigenciaCustom)} - Vence: ${format(calculatedExpiry, 'dd/MM/yyyy')}] [Franja: ${altFranja}] ${altCondiciones ? `| ${altCondiciones}` : ''}`.trim();
 
     try {
-      await leadService.addAlternative(leadId.toString(), {
+      const res = await leadService.addAlternative(leadId.toString(), {
         id_solicitud: ultimaSolicitud?.id_solicitud,
         fecha: expiryStr,
         hora_inicio: altFranja.includes('Tarde') ? '14:00' : '09:00',
@@ -644,6 +644,13 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
   const selectedOptData = opciones.find((o: any) => o.id_opcion === selectedOpcion);
 
+  // Auto-selección inteligente: Si no hay opción seleccionada y existen opciones en mesa, seleccionar la primera
+  useEffect(() => {
+    if (opciones.length > 0 && selectedOpcion === null) {
+      setSelectedOpcion(opciones[0].id_opcion);
+    }
+  }, [opciones, selectedOpcion]);
+
   // Formateo de fecha límite sincronizado con la mesa de ofertas
   const formatCustomExpirationDate = (): string => {
     const rawDate = selectedOptData?.Disponibilidad?.fecha || (opciones.length > 0 ? opciones[0]?.Disponibilidad?.fecha : null);
@@ -693,20 +700,75 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     return `${diasSemana[targetDate.getDay()]}, ${targetDate.getDate()} de ${meses[targetDate.getMonth()]}`;
   };
 
+  // Helper centralizado para sincronizar oferta, precios oficiales y cálculo dinámico de descuento (% OFF)
+  const getActiveOfferDetails = () => {
+    const activeOpt = selectedOptData || (opciones.length > 0 ? opciones[0] : null);
+    const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
+
+    const catServ = catalogs.servicios?.find((s: any) =>
+      s.id_servicio === ultimaSolicitud?.Servicio?.id_servicio ||
+      s.id_servicio?.toString() === altServicioId ||
+      s.nombre?.trim().toLowerCase() === reqServicio?.trim().toLowerCase()
+    );
+
+    const precioOriginal = Number(
+      catServ?.Tarifas?.[0]?.precio ||
+      ultimaSolicitud?.Servicio?.Tarifas?.[0]?.precio ||
+      currentOfficialPrice ||
+      180
+    );
+
+    const precio = activeOpt
+      ? Number(activeOpt.precio_ofrecido)
+      : (numericOfferPrice > 0 ? numericOfferPrice : 150);
+
+    // Calcular descuento real porcentual
+    let discountPct = 0;
+    if (precioOriginal > 0 && precio < precioOriginal) {
+      discountPct = Math.round(((precioOriginal - precio) / precioOriginal) * 100);
+    } else if (discountMetrics?.pct > 0) {
+      discountPct = discountMetrics.pct;
+    } else {
+      discountPct = 20;
+    }
+
+    const sede = activeOpt?.Disponibilidad?.Sede?.nombre ||
+      (altSedeId !== 'ALL_SEDES' && altSedeId
+        ? catalogs.sedes?.find((s: any) => s.id_sede?.toString() === altSedeId)?.nombre
+        : 'Sede Miraflores - Av. Larco 123');
+
+    const doctor = activeOpt?.Disponibilidad?.Profesional?.apellidos
+      ? `Esp. ${activeOpt.Disponibilidad.Profesional.apellidos}`
+      : 'Especialistas colegiados';
+
+    return {
+      activeOpt,
+      reqServicio,
+      precio,
+      precioOriginal,
+      discountPct,
+      sede,
+      doctor,
+    };
+  };
+
   const generateWhatsAppMessage = () => {
     const patientFirstName = lead?.nombres || 'Paciente';
     const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
 
-    if (selectedOptData) {
-      const precio = Number(selectedOptData.precio_ofrecido).toFixed(2);
-      const sede = selectedOptData.Disponibilidad?.Sede?.nombre || 'Sede Principal';
-      const doctor = selectedOptData.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}` : 'Especialistas colegiados';
-      const fechaVigencia = selectedOptData.Disponibilidad?.fecha?.split('T')[0] || '';
-      const cond = selectedOptData.condiciones ? `\n📌 *Detalles de la oferta:* ${selectedOptData.condiciones}` : '';
+    const offer = getActiveOfferDetails();
+    if (offer.activeOpt) {
+      const precio = Number(offer.precio).toFixed(2);
+      const sede = offer.sede;
+      const doctor = offer.doctor;
+      const rawDate = offer.activeOpt?.Disponibilidad?.fecha || '';
+      const fechaVigencia = rawDate ? rawDate.split('T')[0] : formatCustomExpirationDate();
+      const cond = offer.activeOpt?.condiciones ? `\n📌 *Detalles de la oferta:* ${offer.activeOpt.condiciones}` : '';
+      const dsctoLabel = offer.discountPct > 0 ? ` (${offer.discountPct}% OFF)` : '';
 
       return `¡Hola ${patientFirstName}! 👋 Te saludamos de NexoSalud Dental.\n\n` +
-        `Diseñamos una *Oferta Comercial Exclusiva* para tu atención de *${reqServicio}*:\n\n` +
-        `💰 *Tarifa Promocional:* S/ ${precio}\n` +
+        `Diseñamos una *Oferta Comercial Exclusiva* para tu atención de *${offer.reqServicio}*:\n\n` +
+        `💰 *Tarifa Promocional:* S/ ${precio}${dsctoLabel}\n` +
         `⏳ *Margen de Vigencia:* Válido hasta el ${fechaVigencia}\n` +
         `📍 *Sede:* ${sede}\n` +
         `👨‍⚕️ *Atención:* ${doctor}\n` +
@@ -747,27 +809,19 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const handleSendEmail = async () => {
     setSendingEmail(true);
     try {
-      const ultimaSolicitud = lead?.Solicitudes?.[lead?.Solicitudes?.length - 1];
-      const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
-      const precio = selectedOptData ? Number(selectedOptData.precio_ofrecido) : (numericOfferPrice || 150);
-      const precioOriginal = currentOfficialPrice || 180;
-      const descuento = discountMetrics?.pct || 15;
-      const sede = selectedOptData?.Disponibilidad?.Sede?.nombre || (altSedeId !== 'ALL_SEDES' ? catalogs.sedes?.find((s: any) => s.id_sede.toString() === altSedeId)?.nombre : 'Sede Miraflores - Av. Larco 123');
-      const doctor = selectedOptData?.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}` : 'Especialistas colegiados';
-
-      // Fecha límite sincronizada con la mesa de ofertas
+      const offerDetails = getActiveOfferDetails();
       const fechaLimiteFormatted = formatCustomExpirationDate();
 
-      const conditions = altCondiciones || `Atención personalizada con ${doctor}. Cierre de tratamiento asegurado.`;
+      const conditions = altCondiciones || `Atención personalizada con ${offerDetails.doctor}. Cierre de tratamiento asegurado.`;
       const flyerUrl = canvaResult?.previewUrl || canvaResult?.downloadPngUrl || undefined;
       const designUrl = canvaResult?.designUrl || undefined;
 
       const res = await leadService.sendNegotiationEmail(lead?.id_persona || leadId, {
-        serviceName: reqServicio,
-        sedeName: sede,
-        offeredPrice: Number(precio),
-        originalPrice: Number(precioOriginal),
-        discountPct: Number(descuento),
+        serviceName: offerDetails.reqServicio,
+        sedeName: offerDetails.sede,
+        offeredPrice: Number(offerDetails.precio),
+        originalPrice: Number(offerDetails.precioOriginal),
+        discountPct: Number(offerDetails.discountPct),
         expirationDate: fechaLimiteFormatted,
         conditions,
         leadEmail: lead?.correo || lead?.email,
@@ -812,29 +866,23 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const handleGenerateCanvaAndDispatch = async (autoDispatch = false) => {
     setGeneratingCanva(true);
     try {
-      const ultimaSolicitud = lead?.Solicitudes?.[lead?.Solicitudes?.length - 1];
-      const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
-      const precio = selectedOptData ? Number(selectedOptData.precio_ofrecido).toFixed(2) : (numericOfferPrice ? numericOfferPrice.toFixed(2) : '150.00');
-      const sede = selectedOptData?.Disponibilidad?.Sede?.nombre || (altSedeId !== 'ALL_SEDES' ? catalogs.sedes?.find((s: any) => s.id_sede.toString() === altSedeId)?.nombre : 'Sede Miraflores - Av. Larco 123');
-      const doctor = selectedOptData?.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}` : 'Especialistas colegiados';
-
-      // 1. Formatear la fecha límite sincronizada exactamente con la mesa de ofertas
+      const offerDetails = getActiveOfferDetails();
       const fechaLimiteFormatted = formatCustomExpirationDate();
 
-      // 2. Generar con IA un título publicitario de máximo 3 palabras (ej: "MEJOREMOS TU SONRISA", "SONRÍE CON CONFIANZA")
-      const tituloFlyerAI = await generateFlyerTitleWithAI(reqServicio, lead?.nombres);
+      // 1. Generar con IA un título publicitario de máximo 3 palabras
+      const tituloFlyerAI = await generateFlyerTitleWithAI(offerDetails.reqServicio, lead?.nombres);
 
       const resData = await leadService.generateCanvaFlyer(lead?.id_persona || leadId, {
-        serviceName: reqServicio,
-        sedeName: sede,
-        doctorName: doctor,
-        offeredPrice: Number(precio),
-        originalPrice: currentOfficialPrice || 180,
-        discountPct: discountMetrics?.pct || 15,
+        serviceName: offerDetails.reqServicio,
+        sedeName: offerDetails.sede,
+        doctorName: offerDetails.doctor,
+        offeredPrice: Number(offerDetails.precio),
+        originalPrice: Number(offerDetails.precioOriginal),
+        discountPct: Number(offerDetails.discountPct),
         expirationDate: fechaLimiteFormatted,
         fechaLimite: fechaLimiteFormatted,
         tituloFlyer: tituloFlyerAI,
-        conditions: altCondiciones || `Atención personalizada con ${doctor}. Cierre de tratamiento asegurado.`,
+        conditions: altCondiciones || `Atención personalizada con ${offerDetails.doctor}. Cierre de tratamiento asegurado.`,
         sendEmail: false,
         leadEmail: lead?.correo || lead?.email,
         leadPhone: lead?.numero,
@@ -1515,7 +1563,14 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {opciones.map((opt: any) => (
+                      {opciones.map((opt: any) => {
+                        const optPrice = Number(opt.precio_ofrecido);
+                        const offerInfo = getActiveOfferDetails();
+                        const optDiscount = offerInfo.precioOriginal > 0 && optPrice < offerInfo.precioOriginal
+                          ? Math.round(((offerInfo.precioOriginal - optPrice) / offerInfo.precioOriginal) * 100)
+                          : 0;
+
+                        return (
                         <div
                           key={opt.id_opcion}
                           onClick={() => setSelectedOpcion(opt.id_opcion)}
@@ -1563,8 +1618,13 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                             ) : (
                               <div className="flex items-center gap-1.5">
                                 <p className={`font-mono font-bold text-sm ${selectedOpcion === opt.id_opcion ? 'text-teal-700 dark:text-teal-300' : 'text-slate-900 dark:text-white'}`}>
-                                  S/ {Number(opt.precio_ofrecido).toFixed(2)}
+                                  S/ {optPrice.toFixed(2)}
                                 </p>
+                                {optDiscount > 0 && (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                    {optDiscount}% OFF
+                                  </span>
+                                )}
                                 <div className="flex items-center gap-0.5 ml-1" onClick={(e) => e.stopPropagation()}>
                                   <button
                                     title="Editar precio"
@@ -1601,7 +1661,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                             )}
                           </div>
                         </div>
-                      ))}
+                      );
+                    })}
                     </div>
                   )}
                 </div>
