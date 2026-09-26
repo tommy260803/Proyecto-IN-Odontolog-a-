@@ -465,6 +465,14 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     }
   }, [lead, catalogs]);
 
+  // Auto-selección inteligente: Si hay opciones y no hay opción seleccionada, auto-seleccionar la primera (ejecutado incondicionalmente antes de returns tempranos)
+  useEffect(() => {
+    const opts = lead?.Solicitudes?.[0]?.Opciones || [];
+    if (opts.length > 0 && selectedOpcion === null) {
+      setSelectedOpcion(opts[0].id_opcion);
+    }
+  }, [lead, selectedOpcion]);
+
   // Cálculo en vivo de la fecha límite de vigencia de la oferta comercial
   const calculatedExpiry = useMemo(() => {
     const today = startOfDay(new Date());
@@ -643,13 +651,6 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const hasUrgentPain = dolorLevel.includes('intenso') || dolorLevel.includes('moderado');
 
   const selectedOptData = opciones.find((o: any) => o.id_opcion === selectedOpcion);
-
-  // Auto-selección inteligente: Si no hay opción seleccionada y existen opciones en mesa, seleccionar la primera
-  useEffect(() => {
-    if (opciones.length > 0 && selectedOpcion === null) {
-      setSelectedOpcion(opciones[0].id_opcion);
-    }
-  }, [opciones, selectedOpcion]);
 
   // Formateo de fecha límite sincronizado con la mesa de ofertas
   const formatCustomExpirationDate = (): string => {
