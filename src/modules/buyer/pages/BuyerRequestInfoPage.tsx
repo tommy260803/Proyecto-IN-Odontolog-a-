@@ -265,9 +265,12 @@ export default function BuyerRequestInfoPage() {
       // Si no hay duplicado, registrar directamente
       await executeRegistration(false);
     } catch (err: any) {
-      console.error('Error durante la validación de identidad con IA:', err);
-      // Fallback seguro: registrar directamente
-      await executeRegistration(false);
+      console.error('Error durante la validación de identidad:', err);
+      toast({
+        title: 'Error de verificación',
+        description: 'No se pudo verificar el contacto. Por favor revisa tus datos o inténtalo nuevamente.',
+        variant: 'destructive',
+      });
     } finally {
       setResolvingIdentity(false);
     }
@@ -761,8 +764,8 @@ export default function BuyerRequestInfoPage() {
                 >
                   {resolvingIdentity ? (
                     <>
-                      <Bot className="h-3.5 w-3.5 animate-pulse text-teal-200" />
-                      <span>Verificando con Agente IA...</span>
+                      <ShieldCheck className="h-3.5 w-3.5 animate-pulse text-teal-200" />
+                      <span>Verificando seguridad...</span>
                     </>
                   ) : loading ? (
                     <>
@@ -937,18 +940,15 @@ export default function BuyerRequestInfoPage() {
           )}
         </div>
 
-        {/* Modal de Confirmación de Identidad y Contacto (Agente Inteligente de Marketing) */}
+        {/* Modal de Confirmación de Identidad y Contacto */}
         <Dialog open={identityModalOpen} onOpenChange={setIdentityModalOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-slate-200 text-slate-900 p-0 overflow-hidden rounded-3xl shadow-2xl">
-            {/* Header con gradiente elegante y badge de IA */}
+            {/* Header con gradiente elegante */}
             <div className="bg-gradient-to-r from-teal-700 via-teal-800 to-emerald-800 px-6 py-5 text-white relative">
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-white/20 text-teal-100 backdrop-blur border border-white/20">
-                  <Bot className="w-3.5 h-3.5 text-teal-300" />
-                  Agente Inteligente de Marketing
-                </span>
-                <span className="text-[10px] text-teal-200 font-medium">
-                  • Verificación de Seguridad
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-semibold bg-white/20 text-white backdrop-blur border border-white/25 shadow-2xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-teal-200" />
+                  Verificación de Seguridad
                 </span>
               </div>
               <DialogTitle className="text-lg font-bold text-white tracking-tight">
@@ -960,7 +960,7 @@ export default function BuyerRequestInfoPage() {
             </div>
 
             <div className="p-6 space-y-4">
-              {/* Mensaje de la IA */}
+              {/* Mensaje de Seguridad */}
               <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/90 text-amber-950 text-xs flex items-start gap-3">
                 <div className="p-1.5 rounded-xl bg-amber-100 text-amber-800 shrink-0 mt-0.5">
                   <ShieldAlert className="w-4 h-4 text-amber-700" />
@@ -982,61 +982,99 @@ export default function BuyerRequestInfoPage() {
                   type="button"
                   disabled={loading}
                   onClick={() => executeRegistration(false)}
-                  className="w-full text-left p-3.5 rounded-2xl border-2 border-teal-500/40 bg-teal-50/50 hover:bg-teal-50 hover:border-teal-600 transition-all cursor-pointer group flex items-start gap-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="w-full text-left p-3.5 sm:p-4 rounded-2xl border-2 border-teal-500/40 bg-teal-50/50 hover:bg-teal-50 hover:border-teal-600 transition-all cursor-pointer group flex items-start gap-3 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-xs"
                 >
                   <div className="p-2 rounded-xl bg-teal-600 text-white shrink-0 group-hover:scale-105 transition-transform mt-0.5 shadow-sm shadow-teal-600/30">
                     <UserCheck className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-xs text-teal-950 group-hover:text-teal-900">
+                    <div className="flex items-center justify-between gap-2.5">
+                      <span className="font-bold text-xs sm:text-[13px] text-teal-950 group-hover:text-teal-900 leading-tight">
                         Sí, soy yo (Continuar con mi solicitud)
                       </span>
-                      <span className="text-[9.5px] font-bold uppercase tracking-wider text-teal-700 bg-teal-100/80 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-teal-800 bg-teal-100/90 border border-teal-300/80 px-2.5 py-0.5 rounded-full shrink-0 whitespace-nowrap shadow-2xs">
                         Expediente existente
                       </span>
                     </div>
-                    <p className="text-[11px] text-teal-800/90 mt-1 leading-snug">
+                    <p className="text-[11px] text-teal-900/80 mt-1.5 leading-relaxed">
                       He modificado la escritura de mi nombre o ya me he atendido antes. Deseo anexar esta consulta a mi historial.
                     </p>
                   </div>
                 </button>
 
-                {/* Opción 2: No soy yo (Reportar y registrarme como nuevo paciente) */}
+                {/* Opción 2: No soy yo (Crear nuevo paciente) */}
                 <button
                   type="button"
                   disabled={loading}
                   onClick={() => executeRegistration(true)}
-                  className="w-full text-left p-3.5 rounded-2xl border-2 border-slate-200 bg-slate-50/70 hover:bg-white hover:border-slate-400 transition-all cursor-pointer group flex items-start gap-3 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  className="w-full text-left p-3.5 sm:p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/70 hover:bg-white hover:border-slate-400 transition-all cursor-pointer group flex items-start gap-3 focus:outline-none focus:ring-2 focus:ring-slate-400 shadow-xs"
                 >
                   <div className="p-2 rounded-xl bg-slate-800 text-white shrink-0 group-hover:scale-105 transition-transform mt-0.5 shadow-sm shadow-slate-800/30">
                     <UserPlus className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-xs text-slate-900 group-hover:text-slate-950">
-                        No soy yo (Registrarme como nuevo paciente)
+                    <div className="flex items-center justify-between gap-2.5">
+                      <span className="font-bold text-xs sm:text-[13px] text-slate-900 group-hover:text-slate-950 leading-tight">
+                        No soy yo (Crear nuevo paciente)
                       </span>
-                      <span className="text-[9.5px] font-bold uppercase tracking-wider text-slate-700 bg-slate-200/80 px-2 py-0.5 rounded-full">
-                        Nuevo Paciente
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 bg-slate-200/90 border border-slate-300/80 px-2.5 py-0.5 rounded-full shrink-0 whitespace-nowrap shadow-2xs">
+                        Nuevo paciente
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-600 mt-1 leading-snug">
-                      Comparto este número con un familiar o soy un paciente nuevo. Deseo crear mi propio expediente clínico independiente.
+                    <p className="text-[11px] text-slate-600 mt-1.5 leading-relaxed">
+                      Comparto este contacto con un familiar o soy un paciente nuevo. Deseo crear mi propio expediente clínico independiente.
                     </p>
                   </div>
                 </button>
               </div>
 
-              {/* Cancelar / Corregir número */}
-              <div className="pt-2 text-center">
-                <button
+              {/* Opción para Corregir Teléfono o Correo sin Registrar */}
+              <div className="pt-2 border-t border-slate-100 flex flex-col items-center gap-1.5">
+                <Button
                   type="button"
-                  onClick={() => setIdentityModalOpen(false)}
-                  className="text-xs text-slate-500 hover:text-slate-800 font-medium underline underline-offset-4 decoration-slate-300 transition-colors cursor-pointer"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIdentityModalOpen(false);
+                    if (identityModalData?.matchedType === 'email') {
+                      setEmail('');
+                      setTimeout(() => {
+                        const emailInput = document.getElementById('email');
+                        if (emailInput) {
+                          emailInput.focus();
+                        }
+                      }, 120);
+                      toast({
+                        title: 'Modifica tu correo',
+                        description: 'Hemos limpiado el campo para que ingreses tu correo correcto.',
+                      });
+                    } else {
+                      setPhone('');
+                      setTimeout(() => {
+                        const phoneInput = document.getElementById('phone');
+                        if (phoneInput) {
+                          phoneInput.focus();
+                        }
+                      }, 120);
+                      toast({
+                        title: 'Modifica tu teléfono',
+                        description: 'Hemos limpiado el campo para que ingreses tu número de WhatsApp correcto.',
+                      });
+                    }
+                  }}
+                  className="w-full text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border-slate-200 rounded-xl h-10 flex items-center justify-center gap-2 cursor-pointer transition-all shadow-2xs"
                 >
-                  Deseo corregir el teléfono o correo ingresado
-                </button>
+                  <Phone className="w-3.5 h-3.5 text-teal-600" />
+                  <span>
+                    {identityModalData?.matchedType === 'email'
+                      ? 'Deseo cambiar el correo ingresado'
+                      : 'Deseo cambiar el número de teléfono'}
+                  </span>
+                </Button>
+                <p className="text-[10px] text-slate-400 text-center">
+                  Cierra esta ventana y limpia el campo para que ingreses tus datos correctos sin registrar nada.
+                </p>
               </div>
             </div>
           </DialogContent>
