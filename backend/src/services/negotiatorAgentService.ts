@@ -55,21 +55,6 @@ export class NegotiatorAgentService {
         </div>
 
         <div style="padding: 24px; color: #334155;">
-          <!-- Banner de Simulación de Prueba -->
-          <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px 16px; margin-bottom: 22px; font-size: 13px; color: #166534;">
-            <p style="margin: 0 0 6px 0; font-weight: bold; display: flex; align-items: center; gap: 6px;">
-              🧪 MODO SIMULACIÓN ACTIVO
-            </p>
-            <p style="margin: 0 0 6px 0; font-size: 12px; color: #15803d; line-height: 1.4;">
-              Este correo fue enviado a tu bandeja de prueba (<strong>${targetEmail}</strong>) para validar el diseño y contenido antes del despacho al paciente.
-            </p>
-            <div style="border-top: 1px dashed #86efac; padding-top: 6px; margin-top: 6px; font-size: 11.5px; color: #166534;">
-              <strong>👤 Paciente Destino:</strong> ${params.leadName} &nbsp;|&nbsp; 
-              <strong>✉️ Correo Original:</strong> ${params.leadEmail || 'No asignado'} &nbsp;|&nbsp; 
-              <strong>📱 Teléfono:</strong> ${params.leadPhone || 'No asignado'}
-            </div>
-          </div>
-
           <h2 style="color: #0f172a; font-size: 18px; margin-top: 0;">¡Hola ${params.leadName}! 👋</h2>
           <p style="line-height: 1.5; font-size: 14px; margin-bottom: 16px;">
             Diseñamos una propuesta exclusiva para tu tratamiento de <strong>${params.serviceName}</strong> pensada a tu medida:
