@@ -25,6 +25,7 @@ import {
 } from '@/shared/components/ui/select';
 import { leadService } from '../services/lead.service';
 import { useToast } from '@/shared/hooks/use-toast';
+import { generateFlyerTitleWithAI } from '@/shared/services/groqService';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
@@ -267,69 +268,29 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const [flyerImageLoading, setFlyerImageLoading] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [flyerZoom, setFlyerZoom] = useState<number>(1);
-  const [panPosition, setPanPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStartRef = useRef<{ startX: number; startY: number; initialPanX: number; initialPanY: number }>({
-    startX: 0,
-    startY: 0,
-    initialPanX: 0,
-    initialPanY: 0,
-  });
+  const flyerContainerRef = useRef<HTMLDivElement>(null);
 
-  const handleResetZoomAndPan = () => {
-    setFlyerZoom(1);
-    setPanPosition({ x: 0, y: 0 });
-  };
+  // Zoom interactivo con la rueda del ratón (scroll) en el visor del flyer
+  useEffect(() => {
+    const container = flyerContainerRef.current;
+    if (!container || !showPreviewModal) return;
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return;
-    setIsDragging(true);
-    dragStartRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      initialPanX: panPosition.x,
-      initialPanY: panPosition.y,
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const zoomStep = 0.12;
+      const direction = e.deltaY < 0 ? 1 : -1;
+      setFlyerZoom((prev) => {
+        const next = Math.round((prev + direction * zoomStep) * 100) / 100;
+        return Math.min(3.0, Math.max(0.6, next));
+      });
     };
-  };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    const dx = e.clientX - dragStartRef.current.startX;
-    const dy = e.clientY - dragStartRef.current.startY;
-    setPanPosition({
-      x: dragStartRef.current.initialPanX + dx,
-      y: dragStartRef.current.initialPanY + dy,
-    });
-  };
-
-  const handleMouseUp = () => {
-    if (isDragging) setIsDragging(false);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return;
-    setIsDragging(true);
-    dragStartRef.current = {
-      startX: e.touches[0].clientX,
-      startY: e.touches[0].clientY,
-      initialPanX: panPosition.x,
-      initialPanY: panPosition.y,
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
     };
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging || e.touches.length !== 1) return;
-    const dx = e.touches[0].clientX - dragStartRef.current.startX;
-    const dy = e.touches[0].clientY - dragStartRef.current.startY;
-    setPanPosition({
-      x: dragStartRef.current.initialPanX + dx,
-      y: dragStartRef.current.initialPanY + dy,
-    });
-  };
-
-  const handleTouchEnd = () => {
-    if (isDragging) setIsDragging(false);
-  };
+  }, [showPreviewModal]);
 
   const fetchData = () => {
     if (!leadId) return;
@@ -696,6 +657,32 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
       const sede = selectedOptData?.Disponibilidad?.Sede?.nombre || (altSedeId !== 'ALL_SEDES' ? catalogs.sedes?.find((s: any) => s.id_sede.toString() === altSedeId)?.nombre : 'Sede Miraflores - Av. Larco 123');
       const doctor = selectedOptData?.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}` : 'Especialistas colegiados';
 
+      // 1. Formatear la fecha límite con el formato exacto de la plantilla: "Viernes, 26 de marzo"
+      let targetDate: Date | null = null;
+      const rawDate = selectedOptData?.Disponibilidad?.fecha;
+      if (rawDate) {
+        targetDate = new Date(rawDate);
+      } else if (altVigencia === '24h') {
+        targetDate = new Date(Date.now() + 24 * 3600000);
+      } else if (altVigencia === '48h') {
+        targetDate = new Date(Date.now() + 48 * 3600000);
+      } else if (altVigencia === '72h') {
+        targetDate = new Date(Date.now() + 72 * 3600000);
+      } else if (altVigencia === '7d') {
+        targetDate = new Date(Date.now() + 7 * 24 * 3600000);
+      } else if (altVigencia === 'custom' && altVigenciaCustom) {
+        targetDate = new Date(altVigenciaCustom);
+      }
+      if (!targetDate || isNaN(targetDate.getTime())) {
+        targetDate = new Date(Date.now() + 48 * 3600000);
+      }
+      const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
+      const fechaLimiteFormatted = `${diasSemana[targetDate.getDay()]}, ${targetDate.getDate()} de ${meses[targetDate.getMonth()]}`;
+
+      // 2. Generar con IA un título publicitario de máximo 3 palabras (ej: "MEJOREMOS TU SONRISA", "SONRÍE CON CONFIANZA")
+      const tituloFlyerAI = await generateFlyerTitleWithAI(reqServicio, lead?.nombres);
+
       const resData = await leadService.generateCanvaFlyer(lead?.id_persona || leadId, {
         serviceName: reqServicio,
         sedeName: sede,
@@ -703,7 +690,9 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
         offeredPrice: Number(precio),
         originalPrice: currentOfficialPrice || 180,
         discountPct: discountMetrics?.pct || 15,
-        expirationDate: selectedOptData?.Disponibilidad?.fecha?.split('T')[0] || (altVigencia === 'custom' ? altVigenciaCustom : '7 días'),
+        expirationDate: fechaLimiteFormatted,
+        fechaLimite: fechaLimiteFormatted,
+        tituloFlyer: tituloFlyerAI,
         conditions: altCondiciones || `Atención personalizada con ${doctor}. Cierre de tratamiento asegurado.`,
         sendEmail: false,
         leadEmail: lead?.correo || lead?.email,
@@ -1668,13 +1657,21 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                                   <span className="font-semibold text-slate-500 dark:text-slate-400 block text-[10px]">Tratamiento Ofertado:</span>
                                   <span className="font-medium text-slate-800 dark:text-slate-200">{selectedOptData?.Disponibilidad?.Servicio?.nombre || 'Consulta Odontológica'}</span>
                                 </div>
+                                <div className="p-2 rounded-lg bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200/70 dark:border-purple-800/50">
+                                  <span className="font-semibold text-purple-600 dark:text-purple-400 block text-[10px]">Titular IA (Máx 3 palabras):</span>
+                                  <span className="font-bold text-purple-900 dark:text-purple-200">{canvaResult?.dataset?.Titulo_Flyer?.text || 'MEJOREMOS TU SONRISA'}</span>
+                                </div>
+                                <div className="p-2 rounded-lg bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-800/50">
+                                  <span className="font-semibold text-amber-700 dark:text-amber-400 block text-[10px]">Fecha Límite Oficial:</span>
+                                  <span className="font-bold text-amber-900 dark:text-amber-200">{canvaResult?.dataset?.Fecha_Limite?.text || 'Viernes, 26 de marzo'}</span>
+                                </div>
                                 <div className="p-2 rounded-lg bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200/70 dark:border-teal-800/50">
                                   <span className="font-semibold text-teal-600 dark:text-teal-400 block text-[10px]">Tarifa Promocional:</span>
                                   <span className="font-bold text-teal-800 dark:text-teal-200 font-mono">S/ {selectedOptData ? Number(selectedOptData.precio_ofrecido).toFixed(2) : '150.00'}</span>
                                 </div>
-                                <div className="p-2 rounded-lg bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200/70 dark:border-purple-800/50">
-                                  <span className="font-semibold text-purple-600 dark:text-purple-400 block text-[10px]">Sede de Atención:</span>
-                                  <span className="font-medium text-purple-800 dark:text-purple-200">{selectedOptData?.Disponibilidad?.Sede?.nombre || 'Sede Miraflores'}</span>
+                                <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60">
+                                  <span className="font-semibold text-slate-500 dark:text-slate-400 block text-[10px]">Sede de Atención:</span>
+                                  <span className="font-medium text-slate-800 dark:text-slate-200">{selectedOptData?.Disponibilidad?.Sede?.nombre || 'Sede Miraflores'}</span>
                                 </div>
                               </div>
                             </div>
@@ -1922,7 +1919,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
         open={showPreviewModal} 
         onOpenChange={(open) => {
           setShowPreviewModal(open);
-          if (!open) handleResetZoomAndPan();
+          if (!open) setFlyerZoom(1);
         }}
       >
         <DialogContent className="max-w-4xl max-h-[96vh] p-5 sm:p-6 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col items-center z-[150] overflow-hidden">
@@ -1969,8 +1966,9 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
             </div>
           </DialogHeader>
 
-          {/* Contenedor del Flyer con Zoom mediante Scroll y Arrastre Libre (Pan & Drag) */}
+          {/* Contenedor del Flyer con Zoom mediante Scroll (Rueda del Ratón) */}
           <div 
+            ref={flyerContainerRef}
             onWheel={(e) => {
               const zoomStep = 0.15;
               const direction = e.deltaY < 0 ? 1 : -1;
@@ -1979,55 +1977,38 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                 return Math.min(3.0, Math.max(0.6, next));
               });
             }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onDoubleClick={() => {
-              if (flyerZoom > 1 || panPosition.x !== 0 || panPosition.y !== 0) {
-                handleResetZoomAndPan();
-              } else {
-                setFlyerZoom(1.75);
-              }
-            }}
-            className={`relative w-full flex-1 min-h-[50vh] max-h-[75vh] flex items-center justify-center p-4 bg-slate-100/90 dark:bg-slate-950/60 border border-slate-200/90 dark:border-slate-800 rounded-2xl mt-3 overflow-hidden select-none ${
-              isDragging ? 'cursor-grabbing' : 'cursor-grab'
-            }`}
-            title="Usa la rueda (scroll) para zoom y haz clic sostenido para arrastrar"
+            onDoubleClick={() => setFlyerZoom((prev) => (prev > 1 ? 1 : 1.75))}
+            className="relative w-full flex-1 min-h-[50vh] max-h-[75vh] flex items-center justify-center p-4 bg-slate-100/90 dark:bg-slate-950/60 border border-slate-200/90 dark:border-slate-800 rounded-2xl mt-3 overflow-hidden select-none cursor-default"
+            title="Gira la rueda del ratón (scroll) para hacer zoom o doble clic para alternar"
           >
             <div 
-              className="flex items-center justify-center pointer-events-none"
+              className="flex items-center justify-center transition-transform duration-100 ease-out"
               style={{
-                transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${flyerZoom})`,
+                transform: `scale(${flyerZoom})`,
                 transformOrigin: 'center center',
-                transition: isDragging ? 'none' : 'transform 100ms ease-out',
               }}
             >
               <img
                 src={canvaResult?.previewUrl}
                 alt="Flyer Oficial Canva Grande"
-                className="max-h-[68vh] w-auto object-contain rounded-xl shadow-xl pointer-events-none select-none"
-                draggable={false}
+                className="max-h-[68vh] w-auto object-contain rounded-xl shadow-xl pointer-events-none"
               />
             </div>
 
             {/* Píldora inferior flotante pequeña y transparente */}
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/40 hover:bg-slate-900/60 backdrop-blur-md border border-white/15 text-[11px] font-mono text-white/90 shadow-sm transition-all select-none pointer-events-auto">
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/40 hover:bg-slate-900/60 backdrop-blur-md border border-white/15 text-[11px] font-mono text-white/90 shadow-sm transition-all select-none">
               <span>{Math.round(flyerZoom * 100)}%</span>
-              {(flyerZoom !== 1 || panPosition.x !== 0 || panPosition.y !== 0) && (
+              {flyerZoom !== 1 && (
                 <>
                   <span className="text-white/30">|</span>
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleResetZoomAndPan();
+                      setFlyerZoom(1);
                     }}
                     className="text-[10px] text-teal-300 hover:text-white transition-colors cursor-pointer inline-flex items-center gap-0.5"
-                    title="Restablecer tamaño y posición (100%)"
+                    title="Restablecer tamaño original (100%)"
                   >
                     <RotateCcw className="w-2.5 h-2.5" />
                     <span>Reset</span>

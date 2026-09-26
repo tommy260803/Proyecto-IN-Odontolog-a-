@@ -10,6 +10,8 @@ import path from 'path';
 export interface CanvaAutofillParams {
   brandTemplateId?: string;
   leadName?: string;
+  tituloFlyer?: string;
+  fechaLimite?: string;
   sedeTexto?: string;
   descuentoTexto?: string;
   contactoTexto?: string;
@@ -184,9 +186,70 @@ export class CanvaService {
   }
 
   /**
+   * Asegura que el título del flyer sea de máximo 3 palabras para encajar perfecto en el diseño
+   */
+  public static shortenFlyerTitle(title?: string, fallback: string = 'MEJOREMOS TU SONRISA'): string {
+    if (!title) return fallback;
+    let clean = title.replace(/["'«».\n\r]/g, '').trim();
+    const words = clean.split(/\s+/).filter(Boolean);
+    if (words.length > 3) {
+      return words.slice(0, 3).join(' ').toUpperCase();
+    }
+    return clean.toUpperCase() || fallback;
+  }
+
+  /**
+   * Formatea la fecha límite exactamente al formato requerido: "Viernes, 26 de marzo"
+   */
+  public static formatFechaLimite(rawDate?: string): string {
+    if (rawDate && /^[A-ZÁÉÍÓÚa-záéíóú]+,\s*\d+\s+de\s+[a-záéíóú]+/i.test(rawDate)) {
+      return rawDate;
+    }
+
+    let dateObj: Date | null = null;
+    if (rawDate) {
+      if (/^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
+        const parts = rawDate.split('T')[0].split('-');
+        dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      } else if (!isNaN(Date.parse(rawDate))) {
+        dateObj = new Date(rawDate);
+      } else if (/(\d+)\s*(h|hora|día|dia)/i.test(rawDate)) {
+        const match = rawDate.match(/(\d+)\s*(h|hora|día|dia)/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          const isHour = /h|hora/i.test(match[2]);
+          const now = new Date();
+          dateObj = new Date(now.getTime() + (isHour ? num * 3600000 : num * 86400000));
+        }
+      }
+    }
+
+    if (!dateObj || isNaN(dateObj.getTime())) {
+      const now = new Date();
+      dateObj = new Date(now.getTime() + 3 * 86400000); // 3 días por defecto
+    }
+
+    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const meses = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+
+    const diaSemana = diasSemana[dateObj.getDay()];
+    const dia = dateObj.getDate();
+    const mes = meses[dateObj.getMonth()];
+
+    return `${diaSemana}, ${dia} de ${mes}`;
+  }
+
+  /**
    * Genera el payload estructurado con las variables exactas de la plantilla de Canva
    */
   public static buildAutofillDataset(params: CanvaAutofillParams) {
+    // Nuevas variables añadidas en la plantilla
+    const cleanTituloFlyer = this.shortenFlyerTitle(params.tituloFlyer, 'MEJOREMOS TU SONRISA');
+    const cleanFechaLimite = this.formatFechaLimite(params.fechaLimite);
+
     // En la plantilla, Descuento_Texto está sobre 'hasta' y al lado de '% OFF'
     // Se extrae sólo el número para no deformar el texto de tamaño gigante (ej: '20' o '30')
     let cleanDescuento = params.descuentoTexto || '20';
@@ -214,6 +277,10 @@ export class CanvaService {
     const t3Precio = params.tratamiento3?.precio || 'Desde S/ 100';
 
     return {
+      // NUEVAS VARIABLES DEL FLYER CANVA (Título publicitario y fecha límite con formato)
+      Titulo_Flyer: { type: 'text', text: cleanTituloFlyer },
+      Fecha_Limite: { type: 'text', text: cleanFechaLimite },
+
       // INFO GENERAL DE LA CLÍNICA Y GANCHO
       Sede_Texto: { type: 'text', text: cleanSede },
       Descuento_Texto: { type: 'text', text: cleanDescuento },

@@ -434,6 +434,8 @@ router.post('/:id/canva-flyer', async (req, res) => {
     sendEmail,
     leadEmail,
     leadPhone,
+    tituloFlyer,
+    fechaLimite,
   } = req.body;
 
   try {
@@ -465,6 +467,8 @@ router.post('/:id/canva-flyer', async (req, res) => {
       originalPrice: Number(originalPrice) || 180,
       discountPct: Number(discountPct) || 15,
       expirationDate: expirationDate || 'Vigente por 7 días',
+      fechaLimite: fechaLimite || expirationDate,
+      tituloFlyer,
       conditions: conditions || 'Garantía clínica y reserva asegurada.',
       canvaTemplateId: process.env.CANVA_BRAND_TEMPLATE_ID || process.env.CANVA_TEMPLATE_ID || 'EAHWLEXZ1lo',
       sendEmail: Boolean(sendEmail),

@@ -686,3 +686,75 @@ Responde ÚNICAMENTE en JSON válido con este formato:
   };
 }
 
+/**
+ * Genera con IA (Groq) un título publicitario de ALTO IMPACTO de MÁXIMO 3 PALABRAS para el encabezado del Flyer de Canva
+ * (ej: "MEJOREMOS TU SONRISA", "SONRÍE CON CONFIANZA", "TU MEJOR SONRISA")
+ */
+export async function generateFlyerTitleWithAI(serviceName: string, patientName?: string): Promise<string> {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+
+  if (apiKey && apiKey !== 'tu_groq_api_key_aqui') {
+    const prompt = `Actúa como el Agente Creativo de Marketing Odontológico de NexoSalud.
+Genera un título publicitario de ALTO IMPACTO de EXACTAMENTE 2 O 3 PALABRAS (MÁXIMO 3 PALABRAS) para el encabezado principal del flyer publicitario Canva.
+Tratamiento ofertado: "${serviceName}".
+Paciente: "${patientName || 'Paciente'}".
+
+REGLAS ESTRICTAS:
+1. Longitud: MÁXIMO 3 PALABRAS. Jamás escribas 4 palabras o más.
+2. Tono: Motivador, persuasivo, estético y profesional.
+3. Formato: MAYÚSCULAS limpias (ejemplos: "MEJOREMOS TU SONRISA", "SONRÍE CON CONFIANZA", "TU MEJOR SONRISA", "ALINEA TU SONRISA", "DIENTES BLANCOS HOY", "RECUPERA TU SONRISA").
+4. Responde ÚNICAMENTE las 2 o 3 palabras en texto plano, sin comillas, sin explicaciones ni signos de puntuación.`;
+
+    for (const model of GROQ_MODELS) {
+      try {
+        const response = await fetch(GROQ_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: 'Eres un copywriter publicitario dental. Responde únicamente un título en mayúsculas de máximo 3 palabras.' },
+              { role: 'user', content: prompt },
+            ],
+            temperature: 0.6,
+            max_tokens: 20,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let raw = data.choices?.[0]?.message?.content?.trim() || '';
+          raw = raw.replace(/["'«».\n\r]/g, '').trim();
+          const words = raw.split(/\s+/).filter(Boolean);
+          if (words.length > 0) {
+            return words.slice(0, 3).join(' ').toUpperCase();
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  // Fallback heurístico inteligente por servicio (máximo 3 palabras)
+  const lower = (serviceName || '').toLowerCase();
+  if (lower.includes('ortodoncia') || lower.includes('bracket')) {
+    return 'ALINEA TU SONRISA';
+  }
+  if (lower.includes('blanquea') || lower.includes('estétic')) {
+    return 'SONRISA BLANCA RADIANTE';
+  }
+  if (lower.includes('limpieza') || lower.includes('profilaxis')) {
+    return 'SONRISA LIMPIA TOTAL';
+  }
+  if (lower.includes('implante') || lower.includes('prótesis')) {
+    return 'RECUPERA TU SONRISA';
+  }
+  if (lower.includes('endodoncia') || lower.includes('curación') || lower.includes('caries')) {
+    return 'CUIDA TU SALUD';
+  }
+
+  return 'MEJOREMOS TU SONRISA';
+}
+
