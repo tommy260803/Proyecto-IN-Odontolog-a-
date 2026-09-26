@@ -299,7 +299,7 @@ export default function BuyerRequestInfoPage() {
       <div className="hidden lg:block absolute left-1/2 top-0 bottom-0 -translate-x-1/2 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 via-50% to-transparent pointer-events-none z-10" />
 
       {/* Top Bar / Header */}
-      <header className="max-w-7xl mx-auto w-full flex items-center justify-between py-3 lg:py-2 px-4 sm:px-6 lg:px-8 shrink-0 z-20">
+      <header className="w-full flex items-center justify-between py-3 lg:py-2 px-6 sm:px-8 lg:px-12 shrink-0 z-20">
         <div className="flex items-center gap-2.5">
           <img 
             src="/Logo_NexoSalud.png" 
@@ -324,97 +324,98 @@ export default function BuyerRequestInfoPage() {
         </Button>
       </header>
 
-      {/* Main Content Split Screen */}
-      <main className="relative max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center min-h-0 py-4 lg:py-1 px-4 sm:px-6 lg:px-8 z-20">
+      {/* Main Content Split Screen - 50% / 50% */}
+      <main className="relative w-full flex-1 grid grid-cols-1 lg:grid-cols-2 min-h-0 z-20 pb-6 lg:pb-0">
         
-        {/* Left Column: Información de NexoSalud Odontología */}
-        <div className="lg:col-span-6 xl:col-span-6 space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-left duration-300">
+        {/* Left Column (Mitad Izquierda 50%): Centrado en su mitad */}
+        <div className="w-full h-full flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 xl:p-12 animate-in fade-in slide-in-from-left duration-300">
+          <div className="w-full max-w-lg space-y-4 sm:space-y-5">
           
-          <div className="space-y-2 sm:space-y-2.5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-[11px] font-semibold backdrop-blur">
-              <Sparkles className="h-3 w-3 text-teal-300" />
-              <span>Red Odontológica Integral de Alta Complejidad</span>
+            <div className="space-y-2 sm:space-y-2.5">
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-[11px] font-semibold backdrop-blur">
+                <Sparkles className="h-3 w-3 text-teal-300" />
+                <span>Red Odontológica Integral de Alta Complejidad</span>
+              </div>
+
+              <h1 className="text-2xl sm:text-3xl xl:text-4xl font-black text-white tracking-tight leading-tight">
+                Transformamos tu sonrisa con <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-emerald-400 to-teal-200">tecnología de vanguardia</span>
+              </h1>
+
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-lg font-normal">
+                Accede a una atención odontológica moderna, indolora y personalizada. Especialistas certificados, diagnósticos digitales 3D y facilidades de pago.
+              </p>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl xl:text-4xl font-black text-white tracking-tight leading-tight">
-              Transformamos tu sonrisa con <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-emerald-400 to-teal-200">tecnología de vanguardia</span>
-            </h1>
+            {/* Grid de Beneficios Clave */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
+              <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur space-y-1">
+                <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
+                  <Stethoscope className="h-3.5 w-3.5" />
+                </div>
+                <h2 className="text-xs font-bold text-white">Especialistas Top</h2>
+                <p className="text-[10.5px] text-slate-400 leading-tight">
+                  Ortodoncia, Implantes y Estética.
+                </p>
+              </div>
 
-            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-lg font-normal">
-              Accede a una atención odontológica moderna, indolora y personalizada. Especialistas certificados, diagnósticos digitales 3D y facilidades de pago.
-            </p>
+              <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur space-y-1">
+                <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
+                  <Zap className="h-3.5 w-3.5" />
+                </div>
+                <h2 className="text-xs font-bold text-white">Diagnóstico 3D</h2>
+                <p className="text-[10.5px] text-slate-400 leading-tight">
+                  Escaneo intraoral sin dolor.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur space-y-1">
+                <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
+                  <Building2 className="h-3.5 w-3.5" />
+                </div>
+                <h2 className="text-xs font-bold text-white">3 Sedes en Lima</h2>
+                <p className="text-[10.5px] text-slate-400 leading-tight">
+                  San Isidro, Surco y Los Olivos.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur space-y-1">
+                <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
+                  <Clock className="h-3.5 w-3.5" />
+                </div>
+                <h2 className="text-xs font-bold text-white">Respuesta Rápida</h2>
+                <p className="text-[10.5px] text-slate-400 leading-tight">
+                  Atención en menos de 15 min.
+                </p>
+              </div>
+            </div>
+
+            {/* KPI Stats / Social Proof */}
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-5 pt-1.5 border-t border-slate-800/60">
+              <div>
+                <p className="text-lg sm:text-xl font-black text-white font-mono">+12,000</p>
+                <p className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Pacientes Atendidos</p>
+              </div>
+              <div className="h-6 w-px bg-slate-800 hidden sm:block" />
+              <div>
+                <p className="text-lg sm:text-xl font-black text-teal-400 font-mono">98.9%</p>
+                <p className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Satisfacción</p>
+              </div>
+              <div className="h-6 w-px bg-slate-800 hidden sm:block" />
+              <div className="flex items-center gap-1">
+                <div className="flex text-amber-400">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-3 w-3 fill-amber-400" />
+                  ))}
+                </div>
+                <span className="text-[11px] font-bold text-white font-mono">4.9/5</span>
+              </div>
+            </div>
+
           </div>
-
-          {/* Grid de Beneficios Clave */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
-            <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
-                <Stethoscope className="h-3.5 w-3.5" />
-              </div>
-              <h2 className="text-xs font-bold text-white">Especialistas Top</h2>
-              <p className="text-[10.5px] text-slate-400 leading-tight">
-                Ortodoncia, Implantes y Estética.
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
-                <Zap className="h-3.5 w-3.5" />
-              </div>
-              <h2 className="text-xs font-bold text-white">Diagnóstico 3D</h2>
-              <p className="text-[10.5px] text-slate-400 leading-tight">
-                Escaneo intraoral sin dolor.
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
-                <Building2 className="h-3.5 w-3.5" />
-              </div>
-              <h2 className="text-xs font-bold text-white">3 Sedes en Lima</h2>
-              <p className="text-[10.5px] text-slate-400 leading-tight">
-                San Isidro, Surco y Los Olivos.
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400">
-                <Clock className="h-3.5 w-3.5" />
-              </div>
-              <h2 className="text-xs font-bold text-white">Respuesta Rápida</h2>
-              <p className="text-[10.5px] text-slate-400 leading-tight">
-                Atención en menos de 15 min.
-              </p>
-            </div>
-          </div>
-
-          {/* KPI Stats / Social Proof */}
-          {/* KPI Stats / Social Proof */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-5 pt-1.5 border-t border-slate-800/60">
-            <div>
-              <p className="text-lg sm:text-xl font-black text-white font-mono">+12,000</p>
-              <p className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Pacientes Atendidos</p>
-            </div>
-            <div className="h-6 w-px bg-slate-800 hidden sm:block" />
-            <div>
-              <p className="text-lg sm:text-xl font-black text-teal-400 font-mono">98.9%</p>
-              <p className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Satisfacción</p>
-            </div>
-            <div className="h-6 w-px bg-slate-800 hidden sm:block" />
-            <div className="flex items-center gap-1">
-              <div className="flex text-amber-400">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-3 w-3 fill-amber-400" />
-                ))}
-              </div>
-              <span className="text-[11px] font-bold text-white font-mono">4.9/5</span>
-            </div>
-          </div>
-
         </div>
 
-        {/* Right Column: Formulario Plano con Fondo Blanco */}
-        <div className="lg:col-span-6 xl:col-span-6 w-full flex justify-center lg:justify-end min-h-0 animate-in fade-in slide-in-from-right duration-300 pb-6 lg:pb-0">
+        {/* Right Column (Mitad Derecha 50%): Formulario Centrado en su mitad */}
+        <div className="w-full h-full flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 xl:p-12 min-h-0 animate-in fade-in slide-in-from-right duration-300 pb-6 lg:pb-0">
           {!submittedSuccess ? (
             <div className="w-full max-w-lg bg-white rounded-3xl overflow-hidden flex flex-col h-auto lg:max-h-[78vh] shadow-xl lg:shadow-none border border-slate-200/80 relative">
               
@@ -1083,7 +1084,7 @@ export default function BuyerRequestInfoPage() {
       </main>
 
       {/* Footer */}
-      <footer className="max-w-7xl mx-auto w-full text-center py-1 text-[10px] text-slate-500 shrink-0">
+      <footer className="w-full text-center py-1 text-[10px] text-slate-500 shrink-0">
         <p>© 2026 NexoSalud Odontología Especializada · Sistema de Inteligencia de Negocios · Privacidad Protegida</p>
       </footer>
       <Toaster />

@@ -350,11 +350,11 @@ export default function PreReservationPage() {
         {/* Mitad Izquierda en Desktop (vacía para mantener limpio el lado del formulario) */}
         <div className="hidden lg:block" />
 
-        {/* Mitad Derecha en Desktop: Branding NexoSalud en el LADO DERECHO */}
-        <div className="hidden lg:flex items-center justify-center pt-4 pb-1 px-6 xl:px-12">
-          <div className="w-full max-w-lg flex items-center justify-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-md flex items-center justify-center p-1.5 overflow-hidden">
-              <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
+        {/* Mitad Derecha en Desktop: Branding NexoSalud alineado al LADO DERECHO con logo oscuro */}
+        <div className="hidden lg:flex items-center justify-end pt-4 pb-1 px-8 xl:px-14">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-900/60 backdrop-blur-md border border-slate-700/60 shadow-md flex items-center justify-center p-1 overflow-hidden">
+              <img src="/Logo_NexoSalus_Oscuro.png" alt="NexoSalud Dental" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="font-extrabold text-base tracking-tight text-white block leading-tight">
