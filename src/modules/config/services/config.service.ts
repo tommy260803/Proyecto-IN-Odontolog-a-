@@ -22,6 +22,12 @@ export interface ServicioConfig {
   precio: number | null;
   id_tarifa: number | null;
   especialistas: string[];
+  especialistasDetalle?: {
+    id_profesional: number;
+    nombres: string;
+    apellidos: string;
+    especialidad: string;
+  }[];
 }
 
 export interface SedeConfig {
@@ -109,6 +115,15 @@ export const configService = {
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error('Error al actualizar servicio');
+    return res.json();
+  },
+  assignEspecialistas: async (servicioId: number, profesionalesIds: number[]): Promise<any> => {
+    const res = await fetch(`${API_URL}/config/servicios/${servicioId}/especialistas`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profesionalesIds }),
+    });
+    if (!res.ok) throw new Error('Error al asignar especialistas al tratamiento');
     return res.json();
   },
 
