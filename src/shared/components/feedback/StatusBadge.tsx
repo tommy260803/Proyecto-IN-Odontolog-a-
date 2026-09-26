@@ -5,49 +5,6 @@ interface StatusBadgeProps {
   variant?: StatusVariant;
 }
 
-const statusDictionary: Record<string, { label: string; defaultVariant: StatusVariant }> = {
-  // ── 1. BUYER (Captación) ─────────────────────────────────
-  NEW: { label: 'Nuevo', defaultVariant: 'warning' },
-  CONTACTED: { label: 'Contactado', defaultVariant: 'primary' },
-  CONVERTED: { label: 'Convertido', defaultVariant: 'success' },
-  DISCARDED: { label: 'Descartado', defaultVariant: 'error' },
-  DUPLICATED: { label: 'Duplicado', defaultVariant: 'purple' },
-
-  // ── 2. LEAD (Negociación) ────────────────────────────────
-  IN_NEGOTIATION: { label: 'En Negociación', defaultVariant: 'warning' },
-  ALTERNATIVE_SELECTED: { label: 'Alternativa Elegida', defaultVariant: 'primary' },
-  PAYMENT_REQUESTED: { label: 'Convertido a PAYER', defaultVariant: 'success' },
-  LOST: { label: 'Descartado', defaultVariant: 'error' },
-
-  // ── 3. PAYER (Cobro y Validación) ───────────────────────
-  PENDING: { label: 'Pendiente de Pago', defaultVariant: 'warning' },
-  IN_REVIEW: { label: 'En Revisión', defaultVariant: 'primary' },
-  VALIDATED: { label: 'Validado', defaultVariant: 'success' },
-  REJECTED: { label: 'Rechazado', defaultVariant: 'error' },
-  REVERTED: { label: 'Revertido', defaultVariant: 'error' },
-
-  // ── 4. CUSTOMER (Atención Odontológica) ─────────────────
-  SCHEDULED: { label: 'Programado', defaultVariant: 'warning' },
-  ATTENDANCE_CONFIRMED: { label: 'Asistencia Confirmada', defaultVariant: 'primary' },
-  IN_ATTENTION: { label: 'En Atención', defaultVariant: 'warning' },
-  ATTENDED: { label: 'Atendido', defaultVariant: 'success' },
-  NO_SHOW: { label: 'No Asistió', defaultVariant: 'error' },
-  CANCELED: { label: 'Cancelado', defaultVariant: 'error' },
-
-  // ── 5. TURNED (Postventa y Fidelización) ────────────────
-  FOLLOW_UP_PENDING: { label: 'Seguimiento Pendiente', defaultVariant: 'error' },
-  IN_FOLLOW_UP: { label: 'En Seguimiento', defaultVariant: 'warning' },
-  CLOSED: { label: 'Cerrado', defaultVariant: 'success' },
-  NEW_REQUEST: { label: 'Nueva Solicitud Creada', defaultVariant: 'purple' },
-
-  // ── Fases del Embudo ────────────────────────────────────
-  BUYER: { label: 'Etapa BUYER', defaultVariant: 'primary' },
-  LEAD: { label: 'Etapa LEAD', defaultVariant: 'primary' },
-  PAYER: { label: 'Etapa PAYER', defaultVariant: 'primary' },
-  CUSTOMER: { label: 'Etapa CUSTOMER', defaultVariant: 'primary' },
-  TURNED: { label: 'Etapa TURNED', defaultVariant: 'primary' },
-};
-
 const variantStyles: Record<StatusVariant, { pill: string; dot: string }> = {
   success: {
     pill: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/80',
@@ -75,16 +32,13 @@ const variantStyles: Record<StatusVariant, { pill: string; dot: string }> = {
   },
 };
 
-export function StatusBadge({ status, variant }: StatusBadgeProps) {
-  const match = status ? statusDictionary[status.trim()] : undefined;
-  const displayLabel = match ? match.label : status;
-  const effectiveVariant = variant || match?.defaultVariant || 'neutral';
-  const current = variantStyles[effectiveVariant] || variantStyles.neutral;
+export function StatusBadge({ status, variant = 'neutral' }: StatusBadgeProps) {
+  const current = variantStyles[variant] || variantStyles.neutral;
 
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${current.pill} transition-colors shadow-sm`}>
       <span className={`h-1.5 w-1.5 rounded-full ${current.dot}`} />
-      {displayLabel}
+      {status}
     </span>
   );
 }

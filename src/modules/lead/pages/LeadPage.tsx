@@ -11,8 +11,8 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { useLeads } from '../hooks/useLeadQueries';
 import { LeadState } from '@/domain/enums';
-import { Search, Eye, Trash2, X, RotateCcw, RotateCw, Zap, Flame, Clock, Sparkles, UserX, BarChart3 } from 'lucide-react';
-import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay, differenceInMinutes } from 'date-fns';
+import { Search, Eye, Trash2, X, RotateCcw, RotateCw, Sparkles, UserX, BarChart3 } from 'lucide-react';
+import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { LeadWithDetails } from '@/application/use-cases/lead';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -173,64 +173,10 @@ export default function LeadPage() {
       cell: (l: LeadWithDetails) => <span className="text-slate-700 dark:text-slate-300">{format(new Date(l.createdAt), 'dd MMM yyyy', { locale: es })}</span> 
     },
     { 
-      header: 'Reserva', 
-      cell: (l: LeadWithDetails) => <span className="text-slate-700 dark:text-slate-300">{l.reservationId ? 'Sí' : 'No'}</span>
-    },
-    { 
-      header: 'Prioridad IA', 
-      cell: (l: LeadWithDetails) => {
-        if (l.state === LeadState.CONVERTED) {
-          return (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 w-fit">
-              ✓ Trato Cerrado
-            </span>
-          );
-        }
-        if (l.state === LeadState.LOST) {
-          return (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 flex items-center gap-1 w-fit">
-              Descartado
-            </span>
-          );
-        }
-
-        const createdAtDate = l.createdAt ? parseISO(l.createdAt) : new Date();
-        const minsElapsed = Math.abs(differenceInMinutes(new Date(), createdAtDate));
-        const isUrgentResponse = minsElapsed <= 15;
-        const painPref = (l.declaredPreferences || l.buyer?.preferences || '').toLowerCase();
-        const hasUrgentPain = painPref.includes('dolor') || painPref.includes('urgente') || painPref.includes('emergencia');
-
-        if (isUrgentResponse || hasUrgentPain) {
-          return (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1 w-fit" title={`Tiempo de espera: ${minsElapsed} min. KPI L2 <= 15m`}>
-              <Flame className="w-2.5 h-2.5 text-rose-500" />
-              {hasUrgentPain ? '⚡ Urgencia Clínica' : '🔥 <15m Respuesta'}
-            </span>
-          );
-        }
-
-        if (l.reservationId || l.selectedAlternativeId) {
-          return (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 flex items-center gap-1 w-fit">
-              <Zap className="w-2.5 h-2.5 text-teal-600" />
-              Oferta Aceptada
-            </span>
-          );
-        }
-
-        return (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 flex items-center gap-1 w-fit">
-            <Clock className="w-2.5 h-2.5 text-sky-500" />
-            En Negociación
-          </span>
-        );
-      }
-    },
-    { 
       header: 'Estado', 
       cell: (l: LeadWithDetails) => {
         let variant: 'neutral' | 'success' | 'warning' | 'error' = 'neutral';
-        if (l.state === LeadState.CONVERTED) variant = 'success';
+        if (l.state === LeadState.CONVERTED || l.state === 'PAYMENT_REQUESTED') variant = 'success';
         if (l.state === LeadState.LOST) variant = 'error';
         if (l.state === LeadState.IN_NEGOTIATION) variant = 'warning';
         return <StatusBadge status={l.state} variant={variant} />;
@@ -244,7 +190,7 @@ export default function LeadPage() {
             <Eye className="w-4 h-4 mr-1" />
             Negociar
           </Button>
-          {l.state !== LeadState.LOST && l.state !== LeadState.CONVERTED && (
+          {l.state !== LeadState.LOST && l.state !== LeadState.CONVERTED && l.state !== 'PAYMENT_REQUESTED' && (
             <Button
               variant="ghost"
               size="sm"
