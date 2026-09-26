@@ -326,9 +326,7 @@ export default function PreReservationPage() {
       {/* Línea Central con Desvanecimiento Suave (Fading Divider en 50%) */}
       <div className="hidden lg:block absolute left-1/2 top-0 bottom-0 -translate-x-1/2 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 via-50% to-transparent pointer-events-none z-10" />
 
-      {/* ========================================================================= */}
-      {/* HEADER SUPERIOR                                                           */}
-      {/* ========================================================================= */}
+      {/* HEADER SUPERIOR */}
       <header className="max-w-7xl mx-auto w-full flex items-center justify-between py-2 px-4 sm:px-6 lg:px-8 shrink-0 z-20">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center p-1 overflow-hidden">
@@ -342,13 +340,6 @@ export default function PreReservationPage() {
               Portal Oficial de Pre-Reserva
             </span>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-semibold text-xs py-1 px-3 gap-1.5 shadow-2xs">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Tarifa Oficial Garantizada</span>
-          </Badge>
         </div>
       </header>
 
@@ -858,99 +849,101 @@ export default function PreReservationPage() {
         {/* ======================================================================= */}
         {/* COLUMNA DERECHA (50%): FOTO Fondo_NexoSalud_2.jpg + RESUMEN CLÍNICO     */}
         {/* ======================================================================= */}
-        <div className="hidden lg:flex flex-col justify-between h-[calc(100vh-5.5rem)] space-y-4 text-white pl-4 xl:pl-6 py-2">
-          
-          {/* Header de la Oferta Visual */}
-          <div className="space-y-3 animate-in fade-in slide-in-from-right duration-300">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-xs font-semibold backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-teal-300" />
-              <span>Propuesta Comercial Exclusiva</span>
+        <div className="hidden lg:flex flex-col justify-center items-center h-[calc(100vh-5.5rem)] text-white px-6 xl:px-12 py-4">
+          <div className="w-full max-w-lg space-y-4 flex flex-col items-center justify-center animate-in fade-in slide-in-from-right duration-300">
+            
+            {/* Header de la Oferta Visual (Centrado en su fila) */}
+            <div className="w-full space-y-2 text-center flex flex-col items-center">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-xs font-semibold backdrop-blur-md">
+                <Sparkles className="w-3.5 h-3.5 text-teal-300" />
+                <span>Propuesta Comercial Exclusiva</span>
+              </div>
+
+              <h1 className="text-2xl xl:text-3xl font-black text-white tracking-tight leading-tight">
+                {offerData.serviceName}
+              </h1>
+
+              <p className="text-slate-300 text-xs leading-relaxed max-w-md font-normal text-center">
+                {offerData.serviceDescription || 'Tratamiento odontológico integral con equipos de última tecnología, garantía NexoSalud y atención personalizada.'}
+              </p>
             </div>
 
-            <h1 className="text-2xl xl:text-3xl font-black text-white tracking-tight leading-tight">
-              {offerData.serviceName}
-            </h1>
-
-            <p className="text-slate-300 text-xs leading-relaxed max-w-md font-normal">
-              {offerData.serviceDescription || 'Tratamiento odontológico integral con equipos de última tecnología, garantía NexoSalud y atención personalizada.'}
-            </p>
-          </div>
-
-          {/* Tarjeta Visual de Precios & Ahorro */}
-          <div className="bg-slate-900/80 border border-slate-700/80 backdrop-blur-md p-4 rounded-2xl space-y-3 shadow-2xl animate-in fade-in slide-in-from-right duration-400">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-              <div className="flex items-center gap-2">
-                <Tag className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                  ¡{offerData.discountPct}% de Descuento!
-                </span>
-              </div>
-              <div className="flex items-center gap-1 text-[11px] text-teal-200 bg-teal-500/20 px-2 py-0.5 rounded-full border border-teal-500/30">
-                <Clock3 className="w-3 h-3" />
-                <span>Vigencia 48h</span>
-              </div>
-            </div>
-
-            <div className="flex items-baseline justify-between pt-1">
-              <div>
-                <span className="text-[11px] text-slate-400 block">Tarifa regular:</span>
-                <span className="text-sm line-through text-slate-500 font-bold">
-                  S/ {Number(offerData.originalPrice).toFixed(2)}
-                </span>
-                <div className="text-xs font-bold text-emerald-400 mt-0.5">
-                  Ahorras: S/ {(Number(offerData.originalPrice) - Number(offerData.offeredPrice)).toFixed(2)}
+            {/* Tarjeta Visual de Precios & Ahorro */}
+            <div className="w-full bg-slate-900/80 border border-slate-700/80 backdrop-blur-md p-4 rounded-2xl space-y-3 shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                    ¡{offerData.discountPct}% de Descuento!
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 text-[11px] text-teal-200 bg-teal-500/20 px-2 py-0.5 rounded-full border border-teal-500/30">
+                  <Clock3 className="w-3 h-3" />
+                  <span>Vigencia 48h</span>
                 </div>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] uppercase font-bold text-teal-300 tracking-wider block">Tarifa Especial</span>
-                <span className="text-3xl font-black text-white tracking-tight">
-                  S/ {Number(offerData.offeredPrice).toFixed(2)}
-                </span>
+
+              <div className="flex items-baseline justify-between pt-1">
+                <div>
+                  <span className="text-[11px] text-slate-400 block">Tarifa regular:</span>
+                  <span className="text-sm line-through text-slate-500 font-bold">
+                    S/ {Number(offerData.originalPrice).toFixed(2)}
+                  </span>
+                  <div className="text-xs font-bold text-emerald-400 mt-0.5">
+                    Ahorras: S/ {(Number(offerData.originalPrice) - Number(offerData.offeredPrice)).toFixed(2)}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-teal-300 tracking-wider block">Tarifa Especial</span>
+                  <span className="text-3xl font-black text-white tracking-tight">
+                    S/ {Number(offerData.offeredPrice).toFixed(2)}
+                  </span>
+                </div>
               </div>
             </div>
+
+            {/* Grid de Credenciales Médicas */}
+            <div className="w-full grid grid-cols-2 gap-2.5">
+              <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-sm space-y-1">
+                <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-300">
+                  <Stethoscope className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[10px] text-slate-400 block font-medium">Especialista</span>
+                <p className="text-xs font-bold text-white truncate">{offerData.doctor}</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-sm space-y-1">
+                <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-300">
+                  <MapPin className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[10px] text-slate-400 block font-medium">Sede Principal</span>
+                <p className="text-xs font-bold text-white truncate">{offerData.sede}</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-sm space-y-1">
+                <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-300">
+                  <Zap className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[10px] text-slate-400 block font-medium">Tecnología</span>
+                <p className="text-xs font-bold text-white truncate">Diagnóstico 3D & Bioseguridad</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-sm space-y-1">
+                <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-300">
+                  <Award className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[10px] text-slate-400 block font-medium">Garantía</span>
+                <p className="text-xs font-bold text-white truncate">Clínica Certificada</p>
+              </div>
+            </div>
+
+            {/* Nota de Tranquilidad al Paciente */}
+            <div className="w-full p-3 rounded-xl bg-teal-950/50 border border-teal-800/60 backdrop-blur-sm text-[11px] text-teal-200/90 flex items-start gap-2">
+              <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+              <span>Al confirmar tu pre-reserva, congelas tu tarifa por 48 horas sin compromiso de pago inmediato. Nuestro equipo coordinará tu llegada.</span>
+            </div>
+
           </div>
-
-          {/* Grid de Credenciales Médicas */}
-          <div className="grid grid-cols-2 gap-2.5 animate-in fade-in slide-in-from-right duration-500">
-            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-sm space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-300">
-                <Stethoscope className="w-3.5 h-3.5" />
-              </div>
-              <span className="text-[10px] text-slate-400 block font-medium">Especialista</span>
-              <p className="text-xs font-bold text-white truncate">{offerData.doctor}</p>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-sm space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-300">
-                <MapPin className="w-3.5 h-3.5" />
-              </div>
-              <span className="text-[10px] text-slate-400 block font-medium">Sede Principal</span>
-              <p className="text-xs font-bold text-white truncate">{offerData.sede}</p>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-sm space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-300">
-                <Zap className="w-3.5 h-3.5" />
-              </div>
-              <span className="text-[10px] text-slate-400 block font-medium">Tecnología</span>
-              <p className="text-xs font-bold text-white truncate">Diagnóstico 3D & Bioseguridad</p>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-sm space-y-1">
-              <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-300">
-                <Award className="w-3.5 h-3.5" />
-              </div>
-              <span className="text-[10px] text-slate-400 block font-medium">Garantía</span>
-              <p className="text-xs font-bold text-white truncate">Clínica Certificada</p>
-            </div>
-          </div>
-
-          {/* Nota de Tranquilidad al Paciente */}
-          <div className="p-3 rounded-xl bg-teal-950/40 border border-teal-800/50 backdrop-blur-sm text-[11px] text-teal-200/90 flex items-start gap-2">
-            <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
-            <span>Al confirmar tu pre-reserva, congelas tu tarifa por 48 horas sin compromiso de pago inmediato. Nuestro equipo coordinará tu llegada.</span>
-          </div>
-
         </div>
       </main>
 
