@@ -38,17 +38,46 @@ router.get('/options/availability', async (req, res) => {
 // ── Eliminar alternativa (options antes de :id para no colisionar) ────────────
 router.put('/options/:id_opcion', async (req, res) => {
   const { id_opcion } = req.params;
-  const { precio_ofrecido, condiciones } = req.body;
+  const { precio_ofrecido, condiciones, id_sede, id_profesional, fecha } = req.body;
   try {
+    const numIdOpcion = Number(id_opcion);
+    if (isNaN(numIdOpcion)) return res.status(400).json({ error: 'ID de opción inválido' });
+
+    const opcionExistente = await withRetry(() => prisma.opciones.findUnique({
+      where: { id_opcion: numIdOpcion },
+      include: { Disponibilidad: true }
+    }));
+
+    if (!opcionExistente) {
+      return res.status(404).json({ error: 'Opción no encontrada' });
+    }
+
+    if (opcionExistente.id_disponibilidad) {
+      const dispData: any = {};
+      if (id_sede) dispData.id_sede = Number(id_sede);
+      if (id_profesional) dispData.id_profesional = Number(id_profesional);
+      if (fecha) dispData.fecha = new Date(fecha);
+
+      if (Object.keys(dispData).length > 0) {
+        await withRetry(() => prisma.disponibilidad.update({
+          where: { id_disponibilidad: opcionExistente.id_disponibilidad },
+          data: dispData
+        }));
+      }
+    }
+
     const updated = await withRetry(() => prisma.opciones.update({
-      where: { id_opcion: Number(id_opcion) },
-      data: { precio_ofrecido: Number(precio_ofrecido) },
+      where: { id_opcion: numIdOpcion },
+      data: {
+        precio_ofrecido: precio_ofrecido !== undefined ? Number(precio_ofrecido) : undefined,
+      },
       include: { Disponibilidad: { include: { Profesional: true, Sede: true } } }
     }));
+
     res.json({ message: 'Alternativa actualizada exitosamente', data: updated });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error al actualizar alternativa:', error);
-    res.status(500).json({ error: 'Error al actualizar alternativa' });
+    res.status(500).json({ error: error.message || 'Error al actualizar alternativa' });
   }
 });
 

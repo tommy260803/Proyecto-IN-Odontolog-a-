@@ -255,8 +255,14 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   // Opciones del tablero
   const [selectedOpcion, setSelectedOpcion] = useState<number | null>(null);
   const [reserving, setReserving] = useState(false);
-  const [editingOptionId, setEditingOptionId] = useState<number | null>(null);
-  const [editingPrice, setEditingPrice] = useState('');
+  // Estados para Modal de Edición Completa de Oferta Comercial (Precio, Descuento, Sede, Especialista, Fecha)
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingOpt, setEditingOpt] = useState<any | null>(null);
+  const [editPrice, setEditPrice] = useState('');
+  const [editDiscountPct, setEditDiscountPct] = useState<number>(0);
+  const [editSedeId, setEditSedeId] = useState<string>('');
+  const [editProfesionalId, setEditProfesionalId] = useState<string>('');
+  const [editFecha, setEditFecha] = useState<string>('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingOptionTarget, setDeletingOptionTarget] = useState<any | null>(null);
   const [isDeletingOption, setIsDeletingOption] = useState(false);
@@ -599,20 +605,82 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     }
   };
 
-  const handleSaveEdit = async (e: React.MouseEvent, id_opcion: number) => {
-    e.stopPropagation();
-    if (!editingPrice || isNaN(Number(editingPrice)) || Number(editingPrice) <= 0) {
-      toast({ title: 'Precio Inválido', variant: 'destructive' });
+  const openEditOptionModal = (opt: any) => {
+    setEditingOpt(opt);
+    const priceNum = Number(opt.precio_ofrecido) || 0;
+    setEditPrice(priceNum > 0 ? priceNum.toFixed(2) : '');
+
+    const offerInfo = getActiveOfferDetails();
+    const origPrice = offerInfo.precioOriginal || currentOfficialPrice || 180;
+    const computedDiscount = origPrice > 0 && priceNum < origPrice
+      ? Math.round(((origPrice - priceNum) / origPrice) * 100)
+      : 0;
+    setEditDiscountPct(computedDiscount);
+
+    setEditSedeId(opt.Disponibilidad?.id_sede?.toString() || (catalogs.sedes?.[0]?.id_sede?.toString() || ''));
+    setEditProfesionalId(opt.Disponibilidad?.id_profesional?.toString() || (catalogs.profesionales?.[0]?.id_profesional?.toString() || ''));
+
+    const rawDate = opt.Disponibilidad?.fecha ? opt.Disponibilidad.fecha.split('T')[0] : '';
+    setEditFecha(rawDate || format(addDays(new Date(), 2), 'yyyy-MM-dd'));
+    setEditModalOpen(true);
+  };
+
+  const handleEditDiscountChange = (newDiscount: number) => {
+    setEditDiscountPct(newDiscount);
+    const offerInfo = getActiveOfferDetails();
+    const origPrice = offerInfo.precioOriginal || currentOfficialPrice || 180;
+    if (newDiscount <= 0) {
+      setEditPrice(origPrice.toFixed(2));
+    } else {
+      const discounted = Math.max(0, origPrice * (1 - newDiscount / 100));
+      setEditPrice(discounted.toFixed(2));
+    }
+  };
+
+  const handleEditPriceChange = (newPriceStr: string) => {
+    setEditPrice(newPriceStr);
+    const newPrice = Number(newPriceStr);
+    const offerInfo = getActiveOfferDetails();
+    const origPrice = offerInfo.precioOriginal || currentOfficialPrice || 180;
+    if (!isNaN(newPrice) && origPrice > 0 && newPrice < origPrice) {
+      const computed = Math.round(((origPrice - newPrice) / origPrice) * 100);
+      setEditDiscountPct(computed);
+    } else {
+      setEditDiscountPct(0);
+    }
+  };
+
+  const setQuickExpiry = (days: number) => {
+    setEditFecha(format(addDays(new Date(), days), 'yyyy-MM-dd'));
+  };
+
+  const handleSaveFullEdit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!editingOpt) return;
+    const numPrice = Number(editPrice);
+    if (isNaN(numPrice) || numPrice <= 0) {
+      toast({ title: 'Precio Inválido', description: 'Ingresa un precio mayor a 0.', variant: 'destructive' });
       return;
     }
+
     setSavingEdit(true);
     try {
-      await leadService.updateAlternative(id_opcion, { precio_ofrecido: editingPrice });
-      setEditingOptionId(null);
+      await leadService.updateAlternative(editingOpt.id_opcion, {
+        precio_ofrecido: numPrice,
+        id_sede: editSedeId ? Number(editSedeId) : undefined,
+        id_profesional: editProfesionalId ? Number(editProfesionalId) : undefined,
+        fecha: editFecha || undefined,
+      });
+
+      setEditModalOpen(false);
+      setEditingOpt(null);
       fetchData();
-      toast({ title: 'Tarifa Actualizada', description: `S/ ${Number(editingPrice).toFixed(2)}` });
-    } catch {
-      toast({ title: 'Error', description: 'Error al actualizar.', variant: 'destructive' });
+      toast({
+        title: '¡Oferta Actualizada! 🎉',
+        description: `Tarifa S/ ${numPrice.toFixed(2)} (${editDiscountPct}% OFF) guardada exitosamente.`,
+      });
+    } catch (err: any) {
+      toast({ title: 'Error al actualizar', description: err.message || 'No se pudo guardar la oferta.', variant: 'destructive' });
     } finally {
       setSavingEdit(false);
     }
@@ -1575,85 +1643,92 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                         <div
                           key={opt.id_opcion}
                           onClick={() => setSelectedOpcion(opt.id_opcion)}
-                          className={`relative p-3.5 border-2 rounded-2xl cursor-pointer transition-all flex flex-col justify-between gap-2.5 ${selectedOpcion === opt.id_opcion
-                            ? 'bg-teal-50/50 dark:bg-teal-950/40 border-teal-600 dark:border-teal-500 shadow-md'
+                          className={`relative p-4 border-2 rounded-2xl cursor-pointer transition-all flex flex-col justify-between gap-3 ${selectedOpcion === opt.id_opcion
+                            ? 'bg-teal-50/50 dark:bg-teal-950/40 border-teal-600 dark:border-teal-500 shadow-md ring-1 ring-teal-500/30'
                             : 'bg-white dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-600'
                             }`}
                         >
                           {selectedOpcion === opt.id_opcion && (
                             <div className="absolute -top-2.5 -right-2.5 bg-teal-600 text-white rounded-full p-1 shadow-md z-10">
-                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              <CheckCircle2 className="h-4 w-4" />
                             </div>
                           )}
 
-                          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-2">
-                            <span className="inline-flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-200 text-xs bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 px-2.5 py-0.5 rounded-lg">
-                              <Clock className="h-3 w-3 text-amber-500" />
+                          {/* Fila 1 Superior: Fecha Límite a la izquierda, Etiqueta de Descuento CENTRADA, y Botones a la derecha */}
+                          <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/80 pb-2.5">
+                            {/* Izquierda: Fecha Límite */}
+                            <span className="inline-flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-200 text-xs bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 px-2.5 py-1 rounded-lg shrink-0">
+                              <Clock className="h-3.5 w-3.5 text-amber-500" />
                               Válido hasta: {opt.Disponibilidad?.fecha?.split('T')[0] || 'Vigente'}
                             </span>
 
-                            {editingOptionId === opt.id_opcion ? (
-                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                <span className="text-[10px] font-semibold text-slate-400">S/</span>
-                                <input
-                                  type="number"
-                                  className="w-16 px-1.5 py-0.5 text-xs font-bold border border-teal-500 rounded bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                                  value={editingPrice}
-                                  onChange={(e) => setEditingPrice(e.target.value)}
-                                  autoFocus
-                                />
-                                <button
-                                  onClick={(e) => handleSaveEdit(e, opt.id_opcion)}
-                                  disabled={savingEdit}
-                                  className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition"
-                                >
-                                  <Check className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setEditingOptionId(null); }}
-                                  className="p-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 transition"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5">
-                                <p className={`font-mono font-bold text-sm ${selectedOpcion === opt.id_opcion ? 'text-teal-700 dark:text-teal-300' : 'text-slate-900 dark:text-white'}`}>
-                                  S/ {optPrice.toFixed(2)}
-                                </p>
-                                {optDiscount > 0 && (
-                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                                    {optDiscount}% OFF
-                                  </span>
-                                )}
-                                <div className="flex items-center gap-0.5 ml-1" onClick={(e) => e.stopPropagation()}>
-                                  <button
-                                    title="Editar precio"
-                                    onClick={(e) => { e.stopPropagation(); setEditingOptionId(opt.id_opcion); setEditingPrice(opt.precio_ofrecido?.toString() || ''); }}
-                                    className="p-1 rounded text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950 transition"
-                                  >
-                                    <Edit2 className="h-3 w-3" />
-                                  </button>
-                                  <button
-                                    title="Eliminar alternativa"
-                                    onClick={(e) => { e.stopPropagation(); setDeletingOptionTarget(opt); }}
-                                    className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 transition"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
-                                </div>
+                            {/* Centro: Etiqueta de Descuento CENTRADA */}
+                            <div className="flex-1 flex justify-center">
+                              {optDiscount > 0 ? (
+                                <span className="text-[11px] font-extrabold px-3 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/90 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 shadow-2xs tracking-wide">
+                                  {optDiscount}% OFF
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800">
+                                  Tarifa Regular
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Derecha: Acciones (Editar completo / Eliminar) */}
+                            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                title="Editar oferta comercial (precio, descuento, sede, especialista y fecha)"
+                                onClick={(e) => { e.stopPropagation(); openEditOptionModal(opt); }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950 transition border border-transparent hover:border-teal-200 dark:hover:border-teal-800"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                title="Eliminar alternativa"
+                                onClick={(e) => { e.stopPropagation(); setDeletingOptionTarget(opt); }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 transition border border-transparent hover:border-rose-200 dark:hover:border-rose-800"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Fila 2 Central: Tarifa Ofertada separada de la fecha con espacio y caja elegante */}
+                          <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/70 dark:border-slate-800">
+                            <div>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                Tarifa Ofertada
+                              </span>
+                              <p className={`font-mono font-black text-lg leading-tight ${selectedOpcion === opt.id_opcion ? 'text-teal-700 dark:text-teal-300' : 'text-slate-900 dark:text-white'}`}>
+                                S/ {optPrice.toFixed(2)}
+                              </p>
+                            </div>
+                            {offerInfo.precioOriginal > optPrice && (
+                              <div className="text-right">
+                                <span className="text-[10px] font-semibold text-slate-400 line-through block">
+                                  Lista: S/ {offerInfo.precioOriginal.toFixed(2)}
+                                </span>
+                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                  Ahorra S/ {(offerInfo.precioOriginal - optPrice).toFixed(2)}
+                                </span>
                               </div>
                             )}
                           </div>
 
-                          <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
-                            <div className="flex items-center gap-1.5">
-                              <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
-                              <span>Sede: {opt.Disponibilidad?.Sede?.nombre || 'Todas las sedes'}</span>
+                          {/* Fila 3 Inferior: Sede y Especialista */}
+                          <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                              <span className="font-medium text-slate-800 dark:text-slate-200">
+                                Sede: <span className="font-semibold">{opt.Disponibilidad?.Sede?.nombre || 'Todas las sedes'}</span>
+                              </span>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <User className="h-3 w-3 text-slate-400 shrink-0" />
-                              <span>Especialista: {opt.Disponibilidad?.Profesional?.apellidos ? `Esp. ${opt.Disponibilidad?.Profesional?.apellidos}` : 'Por asignar'}</span>
+                            <div className="flex items-center gap-2">
+                              <User className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                              <span className="font-medium text-slate-800 dark:text-slate-200">
+                                Especialista: <span className="font-semibold">{opt.Disponibilidad?.Profesional?.apellidos ? `Esp. ${opt.Disponibilidad?.Profesional?.apellidos}` : 'Por asignar'}</span>
+                              </span>
                             </div>
                             {opt.condiciones && (
                               <div className="text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 leading-tight">
