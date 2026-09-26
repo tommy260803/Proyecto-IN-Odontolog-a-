@@ -104,7 +104,7 @@ const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn("px-2 py-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider", className)}
+    className={cn("px-2 py-1.5 text-sm font-semibold", className)}
     {...props}
   />
 ))
@@ -117,16 +117,11 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-pointer select-none items-center rounded-lg py-2.5 pl-3 pr-8 text-xs font-medium text-slate-800 bg-white outline-none transition-colors hover:!bg-sky-50 hover:!text-sky-950 focus:!bg-sky-100 focus:!text-sky-950 data-[highlighted]:!bg-sky-100 data-[highlighted]:!text-sky-950 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-pointer select-none items-center rounded-lg px-3 py-2 text-xs font-medium text-slate-800 bg-white outline-none transition-colors hover:!bg-teal-600 hover:!text-white focus:!bg-teal-600 focus:!text-white data-[highlighted]:!bg-teal-600 data-[highlighted]:!text-white data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     {...props}
   >
-    <span className="absolute right-2.5 flex h-3.5 w-3.5 items-center justify-center text-teal-600">
-      <SelectPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
-      </SelectPrimitive.ItemIndicator>
-    </span>
     <SelectPrimitive.ItemText className="!text-inherit">{children}</SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
 ))

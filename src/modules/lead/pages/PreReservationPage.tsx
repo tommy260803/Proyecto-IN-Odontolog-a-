@@ -597,7 +597,7 @@ export default function PreReservationPage() {
                           id="familiar"
                           checked={esParaFamiliar}
                           onCheckedChange={(checked) => setEsParaFamiliar(Boolean(checked))}
-                          className={!esParaFamiliar ? '!bg-white !border-slate-300 hover:!border-sky-500' : '!bg-teal-600 !border-teal-600 text-white'}
+                          className={!esParaFamiliar ? '!bg-white !border-slate-300 hover:!border-teal-500' : '!bg-teal-600 !border-teal-600 text-white'}
                         />
                         <Label htmlFor="familiar" className="text-xs font-semibold text-slate-800 cursor-pointer select-none">
                           ¿La atención odontológica es para un familiar / hijo / cónyuge?
@@ -717,7 +717,7 @@ export default function PreReservationPage() {
                               className={`py-2.5 px-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer text-center ${
                                 isSelected
                                   ? '!bg-teal-600 !border-teal-600 text-white shadow-sm ring-2 ring-teal-500/20'
-                                  : '!bg-white !border-slate-200 text-slate-700 hover:!bg-sky-50 hover:!border-sky-300 hover:!text-sky-950 shadow-2xs'
+                                  : '!bg-white !border-slate-200 text-slate-700 hover:!bg-teal-50/50 hover:!border-teal-400 hover:!text-teal-950 shadow-2xs'
                               }`}
                             >
                               {nivel}
@@ -750,8 +750,8 @@ export default function PreReservationPage() {
                         onClick={() => setCanalPago('Efectivo en clínica')}
                         className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                           canalPago === 'Efectivo en clínica'
-                            ? '!bg-teal-50/80 !border-teal-600 text-teal-950 ring-2 ring-teal-500/20 shadow-xs'
-                            : '!bg-white !border-slate-200 text-slate-700 hover:!border-sky-300 hover:!bg-sky-50/60 hover:!text-sky-950 shadow-2xs'
+                            ? '!bg-teal-50/90 !border-2 !border-teal-600 text-teal-950 ring-2 ring-teal-500/20 shadow-xs'
+                            : '!bg-white !border-slate-200 text-slate-700 hover:!border-teal-400 hover:!bg-teal-50/40 hover:!text-teal-950 shadow-2xs'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1.5">
@@ -769,8 +769,8 @@ export default function PreReservationPage() {
                         onClick={() => setCanalPago('Yape / Plin')}
                         className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                           canalPago === 'Yape / Plin'
-                            ? '!bg-teal-50/80 !border-teal-600 text-teal-950 ring-2 ring-teal-500/20 shadow-xs'
-                            : '!bg-white !border-slate-200 text-slate-700 hover:!border-sky-300 hover:!bg-sky-50/60 hover:!text-sky-950 shadow-2xs'
+                            ? '!bg-teal-50/90 !border-2 !border-teal-600 text-teal-950 ring-2 ring-teal-500/20 shadow-xs'
+                            : '!bg-white !border-slate-200 text-slate-700 hover:!border-teal-400 hover:!bg-teal-50/40 hover:!text-teal-950 shadow-2xs'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1.5">
@@ -788,8 +788,8 @@ export default function PreReservationPage() {
                         onClick={() => setCanalPago('Tarjeta')}
                         className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                           canalPago === 'Tarjeta'
-                            ? '!bg-teal-50/80 !border-teal-600 text-teal-950 ring-2 ring-teal-500/20 shadow-xs'
-                            : '!bg-white !border-slate-200 text-slate-700 hover:!border-sky-300 hover:!bg-sky-50/60 hover:!text-sky-950 shadow-2xs'
+                            ? '!bg-teal-50/90 !border-2 !border-teal-600 text-teal-950 ring-2 ring-teal-500/20 shadow-xs'
+                            : '!bg-white !border-slate-200 text-slate-700 hover:!border-teal-400 hover:!bg-teal-50/40 hover:!text-teal-950 shadow-2xs'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1.5">
@@ -819,7 +819,7 @@ export default function PreReservationPage() {
                         id="consent"
                         checked={consentimiento}
                         onCheckedChange={(c) => setConsentimiento(Boolean(c))}
-                        className={!consentimiento ? '!bg-white !border-slate-300 hover:!border-sky-500 mt-0.5' : '!bg-teal-600 !border-teal-600 text-white mt-0.5'}
+                        className={!consentimiento ? '!bg-white !border-slate-300 hover:!border-teal-500 mt-0.5' : '!bg-teal-600 !border-teal-600 text-white mt-0.5'}
                       />
                       <Label htmlFor="consent" className="text-xs text-slate-700 leading-snug cursor-pointer select-none">
                         Autorizo a Clínica NexoSalud a contactarme por WhatsApp/Email para coordinar mi cita y confirmo que deseo congelar mi tarifa promocional.
@@ -862,157 +862,157 @@ export default function PreReservationPage() {
       {/* WIDGET FLOTANTE: ASISTENTE NEXOSALUD (Chat IA Flotante)     */}
       {/* ============================================================ */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
-        {/* Ventana de Chat Flotante Expandida */}
-        {isChatOpen && (
-          <div className="mb-3 w-[calc(100vw-2rem)] sm:w-[380px] h-[520px] max-h-[80vh] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200">
-            {/* Header del Chat */}
-            <div className="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 px-4 py-3.5 text-white flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-full bg-white p-1 flex items-center justify-center shrink-0 shadow-xs">
-                  <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
+        {/* Ventana de Chat Flotante con Animación Elegante de Entrada y Salida */}
+        <div
+          className={`mb-3 w-[calc(100vw-2rem)] sm:w-[385px] h-[525px] max-h-[82vh] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden origin-bottom-right transition-all duration-300 ease-out ${
+            isChatOpen
+              ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto'
+              : 'opacity-0 scale-75 translate-y-6 pointer-events-none'
+          }`}
+        >
+          {/* Header del Chat */}
+          <div className="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 px-4 py-3.5 text-white flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-full bg-white p-1 flex items-center justify-center shrink-0 shadow-xs">
+                <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 font-bold text-sm leading-tight text-white">
+                  Asistente NexoSalud
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 </div>
-                <div>
-                  <div className="flex items-center gap-1.5 font-bold text-sm leading-tight text-white">
-                    Asistente NexoSalud
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  </div>
-                  <div className="text-[11px] text-teal-100 font-medium leading-tight">
-                    En línea para responder tus dudas
-                  </div>
+                <div className="text-[11px] text-teal-100 font-medium leading-tight">
+                  En línea para responder tus dudas
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsChatOpen(false)}
-                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-                aria-label="Cerrar chat"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
+            <button
+              type="button"
+              onClick={() => setIsChatOpen(false)}
+              className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+              aria-label="Cerrar chat"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
-            {/* Mensajes del Chat */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50/60 text-xs">
-              {chatMessages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex gap-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {msg.sender === 'agent' && (
-                    <div className="w-6 h-6 rounded-full bg-white border border-slate-200 p-0.5 flex items-center justify-center shrink-0 shadow-2xs">
-                      <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
-                    </div>
-                  )}
-                  <div
-                    className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 shadow-2xs ${
-                      msg.sender === 'user'
-                        ? 'bg-teal-600 text-white rounded-br-xs font-medium'
-                        : 'bg-white text-slate-800 border border-slate-200 rounded-bl-xs leading-relaxed font-normal'
-                    }`}
-                  >
-                    <p className="whitespace-pre-line text-xs">{msg.text}</p>
-                    <span
-                      className={`block text-[9px] mt-1 text-right ${
-                        msg.sender === 'user' ? 'text-teal-200' : 'text-slate-400'
-                      }`}
-                    >
-                      {msg.timestamp}
-                    </span>
-                  </div>
-                </div>
-              ))}
-
-              {isAiTyping && (
-                <div className="flex gap-2 items-center">
+          {/* Mensajes del Chat */}
+          <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50/60 text-xs">
+            {chatMessages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex gap-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                {msg.sender === 'agent' && (
                   <div className="w-6 h-6 rounded-full bg-white border border-slate-200 p-0.5 flex items-center justify-center shrink-0 shadow-2xs">
                     <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
                   </div>
-                  <div className="bg-white border border-slate-200 rounded-2xl px-3.5 py-2 text-slate-500 text-xs flex items-center gap-1.5 shadow-2xs">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-600" />
-                    <span>Asistente NexoSalud está escribiendo...</span>
-                  </div>
-                </div>
-              )}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Sugerencias Rápidas */}
-            <div className="px-3 py-2 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-[11px]">
-              <button
-                type="button"
-                onClick={() => handleSendMessage('¿Qué incluye exactamente este precio?')}
-                className="shrink-0 bg-slate-50 hover:bg-sky-50 hover:text-sky-950 text-slate-700 px-2.5 py-1 rounded-full border border-slate-200 transition-colors font-medium"
-              >
-                ¿Qué incluye?
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSendMessage('¿Cuáles son los medios de pago aceptados?')}
-                className="shrink-0 bg-slate-50 hover:bg-sky-50 hover:text-sky-950 text-slate-700 px-2.5 py-1 rounded-full border border-slate-200 transition-colors font-medium"
-              >
-                Formas de pago
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSendMessage('¿Puedo transferir esta promoción a un familiar?')}
-                className="shrink-0 bg-slate-50 hover:bg-sky-50 hover:text-sky-950 text-slate-700 px-2.5 py-1 rounded-full border border-slate-200 transition-colors font-medium"
-              >
-                Para familiar
-              </button>
-            </div>
-
-            {/* Input del Chat */}
-            <div className="p-3 bg-white border-t border-slate-100">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSendMessage();
-                }}
-                className="flex items-center gap-2"
-              >
-                <Input
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  placeholder="Pregúntale al Asistente..."
-                  disabled={isAiTyping}
-                  className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 text-xs h-9 rounded-xl focus:!border-teal-500 focus:!ring-teal-500/20"
-                />
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={isAiTyping || !userInput.trim()}
-                  className="bg-teal-600 hover:bg-teal-700 text-white h-9 px-3 rounded-xl shrink-0"
+                )}
+                <div
+                  className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 shadow-2xs ${
+                    msg.sender === 'user'
+                      ? 'bg-teal-600 text-white rounded-br-xs font-medium'
+                      : 'bg-white text-slate-800 border border-slate-200 rounded-bl-xs leading-relaxed font-normal'
+                  }`}
                 >
-                  <Send className="w-3.5 h-3.5" />
-                </Button>
-              </form>
-            </div>
-          </div>
-        )}
+                  <p className="whitespace-pre-line text-xs">{msg.text}</p>
+                  <span
+                    className={`block text-[9px] mt-1 text-right ${
+                      msg.sender === 'user' ? 'text-teal-200' : 'text-slate-400'
+                    }`}
+                  >
+                    {msg.timestamp}
+                  </span>
+                </div>
+              </div>
+            ))}
 
-        {/* Botón Flotante (FAB) */}
+            {isAiTyping && (
+              <div className="flex gap-2 items-center">
+                <div className="w-6 h-6 rounded-full bg-white border border-slate-200 p-0.5 flex items-center justify-center shrink-0 shadow-2xs">
+                  <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
+                </div>
+                <div className="bg-white border border-slate-200 rounded-2xl px-3.5 py-2 text-slate-500 text-xs flex items-center gap-1.5 shadow-2xs">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-600" />
+                  <span>Asistente NexoSalud está escribiendo...</span>
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Sugerencias Rápidas */}
+          <div className="px-3 py-2 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-[11px]">
+            <button
+              type="button"
+              onClick={() => handleSendMessage('¿Qué incluye exactamente este precio?')}
+              className="shrink-0 bg-slate-50 hover:bg-teal-50 hover:text-teal-950 hover:border-teal-300 text-slate-700 px-2.5 py-1 rounded-full border border-slate-200 transition-colors font-medium"
+            >
+              ¿Qué incluye?
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSendMessage('¿Cuáles son los medios de pago aceptados?')}
+              className="shrink-0 bg-slate-50 hover:bg-teal-50 hover:text-teal-950 hover:border-teal-300 text-slate-700 px-2.5 py-1 rounded-full border border-slate-200 transition-colors font-medium"
+            >
+              Formas de pago
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSendMessage('¿Puedo transferir esta promoción a un familiar?')}
+              className="shrink-0 bg-slate-50 hover:bg-teal-50 hover:text-teal-950 hover:border-teal-300 text-slate-700 px-2.5 py-1 rounded-full border border-slate-200 transition-colors font-medium"
+            >
+              Para familiar
+            </button>
+          </div>
+
+          {/* Input del Chat */}
+          <div className="p-3 bg-white border-t border-slate-100">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendMessage();
+              }}
+              className="flex items-center gap-2"
+            >
+              <Input
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                placeholder="Pregúntale al Asistente..."
+                disabled={isAiTyping}
+                className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 text-xs h-9 rounded-xl focus:!border-teal-500 focus:!ring-teal-500/20"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isAiTyping || !userInput.trim()}
+                className="bg-teal-600 hover:bg-teal-700 text-white h-9 px-3 rounded-xl shrink-0"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </Button>
+            </form>
+          </div>
+        </div>
+
+        {/* Botón Flotante Circular (FAB) */}
         <button
           type="button"
           onClick={() => setIsChatOpen((prev) => !prev)}
-          className="flex items-center gap-3 bg-white text-slate-800 hover:bg-slate-50 border border-slate-200 shadow-xl rounded-full px-4 py-2.5 transition-all hover:scale-105 active:scale-95 group ring-4 ring-teal-500/10 cursor-pointer"
+          className="w-14 h-14 rounded-full bg-white border-2 border-teal-600 shadow-2xl flex items-center justify-center p-2.5 transition-all duration-300 hover:scale-110 active:scale-95 group ring-4 ring-teal-500/10 cursor-pointer relative focus:outline-none"
+          aria-label={isChatOpen ? 'Cerrar Asistente NexoSalud' : 'Abrir Asistente NexoSalud'}
+          title="Asistente NexoSalud"
         >
-          <div className="relative w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center p-0.5 shrink-0 shadow-xs">
-            <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
-            <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 border-2 border-white rounded-full"></span>
-          </div>
-          <div className="text-left hidden sm:block pr-1">
-            <div className="text-xs font-bold text-slate-900 leading-tight flex items-center gap-1">
-              Asistente NexoSalud
-              <Sparkles className="w-3 h-3 text-amber-500" />
-            </div>
-            <div className="text-[11px] text-teal-600 font-semibold leading-tight">
-              {isChatOpen ? 'Cerrar chat' : '¿Dudas? Chatea aquí'}
-            </div>
-          </div>
+          {/* Indicador en línea (punto verde) */}
+          <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full shadow-xs"></span>
+
           {isChatOpen ? (
-            <X className="w-4 h-4 text-slate-400 group-hover:text-slate-600 ml-1" />
+            <X className="w-6 h-6 text-slate-700 transition-transform duration-200 rotate-0 group-hover:rotate-90" />
           ) : (
-            <MessageSquare className="w-4 h-4 text-teal-600 group-hover:scale-110 transition-transform ml-1" />
+            <img
+              src="/Logo_NexoSalud.png"
+              alt="Asistente NexoSalud"
+              className="w-full h-full object-contain transition-transform duration-200 group-hover:scale-110"
+            />
           )}
         </button>
       </div>
