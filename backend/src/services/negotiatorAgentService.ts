@@ -39,34 +39,12 @@ export class NegotiatorAgentService {
   /**
    * Envía un correo en modo simulación redirigido al correo del usuario/administrador.
    * Utiliza la misma arquitectura multi-proveedor de alta velocidad que PAYER (Resend HTTPS Port 443 / Brevo / SMTP / Fallback).
-   * Adjunta el flyer de Canva e incrusta la imagen en el cuerpo HTML; si no hay flyer, envía solo texto estructurado.
+   * Incrusta la imagen del flyer de Canva directamente en el cuerpo HTML; si no hay flyer, envía solo texto estructurado.
    */
   public static async sendSimulationOfferEmail(params: SendSimulationEmailParams) {
     const targetEmail = process.env.TEST_RECEIVER_EMAIL || process.env.TEST_RECIPIENT_EMAIL || process.env.SMTP_USER || 'benkr7@gmail.com';
     const emailSubject = `[SIMULACIÓN] Propuesta Odontológica: ${params.serviceName} - Paciente: ${params.leadName}`;
     const hasCanvaImage = Boolean(params.canvaFlyerUrl && params.canvaFlyerUrl.trim().length > 0);
-
-    // 1. Descargar imagen del flyer en buffer/base64 para adjuntarla (con timeout estricto de 3.5s para no retrasar el envío)
-    let flyerAttachment: { filename: string; content: string; contentType: string } | null = null;
-    if (hasCanvaImage && params.canvaFlyerUrl) {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3500);
-        const imgRes = await fetch(params.canvaFlyerUrl, { signal: controller.signal });
-        clearTimeout(timeout);
-        if (imgRes.ok) {
-          const arrayBuffer = await imgRes.arrayBuffer();
-          flyerAttachment = {
-            filename: `Flyer_Promocional_${(params.leadName || 'Paciente').replace(/[^a-zA-Z0-9_-]/g, '_')}.png`,
-            content: Buffer.from(arrayBuffer).toString('base64'),
-            contentType: 'image/png',
-          };
-          console.log(`[EMAIL DISPATCHER] Flyer de Canva descargado y preparado como adjunto (${Math.round(flyerAttachment.content.length * 0.75 / 1024)} KB).`);
-        }
-      } catch (fetchErr: any) {
-        console.warn('⚠️ [EMAIL DISPATCHER] No se pudo descargar el flyer para adjuntar, se mantendrá en línea:', fetchErr.message);
-      }
-    }
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
@@ -119,15 +97,12 @@ export class NegotiatorAgentService {
 
           ${
             hasCanvaImage
-              ? `<!-- Sección de Flyer Oficial Canva Incrustado -->
+              ? `<!-- Sección de Flyer Oficial Canva Incrustado en el Cuerpo del Correo -->
                  <div style="text-align: center; margin: 26px 0;">
                    <p style="font-size: 12px; font-weight: bold; color: #64748b; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
                      🎨 Flyer Publicitario Oficial Canva
                    </p>
                    <img src="${params.canvaFlyerUrl}" alt="Flyer Publicitario NexoSalud" style="max-width: 100%; width: 440px; height: auto; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 8px 24px rgba(0,0,0,0.12); display: inline-block;" />
-                   <p style="font-size: 12px; color: #64748b; margin-top: 10px;">
-                     <em>📎 También hemos adjuntado la imagen del Flyer en alta resolución en este correo.</em>
-                   </p>
                  </div>`
               : `<!-- Modo Solo Texto (Sin Flyer Generado) -->
                  <div style="background: #f1f5f9; border-left: 4px solid #0d9488; padding: 14px 16px; border-radius: 6px; margin: 22px 0;">
@@ -172,15 +147,6 @@ export class NegotiatorAgentService {
           html: htmlContent,
         };
 
-        if (flyerAttachment) {
-          resendPayload.attachments = [
-            {
-              filename: flyerAttachment.filename,
-              content: flyerAttachment.content,
-            },
-          ];
-        }
-
         let resendRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -215,7 +181,6 @@ export class NegotiatorAgentService {
             recipient: targetEmail,
             messageId: resendData.id,
             hasCanvaImage,
-            hasAttachment: !!flyerAttachment,
             mode: 'simulation',
           };
         }
@@ -237,15 +202,6 @@ export class NegotiatorAgentService {
           htmlContent: htmlContent,
         };
 
-        if (flyerAttachment) {
-          brevoPayload.attachment = [
-            {
-              name: flyerAttachment.filename,
-              content: flyerAttachment.content,
-            },
-          ];
-        }
-
         const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
           method: 'POST',
           headers: {
@@ -261,7 +217,6 @@ export class NegotiatorAgentService {
             provider: 'brevo',
             recipient: targetEmail,
             hasCanvaImage,
-            hasAttachment: !!flyerAttachment,
             mode: 'simulation',
           };
         }
@@ -295,21 +250,11 @@ export class NegotiatorAgentService {
           },
         });
 
-        const attachments: any[] = [];
-        if (flyerAttachment) {
-          attachments.push({
-            filename: flyerAttachment.filename,
-            content: Buffer.from(flyerAttachment.content, 'base64'),
-            contentType: flyerAttachment.contentType,
-          });
-        }
-
         const info = await transporter.sendMail({
           from: `"NexoSalud Odontología" <${smtpUser}>`,
           to: targetEmail,
           subject: emailSubject,
           html: htmlContent,
-          attachments,
         });
 
         return {
@@ -318,7 +263,6 @@ export class NegotiatorAgentService {
           recipient: targetEmail,
           messageId: info.messageId,
           hasCanvaImage,
-          hasAttachment: attachments.length > 0,
           mode: 'simulation',
         };
       } catch (smtpErr: any) {
@@ -335,7 +279,6 @@ export class NegotiatorAgentService {
       recipient: targetEmail,
       message: `Propuesta procesada exitosamente en modo simulación para ${targetEmail}.`,
       hasCanvaImage,
-      hasAttachment: !!flyerAttachment,
       mode: 'simulation',
     };
   }
