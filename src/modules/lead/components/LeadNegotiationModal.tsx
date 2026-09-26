@@ -70,6 +70,7 @@ import {
   History,
   RotateCw,
   RotateCcw,
+  Loader2,
 } from 'lucide-react';
 
 interface LeadNegotiationModalProps {
@@ -263,6 +264,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   // Estados para Copiloto de Objeciones y Seguimiento WhatsApp (Actividades 3 y 4)
   const [objectionCategory, setObjectionCategory] = useState<'PRECIO' | 'HORARIO' | 'SEDE'>('PRECIO');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [generatingCanva, setGeneratingCanva] = useState(false);
   const [canvaResult, setCanvaResult] = useState<any>(null);
   const [flyerImageLoading, setFlyerImageLoading] = useState(false);
@@ -630,14 +632,81 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     toast({ title: 'WhatsApp Abierto', description: 'Redirigiendo a WhatsApp con la propuesta comercial.' });
   };
 
-  const handleSendEmail = () => {
-    const patientFirstName = lead?.nombres || 'Paciente';
-    const email = lead?.email || '';
-    const subject = encodeURIComponent(`Propuesta Comercial Exclusiva - NexoSalud Dental para ${patientFirstName}`);
-    const body = encodeURIComponent(generateWhatsAppMessage().replace(/\*/g, ''));
-    const mailtoUrl = email ? `mailto:${email}?subject=${subject}&body=${body}` : `mailto:?subject=${subject}&body=${body}`;
-    window.open(mailtoUrl, '_blank');
-    toast({ title: 'Correo Preparado', description: 'Se abrió tu cliente de correo con la propuesta comercial.' });
+  const handleSendEmail = async () => {
+    setSendingEmail(true);
+    try {
+      const ultimaSolicitud = lead?.Solicitudes?.[lead?.Solicitudes?.length - 1];
+      const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
+      const precio = selectedOptData ? Number(selectedOptData.precio_ofrecido) : (numericOfferPrice || 150);
+      const precioOriginal = currentOfficialPrice || 180;
+      const descuento = discountMetrics?.pct || 15;
+      const sede = selectedOptData?.Disponibilidad?.Sede?.nombre || (altSedeId !== 'ALL_SEDES' ? catalogs.sedes?.find((s: any) => s.id_sede.toString() === altSedeId)?.nombre : 'Sede Miraflores - Av. Larco 123');
+      const doctor = selectedOptData?.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}` : 'Especialistas colegiados';
+
+      // Fecha límite con formato amigable
+      let targetDate: Date | null = null;
+      const rawDate = selectedOptData?.Disponibilidad?.fecha;
+      if (rawDate) {
+        targetDate = new Date(rawDate);
+      } else if (altVigencia === '24h') {
+        targetDate = new Date(Date.now() + 24 * 3600000);
+      } else if (altVigencia === '48h') {
+        targetDate = new Date(Date.now() + 48 * 3600000);
+      } else if (altVigencia === '72h') {
+        targetDate = new Date(Date.now() + 72 * 3600000);
+      } else if (altVigencia === '7d') {
+        targetDate = new Date(Date.now() + 7 * 24 * 3600000);
+      } else if (altVigencia === 'custom' && altVigenciaCustom) {
+        targetDate = new Date(altVigenciaCustom);
+      }
+      if (!targetDate || isNaN(targetDate.getTime())) {
+        targetDate = new Date(Date.now() + 48 * 3600000);
+      }
+      const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
+      const fechaLimiteFormatted = `${diasSemana[targetDate.getDay()]}, ${targetDate.getDate()} de ${meses[targetDate.getMonth()]}`;
+
+      const conditions = altCondiciones || `Atención personalizada con ${doctor}. Cierre de tratamiento asegurado.`;
+      const flyerUrl = canvaResult?.previewUrl || canvaResult?.downloadPngUrl || undefined;
+      const designUrl = canvaResult?.designUrl || undefined;
+
+      const res = await leadService.sendNegotiationEmail(lead?.id_persona || leadId, {
+        serviceName: reqServicio,
+        sedeName: sede,
+        offeredPrice: Number(precio),
+        originalPrice: Number(precioOriginal),
+        discountPct: Number(descuento),
+        expirationDate: fechaLimiteFormatted,
+        conditions,
+        leadEmail: lead?.correo || lead?.email,
+        leadPhone: lead?.numero,
+        canvaFlyerUrl: flyerUrl,
+        canvaDesignUrl: designUrl,
+      });
+
+      if (res?.success) {
+        toast({
+          title: '📧 ¡Correo de Simulación Enviado!',
+          description: flyerUrl
+            ? `Se envió el correo con el Flyer de Canva incrustado a tu bandeja (${res.recipient || 'benkr7@gmail.com'}).`
+            : `Se envió el correo en formato texto estructurado a tu bandeja (${res.recipient || 'benkr7@gmail.com'}).`,
+        });
+      } else {
+        toast({
+          title: 'Aviso de Envío',
+          description: res?.message || 'El correo fue procesado en modo simulación.',
+        });
+      }
+    } catch (err: any) {
+      console.error('Error enviando correo de simulación:', err);
+      toast({
+        title: 'Error al Enviar Correo',
+        description: err.message || 'No se pudo conectar con el servidor de correo. Verifica la conexión.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingEmail(false);
+    }
   };
 
   const handleCopyWhatsApp = () => {
@@ -1538,11 +1607,21 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
                       <Button
                         type="button"
+                        disabled={sendingEmail}
                         onClick={handleSendEmail}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs h-9 px-3.5 font-semibold flex items-center gap-1.5 border-0 shadow-none"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs h-9 px-3.5 font-semibold flex items-center gap-1.5 border-0 shadow-none transition-all disabled:opacity-70"
                       >
-                        <Mail className="w-4 h-4" />
-                        <span>Enviar Correo</span>
+                        {sendingEmail ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Enviando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="w-4 h-4" />
+                            <span>Enviar Correo</span>
+                          </>
+                        )}
                       </Button>
                     </div>
 

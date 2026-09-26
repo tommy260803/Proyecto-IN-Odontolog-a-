@@ -188,6 +188,37 @@ export const leadService = {
     throw lastError || new Error('No se pudo conectar con el servicio de Canva');
   },
 
+  sendNegotiationEmail: async (leadId: string | number, payload: any) => {
+    const endpoints = [
+      `${API_URL}/leads/${leadId}/send-email`,
+      `${API_URL}/lead/${leadId}/send-email`,
+      `/api/leads/${leadId}/send-email`,
+      `/api/lead/${leadId}/send-email`,
+      `https://proyecto-odontologia-backend.onrender.com/api/leads/${leadId}/send-email`,
+      `https://proyecto-odontologia-backend.onrender.com/api/lead/${leadId}/send-email`,
+    ];
+
+    let lastError: any = null;
+    for (const ep of endpoints) {
+      try {
+        const res = await fetch(ep, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          const contentType = res.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            return await res.json();
+          }
+        }
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError || new Error('No se pudo enviar el correo de simulación');
+  },
+
   exchangeCanvaCode: async (code: string) => {
     const endpoints = [
       `${API_URL}/canva/exchange`,
