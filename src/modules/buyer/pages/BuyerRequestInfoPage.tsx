@@ -165,8 +165,8 @@ export default function BuyerRequestInfoPage() {
         estado_calidad: 'Valido',
         duda_especifica: dudaEspecifica.trim() || undefined,
         concreteRequest: dudaEspecifica.trim()
-          ? `[Duda/Consulta Web] ${dudaEspecifica.trim()}`
-          : `Solicitud de Información Odontológica (Portal Web). Sede: ${sede || 'No especificada'}. Franja: ${timeSlot || 'Flexible'}`,
+          ? `[Duda/Consulta Web] ${dudaEspecifica.trim()}${timeSlot ? ` | Horario: ${timeSlot === '1' ? 'Turno Mañana (08:00 AM – 01:00 PM)' : timeSlot === '2' ? 'Turno Tarde (01:00 PM – 06:00 PM)' : 'Turno Noche (06:00 PM – 09:00 PM)'}` : ''}`
+          : `Solicitud de Información Odontológica (Portal Web). Sede: ${sede || 'No especificada'}. Horario: ${timeSlot === '1' ? 'Turno Mañana (08:00 AM – 01:00 PM)' : timeSlot === '2' ? 'Turno Tarde (01:00 PM – 06:00 PM)' : timeSlot === '3' ? 'Turno Noche (06:00 PM – 09:00 PM)' : 'Flexible'}`,
         isNewPersonConfirmed,
       });
 
@@ -627,21 +627,21 @@ export default function BuyerRequestInfoPage() {
                         { 
                           id: '1', 
                           label: 'Mañana', 
-                          hours: '08:00 - 13:00', 
+                          hours: '08:00 AM – 01:00 PM', 
                           icon: Sunrise,
                           iconColor: 'text-amber-500'
                         },
                         { 
                           id: '2', 
                           label: 'Tarde', 
-                          hours: '13:00 - 18:00', 
+                          hours: '01:00 PM – 06:00 PM', 
                           icon: Sun,
                           iconColor: 'text-orange-500'
                         },
                         { 
                           id: '3', 
                           label: 'Noche', 
-                          hours: '18:00 - 21:00', 
+                          hours: '06:00 PM – 09:00 PM', 
                           icon: Moon,
                           iconColor: 'text-indigo-500'
                         },

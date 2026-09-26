@@ -103,6 +103,25 @@ function calcAge(birthDate: string | null | undefined): number | null {
   }
 }
 
+// ── Formateo de Franja / Horario a formato 12 Horas (AM / PM) ────────────────
+function formatConsultaMotivo(motivo: string | null | undefined): string {
+  if (!motivo) return '';
+  return motivo
+    // Reemplazos de franjas numéricas a 12h
+    .replace(/Franja:\s*1\b/gi, 'Horario: Turno Mañana (08:00 AM – 01:00 PM)')
+    .replace(/Franja:\s*2\b/gi, 'Horario: Turno Tarde (01:00 PM – 06:00 PM)')
+    .replace(/Franja:\s*3\b/gi, 'Horario: Turno Noche (06:00 PM – 09:00 PM)')
+    // Reemplazos de formatos de 24h a 12h
+    .replace(/08:00\s*-\s*13:00/g, '08:00 AM – 01:00 PM')
+    .replace(/13:00\s*-\s*18:00/g, '01:00 PM – 06:00 PM')
+    .replace(/14:00\s*-\s*18:00/g, '02:00 PM – 06:00 PM')
+    .replace(/18:00\s*-\s*21:00/g, '06:00 PM – 09:00 PM')
+    .replace(/Franja:\s*Mañana/gi, 'Horario: Turno Mañana (08:00 AM – 01:00 PM)')
+    .replace(/Franja:\s*Tarde/gi, 'Horario: Turno Tarde (01:00 PM – 06:00 PM)')
+    .replace(/Franja:\s*Noche/gi, 'Horario: Turno Noche (06:00 PM – 09:00 PM)')
+    .replace(/Franja:\s*Flexible/gi, 'Horario: Flexible');
+}
+
 // ── Estado de carga ──────────────────────────────────────────────────────────
 function LoadingState() {
   return (
@@ -317,6 +336,41 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     const officialPrice = Number(activeServicio?.Tarifas?.[0]?.precio || 180);
     if (altPrecio === '150.00' || !altPrecio) {
       setAltPrecio(officialPrice.toFixed(2));
+    }
+
+    // 5. Pre-seleccionar franja horaria sugerida analizando sus consultas previas
+    const detectedSlots = new Set<'MANANA' | 'TARDE' | 'NOCHE'>();
+    lead.Solicitudes?.forEach((s: any) => {
+      const text = (s.motivo || '').toLowerCase();
+      if (text.includes('franja: 1') || text.includes('franja: 01') || text.includes('mañana') || text.includes('08:00') || text.includes('morning')) {
+        detectedSlots.add('MANANA');
+      }
+      if (text.includes('franja: 2') || text.includes('franja: 02') || text.includes('tarde') || text.includes('13:00') || text.includes('14:00') || text.includes('01:00 pm') || text.includes('02:00 pm')) {
+        detectedSlots.add('TARDE');
+      }
+      if (text.includes('franja: 3') || text.includes('franja: 03') || text.includes('noche') || text.includes('18:00') || text.includes('06:00 pm') || text.includes('night')) {
+        detectedSlots.add('NOCHE');
+      }
+    });
+
+    // Revisar preferencia de horario si no se detectó en los motivos
+    if (detectedSlots.size === 0 && lead.Preferencias?.[0]?.Horario?.hora_inicio) {
+      const startHour = parseInt(String(lead.Preferencias[0].Horario.hora_inicio).substring(11, 13) || '0', 10);
+      if (startHour >= 6 && startHour < 13) detectedSlots.add('MANANA');
+      else if (startHour >= 13 && startHour < 18) detectedSlots.add('TARDE');
+      else if (startHour >= 18) detectedSlots.add('NOCHE');
+    }
+
+    if (detectedSlots.has('TARDE') && detectedSlots.has('NOCHE')) {
+      setAltFranja('Turno Tarde y Noche (01:00 PM – 09:00 PM)');
+    } else if (detectedSlots.has('MANANA') && detectedSlots.has('TARDE')) {
+      setAltFranja('Turno Mañana y Tarde (08:00 AM – 06:00 PM)');
+    } else if (detectedSlots.has('TARDE')) {
+      setAltFranja('Turno Tarde (01:00 PM – 06:00 PM)');
+    } else if (detectedSlots.has('NOCHE')) {
+      setAltFranja('Turno Noche (06:00 PM – 09:00 PM)');
+    } else if (detectedSlots.has('MANANA')) {
+      setAltFranja('Turno Mañana (08:00 AM – 01:00 PM)');
     }
   }, [lead, catalogs]);
 
@@ -713,7 +767,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                             </p>
                             {sol.motivo && (
                               <p className="text-[11px] text-slate-600 dark:text-slate-300 italic bg-white dark:bg-slate-900/60 p-1.5 rounded-md border border-slate-200/60 dark:border-slate-800">
-                                "{sol.motivo}"
+                                "{formatConsultaMotivo(sol.motivo)}"
                               </p>
                             )}
                           </div>
@@ -1124,10 +1178,12 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {[
                           'Horario Flexible (A elección del paciente al confirmar)',
-                          'Turno Mañana (09:00 - 13:00)',
-                          'Turno Tarde (14:00 - 18:00)',
-                          'Turno Noche (18:00 - 21:00)',
-                          'Sábados Exclusivo',
+                          'Turno Mañana (08:00 AM – 01:00 PM)',
+                          'Turno Tarde (01:00 PM – 06:00 PM)',
+                          'Turno Noche (06:00 PM – 09:00 PM)',
+                          'Turno Tarde y Noche (01:00 PM – 09:00 PM)',
+                          'Turno Mañana y Tarde (08:00 AM – 06:00 PM)',
+                          'Sábados Exclusivo (08:00 AM – 02:00 PM)',
                         ].map((franja) => (
                           <button
                             key={franja}
