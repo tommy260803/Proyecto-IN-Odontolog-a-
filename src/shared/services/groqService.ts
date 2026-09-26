@@ -687,23 +687,33 @@ Responde ÚNICAMENTE en JSON válido con este formato:
 }
 
 /**
- * Genera con IA (Groq) un título publicitario de ALTO IMPACTO de MÁXIMO 3 PALABRAS para el encabezado del Flyer de Canva
- * (ej: "MEJOREMOS TU SONRISA", "SONRÍE CON CONFIANZA", "TU MEJOR SONRISA")
+ * Genera con IA (Groq) un título publicitario de ALTO IMPACTO y PERSUASIÓN de MÁXIMO 3 PALABRAS para el encabezado del Flyer de Canva
+ * (ej: "TRANSFORMA TU SONRISA", "SONRISA PERFECTA HOY", "SONRÍE SIN LÍMITES")
  */
 export async function generateFlyerTitleWithAI(serviceName: string, patientName?: string): Promise<string> {
   const apiKey = import.meta.env.VITE_GROQ_API_KEY;
 
   if (apiKey && apiKey !== 'tu_groq_api_key_aqui') {
-    const prompt = `Actúa como el Agente Creativo de Marketing Odontológico de NexoSalud.
-Genera un título publicitario de ALTO IMPACTO de EXACTAMENTE 2 O 3 PALABRAS (MÁXIMO 3 PALABRAS) para el encabezado principal del flyer publicitario Canva.
-Tratamiento ofertado: "${serviceName}".
+    const prompt = `Actúa como Director Creativo de Neuromarketing Odontológico de NexoSalud.
+Crea un titular publicitario MAGNÉTICO, PERSUASIVO Y DE MÁXIMO IMPACTO de EXACTAMENTE 2 O 3 PALABRAS (NUNCA MÁS DE 3 PALABRAS) para la cabecera del flyer oficial de Canva.
+
+Tratamiento promocionado: "${serviceName}".
 Paciente: "${patientName || 'Paciente'}".
 
-REGLAS ESTRICTAS:
-1. Longitud: MÁXIMO 3 PALABRAS. Jamás escribas 4 palabras o más.
-2. Tono: Motivador, persuasivo, estético y profesional.
-3. Formato: MAYÚSCULAS limpias (ejemplos: "MEJOREMOS TU SONRISA", "SONRÍE CON CONFIANZA", "TU MEJOR SONRISA", "ALINEA TU SONRISA", "DIENTES BLANCOS HOY", "RECUPERA TU SONRISA").
-4. Responde ÚNICAMENTE las 2 o 3 palabras en texto plano, sin comillas, sin explicaciones ni signos de puntuación.`;
+REGLAS DE ORO:
+1. Longitud: EXACTAMENTE 2 O 3 PALABRAS. Jamás 1 palabra ni más de 3 palabras.
+2. Tono: Seductor, inspirador, empoderador y de alta estética dental.
+3. Vocabulario recomendado: Verbos de transformación y belleza ("TRANSFORMA", "SONRÍE", "LUCE", "RENUEVA", "RECUPERA", "PERFECTA", "RADIANTE", "CONFIANZA", "SEGURIDAD").
+4. Ejemplos de ALTO IMPACTO:
+   - "TRANSFORMA TU SONRISA"
+   - "SONRISA PERFECTA HOY"
+   - "SONRÍE SIN LÍMITES"
+   - "LUCE TU SONRISA"
+   - "TU MEJOR SONRISA"
+   - "SONRÍE CON CONFIANZA"
+   - "DIENTES RADIANTES HOY"
+   - "RENUEVA TU SONRISA"
+5. NUNCA uses términos clínicos aburridos, preposiciones raras o frases incompletas. Responde ÚNICAMENTE las 2 o 3 palabras en MAYÚSCULAS sin comillas ni puntos.`;
 
     for (const model of GROQ_MODELS) {
       try {
@@ -716,10 +726,10 @@ REGLAS ESTRICTAS:
           body: JSON.stringify({
             model,
             messages: [
-              { role: 'system', content: 'Eres un copywriter publicitario dental. Responde únicamente un título en mayúsculas de máximo 3 palabras.' },
+              { role: 'system', content: 'Eres un copywriter publicitario dental de élite. Responde únicamente un titular impactante en mayúsculas de 2 o 3 palabras.' },
               { role: 'user', content: prompt },
             ],
-            temperature: 0.6,
+            temperature: 0.5,
             max_tokens: 20,
           }),
         });
@@ -727,9 +737,9 @@ REGLAS ESTRICTAS:
         if (response.ok) {
           const data = await response.json();
           let raw = data.choices?.[0]?.message?.content?.trim() || '';
-          raw = raw.replace(/["'«».\n\r]/g, '').trim();
+          raw = raw.replace(/["'«».:;\n\r]/g, '').trim();
           const words = raw.split(/\s+/).filter(Boolean);
-          if (words.length > 0) {
+          if (words.length >= 2) {
             return words.slice(0, 3).join(' ').toUpperCase();
           }
         }
@@ -737,24 +747,24 @@ REGLAS ESTRICTAS:
     }
   }
 
-  // Fallback heurístico inteligente por servicio (máximo 3 palabras)
+  // Fallback heurístico de alta persuasión por servicio (máximo 3 palabras)
   const lower = (serviceName || '').toLowerCase();
   if (lower.includes('ortodoncia') || lower.includes('bracket')) {
-    return 'ALINEA TU SONRISA';
+    return 'TRANSFORMA TU SONRISA';
   }
   if (lower.includes('blanquea') || lower.includes('estétic')) {
     return 'SONRISA BLANCA RADIANTE';
   }
   if (lower.includes('limpieza') || lower.includes('profilaxis')) {
-    return 'SONRISA LIMPIA TOTAL';
+    return 'SONRISA RADIANTE HOY';
   }
   if (lower.includes('implante') || lower.includes('prótesis')) {
     return 'RECUPERA TU SONRISA';
   }
-  if (lower.includes('endodoncia') || lower.includes('curación') || lower.includes('caries')) {
-    return 'CUIDA TU SALUD';
+  if (lower.includes('endodoncia') || lower.includes('curación') || lower.includes('caries') || lower.includes('urgencia')) {
+    return 'ALIVIA Y SONRÍE';
   }
 
-  return 'MEJOREMOS TU SONRISA';
+  return 'SONRÍE CON CONFIANZA';
 }
 

@@ -100,13 +100,13 @@ export class NegotiatorAgentService {
           <!-- Botones de Acción -->
           <div style="text-align: center; margin: 28px 0; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
             ${
-              hasCanvaImage && params.canvaDesignUrl
-                ? `<a href="${params.canvaDesignUrl}" target="_blank" style="background: #7c3aed; color: #ffffff; padding: 12px 22px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 13px;">
-                     🎨 Abrir en Canva
+              hasCanvaImage && params.canvaFlyerUrl
+                ? `<a href="${params.canvaFlyerUrl}" target="_blank" download="Flyer_NexoSalud.png" style="background: #7c3aed; color: #ffffff; padding: 12px 22px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 13px;">
+                     📥 Descargar Imagen
                    </a>`
                 : ''
             }
-            <a href="https://wa.me/51999123456?text=${encodeURIComponent(`Hola NexoSalud, confirmo mi cotización de ${params.serviceName} a S/ ${params.offeredPrice.toFixed(2)}`)}" target="_blank" style="background: #0d9488; color: #ffffff; padding: 12px 22px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 13px; margin-left: 6px;">
+            <a href="https://wa.me/51970292710?text=${encodeURIComponent(`Hola NexoSalud, confirmo mi cotización de ${params.serviceName} a S/ ${params.offeredPrice.toFixed(2)}`)}" target="_blank" style="background: #0d9488; color: #ffffff; padding: 12px 22px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 13px; margin-left: 6px;">
               📅 Confirmar mi Turno
             </a>
           </div>
@@ -282,7 +282,7 @@ export class NegotiatorAgentService {
       fechaLimite: params.fechaLimite || params.expirationDate,
       sedeTexto: `Sede: ${params.sedeName || 'Principal (Trujillo / Lima)'}`,
       descuentoTexto: `¡${params.discountPct}% DSCTO. EXCLUSIVO!`,
-      contactoTexto: `WhatsApp: +51 999 123 456\ninfo@nexosalud.pe`,
+      contactoTexto: `WhatsApp: +51 970 292 710\ninfo@nexosalud.pe`,
       horarioTexto: `Lunes a Sábado\n08:00 AM - 08:00 PM`,
       tratamiento1: {
         titulo: params.serviceName || 'Ortodoncia Brackets',

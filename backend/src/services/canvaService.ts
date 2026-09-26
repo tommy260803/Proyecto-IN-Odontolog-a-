@@ -261,7 +261,7 @@ export class CanvaService {
     let cleanSede = params.sedeTexto || 'Av. Larco 123, Miraflores';
     cleanSede = cleanSede.replace(/^Sede:\s*/i, '').trim();
 
-    const contactoTexto = params.contactoTexto || '+51 987 654 321\ninfo@nexosalud.pe';
+    const contactoTexto = params.contactoTexto || '+51 970 292 710\ninfo@nexosalud.pe';
     const horarioTexto = this.formatTo12H(params.horarioTexto);
 
     const t1Titulo = this.shortenTitle(params.tratamiento1?.titulo, 'Brackets Metálicos');
@@ -310,7 +310,7 @@ export class CanvaService {
   public static generateVisualFlyerSvg(params: CanvaAutofillParams): string {
     const sede = params.sedeTexto || 'Sede Miraflores - Av. Larco 123';
     const descuento = params.descuentoTexto || '30';
-    const contacto = params.contactoTexto?.replace(/\n/g, ' • ') || 'WhatsApp: +51 999 123 456';
+    const contacto = params.contactoTexto?.replace(/\n/g, ' • ') || 'WhatsApp: +51 970 292 710';
     const horario = this.formatTo12H(params.horarioTexto?.replace(/\n/g, ' | ') || 'Lun - Sáb: 08:00 AM - 08:00 PM');
 
     const t1Title = this.shortenTitle(params.tratamiento1?.titulo, 'Brackets Metálicos');
