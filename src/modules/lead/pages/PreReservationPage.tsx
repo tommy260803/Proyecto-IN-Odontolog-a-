@@ -7,6 +7,13 @@ import { Label } from '@/shared/components/ui/label';
 import { Badge } from '@/shared/components/ui/badge';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/shared/components/ui/dialog';
 import { useToast } from '@/shared/hooks/use-toast';
 import { Toaster } from '@/shared/components/ui/toaster';
 import { chatWithNegotiatorAgent, type NegotiatorChatContext } from '@/shared/services/groqService';
@@ -83,6 +90,7 @@ export default function PreReservationPage() {
   // Submitting state
   const [submitting, setSubmitting] = useState(false);
   const [preReserveSuccess, setPreReserveSuccess] = useState<any>(null);
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
 
   // Floating Chatbot states
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -350,11 +358,11 @@ export default function PreReservationPage() {
         {/* Mitad Izquierda en Desktop (vacía para mantener limpio el lado del formulario) */}
         <div className="hidden lg:block" />
 
-        {/* Mitad Derecha en Desktop: Branding NexoSalud alineado al LADO DERECHO con logo oscuro */}
-        <div className="hidden lg:flex items-center justify-end pt-4 pb-1 px-8 xl:px-14">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-900/60 backdrop-blur-md border border-slate-700/60 shadow-md flex items-center justify-center p-1 overflow-hidden">
-              <img src="/Logo_NexoSalus_Oscuro.png" alt="NexoSalud Dental" className="w-full h-full object-contain" />
+        {/* Mitad Derecha en Desktop: Branding NexoSalud en el LADO DERECHO */}
+        <div className="hidden lg:flex items-center justify-center pt-4 pb-1 px-6 xl:px-12">
+          <div className="w-full max-w-lg flex items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-md flex items-center justify-center p-1.5 overflow-hidden">
+              <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="font-extrabold text-base tracking-tight text-white block leading-tight">
@@ -381,25 +389,32 @@ export default function PreReservationPage() {
           {preReserveSuccess ? (
             /* Vista de Éxito / Comprobante de Reserva */
             <div className="w-full max-w-xl bg-white rounded-3xl border border-slate-200 shadow-none overflow-hidden animate-in zoom-in-95 duration-200">
-              <div className="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 p-6 sm:p-7 text-white text-center">
-                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-2.5 shadow-inner">
-                  <CheckCircle2 className="w-8 h-8 text-white" />
+              <div className="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 px-5 py-4 text-white text-center">
+                {/* Check con animación moderna igual al formulario del cliente */}
+                <div className="relative flex items-center justify-center mb-2">
+                  <div className="absolute w-16 h-16 rounded-full bg-teal-300/30 animate-checkmark-ripple" />
+                  <div className="relative w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-500 via-teal-500 to-teal-400 text-white flex items-center justify-center shadow-lg shadow-teal-900/30 ring-4 ring-white/20 animate-checkmark-pop">
+                    <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" className="animate-checkmark-draw" />
+                    </svg>
+                  </div>
                 </div>
-                <Badge className="bg-emerald-400 text-slate-950 font-black px-3 py-0.5 mb-1.5 hover:bg-emerald-400 shadow-xs text-[11px] uppercase tracking-wider">
+
+                <Badge className="bg-emerald-400 text-slate-950 font-black px-3 py-0.5 mb-1 hover:bg-emerald-400 shadow-xs text-[10.5px] uppercase tracking-wider">
                   Pre-Reserva Registrada Exitosamente
                 </Badge>
-                <h2 className="text-xl sm:text-2xl font-black tracking-tight mt-1">¡Felicitaciones, {nombres}!</h2>
-                <p className="text-teal-100 text-xs mt-1 max-w-md mx-auto">
-                  Tu cupo y descuento para <span className="font-bold text-white underline">{offerData.serviceName}</span> han quedado congelados por 48 horas en nuestra central clínica.
+                <h2 className="text-lg sm:text-xl font-black tracking-tight mt-0.5">¡Felicitaciones, {nombres}!</h2>
+                <p className="text-teal-100 text-xs mt-0.5 max-w-md mx-auto">
+                  Tu cupo y tarifa para <span className="font-bold text-white underline">{offerData.serviceName}</span> han quedado congelados por 48 horas en nuestra central clínica.
                 </p>
               </div>
 
-              <div className="p-5 sm:p-6 space-y-4">
+              <div className="p-4 sm:p-5 space-y-3">
                 {/* Código de Pre-Reserva */}
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-2.5 text-center sm:text-left">
                   <div>
                     <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">Código Único de Atención</span>
-                    <span className="text-2xl font-black text-slate-900 tracking-wider">
+                    <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-wider font-mono">
                       {preReserveSuccess.codigoReserva || 'NEXO-PROMO'}
                     </span>
                   </div>
@@ -407,52 +422,52 @@ export default function PreReservationPage() {
                     variant="outline"
                     size="sm"
                     onClick={copyCodeToClipboard}
-                    className="bg-white border-slate-300 text-slate-700 font-semibold hover:bg-slate-100 gap-1.5 shadow-2xs"
+                    className="bg-white border-slate-300 text-slate-700 font-semibold hover:bg-slate-100 gap-1.5 shadow-2xs h-8 text-xs"
                   >
-                    <Copy className="w-4 h-4" /> Copiar Código
+                    <Copy className="w-3.5 h-3.5" /> Copiar Código
                   </Button>
                 </div>
 
                 {/* Resumen del Comprobante */}
-                <div className="space-y-2 text-xs bg-white p-3.5 rounded-xl border border-slate-200">
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
+                <div className="space-y-1.5 text-xs bg-white p-3 rounded-xl border border-slate-200">
+                  <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Paciente Titular:</span>
                     <span className="font-bold text-slate-900">
                       {nombres} {apellidos} {dni ? `(DNI: ${dni})` : ''}
                     </span>
                   </div>
                   {esParaFamiliar && nombreFamiliar && (
-                    <div className="flex justify-between py-1.5 border-b border-slate-100 bg-teal-50/60 px-2 rounded-lg">
+                    <div className="flex justify-between py-1 border-b border-slate-100 bg-teal-50/60 px-2 rounded-lg">
                       <span className="text-teal-800 font-semibold">Atención para familiar:</span>
                       <span className="font-bold text-teal-950">{nombreFamiliar} ({parentesco})</span>
                     </div>
                   )}
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
+                  <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Tratamiento Asignado:</span>
                     <span className="font-bold text-teal-700">{offerData.serviceName}</span>
                   </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
+                  <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Sede Odontológica:</span>
                     <span className="font-semibold text-slate-800">
                       {offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId))?.nombre || offerData.sede}
                     </span>
                   </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
+                  <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Fecha y Turno:</span>
                     <span className="font-semibold text-slate-800">
                       {fechaCita} — {horaCita}
                     </span>
                   </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
+                  <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Modalidad de Pago:</span>
                     <Badge variant="outline" className="bg-slate-100 text-slate-800 border-slate-300 font-semibold text-[11px]">
                       {canalPago}
                     </Badge>
                   </div>
-                  <div className="flex justify-between items-center pt-1.5">
+                  <div className="flex justify-between items-center pt-1">
                     <span className="text-xs font-bold text-slate-800">Total Promocional a abonar:</span>
                     <div className="text-right">
-                      <span className="text-xl font-black text-emerald-600">S/ {Number(offerData.offeredPrice).toFixed(2)}</span>
+                      <span className="text-xl font-black text-emerald-600 font-mono">S/ {Number(offerData.offeredPrice).toFixed(2)}</span>
                       <span className="block text-[10px] text-slate-400 line-through">S/ {Number(offerData.originalPrice).toFixed(2)}</span>
                     </div>
                   </div>
@@ -473,16 +488,15 @@ export default function PreReservationPage() {
                       );
                       window.open(`https://wa.me/51970292710?text=${text}`, '_blank');
                     }}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11 rounded-xl text-xs shadow-md gap-2 cursor-pointer"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10 rounded-xl text-xs shadow-md gap-2 cursor-pointer transition-all"
                   >
                     <MessageSquare className="w-4 h-4" /> Enviar Voucher a WhatsApp de la Clínica
                   </Button>
                   <Button
-                    variant="outline"
-                    onClick={() => window.print()}
-                    className="w-full !bg-white border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-xs h-10 gap-2 cursor-pointer"
+                    onClick={() => setPdfModalOpen(true)}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs h-10 gap-2 cursor-pointer shadow-sm transition-all rounded-xl border border-slate-800"
                   >
-                    <Download className="w-4 h-4" /> Imprimir o Guardar Comprobante PDF
+                    <FileText className="w-4 h-4 text-teal-400" /> Comprobante PDF
                   </Button>
                 </div>
               </div>
@@ -1126,6 +1140,181 @@ export default function PreReservationPage() {
           </button>
         )}
       </div>
+      {/* Modal de Previsualización y Descarga del Comprobante PDF */}
+      <Dialog open={pdfModalOpen} onOpenChange={setPdfModalOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto p-0 rounded-3xl bg-white border border-slate-200 shadow-2xl">
+          {/* Header del Modal */}
+          <div className="bg-gradient-to-r from-teal-800 via-teal-700 to-slate-900 px-6 py-4 text-white flex items-center justify-between border-b border-teal-700/50">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 p-1 flex items-center justify-center">
+                <img src="/Logo_NexoSalus_Oscuro.png" alt="NexoSalud" className="w-full h-full object-contain" />
+              </div>
+              <div>
+                <DialogTitle className="text-sm font-extrabold text-white tracking-tight leading-tight">
+                  Vista Previa del Comprobante Oficial
+                </DialogTitle>
+                <DialogDescription className="text-[11px] text-teal-200/90 leading-tight">
+                  Documento digital para congelar tarifa odontológica NexoSalud Dental
+                </DialogDescription>
+              </div>
+            </div>
+            <Badge className="bg-emerald-500 text-slate-950 font-black text-[10px] px-2.5 py-0.5">
+              VÁLIDO POR 48H
+            </Badge>
+          </div>
+
+          {/* Documento Clínico Estilo PDF (Hoja de Comprobante) */}
+          <div id="voucher-print-area" className="p-6 sm:p-8 space-y-5 bg-white text-slate-900 font-sans">
+            {/* Cabecera del Documento */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b-2 border-slate-900 gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-slate-900 p-1.5 flex items-center justify-center shadow-xs">
+                  <img src="/Logo_NexoSalus_Oscuro.png" alt="NexoSalud Dental" className="w-full h-full object-contain" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-black tracking-tight text-slate-950 uppercase">
+                    NexoSalud Odontología Especializada
+                  </h1>
+                  <p className="text-[11px] text-slate-600 font-medium">
+                    RUC: 20608945231 · Central de Citas: (01) 710-9000
+                  </p>
+                  <p className="text-[10px] text-teal-700 font-semibold">
+                    Portal de Emisión Digital · Orden de Pre-Reserva Clínica
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-left sm:text-right bg-slate-50 border border-slate-200 p-3 rounded-xl sm:min-w-[190px]">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Código Comprobante</span>
+                <span className="text-lg font-black text-slate-950 tracking-wider block font-mono">
+                  {preReserveSuccess?.codigoReserva || 'NEXO-PROMO'}
+                </span>
+                <span className="text-[10px] text-slate-500 block">
+                  Emisión: {new Date().toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </span>
+              </div>
+            </div>
+
+            {/* Grid de Información del Paciente y Cita */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/90 text-xs">
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Datos del Paciente</span>
+                <p className="font-extrabold text-sm text-slate-950">{nombres} {apellidos}</p>
+                {dni && <p className="text-slate-600 font-medium"><span className="text-slate-400">Doc. Identidad:</span> {dni}</p>}
+                <p className="text-slate-600 font-medium"><span className="text-slate-400">WhatsApp:</span> {phone}</p>
+                {email && <p className="text-slate-600 font-medium"><span className="text-slate-400">Correo:</span> {email}</p>}
+                {esParaFamiliar && nombreFamiliar && (
+                  <div className="mt-2 p-2 bg-teal-50 border border-teal-200 rounded-lg text-teal-900 text-[11px]">
+                    <span className="font-bold">Paciente Asistente:</span> {nombreFamiliar} ({parentesco})
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Detalles de la Cita Médica</span>
+                <p className="font-bold text-slate-900">
+                  <span className="text-slate-400 font-normal">Sede:</span> {offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId))?.nombre || offerData.sede}
+                </p>
+                <p className="font-bold text-slate-900">
+                  <span className="text-slate-400 font-normal">Especialista:</span> {offerData.doctor}
+                </p>
+                <p className="font-bold text-slate-900">
+                  <span className="text-slate-400 font-normal">Fecha tentativa:</span> {fechaCita}
+                </p>
+                <p className="font-bold text-slate-900">
+                  <span className="text-slate-400 font-normal">Turno:</span> {horaCita}
+                </p>
+                <p className="font-bold text-slate-900">
+                  <span className="text-slate-400 font-normal">Modalidad elegida:</span> {canalPago}
+                </p>
+              </div>
+            </div>
+
+            {/* Cuadro de Liquidación Tarifaria */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden">
+              <div className="bg-slate-100 px-4 py-2 border-b border-slate-200 flex justify-between items-center text-xs font-bold text-slate-700">
+                <span>Descripción del Servicio Odontológico</span>
+                <span>Importe</span>
+              </div>
+              <div className="p-4 space-y-2 text-xs">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-extrabold text-sm text-slate-900">{offerData.serviceName}</p>
+                    <p className="text-[11px] text-slate-500 max-w-md mt-0.5">
+                      {offerData.serviceDescription || 'Atención clínica integral con tecnología de diagnóstico digital y garantía NexoSalud.'}
+                    </p>
+                  </div>
+                  <span className="font-mono text-slate-500 line-through">
+                    S/ {Number(offerData.originalPrice).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between text-emerald-700 font-semibold pt-1 border-t border-slate-100">
+                  <span>Descuento Promocional Congelado ({offerData.discountPct}%)</span>
+                  <span>- S/ {(Number(offerData.originalPrice) - Number(offerData.offeredPrice)).toFixed(2)}</span>
+                </div>
+
+                <div className="flex justify-between items-center pt-2 border-t-2 border-slate-900 text-sm font-black text-slate-950">
+                  <span>TOTAL A PAGAR EN CLÍNICA:</span>
+                  <span className="text-xl text-teal-700 font-mono">S/ {Number(offerData.offeredPrice).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Cláusula de Validez y Garantía */}
+            <div className="p-3.5 bg-teal-50/80 border border-teal-200 rounded-xl text-[11px] text-teal-900 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-teal-950">
+                <ShieldCheck className="w-4 h-4 text-teal-700 shrink-0" />
+                <span>Garantía de Tarifa Oficial Congelada por 48 Horas</span>
+              </div>
+              <p className="text-[10.5px] leading-relaxed text-teal-800">
+                Presenta este comprobante (en digital o impreso) o menciona tu código <strong className="text-teal-950 font-mono font-black">{preReserveSuccess?.codigoReserva || 'NEXO-PROMO'}</strong> al momento de tu llegada a recepción para hacer válido tu descuento preferencial.
+              </p>
+            </div>
+          </div>
+
+          {/* Footer de Acciones del Modal */}
+          <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setPdfModalOpen(false)}
+              className="w-full sm:w-auto text-xs font-semibold text-slate-700 border-slate-300"
+            >
+              Cerrar Vista Previa
+            </Button>
+
+            <Button
+              onClick={() => {
+                window.print();
+              }}
+              className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs gap-2 shadow-md cursor-pointer"
+            >
+              <Download className="w-4 h-4" /> Imprimir o Guardar PDF
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reglas de Impresión para PDF */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #voucher-print-area, #voucher-print-area * {
+            visibility: visible !important;
+          }
+          #voucher-print-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            padding: 24px !important;
+            background: white !important;
+            color: black !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
