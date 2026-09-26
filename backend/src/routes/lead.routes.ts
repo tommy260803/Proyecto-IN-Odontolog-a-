@@ -563,4 +563,295 @@ router.post(['/send-offer-email', '/:id/send-email'], async (req, res) => {
   }
 });
 
+
+// ── Obtener datos públicos de la oferta para pre-reserva online ──────────────
+router.get('/public/:id', async (req, res) => {
+  const { id } = req.params;
+  const numId = Number(id);
+  if (isNaN(numId)) return res.status(400).json({ error: 'ID de paciente inválido' });
+
+  try {
+    const lead = await withRetry(() =>
+      prisma.personas.findUnique({
+        where: { id_persona: numId },
+        include: {
+          Solicitudes: {
+            orderBy: { fecha_solicitud: 'desc' },
+            take: 1,
+            include: {
+              Servicio: {
+                include: { Tarifas: { where: { activo: true }, take: 1 } }
+              },
+              Opciones: {
+                include: {
+                  Disponibilidad: {
+                    include: { Sede: true, Profesional: true }
+                  }
+                },
+                orderBy: { id_opcion: 'desc' }
+              }
+            }
+          },
+          SaludOdontologica: {
+            orderBy: { id_salud_odonto: 'desc' },
+            take: 1
+          },
+          Preferencias: true
+        }
+      })
+    );
+
+    if (!lead) {
+      return res.status(404).json({ error: 'No se encontró la propuesta comercial para este paciente.' });
+    }
+
+    const sol = lead.Solicitudes?.[0];
+    const opciones = sol?.Opciones || [];
+    const activeOpt = opciones.find(o => o.seleccionada) || (opciones.length > 0 ? opciones[0] : null);
+
+    const sedesList = await withRetry(() => prisma.sedes.findMany({ where: { activo: true } }));
+
+    const serviceName = sol?.Servicio?.nombre || 'Consulta Odontológica';
+    const originalPrice = Number(sol?.Servicio?.Tarifas?.[0]?.precio || 180);
+    const offeredPrice = activeOpt ? Number(activeOpt.precio_ofrecido) : 150;
+    const discountPct = originalPrice > 0 && offeredPrice < originalPrice
+      ? Math.round(((originalPrice - offeredPrice) / originalPrice) * 100)
+      : 20;
+
+    const rawFecha = activeOpt?.Disponibilidad?.fecha ? activeOpt.Disponibilidad.fecha.toISOString().split('T')[0] : '';
+    const rawHora = activeOpt?.Disponibilidad?.hora_inicio ? activeOpt.Disponibilidad.hora_inicio.toISOString().split('T')[1].substring(0, 5) : '10:00';
+
+    res.json({
+      id_persona: lead.id_persona,
+      patientName: `${lead.nombres} ${lead.apellidos}`.trim(),
+      firstName: lead.nombres,
+      lastName: lead.apellidos,
+      dni: lead.dni || '',
+      phone: lead.numero || '',
+      email: lead.email || '',
+      serviceName,
+      serviceDescription: sol?.Servicio?.descripcion || 'Atención odontológica integral con evaluación clínica completa.',
+      originalPrice,
+      offeredPrice,
+      discountPct,
+      expirationDate: rawFecha,
+      sede: activeOpt?.Disponibilidad?.Sede?.nombre || 'Sede Miraflores - Av. Larco 123',
+      sedeId: activeOpt?.Disponibilidad?.Sede?.id_sede || sedesList[0]?.id_sede || 1,
+      doctor: activeOpt?.Disponibilidad?.Profesional?.apellidos ? `Esp. ${activeOpt.Disponibilidad.Profesional.nombres} ${activeOpt.Disponibilidad.Profesional.apellidos}` : 'Especialistas Colegiados',
+      id_solicitud: sol?.id_solicitud,
+      id_opcion: activeOpt?.id_opcion,
+      id_disponibilidad: activeOpt?.id_disponibilidad,
+      horaSugerida: rawHora,
+      nivelDolor: lead.SaludOdontologica?.[0]?.nivel_dolor || 'Ninguno',
+      alergias: lead.SaludOdontologica?.[0]?.condicion_atencion_especial || '',
+      sedes: sedesList,
+    });
+  } catch (error: any) {
+    console.error('Error al obtener oferta pública:', error);
+    res.status(500).json({ error: error.message || 'Error al obtener oferta pública' });
+  }
+});
+
+// ── Procesar Pre-Reserva Oficial desde la conversación / formulario web ───────
+router.post('/public/:id/pre-reserve', async (req, res) => {
+  const { id } = req.params;
+  const numId = Number(id);
+  if (isNaN(numId)) return res.status(400).json({ error: 'ID de paciente inválido' });
+
+  const {
+    dni,
+    nombres,
+    apellidos,
+    numero,
+    email,
+    esParaFamiliar,
+    nombreFamiliar,
+    parentesco,
+    id_opcion,
+    id_solicitud,
+    id_sede,
+    fecha,
+    hora,
+    nivelDolor,
+    alergias,
+    canal_pago,
+    dudaOComentario,
+  } = req.body;
+
+  try {
+    let etapaPayer = await withRetry(() => prisma.etapas.findFirst({ where: { nombre: 'PAYER' } }));
+    if (!etapaPayer) etapaPayer = await withRetry(() => prisma.etapas.create({ data: { nombre: 'PAYER', descripcion: 'Pre-reserva y pago coordinado' } }));
+
+    const etapaLead = await withRetry(() => prisma.etapas.findFirst({ where: { nombre: 'LEAD' } }));
+
+    const result = await withRetry(() =>
+      prisma.$transaction(async (tx) => {
+        // 1. Actualizar Persona con DNI, teléfono y autorización legal
+        const updatedPersona = await tx.personas.update({
+          where: { id_persona: numId },
+          data: {
+            dni: dni ? String(dni).substring(0, 8) : undefined,
+            nombres: nombres || undefined,
+            apellidos: apellidos || undefined,
+            numero: numero || undefined,
+            email: email || undefined,
+            autoriza_contacto: true,
+            fecha_autorizacion: new Date(),
+            id_etapa_actual: etapaPayer!.id_etapa,
+            fecha_actualizacion: new Date(),
+          },
+        });
+
+        // 2. Si la atención es para un familiar, actualizar el motivo en Solicitudes
+        let solId = Number(id_solicitud);
+        if (!solId) {
+          const s = await tx.solicitudes.findFirst({ where: { id_persona: numId }, orderBy: { fecha_solicitud: 'desc' } });
+          solId = s ? s.id_solicitud : 1;
+        }
+
+        const detalleAtencion = esParaFamiliar && nombreFamiliar
+          ? `[Atención para ${parentesco || 'Familiar'}: ${nombreFamiliar}] ${dudaOComentario || ''}`.trim()
+          : (dudaOComentario ? `[Comentario: ${dudaOComentario}]` : undefined);
+
+        if (detalleAtencion) {
+          await tx.solicitudes.update({
+            where: { id_solicitud: solId },
+            data: {
+              motivo: detalleAtencion,
+              estado: 'Convertida',
+            },
+          });
+        } else {
+          await tx.solicitudes.update({
+            where: { id_solicitud: solId },
+            data: { estado: 'Convertida' },
+          });
+        }
+
+        // 3. Registrar o actualizar antecedentes médicos en PersonaSaludOdontologica
+        const existingSalud = await tx.personaSaludOdontologica.findFirst({ where: { id_persona: numId } });
+        if (existingSalud) {
+          await tx.personaSaludOdontologica.update({
+            where: { id_salud_odonto: existingSalud.id_salud_odonto },
+            data: {
+              nivel_dolor: nivelDolor || existingSalud.nivel_dolor,
+              condicion_atencion_especial: alergias || existingSalud.condicion_atencion_especial,
+            },
+          });
+        } else if (nivelDolor || alergias) {
+          await tx.personaSaludOdontologica.create({
+            data: {
+              id_persona: numId,
+              nivel_dolor: nivelDolor || 'Ninguno',
+              condicion_atencion_especial: alergias || 'Ninguna',
+            },
+          });
+        }
+
+        // 4. Seleccionar la opción en Opciones
+        let optId = Number(id_opcion);
+        let opcionActiva: any = null;
+        if (optId) {
+          opcionActiva = await tx.opciones.update({
+            where: { id_opcion: optId },
+            data: { seleccionada: true },
+            include: { Disponibilidad: { include: { Sede: true, Profesional: true } } },
+          });
+        } else {
+          opcionActiva = await tx.opciones.findFirst({
+            where: { id_solicitud: solId },
+            include: { Disponibilidad: { include: { Sede: true, Profesional: true } } },
+          });
+          if (opcionActiva) {
+            await tx.opciones.update({
+              where: { id_opcion: opcionActiva.id_opcion },
+              data: { seleccionada: true },
+            });
+          }
+        }
+
+        const finalOptId = opcionActiva?.id_opcion || 1;
+        const finalImporte = opcionActiva?.precio_ofrecido || 150.00;
+
+        // 5. Crear la Reserva con código y bloqueo de 48 horas
+        const fechaBloqueo = new Date(Date.now() + 48 * 3600 * 1000);
+        const reserva = await tx.reservas.create({
+          data: {
+            id_persona: numId,
+            id_solicitud: solId,
+            id_opcion: finalOptId,
+            estado: 'Pre-reservada',
+            fecha_reserva: new Date(),
+            fecha_vencimiento_bloqueo: fechaBloqueo,
+            confirmacion_explicita: true,
+            fecha_confirmacion: new Date(),
+          },
+        });
+
+        // 6. Generar Pago en estado Pendiente con la modalidad seleccionada
+        const refPago = `PR-${reserva.id_reserva.toString().padStart(5, '0')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        const pago = await tx.pagos.create({
+          data: {
+            id_persona: numId,
+            id_reserva: reserva.id_reserva,
+            importe: finalImporte,
+            canal_pago: canal_pago || 'Efectivo en clínica',
+            referencia_pago: refPago,
+            estado: 'Pendiente',
+            observaciones: 'Pre-reserva online acordada con el Agente Negociador.',
+          },
+        });
+
+        // 7. Evento de Etapa: LEAD -> PAYER
+        await tx.eventosEtapa.create({
+          data: {
+            id_persona: numId,
+            etapa_origen: etapaLead?.id_etapa || 2,
+            etapa_destino: etapaPayer!.id_etapa,
+            motivo: 'Pre-reserva online confirmada por el paciente',
+            evidencia: `Código de Pre-Reserva: NEXO-${reserva.id_reserva.toString().padStart(5, '0')}`,
+          },
+        });
+
+        // 8. Marcar disponibilidad como Ocupada si se seleccionó turno
+        if (opcionActiva?.id_disponibilidad) {
+          await tx.disponibilidad.update({
+            where: { id_disponibilidad: opcionActiva.id_disponibilidad },
+            data: { estado: 'Ocupado' },
+          });
+        }
+
+        // 9. Registrar interacción en la bitácora
+        await tx.interacciones.create({
+          data: {
+            id_persona: numId,
+            tipo: 'Portal Web Pre-Reserva',
+            mensaje: `Pre-reserva emitida por el paciente. Canal de pago: ${canal_pago || 'En clínica'}. Código: NEXO-${reserva.id_reserva.toString().padStart(5, '0')}`,
+            resultado: 'Pre-reserva formalizada exitosamente',
+            es_respuesta_util: true,
+          },
+        });
+
+        return {
+          reservaId: reserva.id_reserva,
+          codigoReserva: `NEXO-${reserva.id_reserva.toString().padStart(5, '0')}`,
+          persona: updatedPersona,
+          pago,
+          opcion: opcionActiva,
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      message: '¡Pre-reserva completada exitosamente!',
+      data: result,
+    });
+  } catch (error: any) {
+    console.error('Error al procesar pre-reserva pública:', error);
+    res.status(500).json({ error: error.message || 'Error al procesar la pre-reserva' });
+  }
+});
+
 export default router;
+

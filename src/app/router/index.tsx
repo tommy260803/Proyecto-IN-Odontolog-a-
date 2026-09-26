@@ -3,6 +3,7 @@ import BuyerPage from '@/modules/buyer/pages/BuyerPage';
 import NewBuyerPage from '@/modules/buyer/pages/NewBuyerPage';
 import BuyerDetailPage from '@/modules/buyer/pages/BuyerDetailPage';
 import BuyerRequestInfoPage from '@/modules/buyer/pages/BuyerRequestInfoPage';
+import PreReservationPage from '@/modules/lead/pages/PreReservationPage';
 import LeadPage from '@/modules/lead/pages/LeadPage';
 import LeadDetailPage from '@/modules/lead/pages/LeadDetailPage';
 import LeadNegotiationPage from '@/modules/lead/pages/LeadNegotiationPage';
@@ -19,6 +20,10 @@ export const router = createBrowserRouter([
   {
     path: '/solicitar-informacion',
     element: <BuyerRequestInfoPage />,
+  },
+  {
+    path: '/pre-reserva/:id',
+    element: <PreReservationPage />,
   },
   {
     path: '/',

@@ -45,6 +45,8 @@ export class NegotiatorAgentService {
     const targetEmail = process.env.TEST_RECEIVER_EMAIL || process.env.TEST_RECIPIENT_EMAIL || process.env.SMTP_USER || 'benkr7@gmail.com';
     const emailSubject = `[SIMULACIÓN] Propuesta Odontológica: ${params.serviceName} - Paciente: ${params.leadName}`;
     const hasCanvaImage = Boolean(params.canvaFlyerUrl && params.canvaFlyerUrl.trim().length > 0);
+    const frontendUrl = process.env.FRONTEND_URL || 'https://proyecto-in-odontologia.vercel.app';
+    const preReservationUrl = `${frontendUrl}/pre-reserva/${params.leadId}`;
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
@@ -106,8 +108,8 @@ export class NegotiatorAgentService {
                    </a>`
                 : ''
             }
-            <a href="https://wa.me/51970292710?text=${encodeURIComponent(`Hola NexoSalud, confirmo mi cotización de ${params.serviceName} a S/ ${params.offeredPrice.toFixed(2)}`)}" target="_blank" style="background: #0d9488; color: #ffffff; padding: 12px 22px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 13px; margin-left: 6px;">
-              📅 Confirmar mi Turno
+            <a href="${preReservationUrl}" target="_blank" style="background: #0d9488; color: #ffffff; padding: 12px 22px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 13px; margin-left: 6px; box-shadow: 0 4px 12px rgba(13,148,136,0.3);">
+              💬 Conversar con el Agente & Confirmar Turno
             </a>
           </div>
 
@@ -316,7 +318,7 @@ export class NegotiatorAgentService {
       `📍 *Sede:* ${params.sedeName || 'Sede Principal'}\n` +
       `🎨 *Tu Flyer Oficial en Canva:* ${canvaResult.designUrl}\n\n` +
       `Reserva tu turno ahora antes de que expire la tarifa promocional:\n` +
-      `🔗 *https://nexosalud.pe/pre-reserva/${params.leadId}*`;
+      `🔗 *${process.env.FRONTEND_URL || "https://proyecto-in-odontologia.vercel.app"}/pre-reserva/${params.leadId}*`;
 
     let emailSent = false;
     let emailStatus = 'Not requested';

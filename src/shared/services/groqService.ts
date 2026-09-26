@@ -768,3 +768,86 @@ REGLAS DE ORO:
   return 'SONRÍE CON CONFIANZA';
 }
 
+export interface NegotiatorChatContext {
+  patientName: string;
+  serviceName: string;
+  originalPrice: number;
+  offeredPrice: number;
+  discountPct: number;
+  doctor?: string;
+  sede?: string;
+  expirationDate?: string;
+}
+
+export async function chatWithNegotiatorAgent(
+  userMessage: string,
+  history: Array<{ role: 'user' | 'assistant'; content: string }>,
+  ctx: NegotiatorChatContext
+): Promise<string> {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+
+  const systemPrompt = `Eres la Dra. Sofía, asesora clínica y negociadora virtual de NexoSalud Odontología Especializada.
+Estás hablando directamente con el paciente ${ctx.patientName || 'estimado paciente'}.
+
+CONTEXTO DE LA OFERTA EXCLUSIVA:
+- Tratamiento: ${ctx.serviceName}
+- Precio Normal: S/ ${ctx.originalPrice.toFixed(2)}
+- Precio Exclusivo Promocional: S/ ${ctx.offeredPrice.toFixed(2)} (${ctx.discountPct}% de Descuento congelado)
+- Especialista asignado: ${ctx.doctor || 'Equipo de Especialistas Colegiados'}
+- Sede: ${ctx.sede || 'Nuestra sede principal'}
+- Límite de vigencia: ${ctx.expirationDate || 'Cupos limitados por 48 horas'}
+
+TU MISIÓN:
+1. Responder con gran calidez humana, empatía médica y claridad a cualquier duda del paciente (dolor, anestesia, duración, formas de pago, garantías).
+2. Transmitir total tranquilidad: recalcar que en NexoSalud usamos tecnología indolora y diagnóstico digital.
+3. Recordar que para congelar su precio promocional de S/ ${ctx.offeredPrice.toFixed(2)} y reservar su turno solo debe completar el formulario que tiene en pantalla.
+4. Si pregunta por formas de pago: confirmar que puede pagar en clínica el día de la cita (efectivo/tarjeta) o por Yape/Plin, y que la pre-reserva NO le cobra nada obligatorio por adelantado.
+5. Si pide más rebaja: explicar amablemente que el ${ctx.discountPct}% es el descuento máximo institucional permitido y ya incluye beneficios extra.
+6. Mantén tus respuestas claras y concisas (máximo 2 a 3 párrafos breves), con un tono cordial y emojis profesionales.`;
+
+  if (apiKey && apiKey !== 'tu_groq_api_key_aqui') {
+    for (const model of GROQ_MODELS) {
+      try {
+        const messages = [
+          { role: 'system', content: systemPrompt },
+          ...history.slice(-6).map((m) => ({ role: m.role, content: m.content })),
+          { role: 'user', content: userMessage },
+        ];
+        const response = await fetch(GROQ_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.7,
+            max_tokens: 350,
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const reply = data.choices?.[0]?.message?.content?.trim();
+          if (reply) return reply;
+        }
+      } catch (_) {}
+    }
+  }
+
+  // Fallback heurístico si no hay API key o si se agota la cuota
+  const lower = userMessage.toLowerCase();
+  if (lower.includes('duele') || lower.includes('dolor') || lower.includes('miedo') || lower.includes('molesta')) {
+    return `¡Hola ${ctx.patientName}! Te entiendo perfectamente, pero puedes estar con total tranquilidad. En NexoSalud utilizamos técnicas modernas y anestesia de mínimo impacto para que no sientas molestias durante tu tratamiento de ${ctx.serviceName}. El ${ctx.doctor || 'especialista'} cuidará de ti en todo momento. ¿Te gustaría que aseguremos tu turno en el formulario de al lado?`;
+  }
+  if (lower.includes('pago') || lower.includes('tarjeta') || lower.includes('yape') || lower.includes('plin') || lower.includes('efectivo')) {
+    return `¡Hola! Puedes pagar con total comodidad: aceptamos Efectivo el día de tu cita en la clínica, Yape, Plin y todas las tarjetas de crédito o débito sin comisión adicional. Para congelar tu promoción a S/ ${ctx.offeredPrice.toFixed(2)}, solo selecciona tu medio preferido en el formulario y dale a Confirmar Pre-Reserva.`;
+  }
+  if (lower.includes('descuento') || lower.includes('menos') || lower.includes('rebaja') || lower.includes('caro')) {
+    return `Comprendo tu consulta, ${ctx.patientName}. La tarifa promocional de S/ ${ctx.offeredPrice.toFixed(2)} ya cuenta con un ${ctx.discountPct}% de descuento exclusivo aplicado (ahorras respecto a los S/ ${ctx.originalPrice.toFixed(2)} regulares). Es el beneficio máximo institucional aprobado. Te sugiero completar tu pre-reserva hoy para que no pierdas este precio congelado.`;
+  }
+  if (lower.includes('familiar') || lower.includes('hijo') || lower.includes('hija') || lower.includes('mama') || lower.includes('papa') || lower.includes('espos')) {
+    return `¡Por supuesto! Puedes utilizar esta promoción para ti o para algún familiar. En el formulario tienes la opción de marcar "¿La cita es para un familiar?" e indicar su nombre para que preparemos su historia clínica con anticipación.`;
+  }
+  return `¡Hola ${ctx.patientName}! Con mucho gusto te asesoro. Tu propuesta para ${ctx.serviceName} a S/ ${ctx.offeredPrice.toFixed(2)} está reservada para ti en nuestra sede. Puedes asegurar tu turno llenando los datos del formulario aquí a la derecha y te esperamos con el ${ctx.doctor || 'especialista'}. ¿Tienes alguna otra duda o consulta?`;
+}
