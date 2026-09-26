@@ -99,18 +99,26 @@ export class NegotiatorAgentService {
                  </div>`
           }
 
-          <!-- Botones de Acción -->
-          <div style="text-align: center; margin: 28px 0; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
-            ${
-              hasCanvaImage && params.canvaFlyerUrl
-                ? `<a href="${params.canvaFlyerUrl}" target="_blank" download="Flyer_NexoSalud.png" style="background: #7c3aed; color: #ffffff; padding: 12px 22px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 13px;">
-                     📥 Descargar Imagen
-                   </a>`
-                : ''
-            }
-            <a href="${preReservationUrl}" target="_blank" style="background: #0d9488; color: #ffffff; padding: 12px 22px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 13px; margin-left: 6px; box-shadow: 0 4px 12px rgba(13,148,136,0.3);">
-              💬 Conversar con el Agente & Confirmar Turno
-            </a>
+          <!-- Botones de Acción Centrados para Gmail -->
+          <div style="text-align: center; margin: 30px 0; width: 100%;">
+            <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto; text-align: center;">
+              <tr>
+                ${
+                  hasCanvaImage && params.canvaFlyerUrl
+                    ? `<td align="center" style="padding: 0 6px 10px 6px;">
+                         <a href="${params.canvaFlyerUrl}" target="_blank" download="Flyer_NexoSalud.png" style="background-color: #7c3aed; color: #ffffff; padding: 13px 22px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 13px; font-family: Arial, sans-serif; box-shadow: 0 4px 12px rgba(124,58,237,0.25);">
+                           📥 Descargar Imagen
+                         </a>
+                       </td>`
+                    : ''
+                }
+                <td align="center" style="padding: 0 6px 10px 6px;">
+                  <a href="${preReservationUrl}" target="_blank" style="background-color: #0d9488; color: #ffffff; padding: 13px 24px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 13px; font-family: Arial, sans-serif; box-shadow: 0 4px 12px rgba(13,148,136,0.3);">
+                    📅 Confirmar Turno
+                  </a>
+                </td>
+              </tr>
+            </table>
           </div>
 
           <!-- Pie de Firma -->
