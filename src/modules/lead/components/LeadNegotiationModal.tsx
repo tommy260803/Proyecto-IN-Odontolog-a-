@@ -267,29 +267,69 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const [flyerImageLoading, setFlyerImageLoading] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [flyerZoom, setFlyerZoom] = useState<number>(1);
-  const flyerContainerRef = useRef<HTMLDivElement>(null);
+  const [panPosition, setPanPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ startX: number; startY: number; initialPanX: number; initialPanY: number }>({
+    startX: 0,
+    startY: 0,
+    initialPanX: 0,
+    initialPanY: 0,
+  });
 
-  // Zoom interactivo con la rueda del ratón (scroll) en el visor del flyer
-  useEffect(() => {
-    const container = flyerContainerRef.current;
-    if (!container || !showPreviewModal) return;
+  const handleResetZoomAndPan = () => {
+    setFlyerZoom(1);
+    setPanPosition({ x: 0, y: 0 });
+  };
 
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const zoomStep = 0.12;
-      const direction = e.deltaY < 0 ? 1 : -1;
-      setFlyerZoom((prev) => {
-        const next = Math.round((prev + direction * zoomStep) * 100) / 100;
-        return Math.min(3.0, Math.max(0.6, next));
-      });
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    setIsDragging(true);
+    dragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialPanX: panPosition.x,
+      initialPanY: panPosition.y,
     };
+  };
 
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      container.removeEventListener('wheel', handleWheel);
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStartRef.current.startX;
+    const dy = e.clientY - dragStartRef.current.startY;
+    setPanPosition({
+      x: dragStartRef.current.initialPanX + dx,
+      y: dragStartRef.current.initialPanY + dy,
+    });
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging) setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    setIsDragging(true);
+    dragStartRef.current = {
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      initialPanX: panPosition.x,
+      initialPanY: panPosition.y,
     };
-  }, [showPreviewModal]);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - dragStartRef.current.startX;
+    const dy = e.touches[0].clientY - dragStartRef.current.startY;
+    setPanPosition({
+      x: dragStartRef.current.initialPanX + dx,
+      y: dragStartRef.current.initialPanY + dy,
+    });
+  };
+
+  const handleTouchEnd = () => {
+    if (isDragging) setIsDragging(false);
+  };
 
   const fetchData = () => {
     if (!leadId) return;
@@ -1882,7 +1922,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
         open={showPreviewModal} 
         onOpenChange={(open) => {
           setShowPreviewModal(open);
-          if (!open) setFlyerZoom(1);
+          if (!open) handleResetZoomAndPan();
         }}
       >
         <DialogContent className="max-w-4xl max-h-[96vh] p-5 sm:p-6 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col items-center z-[150] overflow-hidden">
@@ -1929,9 +1969,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
             </div>
           </DialogHeader>
 
-          {/* Contenedor del Flyer con Zoom mediante Scroll (Rueda del Ratón) */}
+          {/* Contenedor del Flyer con Zoom mediante Scroll y Arrastre Libre (Pan & Drag) */}
           <div 
-            ref={flyerContainerRef}
             onWheel={(e) => {
               const zoomStep = 0.15;
               const direction = e.deltaY < 0 ? 1 : -1;
@@ -1940,38 +1979,55 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                 return Math.min(3.0, Math.max(0.6, next));
               });
             }}
-            onDoubleClick={() => setFlyerZoom((prev) => (prev > 1 ? 1 : 1.75))}
-            className="relative w-full flex-1 min-h-[50vh] max-h-[75vh] flex items-center justify-center p-4 bg-slate-100/90 dark:bg-slate-950/60 border border-slate-200/90 dark:border-slate-800 rounded-2xl mt-3 overflow-hidden select-none cursor-default"
-            title="Gira la rueda del ratón (scroll) para hacer zoom o doble clic para alternar"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onDoubleClick={() => {
+              if (flyerZoom > 1 || panPosition.x !== 0 || panPosition.y !== 0) {
+                handleResetZoomAndPan();
+              } else {
+                setFlyerZoom(1.75);
+              }
+            }}
+            className={`relative w-full flex-1 min-h-[50vh] max-h-[75vh] flex items-center justify-center p-4 bg-slate-100/90 dark:bg-slate-950/60 border border-slate-200/90 dark:border-slate-800 rounded-2xl mt-3 overflow-hidden select-none ${
+              isDragging ? 'cursor-grabbing' : 'cursor-grab'
+            }`}
+            title="Usa la rueda (scroll) para zoom y haz clic sostenido para arrastrar"
           >
             <div 
-              className="flex items-center justify-center transition-transform duration-100 ease-out"
+              className="flex items-center justify-center pointer-events-none"
               style={{
-                transform: `scale(${flyerZoom})`,
+                transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${flyerZoom})`,
                 transformOrigin: 'center center',
+                transition: isDragging ? 'none' : 'transform 100ms ease-out',
               }}
             >
               <img
                 src={canvaResult?.previewUrl}
                 alt="Flyer Oficial Canva Grande"
-                className="max-h-[68vh] w-auto object-contain rounded-xl shadow-xl pointer-events-none"
+                className="max-h-[68vh] w-auto object-contain rounded-xl shadow-xl pointer-events-none select-none"
+                draggable={false}
               />
             </div>
 
             {/* Píldora inferior flotante pequeña y transparente */}
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/40 hover:bg-slate-900/60 backdrop-blur-md border border-white/15 text-[11px] font-mono text-white/90 shadow-sm transition-all select-none">
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/40 hover:bg-slate-900/60 backdrop-blur-md border border-white/15 text-[11px] font-mono text-white/90 shadow-sm transition-all select-none pointer-events-auto">
               <span>{Math.round(flyerZoom * 100)}%</span>
-              {flyerZoom !== 1 && (
+              {(flyerZoom !== 1 || panPosition.x !== 0 || panPosition.y !== 0) && (
                 <>
                   <span className="text-white/30">|</span>
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setFlyerZoom(1);
+                      handleResetZoomAndPan();
                     }}
                     className="text-[10px] text-teal-300 hover:text-white transition-colors cursor-pointer inline-flex items-center gap-0.5"
-                    title="Restablecer tamaño original (100%)"
+                    title="Restablecer tamaño y posición (100%)"
                   >
                     <RotateCcw className="w-2.5 h-2.5" />
                     <span>Reset</span>
