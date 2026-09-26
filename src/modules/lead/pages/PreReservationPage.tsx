@@ -28,6 +28,7 @@ import {
   AlertCircle,
   Stethoscope,
   ArrowRight,
+  ArrowLeft,
   MessageSquare,
   Copy,
   Download,
@@ -40,6 +41,9 @@ import {
   QrCode,
   Check,
   FileText,
+  Zap,
+  Building2,
+  Award,
 } from 'lucide-react';
 
 interface ChatMessage {
@@ -297,256 +301,244 @@ export default function PreReservationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-teal-100 selection:text-teal-900 antialiased pb-24">
+    <div className="min-h-screen h-auto lg:h-screen lg:max-h-screen w-full overflow-y-auto lg:overflow-hidden relative flex flex-col justify-between selection:bg-teal-500/30 selection:text-teal-900 font-sans antialiased text-slate-900">
       <Toaster />
 
-      {/* Barra de Navegación Clínica Superior */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 shadow-xs flex items-center justify-center p-1 overflow-hidden">
-              <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
-            </div>
-            <div>
-              <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 block leading-tight">
-                NexoSalud <span className="text-teal-600 font-bold">Dental</span>
-              </span>
-              <span className="text-[11px] text-slate-500 font-medium block leading-tight">
-                Portal Oficial de Pre-Reserva
-              </span>
-            </div>
-          </div>
+      {/* ========================================================================= */}
+      {/* CAPA DE FONDO DIVIDIDO (SPLIT SCREEN INVERTIDO: FORMULARIO IZQ, FOTO DER)  */}
+      {/* ========================================================================= */}
+      <div className="fixed inset-0 lg:absolute grid grid-cols-1 lg:grid-cols-12 pointer-events-none -z-10">
+        {/* Mitad Izquierda (7 cols): Fondo Blanco / Slate Suave para el Formulario */}
+        <div className="lg:col-span-7 xl:col-span-7 bg-slate-50 w-full h-full" />
 
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-semibold text-xs py-1 px-3 gap-1.5 shadow-2xs">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="hidden sm:inline">Tarifa Oficial Garantizada</span>
-              <span className="sm:hidden">Tarifa Congelada</span>
-            </Badge>
+        {/* Mitad Derecha (5 cols): Foto Fondo_NexoSalud_2.jpg con overlay clínico elegante */}
+        <div className="hidden lg:block lg:col-span-5 xl:col-span-5 relative bg-slate-950 w-full h-full overflow-hidden border-l border-slate-200/80">
+          <img
+            src="/Fondo_NexoSalud_2.jpg"
+            alt="Atención Odontológica Especializada NexoSalud"
+            className="absolute inset-0 w-full h-full object-cover object-center opacity-85 scale-100"
+          />
+          {/* Overlay gradiente suave para garantizar excelente contraste y legibilidad */}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/80" />
+        </div>
+      </div>
+
+      {/* Línea Central con Desvanecimiento Suave (Fading Divider) */}
+      <div className="hidden lg:block absolute left-[58.333%] top-0 bottom-0 -translate-x-1/2 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 via-50% to-transparent pointer-events-none z-10" />
+
+      {/* ========================================================================= */}
+      {/* BARRA SUPERIOR (HEADER)                                                   */}
+      {/* ========================================================================= */}
+      <header className="max-w-7xl mx-auto w-full flex items-center justify-between py-3 px-4 sm:px-6 lg:px-8 shrink-0 z-20 bg-white/90 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none border-b border-slate-200 lg:border-none shadow-xs lg:shadow-none">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center p-1 overflow-hidden">
+            <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
           </div>
+          <div>
+            <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 block leading-tight">
+              NexoSalud <span className="text-teal-600 font-bold">Dental</span>
+            </span>
+            <span className="text-[11px] text-slate-500 font-medium block leading-tight">
+              Portal Oficial de Pre-Reserva
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-semibold text-xs py-1 px-3 gap-1.5 shadow-2xs">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Tarifa Oficial Garantizada</span>
+          </Badge>
         </div>
       </header>
 
-      {/* Contenedor Principal */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
-
-        {/* Vista de Éxito / Comprobante Oficial si ya pre-reservó */}
-        {preReserveSuccess ? (
-          <Card className="border border-emerald-200 shadow-xl overflow-hidden bg-white animate-in zoom-in-95 duration-200">
-            <div className="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 p-6 sm:p-8 text-white text-center">
-              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
-                <CheckCircle2 className="w-10 h-10 text-white" />
-              </div>
-              <Badge className="bg-emerald-400 text-slate-950 font-black px-3 py-1 mb-2 hover:bg-emerald-400 shadow-sm text-xs uppercase tracking-wider">
-                Pre-Reserva Registrada Exitosamente
-              </Badge>
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight mt-1">¡Felicitaciones, {nombres}!</h2>
-              <p className="text-teal-100 text-xs sm:text-sm mt-1 max-w-lg mx-auto">
-                Tu cupo y descuento promocional para <span className="font-bold text-white underline">{offerData.serviceName}</span> han quedado congelados por 48 horas en nuestra central clínica.
-              </p>
-            </div>
-
-            <CardContent className="p-6 sm:p-8 space-y-6">
-              {/* Código de Pre-Reserva */}
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
-                <div>
-                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider block">Código Único de Atención</span>
-                  <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-wider">
-                    {preReserveSuccess.codigoReserva || 'NEXO-PROMO'}
-                  </span>
+      {/* ========================================================================= */}
+      {/* CONTENIDO PRINCIPAL: SPLIT SCREEN (IZQUIERDA: FORM, DERECHA: FOTO & INFO) */}
+      {/* ========================================================================= */}
+      <main className="relative max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start min-h-0 py-2 lg:py-2 px-4 sm:px-6 lg:px-8 z-20 pb-20 lg:pb-4">
+        
+        {/* ======================================================================= */}
+        {/* COLUMNA IZQUIERDA (7 COLS): FORMULARIO OFICIAL DE PRE-RESERVA           */}
+        {/* ======================================================================= */}
+        <div className="lg:col-span-7 xl:col-span-7 flex flex-col h-auto lg:h-[calc(100vh-5.5rem)] min-h-0">
+          
+          {preReserveSuccess ? (
+            /* Vista de Éxito / Comprobante de Reserva */
+            <Card className="border border-emerald-200 shadow-xl overflow-hidden bg-white animate-in zoom-in-95 duration-200">
+              <div className="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 p-6 sm:p-8 text-white text-center">
+                <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
+                  <CheckCircle2 className="w-10 h-10 text-white" />
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={copyCodeToClipboard}
-                  className="bg-white border-slate-300 text-slate-700 font-semibold hover:bg-slate-100 gap-1.5 shadow-2xs"
-                >
-                  <Copy className="w-4 h-4" /> Copiar Código
-                </Button>
-              </div>
-
-              {/* Resumen del Comprobante */}
-              <div className="space-y-2 text-xs sm:text-sm bg-white p-4 rounded-xl border border-slate-200">
-                <div className="flex justify-between py-2 border-b border-slate-100">
-                  <span className="text-slate-500 font-medium">Paciente Titular:</span>
-                  <span className="font-bold text-slate-900">
-                    {nombres} {apellidos} {dni ? `(DNI: ${dni})` : ''}
-                  </span>
-                </div>
-                {esParaFamiliar && nombreFamiliar && (
-                  <div className="flex justify-between py-2 border-b border-slate-100 bg-teal-50/60 px-2 rounded-lg">
-                    <span className="text-teal-800 font-semibold">Atención para familiar:</span>
-                    <span className="font-bold text-teal-950">{nombreFamiliar} ({parentesco})</span>
-                  </div>
-                )}
-                <div className="flex justify-between py-2 border-b border-slate-100">
-                  <span className="text-slate-500 font-medium">Tratamiento Asignado:</span>
-                  <span className="font-bold text-teal-700">{offerData.serviceName}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-100">
-                  <span className="text-slate-500 font-medium">Sede Odontológica:</span>
-                  <span className="font-semibold text-slate-800">
-                    {offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId))?.nombre || offerData.sede}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-100">
-                  <span className="text-slate-500 font-medium">Fecha y Turno:</span>
-                  <span className="font-semibold text-slate-800">
-                    {fechaCita} — {horaCita}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-100">
-                  <span className="text-slate-500 font-medium">Modalidad de Pago:</span>
-                  <Badge variant="outline" className="bg-slate-100 text-slate-800 border-slate-300 font-semibold text-xs">
-                    {canalPago}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center pt-2">
-                  <span className="text-sm font-bold text-slate-800">Total Promocional a abonar:</span>
-                  <div className="text-right">
-                    <span className="text-2xl font-black text-emerald-600">S/ {Number(offerData.offeredPrice).toFixed(2)}</span>
-                    <span className="block text-[11px] text-slate-400 line-through">S/ {Number(offerData.originalPrice).toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Botones de acción final */}
-              <div className="space-y-3 pt-2">
-                <Button
-                  onClick={() => {
-                    const text = encodeURIComponent(
-                      `¡Hola NexoSalud! Confirmé mi pre-reserva online.\n\n` +
-                      `📋 *Código:* ${preReserveSuccess.codigoReserva}\n` +
-                      `👤 *Paciente:* ${nombres} ${apellidos}\n` +
-                      `🦷 *Tratamiento:* ${offerData.serviceName}\n` +
-                      `💰 *Monto Promocional:* S/ ${Number(offerData.offeredPrice).toFixed(2)}\n` +
-                      `💳 *Pago:* ${canalPago}\n` +
-                      `📍 *Sede:* ${offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId))?.nombre || offerData.sede}`
-                    );
-                    window.open(`https://wa.me/51970292710?text=${text}`, '_blank');
-                  }}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 rounded-xl text-sm shadow-md gap-2"
-                >
-                  <MessageSquare className="w-5 h-5" /> Enviar Voucher a WhatsApp de la Clínica
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => window.print()}
-                  className="w-full !bg-white border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold gap-2"
-                >
-                  <Download className="w-4 h-4" /> Imprimir o Guardar Comprobante PDF
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          /* Vista Principal: Banner Promocional + Formulario Completo */
-          <div className="space-y-6">
-
-            {/* Tarjeta Visual de la Oferta */}
-            <Card className="border border-teal-200 shadow-md overflow-hidden !bg-white">
-              <div className="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 p-5 sm:p-6 text-white">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Badge className="bg-amber-400 text-slate-950 font-black hover:bg-amber-400 px-3 py-1 shadow-sm text-xs">
-                    <Tag className="w-3.5 h-3.5 mr-1 inline" /> ¡{offerData.discountPct}% DSCTO. EXCLUSIVO!
-                  </Badge>
-                  <div className="flex items-center gap-1.5 text-xs text-teal-100 font-medium bg-white/10 px-3 py-1 rounded-full backdrop-blur-xs">
-                    <Clock3 className="w-3.5 h-3.5" /> Vigencia Garantizada 48h
-                  </div>
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-black mt-3 tracking-tight text-white">{offerData.serviceName}</h1>
-                <p className="text-teal-100 text-xs sm:text-sm mt-1 line-clamp-2 max-w-2xl">
-                  {offerData.serviceDescription || 'Tratamiento odontológico integral con equipos de última tecnología y garantía NexoSalud.'}
+                <Badge className="bg-emerald-400 text-slate-950 font-black px-3 py-1 mb-2 hover:bg-emerald-400 shadow-sm text-xs uppercase tracking-wider">
+                  Pre-Reserva Registrada Exitosamente
+                </Badge>
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tight mt-1">¡Felicitaciones, {nombres}!</h2>
+                <p className="text-teal-100 text-xs sm:text-sm mt-1 max-w-lg mx-auto">
+                  Tu cupo y descuento promocional para <span className="font-bold text-white underline">{offerData.serviceName}</span> han quedado congelados por 48 horas en nuestra central clínica.
                 </p>
               </div>
 
-              <CardContent className="p-5 sm:p-6 space-y-4 !bg-white">
-                {/* Comparativa de Precios */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between bg-teal-50/70 p-4 rounded-xl border border-teal-100 gap-3">
+              <CardContent className="p-6 sm:p-8 space-y-6">
+                {/* Código de Pre-Reserva */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
                   <div>
-                    <span className="text-xs text-slate-500 font-semibold block">Precio Regular sin Descuento:</span>
-                    <span className="text-sm text-slate-400 line-through font-bold">
-                      S/ {Number(offerData.originalPrice).toFixed(2)}
+                    <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider block">Código Único de Atención</span>
+                    <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-wider">
+                      {preReserveSuccess.codigoReserva || 'NEXO-PROMO'}
                     </span>
-                    <div className="text-xs font-black text-emerald-700 mt-0.5 flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                      Ahorras en esta cita: S/ {(Number(offerData.originalPrice) - Number(offerData.offeredPrice)).toFixed(2)}
-                    </div>
                   </div>
-                  <div className="text-left sm:text-right">
-                    <span className="text-xs font-bold uppercase tracking-wider text-teal-800 block">Tarifa Promocional Final</span>
-                    <span className="text-3xl sm:text-4xl font-black text-teal-900 tracking-tight block">
-                      S/ {Number(offerData.offeredPrice).toFixed(2)}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copyCodeToClipboard}
+                    className="bg-white border-slate-300 text-slate-700 font-semibold hover:bg-slate-100 gap-1.5 shadow-2xs"
+                  >
+                    <Copy className="w-4 h-4" /> Copiar Código
+                  </Button>
+                </div>
+
+                {/* Resumen del Comprobante */}
+                <div className="space-y-2 text-xs sm:text-sm bg-white p-4 rounded-xl border border-slate-200">
+                  <div className="flex justify-between py-2 border-b border-slate-100">
+                    <span className="text-slate-500 font-medium">Paciente Titular:</span>
+                    <span className="font-bold text-slate-900">
+                      {nombres} {apellidos} {dni ? `(DNI: ${dni})` : ''}
                     </span>
+                  </div>
+                  {esParaFamiliar && nombreFamiliar && (
+                    <div className="flex justify-between py-2 border-b border-slate-100 bg-teal-50/60 px-2 rounded-lg">
+                      <span className="text-teal-800 font-semibold">Atención para familiar:</span>
+                      <span className="font-bold text-teal-950">{nombreFamiliar} ({parentesco})</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between py-2 border-b border-slate-100">
+                    <span className="text-slate-500 font-medium">Tratamiento Asignado:</span>
+                    <span className="font-bold text-teal-700">{offerData.serviceName}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-slate-100">
+                    <span className="text-slate-500 font-medium">Sede Odontológica:</span>
+                    <span className="font-semibold text-slate-800">
+                      {offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId))?.nombre || offerData.sede}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-slate-100">
+                    <span className="text-slate-500 font-medium">Fecha y Turno:</span>
+                    <span className="font-semibold text-slate-800">
+                      {fechaCita} — {horaCita}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-slate-100">
+                    <span className="text-slate-500 font-medium">Modalidad de Pago:</span>
+                    <Badge variant="outline" className="bg-slate-100 text-slate-800 border-slate-300 font-semibold text-xs">
+                      {canalPago}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-sm font-bold text-slate-800">Total Promocional a abonar:</span>
+                    <div className="text-right">
+                      <span className="text-2xl font-black text-emerald-600">S/ {Number(offerData.offeredPrice).toFixed(2)}</span>
+                      <span className="block text-[11px] text-slate-400 line-through">S/ {Number(offerData.originalPrice).toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Detalles de la Oferta */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <MapPin className="w-4 h-4 text-teal-600 shrink-0" />
-                    <div>
-                      <span className="text-slate-500 block font-medium">Sede Principal Asignada</span>
-                      <span className="font-bold text-slate-800 truncate block">{offerData.sede}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <Stethoscope className="w-4 h-4 text-teal-600 shrink-0" />
-                    <div>
-                      <span className="text-slate-500 block font-medium">Especialista Asignado</span>
-                      <span className="font-bold text-slate-800 truncate block">{offerData.doctor}</span>
-                    </div>
-                  </div>
+                {/* Botones de acción final */}
+                <div className="space-y-3 pt-2">
+                  <Button
+                    onClick={() => {
+                      const text = encodeURIComponent(
+                        `¡Hola NexoSalud! Confirmé mi pre-reserva online.\n\n` +
+                        `📋 *Código:* ${preReserveSuccess.codigoReserva}\n` +
+                        `👤 *Paciente:* ${nombres} ${apellidos}\n` +
+                        `🦷 *Tratamiento:* ${offerData.serviceName}\n` +
+                        `💰 *Monto Promocional:* S/ ${Number(offerData.offeredPrice).toFixed(2)}\n` +
+                        `💳 *Pago:* ${canalPago}\n` +
+                        `📍 *Sede:* ${offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId))?.nombre || offerData.sede}`
+                      );
+                      window.open(`https://wa.me/51970292710?text=${text}`, '_blank');
+                    }}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 rounded-xl text-sm shadow-md gap-2"
+                  >
+                    <MessageSquare className="w-5 h-5" /> Enviar Voucher a WhatsApp de la Clínica
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.print()}
+                    className="w-full !bg-white border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold gap-2"
+                  >
+                    <Download className="w-4 h-4" /> Imprimir o Guardar Comprobante PDF
+                  </Button>
                 </div>
               </CardContent>
             </Card>
+          ) : (
+            /* Card con Formulario Scrollable */
+            <div className="flex flex-col h-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+              
+              {/* Header de la Tarjeta del Formulario */}
+              <div className="px-5 sm:px-6 py-4 border-b border-slate-100 bg-white shrink-0">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-slate-900 leading-tight">
+                        Formulario de Pre-Reserva
+                      </h2>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        Completa tus datos para emitir tu orden clínica y congelar la tarifa.
+                      </p>
+                    </div>
+                  </div>
 
-            {/* Formulario Principal de Pre-Reserva */}
-            <Card className="border border-slate-200 shadow-md !bg-white">
-              <CardHeader className="p-5 sm:p-6 border-b border-slate-100 !bg-white">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700">
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg font-bold text-slate-900">
-                      Formulario Oficial de Pre-Reserva
-                    </CardTitle>
-                    <CardDescription className="text-xs text-slate-500">
-                      Completa tus datos para emitir tu orden clínica y congelar la tarifa con garantía.
-                    </CardDescription>
-                  </div>
+                  <Badge className="bg-amber-400 text-slate-950 font-black hover:bg-amber-400 px-2.5 py-0.5 shadow-xs text-[11px] shrink-0">
+                    ¡{offerData.discountPct}% DSCTO!
+                  </Badge>
                 </div>
-              </CardHeader>
+              </div>
 
-              <CardContent className="p-5 sm:p-6 !bg-white">
-                <form onSubmit={handlePreReserveSubmit} className="space-y-6">
+              {/* Contenedor Scrollable del Formulario */}
+              <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-5 bg-white lg:[scrollbar-width:thin]">
+                <form onSubmit={handlePreReserveSubmit} className="space-y-5">
+
+                  {/* Resumen Compacto de la Oferta en Móvil */}
+                  <div className="lg:hidden p-3.5 bg-teal-50/70 border border-teal-100 rounded-2xl space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-teal-900">{offerData.serviceName}</span>
+                      <span className="text-sm font-black text-teal-900">S/ {Number(offerData.offeredPrice).toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span>Regular: S/ {Number(offerData.originalPrice).toFixed(2)}</span>
+                      <span className="text-emerald-700 font-bold">Ahorras S/ {(Number(offerData.originalPrice) - Number(offerData.offeredPrice)).toFixed(2)}</span>
+                    </div>
+                  </div>
 
                   {/* Sección 1: Datos Personales */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
-                      <User className="w-4 h-4 text-teal-600" /> 1. Datos del Paciente Titular
+                  <div className="space-y-3.5">
+                    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+                      <User className="w-3.5 h-3.5 text-teal-600" /> 1. Datos del Paciente Titular
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <Label className="text-xs font-semibold text-slate-700">Nombres *</Label>
+                        <Label className="text-[11px] font-semibold text-slate-700">Nombres *</Label>
                         <Input
                           required
                           value={nombres}
                           onChange={(e) => setNombres(e.target.value)}
                           placeholder="Tus nombres"
-                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-10 mt-1 rounded-xl shadow-2xs font-medium"
+                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium"
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-semibold text-slate-700">Apellidos *</Label>
+                        <Label className="text-[11px] font-semibold text-slate-700">Apellidos *</Label>
                         <Input
                           required
                           value={apellidos}
                           onChange={(e) => setApellidos(e.target.value)}
                           placeholder="Tus apellidos"
-                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-10 mt-1 rounded-xl shadow-2xs font-medium"
+                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium"
                         />
                       </div>
                     </div>
@@ -554,8 +546,8 @@ export default function PreReservationPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <div className="flex justify-between items-center">
-                          <Label className="text-xs font-semibold text-slate-700">DNI / Carné Extranjería *</Label>
-                          <span className="text-[10px] text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">Requerido</span>
+                          <Label className="text-[11px] font-semibold text-slate-700">DNI / Carné Extranjería *</Label>
+                          <span className="text-[9.5px] text-teal-700 font-bold bg-teal-50 px-1.5 py-0.5 rounded-full border border-teal-100">Requerido</span>
                         </div>
                         <Input
                           required
@@ -563,35 +555,35 @@ export default function PreReservationPage() {
                           value={dni}
                           onChange={(e) => setDni(e.target.value.replace(/[^0-9a-zA-Z]/g, ''))}
                           placeholder="Número de DNI"
-                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-10 mt-1 rounded-xl shadow-2xs font-medium"
+                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium"
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-semibold text-slate-700">WhatsApp de Confirmación *</Label>
+                        <Label className="text-[11px] font-semibold text-slate-700">WhatsApp de Confirmación *</Label>
                         <Input
                           required
                           type="tel"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           placeholder="999 888 777"
-                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-10 mt-1 rounded-xl shadow-2xs font-medium"
+                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <Label className="text-xs font-semibold text-slate-700">Correo Electrónico (Para comprobante digital)</Label>
+                      <Label className="text-[11px] font-semibold text-slate-700">Correo Electrónico (Para comprobante digital)</Label>
                       <Input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="tu-correo@ejemplo.com"
-                        className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-10 mt-1 rounded-xl shadow-2xs font-medium"
+                        className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium"
                       />
                     </div>
 
-                    {/* Checkbox para familiar con fondo blanco y borde slate */}
-                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                    {/* Checkbox para familiar con fondo blanco y hover teal */}
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
                       <div className="flex items-center gap-2.5">
                         <Checkbox
                           id="familiar"
@@ -607,19 +599,19 @@ export default function PreReservationPage() {
                       {esParaFamiliar && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 animate-in fade-in-50 duration-200">
                           <div>
-                            <Label className="text-xs font-semibold text-slate-700">Nombre del Familiar *</Label>
+                            <Label className="text-[11px] font-semibold text-slate-700">Nombre del Familiar *</Label>
                             <Input
                               required={esParaFamiliar}
                               value={nombreFamiliar}
                               onChange={(e) => setNombreFamiliar(e.target.value)}
                               placeholder="Ej: Mateo Castillo"
-                              className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-10 mt-1 rounded-xl font-medium"
+                              className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-9 mt-1 rounded-xl font-medium"
                             />
                           </div>
                           <div>
-                            <Label className="text-xs font-semibold text-slate-700">Parentesco</Label>
+                            <Label className="text-[11px] font-semibold text-slate-700">Parentesco</Label>
                             <Select value={parentesco} onValueChange={setParentesco}>
-                              <SelectTrigger className="!bg-white !text-slate-900 !border-slate-300 text-xs h-10 mt-1 rounded-xl font-medium shadow-2xs">
+                              <SelectTrigger className="!bg-white !text-slate-900 !border-slate-300 text-xs h-9 mt-1 rounded-xl font-medium shadow-2xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
                                 <SelectValue placeholder="Selecciona parentesco" />
                               </SelectTrigger>
                               <SelectContent className="!bg-white !border-slate-200 text-slate-900 shadow-xl">
@@ -637,19 +629,19 @@ export default function PreReservationPage() {
                   </div>
 
                   {/* Sección 2: Sede, Horario y Cuestionario Clínico */}
-                  <div className="space-y-4 pt-2 border-t border-slate-100">
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
-                      <Calendar className="w-4 h-4 text-teal-600" /> 2. Coordinación de Cita & Sede
+                  <div className="space-y-3.5 pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+                      <Calendar className="w-3.5 h-3.5 text-teal-600" /> 2. Coordinación de Cita & Sede
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <Label className="text-xs font-semibold text-slate-700">Sede Preferencial</Label>
+                        <Label className="text-[11px] font-semibold text-slate-700">Sede Preferencial</Label>
                         <Select
                           value={String(selectedSedeId)}
                           onValueChange={(val) => setSelectedSedeId(val)}
                         >
-                          <SelectTrigger className="!bg-white !text-slate-900 !border-slate-300 text-xs h-10 mt-1 rounded-xl font-medium shadow-2xs">
+                          <SelectTrigger className="!bg-white !text-slate-900 !border-slate-300 text-xs h-9 mt-1 rounded-xl font-medium shadow-2xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
                             <SelectValue placeholder="Selecciona sede" />
                           </SelectTrigger>
                           <SelectContent className="!bg-white !border-slate-200 text-slate-900 shadow-xl">
@@ -671,21 +663,21 @@ export default function PreReservationPage() {
                       </div>
 
                       <div>
-                        <Label className="text-xs font-semibold text-slate-700">Fecha Tentativa</Label>
+                        <Label className="text-[11px] font-semibold text-slate-700">Fecha Tentativa</Label>
                         <Input
                           type="date"
                           value={fechaCita}
                           min={new Date().toISOString().split('T')[0]}
                           onChange={(e) => setFechaCita(e.target.value)}
-                          className="!bg-white !text-slate-900 !border-slate-300 text-xs h-10 mt-1 rounded-xl shadow-2xs font-medium"
+                          className="!bg-white !text-slate-900 !border-slate-300 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium focus:!border-teal-500 focus:!ring-teal-500/20"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <Label className="text-xs font-semibold text-slate-700">Turno Preferido de Atención</Label>
+                      <Label className="text-[11px] font-semibold text-slate-700">Turno Preferido de Atención</Label>
                       <Select value={horaCita} onValueChange={setHoraCita}>
-                        <SelectTrigger className="!bg-white !text-slate-900 !border-slate-300 text-xs h-10 mt-1 rounded-xl font-medium shadow-2xs">
+                        <SelectTrigger className="!bg-white !text-slate-900 !border-slate-300 text-xs h-9 mt-1 rounded-xl font-medium shadow-2xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
                           <SelectValue placeholder="Selecciona turno preferido" />
                         </SelectTrigger>
                         <SelectContent className="!bg-white !border-slate-200 text-slate-900 shadow-xl">
@@ -696,9 +688,9 @@ export default function PreReservationPage() {
                       </Select>
                     </div>
 
-                    {/* Nivel de dolor con opciones blancas y hover celeste */}
+                    {/* Nivel de dolor con opciones blancas y hover Teal */}
                     <div>
-                      <Label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                      <Label className="text-[11px] font-semibold text-slate-700 block mb-1.5">
                         ¿Presentas dolor o molestia dental actualmente?
                       </Label>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
@@ -714,7 +706,7 @@ export default function PreReservationPage() {
                               key={nivel}
                               type="button"
                               onClick={() => setNivelDolor(nivel)}
-                              className={`py-2.5 px-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer text-center ${
+                              className={`py-2 px-1.5 rounded-xl border text-[11px] font-semibold transition-all cursor-pointer text-center ${
                                 isSelected
                                   ? '!bg-teal-600 !border-teal-600 text-white shadow-sm ring-2 ring-teal-500/20'
                                   : '!bg-white !border-slate-200 text-slate-700 hover:!bg-teal-50/50 hover:!border-teal-400 hover:!text-teal-950 shadow-2xs'
@@ -728,88 +720,88 @@ export default function PreReservationPage() {
                     </div>
 
                     <div>
-                      <Label className="text-xs font-semibold text-slate-700">Alergias o Condiciones Especiales (Opcional)</Label>
+                      <Label className="text-[11px] font-semibold text-slate-700">Alergias o Condiciones Especiales (Opcional)</Label>
                       <Input
                         value={alergias}
                         onChange={(e) => setAlergias(e.target.value)}
                         placeholder="Ej: Penicilina, látex, hipertensión, ninguna..."
-                        className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 text-xs h-10 mt-1 rounded-xl shadow-2xs font-medium"
+                        className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium focus:!border-teal-500 focus:!ring-teal-500/20"
                       />
                     </div>
                   </div>
 
                   {/* Sección 3: Modalidad de Pago y Confirmación */}
-                  <div className="space-y-4 pt-2 border-t border-slate-100">
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
-                      <CreditCard className="w-4 h-4 text-teal-600" /> 3. Modalidad de Pago Preferida
+                  <div className="space-y-3.5 pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+                      <CreditCard className="w-3.5 h-3.5 text-teal-600" /> 3. Modalidad de Pago Preferida
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                       <button
                         type="button"
                         onClick={() => setCanalPago('Efectivo en clínica')}
-                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                           canalPago === 'Efectivo en clínica'
                             ? '!bg-teal-50/90 !border-2 !border-teal-600 text-teal-950 ring-2 ring-teal-500/20 shadow-xs'
                             : '!bg-white !border-slate-200 text-slate-700 hover:!border-teal-400 hover:!bg-teal-50/40 hover:!text-teal-950 shadow-2xs'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <Banknote className="w-5 h-5 text-teal-600" />
-                          {canalPago === 'Efectivo en clínica' && <Check className="w-4 h-4 text-teal-600" />}
+                        <div className="flex items-center justify-between mb-1">
+                          <Banknote className="w-4 h-4 text-teal-600" />
+                          {canalPago === 'Efectivo en clínica' && <Check className="w-3.5 h-3.5 text-teal-600" />}
                         </div>
                         <div>
                           <span className="block font-bold text-slate-900 text-xs">En Clínica</span>
-                          <span className="text-[11px] text-slate-500 font-normal">Pagas el día de tu cita</span>
+                          <span className="text-[10px] text-slate-500 font-normal">Pagas el día de tu cita</span>
                         </div>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setCanalPago('Yape / Plin')}
-                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                           canalPago === 'Yape / Plin'
                             ? '!bg-teal-50/90 !border-2 !border-teal-600 text-teal-950 ring-2 ring-teal-500/20 shadow-xs'
                             : '!bg-white !border-slate-200 text-slate-700 hover:!border-teal-400 hover:!bg-teal-50/40 hover:!text-teal-950 shadow-2xs'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <QrCode className="w-5 h-5 text-teal-600" />
-                          {canalPago === 'Yape / Plin' && <Check className="w-4 h-4 text-teal-600" />}
+                        <div className="flex items-center justify-between mb-1">
+                          <QrCode className="w-4 h-4 text-teal-600" />
+                          {canalPago === 'Yape / Plin' && <Check className="w-3.5 h-3.5 text-teal-600" />}
                         </div>
                         <div>
                           <span className="block font-bold text-slate-900 text-xs">Yape / Plin</span>
-                          <span className="text-[11px] text-slate-500 font-normal">Coordinado al llegar</span>
+                          <span className="text-[10px] text-slate-500 font-normal">Coordinado al llegar</span>
                         </div>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setCanalPago('Tarjeta')}
-                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                           canalPago === 'Tarjeta'
                             ? '!bg-teal-50/90 !border-2 !border-teal-600 text-teal-950 ring-2 ring-teal-500/20 shadow-xs'
                             : '!bg-white !border-slate-200 text-slate-700 hover:!border-teal-400 hover:!bg-teal-50/40 hover:!text-teal-950 shadow-2xs'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <CreditCard className="w-5 h-5 text-teal-600" />
-                          {canalPago === 'Tarjeta' && <Check className="w-4 h-4 text-teal-600" />}
+                        <div className="flex items-center justify-between mb-1">
+                          <CreditCard className="w-4 h-4 text-teal-600" />
+                          {canalPago === 'Tarjeta' && <Check className="w-3.5 h-3.5 text-teal-600" />}
                         </div>
                         <div>
                           <span className="block font-bold text-slate-900 text-xs">Tarjeta Déb/Cré</span>
-                          <span className="text-[11px] text-slate-500 font-normal">POS sin recargo extra</span>
+                          <span className="text-[10px] text-slate-500 font-normal">POS sin recargo extra</span>
                         </div>
                       </button>
                     </div>
 
                     <div>
-                      <Label className="text-xs font-semibold text-slate-700">Duda o Comentario para el Odontólogo (Opcional)</Label>
+                      <Label className="text-[11px] font-semibold text-slate-700">Duda o Comentario para el Odontólogo (Opcional)</Label>
                       <Input
                         value={comentarios}
                         onChange={(e) => setComentarios(e.target.value)}
                         placeholder="Ej: Deseo consultar también por ortodoncia o blanqueamiento..."
-                        className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 text-xs h-10 mt-1 rounded-xl shadow-2xs font-medium"
+                        className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium focus:!border-teal-500 focus:!ring-teal-500/20"
                       />
                     </div>
 
@@ -831,36 +823,134 @@ export default function PreReservationPage() {
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="w-full bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold h-12 rounded-xl text-sm sm:text-base shadow-lg shadow-teal-700/20 flex items-center justify-center gap-2 transition-transform active:scale-[0.99]"
+                    className="w-full bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold h-11 rounded-xl text-sm shadow-lg shadow-teal-700/20 flex items-center justify-center gap-2 transition-transform active:scale-[0.99]"
                   >
                     {submitting ? (
                       <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                         Formalizando Pre-Reserva en el Sistema...
                       </>
                     ) : (
                       <>
-                        <CheckCircle2 className="w-5 h-5" />
+                        <CheckCircle2 className="w-4 h-4" />
                         Confirmar Pre-Reserva & Congelar Tarifa (S/ {Number(offerData.offeredPrice).toFixed(2)})
                       </>
                     )}
                   </Button>
 
                   {/* Texto inferior de protección de datos con ícono de framework (SIN emoji) */}
-                  <div className="flex items-center justify-center gap-1.5 text-xs text-slate-500 pt-1 text-center">
-                    <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0" />
-                    <span>Tus datos están protegidos por el secreto médico y la Ley de Protección de Datos Personales N° 29733.</span>
+                  <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 pt-1 text-center">
+                    <ShieldCheck className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                    <span>Tus datos están protegidos por el secreto médico y la Ley N° 29733.</span>
                   </div>
                 </form>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ======================================================================= */}
+        {/* COLUMNA DERECHA (5 COLS): FOTO Fondo_NexoSalud_2.jpg + RESUMEN CLÍNICO */}
+        {/* ======================================================================= */}
+        <div className="hidden lg:flex lg:col-span-5 xl:col-span-5 flex-col justify-between h-[calc(100vh-5.5rem)] space-y-4 text-white pl-2 xl:pl-4 py-2">
+          
+          {/* Header de la Oferta Visual */}
+          <div className="space-y-3 animate-in fade-in slide-in-from-right duration-300">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-xs font-semibold backdrop-blur-md">
+              <Sparkles className="w-3.5 h-3.5 text-teal-300" />
+              <span>Propuesta Comercial Exclusiva</span>
+            </div>
+
+            <h1 className="text-2xl xl:text-3xl font-black text-white tracking-tight leading-tight">
+              {offerData.serviceName}
+            </h1>
+
+            <p className="text-slate-300 text-xs leading-relaxed max-w-md font-normal">
+              {offerData.serviceDescription || 'Tratamiento odontológico integral con equipos de última tecnología, garantía NexoSalud y atención personalizada.'}
+            </p>
           </div>
-        )}
+
+          {/* Tarjeta Visual de Precios & Ahorro */}
+          <div className="bg-slate-900/80 border border-slate-700/80 backdrop-blur-md p-4 rounded-2xl space-y-3 shadow-2xl animate-in fade-in slide-in-from-right duration-400">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Tag className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                  ¡{offerData.discountPct}% de Descuento!
+                </span>
+              </div>
+              <div className="flex items-center gap-1 text-[11px] text-teal-200 bg-teal-500/20 px-2 py-0.5 rounded-full border border-teal-500/30">
+                <Clock3 className="w-3 h-3" />
+                <span>Vigencia 48h</span>
+              </div>
+            </div>
+
+            <div className="flex items-baseline justify-between pt-1">
+              <div>
+                <span className="text-[11px] text-slate-400 block">Tarifa regular:</span>
+                <span className="text-sm line-through text-slate-500 font-bold">
+                  S/ {Number(offerData.originalPrice).toFixed(2)}
+                </span>
+                <div className="text-xs font-bold text-emerald-400 mt-0.5">
+                  Ahorras: S/ {(Number(offerData.originalPrice) - Number(offerData.offeredPrice)).toFixed(2)}
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] uppercase font-bold text-teal-300 tracking-wider block">Tarifa Especial</span>
+                <span className="text-3xl font-black text-white tracking-tight">
+                  S/ {Number(offerData.offeredPrice).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Grid de Credenciales Médicas */}
+          <div className="grid grid-cols-2 gap-2.5 animate-in fade-in slide-in-from-right duration-500">
+            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-sm space-y-1">
+              <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-300">
+                <Stethoscope className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-[10px] text-slate-400 block font-medium">Especialista</span>
+              <p className="text-xs font-bold text-white truncate">{offerData.doctor}</p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-sm space-y-1">
+              <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-300">
+                <MapPin className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-[10px] text-slate-400 block font-medium">Sede Principal</span>
+              <p className="text-xs font-bold text-white truncate">{offerData.sede}</p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-sm space-y-1">
+              <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-300">
+                <Zap className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-[10px] text-slate-400 block font-medium">Tecnología</span>
+              <p className="text-xs font-bold text-white truncate">Diagnóstico 3D & Bioseguridad</p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-sm space-y-1">
+              <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-300">
+                <Award className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-[10px] text-slate-400 block font-medium">Garantía</span>
+              <p className="text-xs font-bold text-white truncate">Clínica Certificada</p>
+            </div>
+          </div>
+
+          {/* Nota de Tranquilidad al Paciente */}
+          <div className="p-3 rounded-xl bg-teal-950/40 border border-teal-800/50 backdrop-blur-sm text-[11px] text-teal-200/90 flex items-start gap-2">
+            <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+            <span>Al confirmar tu pre-reserva, congelas tu tarifa por 48 horas sin compromiso de pago inmediato. Nuestro equipo coordinará tu llegada.</span>
+          </div>
+
+        </div>
       </main>
 
-      {/* ============================================================ */}
-      {/* WIDGET FLOTANTE: ASISTENTE NEXOSALUD (Chat IA Flotante)     */}
-      {/* ============================================================ */}
+      {/* ========================================================================= */}
+      {/* WIDGET FLOTANTE: ASISTENTE NEXOSALUD (Chat IA Flotante)                   */}
+      {/* ========================================================================= */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
         {/* Ventana de Chat Flotante con Animación Elegante de Entrada y Salida */}
         <div
