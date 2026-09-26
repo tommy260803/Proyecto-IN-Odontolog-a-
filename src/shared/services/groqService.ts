@@ -786,7 +786,7 @@ export async function chatWithNegotiatorAgent(
 ): Promise<string> {
   const apiKey = import.meta.env.VITE_GROQ_API_KEY;
 
-  const systemPrompt = `Eres la Dra. Sofía, asesora clínica y negociadora virtual de NexoSalud Odontología Especializada.
+  const systemPrompt = `Eres el Asistente NexoSalud, asesor virtual oficial de la Clínica NexoSalud Odontología Especializada.
 Estás hablando directamente con el paciente ${ctx.patientName || 'estimado paciente'}.
 
 CONTEXTO DE LA OFERTA EXCLUSIVA:
