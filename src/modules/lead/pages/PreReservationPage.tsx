@@ -305,40 +305,40 @@ export default function PreReservationPage() {
       <Toaster />
 
       {/* ========================================================================= */}
-      {/* CAPA DE FONDO DIVIDIDO (SPLIT SCREEN INVERTIDO: FORMULARIO IZQ, FOTO DER)  */}
+      {/* CAPA DE FONDO DIVIDIDO 50% / 50% (MITAD IZQ BLANCA, MITAD DER FOTO)       */}
       {/* ========================================================================= */}
-      <div className="fixed inset-0 lg:absolute grid grid-cols-1 lg:grid-cols-12 pointer-events-none -z-10">
-        {/* Mitad Izquierda (7 cols): Fondo Blanco / Slate Suave para el Formulario */}
-        <div className="lg:col-span-7 xl:col-span-7 bg-slate-50 w-full h-full" />
+      <div className="fixed inset-0 lg:absolute grid grid-cols-1 lg:grid-cols-2 pointer-events-none -z-10">
+        {/* Mitad Izquierda (50%): Blanco puro plano */}
+        <div className="bg-slate-50/90 lg:bg-white w-full h-full" />
 
-        {/* Mitad Derecha (5 cols): Foto Fondo_NexoSalud_2.jpg con overlay clínico elegante */}
-        <div className="hidden lg:block lg:col-span-5 xl:col-span-5 relative bg-slate-950 w-full h-full overflow-hidden border-l border-slate-200/80">
+        {/* Mitad Derecha (50%): Foto Fondo_NexoSalud_2.jpg con overlay clínico */}
+        <div className="hidden lg:block relative bg-slate-950 w-full h-full overflow-hidden border-l border-slate-200">
           <img
             src="/Fondo_NexoSalud_2.jpg"
             alt="Atención Odontológica Especializada NexoSalud"
-            className="absolute inset-0 w-full h-full object-cover object-center opacity-85 scale-100"
+            className="absolute inset-0 w-full h-full object-cover object-center opacity-80 scale-100"
           />
-          {/* Overlay gradiente suave para garantizar excelente contraste y legibilidad */}
+          {/* Overlay suave para mantener excelente legibilidad en textos */}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/80" />
         </div>
       </div>
 
-      {/* Línea Central con Desvanecimiento Suave (Fading Divider) */}
-      <div className="hidden lg:block absolute left-[58.333%] top-0 bottom-0 -translate-x-1/2 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 via-50% to-transparent pointer-events-none z-10" />
+      {/* Línea Central con Desvanecimiento Suave (Fading Divider en 50%) */}
+      <div className="hidden lg:block absolute left-1/2 top-0 bottom-0 -translate-x-1/2 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 via-50% to-transparent pointer-events-none z-10" />
 
       {/* ========================================================================= */}
-      {/* BARRA SUPERIOR (HEADER)                                                   */}
+      {/* HEADER SUPERIOR                                                           */}
       {/* ========================================================================= */}
-      <header className="max-w-7xl mx-auto w-full flex items-center justify-between py-3 px-4 sm:px-6 lg:px-8 shrink-0 z-20 bg-white/90 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none border-b border-slate-200 lg:border-none shadow-xs lg:shadow-none">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center p-1 overflow-hidden">
+      <header className="max-w-7xl mx-auto w-full flex items-center justify-between py-2 px-4 sm:px-6 lg:px-8 shrink-0 z-20">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center p-1 overflow-hidden">
             <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
           </div>
           <div>
             <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 block leading-tight">
               NexoSalud <span className="text-teal-600 font-bold">Dental</span>
             </span>
-            <span className="text-[11px] text-slate-500 font-medium block leading-tight">
+            <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium block leading-tight">
               Portal Oficial de Pre-Reserva
             </span>
           </div>
@@ -353,37 +353,37 @@ export default function PreReservationPage() {
       </header>
 
       {/* ========================================================================= */}
-      {/* CONTENIDO PRINCIPAL: SPLIT SCREEN (IZQUIERDA: FORM, DERECHA: FOTO & INFO) */}
+      {/* CONTENIDO PRINCIPAL: 50% / 50% (IZQUIERDA: FORM, DERECHA: FOTO & OFERTA) */}
       {/* ========================================================================= */}
-      <main className="relative max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start min-h-0 py-2 lg:py-2 px-4 sm:px-6 lg:px-8 z-20 pb-20 lg:pb-4">
+      <main className="relative max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-center min-h-0 py-2 px-4 sm:px-6 lg:px-8 z-20 pb-20 lg:pb-0">
         
         {/* ======================================================================= */}
-        {/* COLUMNA IZQUIERDA (7 COLS): FORMULARIO OFICIAL DE PRE-RESERVA           */}
+        {/* COLUMNA IZQUIERDA (50%): FORMULARIO PLANO SIN SHADOW Y BOTÓN FIJO       */}
         {/* ======================================================================= */}
-        <div className="lg:col-span-7 xl:col-span-7 flex flex-col h-auto lg:h-[calc(100vh-5.5rem)] min-h-0">
+        <div className="w-full flex justify-center lg:justify-start min-h-0 animate-in fade-in slide-in-from-left duration-300 pb-4 lg:pb-0">
           
           {preReserveSuccess ? (
             /* Vista de Éxito / Comprobante de Reserva */
-            <Card className="border border-emerald-200 shadow-xl overflow-hidden bg-white animate-in zoom-in-95 duration-200">
-              <div className="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 p-6 sm:p-8 text-white text-center">
-                <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
-                  <CheckCircle2 className="w-10 h-10 text-white" />
+            <div className="w-full max-w-xl bg-white rounded-3xl border border-slate-200 shadow-none overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 p-6 sm:p-7 text-white text-center">
+                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-2.5 shadow-inner">
+                  <CheckCircle2 className="w-8 h-8 text-white" />
                 </div>
-                <Badge className="bg-emerald-400 text-slate-950 font-black px-3 py-1 mb-2 hover:bg-emerald-400 shadow-sm text-xs uppercase tracking-wider">
+                <Badge className="bg-emerald-400 text-slate-950 font-black px-3 py-0.5 mb-1.5 hover:bg-emerald-400 shadow-xs text-[11px] uppercase tracking-wider">
                   Pre-Reserva Registrada Exitosamente
                 </Badge>
-                <h2 className="text-2xl sm:text-3xl font-black tracking-tight mt-1">¡Felicitaciones, {nombres}!</h2>
-                <p className="text-teal-100 text-xs sm:text-sm mt-1 max-w-lg mx-auto">
-                  Tu cupo y descuento promocional para <span className="font-bold text-white underline">{offerData.serviceName}</span> han quedado congelados por 48 horas en nuestra central clínica.
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight mt-1">¡Felicitaciones, {nombres}!</h2>
+                <p className="text-teal-100 text-xs mt-1 max-w-md mx-auto">
+                  Tu cupo y descuento para <span className="font-bold text-white underline">{offerData.serviceName}</span> han quedado congelados por 48 horas en nuestra central clínica.
                 </p>
               </div>
 
-              <CardContent className="p-6 sm:p-8 space-y-6">
+              <div className="p-5 sm:p-6 space-y-4">
                 {/* Código de Pre-Reserva */}
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
                   <div>
-                    <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider block">Código Único de Atención</span>
-                    <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-wider">
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">Código Único de Atención</span>
+                    <span className="text-2xl font-black text-slate-900 tracking-wider">
                       {preReserveSuccess.codigoReserva || 'NEXO-PROMO'}
                     </span>
                   </div>
@@ -398,52 +398,52 @@ export default function PreReservationPage() {
                 </div>
 
                 {/* Resumen del Comprobante */}
-                <div className="space-y-2 text-xs sm:text-sm bg-white p-4 rounded-xl border border-slate-200">
-                  <div className="flex justify-between py-2 border-b border-slate-100">
+                <div className="space-y-2 text-xs bg-white p-3.5 rounded-xl border border-slate-200">
+                  <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Paciente Titular:</span>
                     <span className="font-bold text-slate-900">
                       {nombres} {apellidos} {dni ? `(DNI: ${dni})` : ''}
                     </span>
                   </div>
                   {esParaFamiliar && nombreFamiliar && (
-                    <div className="flex justify-between py-2 border-b border-slate-100 bg-teal-50/60 px-2 rounded-lg">
+                    <div className="flex justify-between py-1.5 border-b border-slate-100 bg-teal-50/60 px-2 rounded-lg">
                       <span className="text-teal-800 font-semibold">Atención para familiar:</span>
                       <span className="font-bold text-teal-950">{nombreFamiliar} ({parentesco})</span>
                     </div>
                   )}
-                  <div className="flex justify-between py-2 border-b border-slate-100">
+                  <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Tratamiento Asignado:</span>
                     <span className="font-bold text-teal-700">{offerData.serviceName}</span>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-slate-100">
+                  <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Sede Odontológica:</span>
                     <span className="font-semibold text-slate-800">
                       {offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId))?.nombre || offerData.sede}
                     </span>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-slate-100">
+                  <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Fecha y Turno:</span>
                     <span className="font-semibold text-slate-800">
                       {fechaCita} — {horaCita}
                     </span>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-slate-100">
+                  <div className="flex justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Modalidad de Pago:</span>
-                    <Badge variant="outline" className="bg-slate-100 text-slate-800 border-slate-300 font-semibold text-xs">
+                    <Badge variant="outline" className="bg-slate-100 text-slate-800 border-slate-300 font-semibold text-[11px]">
                       {canalPago}
                     </Badge>
                   </div>
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-sm font-bold text-slate-800">Total Promocional a abonar:</span>
+                  <div className="flex justify-between items-center pt-1.5">
+                    <span className="text-xs font-bold text-slate-800">Total Promocional a abonar:</span>
                     <div className="text-right">
-                      <span className="text-2xl font-black text-emerald-600">S/ {Number(offerData.offeredPrice).toFixed(2)}</span>
-                      <span className="block text-[11px] text-slate-400 line-through">S/ {Number(offerData.originalPrice).toFixed(2)}</span>
+                      <span className="text-xl font-black text-emerald-600">S/ {Number(offerData.offeredPrice).toFixed(2)}</span>
+                      <span className="block text-[10px] text-slate-400 line-through">S/ {Number(offerData.originalPrice).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Botones de acción final */}
-                <div className="space-y-3 pt-2">
+                <div className="space-y-2 pt-1">
                   <Button
                     onClick={() => {
                       const text = encodeURIComponent(
@@ -457,97 +457,97 @@ export default function PreReservationPage() {
                       );
                       window.open(`https://wa.me/51970292710?text=${text}`, '_blank');
                     }}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 rounded-xl text-sm shadow-md gap-2"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11 rounded-xl text-xs shadow-md gap-2 cursor-pointer"
                   >
-                    <MessageSquare className="w-5 h-5" /> Enviar Voucher a WhatsApp de la Clínica
+                    <MessageSquare className="w-4 h-4" /> Enviar Voucher a WhatsApp de la Clínica
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => window.print()}
-                    className="w-full !bg-white border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold gap-2"
+                    className="w-full !bg-white border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-xs h-10 gap-2 cursor-pointer"
                   >
                     <Download className="w-4 h-4" /> Imprimir o Guardar Comprobante PDF
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ) : (
-            /* Card con Formulario Scrollable */
-            <div className="flex flex-col h-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+            /* Tarjeta del Formulario: SIN SHADOW (shadow-none) + BOTÓN FIJO ABAJO */
+            <div className="w-full max-w-xl bg-white rounded-3xl overflow-hidden flex flex-col h-auto lg:h-[calc(100vh-5.5rem)] shadow-none border border-slate-200/80 relative">
               
-              {/* Header de la Tarjeta del Formulario */}
-              <div className="px-5 sm:px-6 py-4 border-b border-slate-100 bg-white shrink-0">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0">
-                      <FileText className="w-4 h-4" />
+              {/* Header Fijo de la Tarjeta */}
+              <div className="px-5 py-3.5 bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-700 text-white shrink-0 relative overflow-hidden">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-white">
+                      <FileText className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <h2 className="text-base font-bold text-slate-900 leading-tight">
+                      <h2 className="text-sm sm:text-base font-black text-white tracking-tight leading-tight">
                         Formulario de Pre-Reserva
                       </h2>
-                      <p className="text-[11px] text-slate-500 font-medium">
+                      <p className="text-teal-100 text-[10.5px] font-normal leading-tight">
                         Completa tus datos para emitir tu orden clínica y congelar la tarifa.
                       </p>
                     </div>
                   </div>
-
-                  <Badge className="bg-amber-400 text-slate-950 font-black hover:bg-amber-400 px-2.5 py-0.5 shadow-xs text-[11px] shrink-0">
+                  <Badge className="bg-amber-400 text-slate-950 font-black hover:bg-amber-400 px-2 py-0.5 shadow-xs text-[10px] shrink-0">
                     ¡{offerData.discountPct}% DSCTO!
                   </Badge>
                 </div>
               </div>
 
-              {/* Contenedor Scrollable del Formulario */}
-              <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-5 bg-white lg:[scrollbar-width:thin]">
-                <form onSubmit={handlePreReserveSubmit} className="space-y-5">
+              {/* Cuerpo del Formulario Plano con Scroll Interno Invisible */}
+              <div className="flex-1 lg:overflow-y-auto px-5 py-4 space-y-4 bg-white lg:[&::-webkit-scrollbar]:hidden lg:[-ms-overflow-style:none] lg:[scrollbar-width:none]">
+                <form id="preReserveForm" onSubmit={handlePreReserveSubmit} className="space-y-4">
 
-                  {/* Resumen Compacto de la Oferta en Móvil */}
-                  <div className="lg:hidden p-3.5 bg-teal-50/70 border border-teal-100 rounded-2xl space-y-2">
+                  {/* Resumen Compacto de la Oferta en Pantallas Móviles */}
+                  <div className="lg:hidden p-3 bg-teal-50/70 border border-teal-100 rounded-2xl space-y-1.5">
                     <div className="flex justify-between items-center">
                       <span className="text-xs font-bold text-teal-900">{offerData.serviceName}</span>
                       <span className="text-sm font-black text-teal-900">S/ {Number(offerData.offeredPrice).toFixed(2)}</span>
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-500">
-                      <span>Regular: S/ {Number(offerData.originalPrice).toFixed(2)}</span>
+                    <div className="flex items-center justify-between text-[10.5px] text-slate-500">
+                      <span>Precio regular: S/ {Number(offerData.originalPrice).toFixed(2)}</span>
                       <span className="text-emerald-700 font-bold">Ahorras S/ {(Number(offerData.originalPrice) - Number(offerData.offeredPrice)).toFixed(2)}</span>
                     </div>
                   </div>
 
-                  {/* Sección 1: Datos Personales */}
-                  <div className="space-y-3.5">
-                    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-800 uppercase tracking-wider">
-                      <User className="w-3.5 h-3.5 text-teal-600" /> 1. Datos del Paciente Titular
+                  {/* 1. Datos del Paciente Titular */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                      <User className="w-3.5 h-3.5 text-teal-600" />
+                      <span>1. Datos del Paciente Titular</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="space-y-1">
                         <Label className="text-[11px] font-semibold text-slate-700">Nombres *</Label>
                         <Input
                           required
                           value={nombres}
                           onChange={(e) => setNombres(e.target.value)}
                           placeholder="Tus nombres"
-                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium"
+                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-200 focus:!border-teal-500 focus:!ring-1 focus:!ring-teal-500 text-xs h-9 rounded-xl shadow-2xs font-medium"
                         />
                       </div>
-                      <div>
+                      <div className="space-y-1">
                         <Label className="text-[11px] font-semibold text-slate-700">Apellidos *</Label>
                         <Input
                           required
                           value={apellidos}
                           onChange={(e) => setApellidos(e.target.value)}
                           placeholder="Tus apellidos"
-                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium"
+                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-200 focus:!border-teal-500 focus:!ring-1 focus:!ring-teal-500 text-xs h-9 rounded-xl shadow-2xs font-medium"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="space-y-1">
                         <div className="flex justify-between items-center">
                           <Label className="text-[11px] font-semibold text-slate-700">DNI / Carné Extranjería *</Label>
-                          <span className="text-[9.5px] text-teal-700 font-bold bg-teal-50 px-1.5 py-0.5 rounded-full border border-teal-100">Requerido</span>
+                          <span className="text-[9px] text-teal-700 font-bold bg-teal-50 px-1.5 py-0.5 rounded-full border border-teal-100">Requerido</span>
                         </div>
                         <Input
                           required
@@ -555,10 +555,10 @@ export default function PreReservationPage() {
                           value={dni}
                           onChange={(e) => setDni(e.target.value.replace(/[^0-9a-zA-Z]/g, ''))}
                           placeholder="Número de DNI"
-                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium"
+                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-200 focus:!border-teal-500 focus:!ring-1 focus:!ring-teal-500 text-xs h-9 rounded-xl shadow-2xs font-medium"
                         />
                       </div>
-                      <div>
+                      <div className="space-y-1">
                         <Label className="text-[11px] font-semibold text-slate-700">WhatsApp de Confirmación *</Label>
                         <Input
                           required
@@ -566,25 +566,25 @@ export default function PreReservationPage() {
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           placeholder="999 888 777"
-                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium"
+                          className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-200 focus:!border-teal-500 focus:!ring-1 focus:!ring-teal-500 text-xs h-9 rounded-xl shadow-2xs font-medium"
                         />
                       </div>
                     </div>
 
-                    <div>
+                    <div className="space-y-1">
                       <Label className="text-[11px] font-semibold text-slate-700">Correo Electrónico (Para comprobante digital)</Label>
                       <Input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="tu-correo@ejemplo.com"
-                        className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium"
+                        className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-200 focus:!border-teal-500 focus:!ring-1 focus:!ring-teal-500 text-xs h-9 rounded-xl shadow-2xs font-medium"
                       />
                     </div>
 
                     {/* Checkbox para familiar con fondo blanco y hover teal */}
-                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
-                      <div className="flex items-center gap-2.5">
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                      <div className="flex items-center gap-2">
                         <Checkbox
                           id="familiar"
                           checked={esParaFamiliar}
@@ -597,21 +597,21 @@ export default function PreReservationPage() {
                       </div>
 
                       {esParaFamiliar && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 animate-in fade-in-50 duration-200">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1.5 animate-in fade-in-50 duration-200">
                           <div>
-                            <Label className="text-[11px] font-semibold text-slate-700">Nombre del Familiar *</Label>
+                            <Label className="text-[10.5px] font-semibold text-slate-700">Nombre del Familiar *</Label>
                             <Input
                               required={esParaFamiliar}
                               value={nombreFamiliar}
                               onChange={(e) => setNombreFamiliar(e.target.value)}
                               placeholder="Ej: Mateo Castillo"
-                              className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 focus:!border-teal-500 focus:!ring-teal-500/20 text-xs h-9 mt-1 rounded-xl font-medium"
+                              className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-200 focus:!border-teal-500 focus:!ring-1 focus:!ring-teal-500 text-xs h-8.5 mt-0.5 rounded-xl font-medium"
                             />
                           </div>
                           <div>
-                            <Label className="text-[11px] font-semibold text-slate-700">Parentesco</Label>
+                            <Label className="text-[10.5px] font-semibold text-slate-700">Parentesco</Label>
                             <Select value={parentesco} onValueChange={setParentesco}>
-                              <SelectTrigger className="!bg-white !text-slate-900 !border-slate-300 text-xs h-9 mt-1 rounded-xl font-medium shadow-2xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                              <SelectTrigger className="!bg-white !text-slate-900 !border-slate-200 text-xs h-8.5 mt-0.5 rounded-xl font-medium shadow-2xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
                                 <SelectValue placeholder="Selecciona parentesco" />
                               </SelectTrigger>
                               <SelectContent className="!bg-white !border-slate-200 text-slate-900 shadow-xl">
@@ -628,20 +628,21 @@ export default function PreReservationPage() {
                     </div>
                   </div>
 
-                  {/* Sección 2: Sede, Horario y Cuestionario Clínico */}
-                  <div className="space-y-3.5 pt-2 border-t border-slate-100">
-                    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-800 uppercase tracking-wider">
-                      <Calendar className="w-3.5 h-3.5 text-teal-600" /> 2. Coordinación de Cita & Sede
+                  {/* 2. Coordinación de Cita & Sede */}
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+                      <Calendar className="w-3.5 h-3.5 text-teal-600" />
+                      <span>2. Coordinación de Cita & Sede</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="space-y-1">
                         <Label className="text-[11px] font-semibold text-slate-700">Sede Preferencial</Label>
                         <Select
                           value={String(selectedSedeId)}
                           onValueChange={(val) => setSelectedSedeId(val)}
                         >
-                          <SelectTrigger className="!bg-white !text-slate-900 !border-slate-300 text-xs h-9 mt-1 rounded-xl font-medium shadow-2xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                          <SelectTrigger className="!bg-white !text-slate-900 !border-slate-200 text-xs h-9 rounded-xl font-medium shadow-2xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
                             <SelectValue placeholder="Selecciona sede" />
                           </SelectTrigger>
                           <SelectContent className="!bg-white !border-slate-200 text-slate-900 shadow-xl">
@@ -662,22 +663,22 @@ export default function PreReservationPage() {
                         </Select>
                       </div>
 
-                      <div>
+                      <div className="space-y-1">
                         <Label className="text-[11px] font-semibold text-slate-700">Fecha Tentativa</Label>
                         <Input
                           type="date"
                           value={fechaCita}
                           min={new Date().toISOString().split('T')[0]}
                           onChange={(e) => setFechaCita(e.target.value)}
-                          className="!bg-white !text-slate-900 !border-slate-300 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium focus:!border-teal-500 focus:!ring-teal-500/20"
+                          className="!bg-white !text-slate-900 !border-slate-200 text-xs h-9 rounded-xl shadow-2xs font-medium focus:!border-teal-500 focus:!ring-1 focus:!ring-teal-500"
                         />
                       </div>
                     </div>
 
-                    <div>
+                    <div className="space-y-1">
                       <Label className="text-[11px] font-semibold text-slate-700">Turno Preferido de Atención</Label>
                       <Select value={horaCita} onValueChange={setHoraCita}>
-                        <SelectTrigger className="!bg-white !text-slate-900 !border-slate-300 text-xs h-9 mt-1 rounded-xl font-medium shadow-2xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                        <SelectTrigger className="!bg-white !text-slate-900 !border-slate-200 text-xs h-9 rounded-xl font-medium shadow-2xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
                           <SelectValue placeholder="Selecciona turno preferido" />
                         </SelectTrigger>
                         <SelectContent className="!bg-white !border-slate-200 text-slate-900 shadow-xl">
@@ -689,8 +690,8 @@ export default function PreReservationPage() {
                     </div>
 
                     {/* Nivel de dolor con opciones blancas y hover Teal */}
-                    <div>
-                      <Label className="text-[11px] font-semibold text-slate-700 block mb-1.5">
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] font-semibold text-slate-700 block">
                         ¿Presentas dolor o molestia dental actualmente?
                       </Label>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
@@ -706,9 +707,9 @@ export default function PreReservationPage() {
                               key={nivel}
                               type="button"
                               onClick={() => setNivelDolor(nivel)}
-                              className={`py-2 px-1.5 rounded-xl border text-[11px] font-semibold transition-all cursor-pointer text-center ${
+                              className={`py-2 px-1.5 rounded-xl border text-[10.5px] font-semibold transition-all cursor-pointer text-center ${
                                 isSelected
-                                  ? '!bg-teal-600 !border-teal-600 text-white shadow-sm ring-2 ring-teal-500/20'
+                                  ? '!bg-teal-600 !border-teal-600 text-white shadow-xs ring-1 ring-teal-500'
                                   : '!bg-white !border-slate-200 text-slate-700 hover:!bg-teal-50/50 hover:!border-teal-400 hover:!text-teal-950 shadow-2xs'
                               }`}
                             >
@@ -719,30 +720,31 @@ export default function PreReservationPage() {
                       </div>
                     </div>
 
-                    <div>
+                    <div className="space-y-1">
                       <Label className="text-[11px] font-semibold text-slate-700">Alergias o Condiciones Especiales (Opcional)</Label>
                       <Input
                         value={alergias}
                         onChange={(e) => setAlergias(e.target.value)}
                         placeholder="Ej: Penicilina, látex, hipertensión, ninguna..."
-                        className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium focus:!border-teal-500 focus:!ring-teal-500/20"
+                        className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-200 text-xs h-9 rounded-xl shadow-2xs font-medium focus:!border-teal-500 focus:!ring-1 focus:!ring-teal-500"
                       />
                     </div>
                   </div>
 
-                  {/* Sección 3: Modalidad de Pago y Confirmación */}
-                  <div className="space-y-3.5 pt-2 border-t border-slate-100">
-                    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-800 uppercase tracking-wider">
-                      <CreditCard className="w-3.5 h-3.5 text-teal-600" /> 3. Modalidad de Pago Preferida
+                  {/* 3. Modalidad de Pago y Confirmación */}
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+                      <CreditCard className="w-3.5 h-3.5 text-teal-600" />
+                      <span>3. Modalidad de Pago Preferida</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                       <button
                         type="button"
                         onClick={() => setCanalPago('Efectivo en clínica')}
                         className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                           canalPago === 'Efectivo en clínica'
-                            ? '!bg-teal-50/90 !border-2 !border-teal-600 text-teal-950 ring-2 ring-teal-500/20 shadow-xs'
+                            ? '!bg-teal-50/90 !border-2 !border-teal-600 text-teal-950 ring-1 ring-teal-500 shadow-xs'
                             : '!bg-white !border-slate-200 text-slate-700 hover:!border-teal-400 hover:!bg-teal-50/40 hover:!text-teal-950 shadow-2xs'
                         }`}
                       >
@@ -761,7 +763,7 @@ export default function PreReservationPage() {
                         onClick={() => setCanalPago('Yape / Plin')}
                         className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                           canalPago === 'Yape / Plin'
-                            ? '!bg-teal-50/90 !border-2 !border-teal-600 text-teal-950 ring-2 ring-teal-500/20 shadow-xs'
+                            ? '!bg-teal-50/90 !border-2 !border-teal-600 text-teal-950 ring-1 ring-teal-500 shadow-xs'
                             : '!bg-white !border-slate-200 text-slate-700 hover:!border-teal-400 hover:!bg-teal-50/40 hover:!text-teal-950 shadow-2xs'
                         }`}
                       >
@@ -780,7 +782,7 @@ export default function PreReservationPage() {
                         onClick={() => setCanalPago('Tarjeta')}
                         className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                           canalPago === 'Tarjeta'
-                            ? '!bg-teal-50/90 !border-2 !border-teal-600 text-teal-950 ring-2 ring-teal-500/20 shadow-xs'
+                            ? '!bg-teal-50/90 !border-2 !border-teal-600 text-teal-950 ring-1 ring-teal-500 shadow-xs'
                             : '!bg-white !border-slate-200 text-slate-700 hover:!border-teal-400 hover:!bg-teal-50/40 hover:!text-teal-950 shadow-2xs'
                         }`}
                       >
@@ -790,23 +792,23 @@ export default function PreReservationPage() {
                         </div>
                         <div>
                           <span className="block font-bold text-slate-900 text-xs">Tarjeta Déb/Cré</span>
-                          <span className="text-[10px] text-slate-500 font-normal">POS sin recargo extra</span>
+                          <span className="text-[10px] text-slate-500 font-normal">POS sin recargo</span>
                         </div>
                       </button>
                     </div>
 
-                    <div>
+                    <div className="space-y-1">
                       <Label className="text-[11px] font-semibold text-slate-700">Duda o Comentario para el Odontólogo (Opcional)</Label>
                       <Input
                         value={comentarios}
                         onChange={(e) => setComentarios(e.target.value)}
                         placeholder="Ej: Deseo consultar también por ortodoncia o blanqueamiento..."
-                        className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-300 text-xs h-9 mt-1 rounded-xl shadow-2xs font-medium focus:!border-teal-500 focus:!ring-teal-500/20"
+                        className="!bg-white !text-slate-900 placeholder:!text-slate-400 !border-slate-200 text-xs h-9 rounded-xl shadow-2xs font-medium focus:!border-teal-500 focus:!ring-1 focus:!ring-teal-500"
                       />
                     </div>
 
                     {/* Checkbox de consentimiento con fondo blanco */}
-                    <div className="flex items-start gap-2.5 pt-1">
+                    <div className="flex items-start gap-2 pt-1">
                       <Checkbox
                         id="consent"
                         checked={consentimiento}
@@ -818,41 +820,45 @@ export default function PreReservationPage() {
                       </Label>
                     </div>
                   </div>
-
-                  {/* Botón de Envío Final */}
-                  <Button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold h-11 rounded-xl text-sm shadow-lg shadow-teal-700/20 flex items-center justify-center gap-2 transition-transform active:scale-[0.99]"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Formalizando Pre-Reserva en el Sistema...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        Confirmar Pre-Reserva & Congelar Tarifa (S/ {Number(offerData.offeredPrice).toFixed(2)})
-                      </>
-                    )}
-                  </Button>
-
-                  {/* Texto inferior de protección de datos con ícono de framework (SIN emoji) */}
-                  <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 pt-1 text-center">
-                    <ShieldCheck className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                    <span>Tus datos están protegidos por el secreto médico y la Ley N° 29733.</span>
-                  </div>
                 </form>
+              </div>
+
+              {/* ======================================================= */}
+              {/* FOOTER FIJO (ESTÁTICO) CON EL BOTÓN DE ENVIAR FORMULARIO */}
+              {/* ======================================================= */}
+              <div className="px-5 py-3.5 bg-slate-50/95 shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-100">
+                <div className="flex items-center gap-1.5 text-[10.5px] text-slate-500 font-medium">
+                  <ShieldCheck className="h-4 w-4 text-teal-600 shrink-0" />
+                  <span>Datos 100% protegidos por Ley N° 29733</span>
+                </div>
+
+                <Button
+                  type="submit"
+                  form="preReserveForm"
+                  disabled={submitting}
+                  className="w-full sm:w-auto sm:min-w-[270px] h-10 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl shadow-md shadow-teal-700/20 text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Formalizando Reserva...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Confirmar Pre-Reserva (S/ {Number(offerData.offeredPrice).toFixed(2)})</span>
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           )}
         </div>
 
         {/* ======================================================================= */}
-        {/* COLUMNA DERECHA (5 COLS): FOTO Fondo_NexoSalud_2.jpg + RESUMEN CLÍNICO */}
+        {/* COLUMNA DERECHA (50%): FOTO Fondo_NexoSalud_2.jpg + RESUMEN CLÍNICO     */}
         {/* ======================================================================= */}
-        <div className="hidden lg:flex lg:col-span-5 xl:col-span-5 flex-col justify-between h-[calc(100vh-5.5rem)] space-y-4 text-white pl-2 xl:pl-4 py-2">
+        <div className="hidden lg:flex flex-col justify-between h-[calc(100vh-5.5rem)] space-y-4 text-white pl-4 xl:pl-6 py-2">
           
           {/* Header de la Oferta Visual */}
           <div className="space-y-3 animate-in fade-in slide-in-from-right duration-300">
