@@ -29,9 +29,9 @@ export const buyerService = {
           { id_fuente: 5, nombre: 'Recomendación de Paciente' }
         ],
         sedes: [
-          { id_sede: 1, nombre: 'Sede Norte' },
-          { id_sede: 2, nombre: 'Sede Sur' },
-          { id_sede: 3, nombre: 'Sede Centro' }
+          { id_sede: 1, nombre: 'Sede California', direccion: 'Av. Larco 820, Urb. California, Trujillo' },
+          { id_sede: 2, nombre: 'Sede Primavera', direccion: 'Av. Teodoro Valcárcel 345, Urb. Primavera, Trujillo' },
+          { id_sede: 3, nombre: 'Sede Centro Histórico', direccion: 'Jr. Pizarro 456, Centro Histórico, Trujillo' }
         ],
         modalidades: [
           { id_modalidad: 1, nombre: 'Presencial' },

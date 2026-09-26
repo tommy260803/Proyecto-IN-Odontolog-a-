@@ -290,7 +290,7 @@ export class NegotiatorAgentService {
       leadName: params.leadName,
       tituloFlyer: params.tituloFlyer,
       fechaLimite: params.fechaLimite || params.expirationDate,
-      sedeTexto: `Sede: ${params.sedeName || 'Principal (Trujillo / Lima)'}`,
+      sedeTexto: params.sedeName || 'Sede California - Av. Larco 820, Urb. California, Trujillo',
       descuentoTexto: `¡${params.discountPct}% DSCTO. EXCLUSIVO!`,
       contactoTexto: `WhatsApp: +51 970 292 710\ninfo@nexosalud.pe`,
       horarioTexto: `Lunes a Sábado\n08:00 AM - 08:00 PM`,

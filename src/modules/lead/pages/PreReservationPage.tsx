@@ -448,8 +448,11 @@ export default function PreReservationPage() {
                   </div>
                   <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Sede Odontológica:</span>
-                    <span className="font-semibold text-slate-800">
-                      {offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId))?.nombre || offerData.sede}
+                    <span className="font-semibold text-slate-800 text-right">
+                      {(() => {
+                        const match = offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId));
+                        return match ? `${match.nombre} - ${match.direccion || ''}`.trim() : offerData.sede;
+                      })()}
                     </span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-slate-100">
@@ -484,7 +487,10 @@ export default function PreReservationPage() {
                         `🦷 *Tratamiento:* ${offerData.serviceName}\n` +
                         `💰 *Monto Promocional:* S/ ${Number(offerData.offeredPrice).toFixed(2)}\n` +
                         `💳 *Pago:* ${canalPago}\n` +
-                        `📍 *Sede:* ${offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId))?.nombre || offerData.sede}`
+                        `📍 *Sede:* ${(() => {
+                          const match = offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId));
+                          return match ? `${match.nombre} - ${match.direccion || ''}`.trim() : offerData.sede;
+                        })()}`
                       );
                       window.open(`https://wa.me/51970292710?text=${text}`, '_blank');
                     }}
@@ -684,9 +690,9 @@ export default function PreReservationPage() {
                               ))
                             ) : (
                               <>
-                                <SelectItem value="1">Sede Norte - Av. Las Palmas 123</SelectItem>
-                                <SelectItem value="2">Sede Sur - Av. El Sol 456</SelectItem>
-                                <SelectItem value="3">Sede Centro - Jr. Lima 789</SelectItem>
+                                <SelectItem value="1">Sede California - Av. Larco 820, Urb. California, Trujillo</SelectItem>
+                                <SelectItem value="2">Sede Primavera - Av. Teodoro Valcárcel 345, Urb. Primavera, Trujillo</SelectItem>
+                                <SelectItem value="3">Sede Centro Histórico - Jr. Pizarro 456, Centro Histórico, Trujillo</SelectItem>
                               </>
                             )}
                           </SelectContent>
@@ -1213,7 +1219,10 @@ export default function PreReservationPage() {
               <div className="space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Detalles de la Cita Médica</span>
                 <p className="font-bold text-slate-900">
-                  <span className="text-slate-400 font-normal">Sede:</span> {offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId))?.nombre || offerData.sede}
+                  <span className="text-slate-400 font-normal">Sede:</span> {(() => {
+                    const match = offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId));
+                    return match ? `${match.nombre} - ${match.direccion || ''}`.trim() : offerData.sede;
+                  })()}
                 </p>
                 <p className="font-bold text-slate-900">
                   <span className="text-slate-400 font-normal">Especialista:</span> {offerData.doctor}

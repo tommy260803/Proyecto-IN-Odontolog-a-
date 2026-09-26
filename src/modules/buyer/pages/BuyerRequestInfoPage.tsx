@@ -576,14 +576,14 @@ export default function BuyerRequestInfoPage() {
                           {catalogs.sedes && catalogs.sedes.length > 0 ? (
                             catalogs.sedes.map((s: any) => (
                               <SelectItem key={s.id_sede || s.nombre} value={s.nombre} className="text-xs">
-                                {s.nombre}
+                                {s.nombre} {s.direccion ? `- ${s.direccion}` : ''}
                               </SelectItem>
                             ))
                           ) : (
                             <>
-                              <SelectItem value="Sede San Isidro" className="text-xs">Sede San Isidro (Principal)</SelectItem>
-                              <SelectItem value="Sede Surco" className="text-xs">Sede Surco</SelectItem>
-                              <SelectItem value="Sede Los Olivos" className="text-xs">Sede Los Olivos</SelectItem>
+                              <SelectItem value="Sede California" className="text-xs">Sede California - Av. Larco 820, Urb. California, Trujillo</SelectItem>
+                              <SelectItem value="Sede Primavera" className="text-xs">Sede Primavera - Av. Teodoro Valcárcel 345, Urb. Primavera, Trujillo</SelectItem>
+                              <SelectItem value="Sede Centro Histórico" className="text-xs">Sede Centro Histórico - Jr. Pizarro 456, Centro Histórico, Trujillo</SelectItem>
                             </>
                           )}
                         </SelectContent>

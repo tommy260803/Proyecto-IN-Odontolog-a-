@@ -496,13 +496,31 @@ router.post('/:id/canva-flyer', async (req, res) => {
       }
     }
 
+    let resolvedSede = (sedeName || '').trim();
+    if (!resolvedSede || (!resolvedSede.includes('-') && !resolvedSede.includes(','))) {
+      const matchSede = await prisma.sedes.findFirst({
+        where: {
+          OR: [
+            { nombre: { contains: resolvedSede || 'California' } },
+            { id_sede: isNaN(Number(resolvedSede)) ? -1 : Number(resolvedSede) }
+          ],
+          activo: true
+        }
+      });
+      if (matchSede) {
+        resolvedSede = `${matchSede.nombre} - ${matchSede.direccion}`;
+      } else {
+        resolvedSede = 'Sede California - Av. Larco 820, Urb. California, Trujillo';
+      }
+    }
+
     const result = await NegotiatorAgentService.processAndDispatch({
       leadId: Number(id),
       leadName,
       leadEmail: finalEmail,
       leadPhone: finalPhone,
       serviceName: serviceName || lead?.Solicitudes?.[0]?.Servicio?.nombre || 'Consulta Odontológica',
-      sedeName: sedeName || 'Sede Miraflores - Av. Larco 123',
+      sedeName: resolvedSede,
       offeredPrice: numOffered,
       originalPrice: numOriginal,
       discountPct: computedDiscount,
@@ -664,7 +682,9 @@ router.get('/public/:id', async (req, res) => {
       offeredPrice,
       discountPct,
       expirationDate: rawFecha,
-      sede: activeOpt?.Disponibilidad?.Sede?.nombre || 'Sede Miraflores - Av. Larco 123',
+      sede: activeOpt?.Disponibilidad?.Sede
+        ? `${activeOpt.Disponibilidad.Sede.nombre}${activeOpt.Disponibilidad.Sede.direccion ? ' - ' + activeOpt.Disponibilidad.Sede.direccion : ''}`
+        : (sedesList[0] ? `${sedesList[0].nombre}${sedesList[0].direccion ? ' - ' + sedesList[0].direccion : ''}` : 'Sede California - Av. Larco 820, Urb. California, Trujillo'),
       sedeId: activeOpt?.Disponibilidad?.Sede?.id_sede || sedesList[0]?.id_sede || 1,
       doctor: activeOpt?.Disponibilidad?.Profesional?.apellidos ? `Esp. ${activeOpt.Disponibilidad.Profesional.nombres} ${activeOpt.Disponibilidad.Profesional.apellidos}` : 'Especialistas Colegiados',
       id_solicitud: sol?.id_solicitud,

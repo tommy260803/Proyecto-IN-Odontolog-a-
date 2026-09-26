@@ -594,7 +594,7 @@ export function InteractiveAvailabilityPicker({
                     const horaFin = String(disp.hora_fin || '').substring(11, 16) || '10:00';
                     const profApellidos = disp.Profesional?.apellidos || 'General';
                     const profNombres = disp.Profesional?.nombres || '';
-                    const sedeNombre = disp.Sede?.nombre || 'Sede';
+                    const sedeNombre = disp.Sede?.nombre ? `${disp.Sede.nombre}${disp.Sede.direccion ? ` - ${disp.Sede.direccion}` : ''}` : 'Sede';
                     const { matchCount, matchesDoctor, matchesSede, matchesHorario } = disp.matchInfo;
 
                     return (

@@ -353,14 +353,14 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
                       {catalogs.sedes && catalogs.sedes.length > 0 ? (
                         catalogs.sedes.map((sede) => (
                           <SelectItem key={sede.id_sede || sede.nombre} value={sede.nombre} className="text-xs">
-                            {sede.nombre} {sede.direccion ? `(${sede.direccion})` : ''}
+                            {sede.nombre} {sede.direccion ? `- ${sede.direccion}` : ''}
                           </SelectItem>
                         ))
                       ) : (
                         <>
-                          <SelectItem value="Sede San Isidro" className="text-xs">Sede San Isidro (Principal)</SelectItem>
-                          <SelectItem value="Sede Surco" className="text-xs">Sede Surco</SelectItem>
-                          <SelectItem value="Sede Los Olivos" className="text-xs">Sede Los Olivos</SelectItem>
+                          <SelectItem value="Sede California" className="text-xs">Sede California - Av. Larco 820, Urb. California, Trujillo</SelectItem>
+                          <SelectItem value="Sede Primavera" className="text-xs">Sede Primavera - Av. Teodoro Valcárcel 345, Urb. Primavera, Trujillo</SelectItem>
+                          <SelectItem value="Sede Centro Histórico" className="text-xs">Sede Centro Histórico - Jr. Pizarro 456, Centro Histórico, Trujillo</SelectItem>
                         </>
                       )}
                     </SelectContent>

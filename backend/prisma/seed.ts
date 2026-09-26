@@ -99,16 +99,16 @@ async function main() {
   });
 
   // ── INFRAESTRUCTURA ───────────────────────────────────────────
-  const sedeNorte = await prisma.sedes.create({
-    data: { nombre: 'Sede Norte', direccion: 'Av. Las Palmas 123', zona: 'Norte' },
+  const sedeCalifornia = await prisma.sedes.create({
+    data: { nombre: 'Sede California', direccion: 'Av. Larco 820, Urb. California, Trujillo', zona: 'Víctor Larco' },
   });
 
-  const sedeSur = await prisma.sedes.create({
-    data: { nombre: 'Sede Sur', direccion: 'Av. El Sol 456', zona: 'Sur' },
+  const sedePrimavera = await prisma.sedes.create({
+    data: { nombre: 'Sede Primavera', direccion: 'Av. Teodoro Valcárcel 345, Urb. Primavera, Trujillo', zona: 'Primavera' },
   });
 
   const sedeCentro = await prisma.sedes.create({
-    data: { nombre: 'Sede Centro', direccion: 'Jr. Lima 789', zona: 'Centro' },
+    data: { nombre: 'Sede Centro Histórico', direccion: 'Jr. Pizarro 456, Centro Histórico, Trujillo', zona: 'Centro Histórico' },
   });
 
   // ── SERVICIOS ─────────────────────────────────────────────────
@@ -178,15 +178,15 @@ async function main() {
   };
   const t = (h: number, m = 0) => new Date(new Date().setHours(h, m, 0, 0));
 
-  const disp1  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedeNorte.id_sede,  fecha: d(0), hora_inicio: t(9),  hora_fin: t(10) } });
-  const disp2  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedeNorte.id_sede,  fecha: d(0), hora_inicio: t(10), hora_fin: t(11) } });
-  const disp3  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedeSur.id_sede,    fecha: d(1), hora_inicio: t(15), hora_fin: t(16) } });
-  const disp4  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedeSur.id_sede,    fecha: d(1), hora_inicio: t(9),  hora_fin: t(10) } });
-  const disp5  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedeNorte.id_sede,  fecha: d(7), hora_inicio: t(11), hora_fin: t(12) } });
-  const disp6  = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeCentro.id_sede, fecha: d(2), hora_inicio: t(9),  hora_fin: t(10) } });
-  const disp7  = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeCentro.id_sede, fecha: d(2), hora_inicio: t(10), hora_fin: t(11) } });
-  const disp8  = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeNorte.id_sede,  fecha: d(3), hora_inicio: t(14), hora_fin: t(15) } });
-  const disp9  = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeNorte.id_sede,  fecha: d(5), hora_inicio: t(16), hora_fin: t(17) } });
+  const disp1  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedeCalifornia.id_sede, fecha: d(0), hora_inicio: t(9),  hora_fin: t(10) } });
+  const disp2  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedeCalifornia.id_sede, fecha: d(0), hora_inicio: t(10), hora_fin: t(11) } });
+  const disp3  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedePrimavera.id_sede,  fecha: d(1), hora_inicio: t(15), hora_fin: t(16) } });
+  const disp4  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedePrimavera.id_sede,  fecha: d(1), hora_inicio: t(9),  hora_fin: t(10) } });
+  const disp5  = await prisma.disponibilidad.create({ data: { id_profesional: drPerez.id_profesional,  id_sede: sedeCalifornia.id_sede, fecha: d(7), hora_inicio: t(11), hora_fin: t(12) } });
+  const disp6  = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeCentro.id_sede,     fecha: d(2), hora_inicio: t(9),  hora_fin: t(10) } });
+  const disp7  = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeCentro.id_sede,     fecha: d(2), hora_inicio: t(10), hora_fin: t(11) } });
+  const disp8  = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeCalifornia.id_sede, fecha: d(3), hora_inicio: t(14), hora_fin: t(15) } });
+  const disp9  = await prisma.disponibilidad.create({ data: { id_profesional: draTorres.id_profesional, id_sede: sedeCalifornia.id_sede, fecha: d(5), hora_inicio: t(16), hora_fin: t(17) } });
 
   // ========================================================
   // PACIENTES MOCK (Flujo completo)

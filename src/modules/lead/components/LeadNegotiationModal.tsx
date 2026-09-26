@@ -801,10 +801,14 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
       discountPct = 20;
     }
 
-    const sede = activeOpt?.Disponibilidad?.Sede?.nombre ||
+    const matchedSedeObj = activeOpt?.Disponibilidad?.Sede ||
       (altSedeId !== 'ALL_SEDES' && altSedeId
-        ? catalogs.sedes?.find((s: any) => s.id_sede?.toString() === altSedeId)?.nombre
-        : 'Sede Miraflores - Av. Larco 123');
+        ? catalogs.sedes?.find((s: any) => s.id_sede?.toString() === altSedeId)
+        : catalogs.sedes?.[0]);
+
+    const sede = matchedSedeObj
+      ? `${matchedSedeObj.nombre} - ${matchedSedeObj.direccion || ''}`.trim()
+      : 'Sede California - Av. Larco 820, Urb. California, Trujillo';
 
     const doctor = activeOpt?.Disponibilidad?.Profesional?.apellidos
       ? `Esp. ${activeOpt.Disponibilidad.Profesional.apellidos}`
@@ -1456,7 +1460,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                             <SelectItem value="ALL_SEDES" className="font-semibold text-slate-900 dark:text-slate-100">Todas las sedes (A elección)</SelectItem>
                             {catalogs.sedes?.map((s: any) => (
                               <SelectItem key={s.id_sede} value={s.id_sede.toString()} className="text-slate-900 dark:text-slate-100">
-                                {s.nombre}
+                                {s.nombre} {s.direccion ? `- ${s.direccion}` : ''}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -2322,7 +2326,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                   <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                     {catalogs.sedes?.map((s: any) => (
                       <SelectItem key={s.id_sede} value={s.id_sede.toString()} className="text-slate-900 dark:text-slate-100 text-xs">
-                        {s.nombre}
+                        {s.nombre} {s.direccion ? `- ${s.direccion}` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>

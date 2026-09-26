@@ -375,7 +375,8 @@ export default function LeadNegotiationPage() {
 
     if (selectedOptData) {
       const precio = Number(selectedOptData.precio_ofrecido).toFixed(2);
-      const sede = selectedOptData.Disponibilidad?.Sede?.nombre || 'Sede Principal';
+      const matchedSede = selectedOptData.Disponibilidad?.Sede;
+      const sede = matchedSede ? `${matchedSede.nombre} - ${matchedSede.direccion || ''}`.trim() : 'Sede California - Av. Larco 820, Urb. California, Trujillo';
       const doctor = selectedOptData.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}` : 'Especialistas colegiados';
       const fechaVigencia = selectedOptData.Disponibilidad?.fecha?.split('T')[0] || '';
       const cond = selectedOptData.condiciones ? `\n📌 *Detalles de la oferta:* ${selectedOptData.condiciones}` : '';
@@ -396,7 +397,9 @@ export default function LeadNegotiationPage() {
       const resumenOpciones = opciones.map((o: any, idx: number) => {
         const p = Number(o.precio_ofrecido).toFixed(2);
         const f = o.Disponibilidad?.fecha?.split('T')[0] || '';
-        return `• *Propuesta ${idx + 1}:* S/ ${p} (Válido hasta ${f}) — Sede ${o.Disponibilidad?.Sede?.nombre || 'Principal'}${o.condiciones ? ` [${o.condiciones}]` : ''}`;
+        const sObj = o.Disponibilidad?.Sede;
+        const sText = sObj ? `${sObj.nombre} - ${sObj.direccion || ''}`.trim() : 'Sede California - Av. Larco 820, Trujillo';
+        return `• *Propuesta ${idx + 1}:* S/ ${p} (Válido hasta ${f}) — ${sText}${o.condiciones ? ` [${o.condiciones}]` : ''}`;
       }).join('\n');
 
       return `¡Hola ${patientFirstName}! 👋 De NexoSalud Dental.\n\n` +
@@ -444,7 +447,8 @@ export default function LeadNegotiationPage() {
       const ultimaSolicitud = lead?.Solicitudes?.[lead?.Solicitudes?.length - 1];
       const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
       const precio = selectedOptData ? Number(selectedOptData.precio_ofrecido).toFixed(2) : (numericOfferPrice ? numericOfferPrice.toFixed(2) : '150.00');
-      const sede = selectedOptData?.Disponibilidad?.Sede?.nombre || (selectedSedeId && selectedSedeId !== 'ALL_SEDES' ? options.sedes?.find((s: any) => s.id_sede.toString() === selectedSedeId)?.nombre : 'Sede Miraflores - Av. Larco 123');
+      const matchedSedeObj = selectedOptData?.Disponibilidad?.Sede || (selectedSedeId && selectedSedeId !== 'ALL_SEDES' ? options.sedes?.find((s: any) => s.id_sede.toString() === selectedSedeId) : options.sedes?.[0]);
+      const sede = matchedSedeObj ? `${matchedSedeObj.nombre} - ${matchedSedeObj.direccion || ''}`.trim() : 'Sede California - Av. Larco 820, Urb. California, Trujillo';
       const doctor = selectedOptData?.Disponibilidad?.Profesional?.apellidos ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}` : 'Especialistas colegiados';
 
       const resData = await leadService.generateCanvaFlyer(id!, {
@@ -775,7 +779,7 @@ export default function LeadNegotiationPage() {
                         <SelectItem value="ALL_SEDES" className="font-semibold text-slate-900 dark:text-slate-100">Todas las sedes (A elección)</SelectItem>
                         {options.sedes?.map((s: any) => (
                           <SelectItem key={s.id_sede} value={s.id_sede.toString()} className="text-slate-900 dark:text-slate-100">
-                            {s.nombre}
+                            {s.nombre} {s.direccion ? `- ${s.direccion}` : ''}
                           </SelectItem>
                         ))}
                       </SelectContent>

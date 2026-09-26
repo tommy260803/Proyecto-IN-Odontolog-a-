@@ -258,7 +258,7 @@ export class CanvaService {
       cleanDescuento = matchDigits[0];
     }
 
-    let cleanSede = params.sedeTexto || 'Av. Larco 123, Miraflores';
+    let cleanSede = params.sedeTexto || 'Sede California - Av. Larco 820, Urb. California, Trujillo';
     cleanSede = cleanSede.replace(/^Sede:\s*/i, '').trim();
 
     const contactoTexto = params.contactoTexto || '+51 970 292 710\ninfo@nexosalud.pe';
@@ -308,7 +308,7 @@ export class CanvaService {
    * Genera una imagen vectorial SVG de alta definición (Data URL) como respaldo
    */
   public static generateVisualFlyerSvg(params: CanvaAutofillParams): string {
-    const sede = params.sedeTexto || 'Sede Miraflores - Av. Larco 123';
+    const sede = params.sedeTexto || 'Sede California - Av. Larco 820, Urb. California, Trujillo';
     const descuento = params.descuentoTexto || '30';
     const contacto = params.contactoTexto?.replace(/\n/g, ' • ') || 'WhatsApp: +51 970 292 710';
     const horario = this.formatTo12H(params.horarioTexto?.replace(/\n/g, ' | ') || 'Lun - Sáb: 08:00 AM - 08:00 PM');
