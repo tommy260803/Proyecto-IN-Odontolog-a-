@@ -14,6 +14,7 @@ import CustomerDetailPage from '@/modules/customer/pages/CustomerDetailPage';
 import TurnedPage from '@/modules/turned/pages/TurnedPage';
 import TurnedDetailPage from '@/modules/turned/pages/TurnedDetailPage';
 import ReportsPage from '@/modules/reports/pages/ReportsPage';
+import ConfigPage from '@/modules/config/pages/ConfigPage';
 import AppLayout from '@/app/layouts/AppLayout';
 
 export const router = createBrowserRouter([
@@ -84,6 +85,10 @@ export const router = createBrowserRouter([
       {
         path: 'reportes',
         element: <ReportsPage />,
+      },
+      {
+        path: 'configuracion',
+        element: <ConfigPage />,
       },
     ],
   },
