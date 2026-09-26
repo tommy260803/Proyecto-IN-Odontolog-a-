@@ -48,14 +48,14 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             'peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-teal-500 peer-focus-visible:ring-offset-2',
             'peer-disabled:cursor-not-allowed peer-disabled:opacity-50',
             isChecked
-              ? 'bg-teal-600 border-teal-600 dark:bg-teal-500 dark:border-teal-500 text-white'
-              : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:border-teal-500 dark:hover:border-teal-400',
+              ? '!bg-teal-600 !border-teal-600 text-white'
+              : '!bg-white !border-slate-300 hover:!border-teal-500',
             className
           )}
         >
           {isChecked && (
             <Check 
-              className="h-3.5 w-3.5 text-white dark:text-white stroke-[3.5]" 
+              className="h-3.5 w-3.5 text-white stroke-[3.5]" 
               stroke="#ffffff"
             />
           )}
