@@ -336,26 +336,26 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   };
 
   // Zoom interactivo con la rueda del ratón (scroll) en el visor del flyer
-  useEffect(() => {
-    const container = flyerContainerRef.current;
-    if (!container || !showPreviewModal) return;
+  const handleFlyerWheel = (e: React.WheelEvent<HTMLDivElement> | WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const zoomStep = 0.15;
+    const direction = e.deltaY < 0 ? 1 : -1;
+    setFlyerZoom((prev) => {
+      const next = Math.round((prev + direction * zoomStep) * 100) / 100;
+      return Math.min(3.0, Math.max(0.6, next));
+    });
+  };
 
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const zoomStep = 0.15;
-      const direction = e.deltaY < 0 ? 1 : -1;
-      setFlyerZoom((prev) => {
-        const next = Math.round((prev + direction * zoomStep) * 100) / 100;
-        return Math.min(3.0, Math.max(0.6, next));
-      });
-    };
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      container.removeEventListener('wheel', handleWheel);
-    };
-  }, [showPreviewModal]);
+  const setFlyerContainerRef = (node: HTMLDivElement | null) => {
+    if (flyerContainerRef.current) {
+      flyerContainerRef.current.removeEventListener('wheel', handleFlyerWheel as any);
+    }
+    flyerContainerRef.current = node;
+    if (node) {
+      node.addEventListener('wheel', handleFlyerWheel as any, { passive: false });
+    }
+  };
 
   const fetchData = () => {
     if (!leadId) return;
@@ -2119,7 +2119,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
           {/* Contenedor del Flyer con Zoom mediante Scroll y Arrastre Libre (Pan & Drag) */}
           <div 
-            ref={flyerContainerRef}
+            ref={setFlyerContainerRef}
+            onWheel={handleFlyerWheel}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
