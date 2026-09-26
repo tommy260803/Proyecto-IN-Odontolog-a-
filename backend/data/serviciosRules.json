@@ -1,0 +1,134 @@
+{
+  "1": {
+    "descuentoMaximo": 20,
+    "descuentosPermitidos": [
+      10,
+      15,
+      20
+    ],
+    "serviciosRelacionadosIds": [
+      8,
+      4,
+      3
+    ]
+  },
+  "2": {
+    "descuentoMaximo": 15,
+    "descuentosPermitidos": [
+      10,
+      15
+    ],
+    "serviciosRelacionadosIds": [
+      8,
+      4,
+      1
+    ]
+  },
+  "3": {
+    "descuentoMaximo": 20,
+    "descuentosPermitidos": [
+      10,
+      15,
+      20
+    ],
+    "serviciosRelacionadosIds": [
+      8,
+      1
+    ]
+  },
+  "4": {
+    "descuentoMaximo": 20,
+    "descuentosPermitidos": [
+      10,
+      15,
+      20
+    ],
+    "serviciosRelacionadosIds": [
+      8,
+      7
+    ]
+  },
+  "5": {
+    "descuentoMaximo": 10,
+    "descuentosPermitidos": [
+      5,
+      10
+    ],
+    "serviciosRelacionadosIds": [
+      10,
+      8,
+      1
+    ]
+  },
+  "6": {
+    "descuentoMaximo": 10,
+    "descuentosPermitidos": [
+      5,
+      10
+    ],
+    "serviciosRelacionadosIds": [
+      10,
+      8
+    ]
+  },
+  "7": {
+    "descuentoMaximo": 15,
+    "descuentosPermitidos": [
+      10,
+      15
+    ],
+    "serviciosRelacionadosIds": [
+      4,
+      8,
+      2
+    ]
+  },
+  "8": {
+    "descuentoMaximo": 25,
+    "descuentosPermitidos": [
+      10,
+      15,
+      20,
+      25
+    ],
+    "serviciosRelacionadosIds": [
+      4,
+      1,
+      3
+    ]
+  },
+  "9": {
+    "descuentoMaximo": 15,
+    "descuentosPermitidos": [
+      10,
+      15
+    ],
+    "serviciosRelacionadosIds": [
+      8,
+      3
+    ]
+  },
+  "10": {
+    "descuentoMaximo": 10,
+    "descuentosPermitidos": [
+      5,
+      10
+    ],
+    "serviciosRelacionadosIds": [
+      5,
+      8
+    ]
+  },
+  "11": {
+    "descuentoMaximo": 20,
+    "descuentosPermitidos": [
+      10,
+      15,
+      20
+    ],
+    "serviciosRelacionadosIds": [
+      8,
+      1
+    ]
+  }
+}

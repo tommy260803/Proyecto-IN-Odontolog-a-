@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { CanvaService, CanvaAutofillParams } from './canvaService';
+import { getServicioCommercialInfo } from '../routes/config.routes';
 
 export interface DispatchNegotiationParams {
   leadId: number;
@@ -284,7 +285,50 @@ export class NegotiatorAgentService {
   public static async processAndDispatch(params: DispatchNegotiationParams) {
     const brandTemplateId = params.canvaTemplateId || 'EAHWLEXZ1lo';
 
-    // 1. Preparar datos para Canva Autofill con títulos cortos de máx 2 palabras y horario 12H
+    // 1. Obtener tratamientos complementarios / venta cruzada configurada
+    let relatedServices: any[] = [];
+    try {
+      const commercialInfo = await getServicioCommercialInfo(params.serviceName);
+      if (commercialInfo && Array.isArray(commercialInfo.serviciosRelacionados)) {
+        relatedServices = commercialInfo.serviciosRelacionados;
+      }
+    } catch (e) {
+      console.warn('⚠️ No se pudo obtener reglas comerciales para Canva, usando fallback universal:', e);
+    }
+
+    const universalFallbackSlot2 = {
+      titulo: 'Profilaxis Dental',
+      desc: 'Limpieza ultrasónica y remoción de placa.',
+      precio: 'GRATIS (con reserva)',
+      imgUrl: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&auto=format&fit=crop&q=80',
+    };
+
+    const universalFallbackSlot3 = {
+      titulo: 'Evaluación 3D',
+      desc: 'Diagnóstico digital integral y radiografía.',
+      precio: '100% Bonificado',
+      imgUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=600&auto=format&fit=crop&q=80',
+    };
+
+    const slot2 = relatedServices[0]
+      ? {
+          titulo: relatedServices[0].nombre,
+          desc: relatedServices[0].descripcion || 'Tratamiento complementario sugerido.',
+          precio: relatedServices[0].precio ? `Desde S/ ${Number(relatedServices[0].precio).toFixed(2)}` : 'Tarifa preferencial',
+          imgUrl: relatedServices[0].imgUrl || universalFallbackSlot2.imgUrl,
+        }
+      : universalFallbackSlot2;
+
+    const slot3 = relatedServices[1]
+      ? {
+          titulo: relatedServices[1].nombre,
+          desc: relatedServices[1].descripcion || 'Tratamiento complementario sugerido.',
+          precio: relatedServices[1].precio ? `Desde S/ ${Number(relatedServices[1].precio).toFixed(2)}` : 'Tarifa preferencial',
+          imgUrl: relatedServices[1].imgUrl || universalFallbackSlot3.imgUrl,
+        }
+      : universalFallbackSlot3;
+
+    // 2. Preparar datos para Canva Autofill con títulos cortos de máx 2 palabras y horario 12H
     const canvaParams: CanvaAutofillParams = {
       brandTemplateId,
       leadName: params.leadName,
@@ -300,21 +344,11 @@ export class NegotiatorAgentService {
         precio: `Desde S/ ${params.offeredPrice.toFixed(2)}`,
         imgUrl: 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=600&auto=format&fit=crop&q=80',
       },
-      tratamiento2: {
-        titulo: 'Limpieza Dental',
-        desc: 'Profilaxis y diagnóstico digital 3D.',
-        precio: 'GRATIS (con reserva)',
-        imgUrl: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&auto=format&fit=crop&q=80',
-      },
-      tratamiento3: {
-        titulo: 'Blanqueamiento',
-        desc: 'Brillo estético y mantenimiento.',
-        precio: 'Desde S/ 100',
-        imgUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=600&auto=format&fit=crop&q=80',
-      },
+      tratamiento2: slot2,
+      tratamiento3: slot3,
     };
 
-    // 2. Generar Flyer en Canva
+    // 3. Generar Flyer en Canva
     const canvaResult = await CanvaService.generateFlyer(canvaParams);
 
     // 3. Generar mensaje para WhatsApp

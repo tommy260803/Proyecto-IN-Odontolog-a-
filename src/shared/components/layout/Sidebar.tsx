@@ -5,8 +5,6 @@ import {
   CreditCard,
   Stethoscope,
   HeartHandshake,
-  Building2,
-  Sparkles,
   Globe,
   ExternalLink,
   BarChart3,
@@ -303,47 +301,6 @@ export function Sidebar({ onClickItem }: { onClickItem?: () => void }) {
             )}
           </NavLink>
         </div>
-      </div>
-
-      {/* Clinical Node Status Widget */}
-      <div className="mt-auto pt-4 border-t border-slate-200/80 dark:border-slate-800 transition-all duration-300">
-        {!isCollapsed ? (
-          <div className="p-3.5 bg-gradient-to-br from-slate-50 to-slate-100/60 dark:from-slate-900 dark:to-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-800 shadow-sm space-y-2.5 transition-all duration-300 animate-in fade-in">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                <Building2 className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
-                <span className="truncate">Sede California (Trujillo)</span>
-              </div>
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-            </div>
-            <div className="space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
-              <div className="flex items-center justify-between">
-                <span>SQL Server:</span>
-                <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-400">En línea</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Modo BI:</span>
-                <span className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                  <Sparkles className="h-3 w-3 text-amber-500" /> 8° Ciclo
-                </span>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div 
-            title="Sede San Isidro - SQL Server En Línea"
-            className="p-2.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200/70 dark:border-slate-800 flex items-center justify-center relative cursor-pointer group transition-all duration-300 animate-in fade-in"
-          >
-            <Building2 className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-            <span className="absolute -top-1 -right-1 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-          </div>
-        )}
       </div>
     </div>
   );
