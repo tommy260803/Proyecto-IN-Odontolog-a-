@@ -300,7 +300,7 @@ export class NegotiatorAgentService {
 
     const universalFallbackSlot2 = {
       titulo: 'Profilaxis Dental',
-      desc: 'Limpieza ultrasónica y remoción de placa.',
+      desc: 'Elimina la acumulación de placa y sarro que es muy difícil de tratar.',
       precioAnt: 'Antes: S/ 120.00',
       precioDesp: 'GRATIS',
       precio: 'GRATIS (con reserva)',

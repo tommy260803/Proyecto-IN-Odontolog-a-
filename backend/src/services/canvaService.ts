@@ -201,27 +201,33 @@ export class CanvaService {
   }
 
   /**
-   * Fuerza que el título del tratamiento tenga como máximo 2 palabras (ej: "Ortodoncia Brackets")
-   * para evitar desbordamientos visuales en las tarjetas del diseño de Canva.
+   * Adapta el título del tratamiento permitiendo nombres descriptivos completos de hasta 5 a 7 palabras
+   * (ej: "Incrustaciones y coronas en zirconio") con un límite de ~55 caracteres.
    */
   public static shortenTitle(title?: string, fallback: string = 'Tratamiento'): string {
     if (!title) return fallback;
     let clean = title.replace(/^(Tratamiento|Servicio|Consulta)\s+de\s+/i, '').trim();
     const words = clean.split(/\s+/).filter(Boolean);
-    if (words.length > 2) {
-      return words.slice(0, 2).join(' ');
+    if (words.length > 7 || clean.length > 55) {
+      if (words.length > 7) {
+        clean = words.slice(0, 7).join(' ');
+      }
+      if (clean.length > 52) {
+        clean = clean.substring(0, 52).trim();
+      }
     }
     return clean || fallback;
   }
 
   /**
-   * Fuerza que la descripción sea breve y concisa (máximo ~40 caracteres) para que no tape el precio
+   * Permite descripciones clínicas completas de hasta 85-90 caracteres
+   * (ej: "Elimina la acumulación de placa y sarro que es muy difícil de tratar.")
    */
   public static shortenDesc(desc?: string, fallback: string = 'Atención clínica personalizada.'): string {
     if (!desc) return fallback;
     let clean = desc.replace(/\[.*?\]/g, '').replace(/\|/g, '').trim();
-    if (clean.length > 40) {
-      clean = clean.substring(0, 37).trim() + '...';
+    if (clean.length > 88) {
+      clean = clean.substring(0, 85).trim() + '...';
     }
     return clean || fallback;
   }
