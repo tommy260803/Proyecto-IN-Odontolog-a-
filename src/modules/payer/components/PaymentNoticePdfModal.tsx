@@ -4,8 +4,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
+import { Badge } from '@/shared/components/ui/badge';
 import { Download, Send, FileText, RefreshCw, Printer } from 'lucide-react';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
 import { useToast } from '@/shared/hooks/use-toast';
@@ -411,73 +413,186 @@ export function PaymentNoticePdfModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl h-[92vh] flex flex-col p-0 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl">
-        {/* Header con Barra de Acciones */}
-        <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/60 shrink-0 flex-wrap gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className={`h-8 w-8 rounded-lg ${isValidated ? 'bg-emerald-600' : 'bg-teal-600'} text-white flex items-center justify-center shadow-sm`}>
-              <FileText className="w-4 h-4" />
+      <DialogContent className="sm:max-w-3xl max-h-[94vh] overflow-hidden p-0 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl flex flex-col">
+        {/* Header del Modal - Color Entero Sólido (Sin Gradiente) */}
+        <div className="bg-slate-900 px-6 py-4 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-white p-1 flex items-center justify-center shadow-xs border border-slate-200">
+              <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
             </div>
             <div>
-              <DialogTitle className="text-sm font-bold text-slate-900 dark:text-white">
-                {isValidated ? 'Visor Oficial de Constancia de Pago PDF' : 'Visor Oficial de Proforma PDF'}
+              <DialogTitle className="text-sm font-extrabold text-white tracking-tight leading-tight">
+                {isValidated ? 'Comprobante Oficial de Pago & Constancia de Cita' : 'Vista Previa del Comprobante & Orden de Cobro'}
               </DialogTitle>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {docCode} • Paciente: {payer.person.firstName} {payer.person.lastName}
+              <DialogDescription className="text-[11px] text-slate-400 leading-tight">
+                Documento digital para trazabilidad de pagos y pre-reservas NexoSalud Dental
+              </DialogDescription>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge className={`${isValidated ? 'bg-emerald-500 text-slate-950' : 'bg-teal-500 text-slate-950'} font-black text-[10px] px-2.5 py-0.5 shadow-xs`}>
+              {isValidated ? 'PAGO VALIDADO' : 'PENDIENTE DE PAGO'}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Visor de Documento PDF (Fondo de Visor con Hoja Blanca Realista Centrada) */}
+        <div className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-950/80 p-4 sm:p-6">
+          {/* Hoja de Comprobante PDF (Documento Clínico Estilo Hoja Impresa) */}
+          <div
+            id="voucher-print-area"
+            className="bg-white text-slate-900 font-sans p-6 sm:p-8 rounded-2xl shadow-xl border border-slate-200/90 max-w-2xl mx-auto space-y-5 ring-1 ring-slate-900/5"
+          >
+            {/* Cabecera del Documento Oficial con Logo Normal NexoSalud */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b-2 border-slate-900 gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs">
+                  <img src="/Logo_NexoSalud.png" alt="NexoSalud Dental" className="w-full h-full object-contain" />
+                </div>
+                <div>
+                  <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-950 uppercase">
+                    NexoSalud Odontología Especializada
+                  </h1>
+                  <p className="text-[11px] text-slate-600 font-medium">
+                    RUC: 20608945231 · Central de Citas: (01) 710-9000
+                  </p>
+                  <p className="text-[10px] text-teal-700 font-semibold">
+                    Portal de Emisión Digital · {isValidated ? 'Constancia Oficial de Pago' : 'Orden de Cobro y Pre-Reserva'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-left sm:text-right bg-slate-50 border border-slate-200 p-3 rounded-xl sm:min-w-[190px]">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Código Comprobante</span>
+                <span className="text-lg font-black text-slate-950 tracking-wider block font-mono">
+                  {docCode}
+                </span>
+                <span className="text-[10px] text-slate-500 block">
+                  Emisión: {new Date().toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </span>
+              </div>
+            </div>
+
+            {/* Grid de Información del Paciente y Cita */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/90 text-xs">
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Datos del Paciente</span>
+                <p className="font-extrabold text-sm text-slate-950">{payer.person.firstName} {payer.person.lastName}</p>
+                {payer.person.documentId && <p className="text-slate-600 font-medium"><span className="text-slate-400">Doc. Identidad:</span> {payer.person.documentId}</p>}
+                {payer.person.phone && <p className="text-slate-600 font-medium"><span className="text-slate-400">WhatsApp:</span> {payer.person.phone}</p>}
+                {payer.person.email && <p className="text-slate-600 font-medium"><span className="text-slate-400">Correo:</span> {payer.person.email}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Detalles de la Cita Médica</span>
+                <p className="font-bold text-slate-900">
+                  <span className="text-slate-400 font-normal">Sede:</span> {payer.reservation?.branchId || 'Sede Principal NexoSalud'}
+                </p>
+                <p className="font-bold text-slate-900">
+                  <span className="text-slate-400 font-normal">Especialista:</span> {payer.reservation?.professionalId || 'Especialista de Turno'}
+                </p>
+                <p className="font-bold text-slate-900">
+                  <span className="text-slate-400 font-normal">Fecha programada:</span> {payer.reservation?.date || 'Por coordinar'}
+                </p>
+                <p className="font-bold text-slate-900">
+                  <span className="text-slate-400 font-normal">Turno:</span> {payer.reservation?.time || 'Horario Flexible'}
+                </p>
+                <p className="font-bold text-slate-900">
+                  <span className="text-slate-400 font-normal">Medio de Pago:</span> {payer.payment?.channel || 'Yape / Plin / Pasarela Digital'}
+                </p>
+              </div>
+            </div>
+
+            {/* Cuadro de Liquidación Tarifaria */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden">
+              <div className="bg-slate-100 px-4 py-2 border-b border-slate-200 flex justify-between items-center text-xs font-bold text-slate-700">
+                <span>Descripción del Servicio Odontológico</span>
+                <span>Importe</span>
+              </div>
+              <div className="p-4 space-y-2 text-xs">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-extrabold text-sm text-slate-900">Consulta y Tratamiento Odontológico Especializado</p>
+                    <p className="text-[11px] text-slate-500 max-w-md mt-0.5">
+                      Atención clínica integral con tecnología de diagnóstico digital y garantía oficial NexoSalud.
+                    </p>
+                  </div>
+                  <span className="font-mono text-slate-500 line-through">
+                    S/ {(Number(payer.amountToPay) * 1.18).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between text-emerald-700 font-semibold pt-1 border-t border-slate-100">
+                  <span>Descuento Promocional de Campaña Aplicado</span>
+                  <span>- S/ {(Number(payer.amountToPay) * 0.18).toFixed(2)}</span>
+                </div>
+
+                <div className="flex justify-between items-center pt-2 border-t-2 border-slate-900 text-sm font-black text-slate-950">
+                  <span>{isValidated ? 'TOTAL ABONADO / CANCELADO:' : 'TOTAL A PAGAR EN CLÍNICA:'}</span>
+                  <span className={`text-xl ${isValidated ? 'text-emerald-700' : 'text-teal-700'} font-mono`}>
+                    S/ {Number(payer.amountToPay).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Estado de Pago y Cláusula de Validez */}
+            <div className={`p-3.5 ${isValidated ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900' : 'bg-teal-50/80 border-teal-200 text-teal-900'} border rounded-xl text-[11px] space-y-1`}>
+              <div className="flex items-center gap-1.5 font-bold">
+                <FileText className="w-4 h-4 shrink-0" />
+                <span>
+                  {isValidated ? '✓ Estado del Pago: Conciliado y Validado' : 'Garantía de Tarifa Oficial Congelada por 48 Horas'}
+                </span>
+              </div>
+              <p className="text-[10.5px] leading-relaxed">
+                {isValidated
+                  ? `Operación N° ${payer.payment?.operationNumber || 'CONCILIADO-OK'} verificada y registrada para su atención en sede.`
+                  : `Presenta este comprobante (en digital o impreso) o menciona el código ${docCode} en recepción para aplicar tu tarifa preferencial.`
+                }
               </p>
             </div>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Botón Enviar por Correo con PDF */}
+        {/* Footer de Acciones del Modal */}
+        <div className="bg-white dark:bg-slate-900 px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="w-full sm:w-auto text-xs font-semibold text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+          >
+            Cerrar Vista Previa
+          </Button>
+
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            {/* Botón Enviar por Correo */}
             <Button
               onClick={handleSendEmailWithPdf}
               disabled={isSendingEmail}
-              size="sm"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs gap-1.5 shadow-sm font-medium h-8"
-              title={`Enviar PDF adjunto a ${payer.person.email || 'correo'}`}
+              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs gap-2 shadow-md cursor-pointer"
+              title={`Enviar comprobante a ${payer.person.email || 'correo'}`}
             >
               {isSendingEmail ? (
                 <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  Enviando PDF...
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Enviando...
                 </>
               ) : (
                 <>
-                  <Send className="w-3.5 h-3.5" />
-                  {isValidated ? 'Enviar Constancia al Correo' : 'Enviar PDF al Correo'}
+                  <Send className="w-3.5 h-3.5" /> Enviar al Correo
                 </>
               )}
             </Button>
 
-            {/* Botón Descargar PDF */}
+            {/* Botón Imprimir o Guardar PDF */}
             <Button
-              onClick={handleDownloadPdf}
-              size="sm"
-              variant="outline"
-              className="border-slate-300 dark:border-slate-700 rounded-xl text-xs gap-1.5 font-medium h-8 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100"
-              title="Descargar archivo PDF al dispositivo"
+              onClick={() => {
+                window.print();
+              }}
+              className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs gap-2 shadow-md cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5 text-teal-600" />
-              Descargar PDF
+              <Printer className="w-4 h-4" /> Imprimir / Guardar PDF
             </Button>
           </div>
-        </div>
-
-        {/* Visor Nativo de PDF (Iframe con el motor PDF del Navegador) */}
-        <div className="flex-1 w-full bg-slate-900 flex justify-center items-center overflow-hidden">
-          {pdfBlobUrl ? (
-            <iframe
-              src={pdfBlobUrl}
-              className="w-full h-full border-0"
-              title={`Visor de PDF - ${docCode}`}
-            />
-          ) : (
-            <div className="flex flex-col items-center gap-2 text-slate-400 text-xs animate-pulse">
-              <RefreshCw className="w-6 h-6 animate-spin text-teal-500" />
-              Cargando documento PDF nativo...
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>

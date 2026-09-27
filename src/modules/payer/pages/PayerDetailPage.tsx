@@ -20,6 +20,7 @@ import {
 } from '../hooks/usePayerQueries';
 import { PaymentForm } from '../components/PaymentForm';
 import { YapePaymentButton } from '../components/YapePaymentButton';
+import { PaymentNoticePdfModal } from '../components/PaymentNoticePdfModal';
 import type { PaymentFormValues } from '../schemas/payerSchema';
 import { AlertCircle, FileText, Bot, ArrowRight, XCircle } from 'lucide-react';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
@@ -43,6 +44,7 @@ export default function PayerDetailPage() {
   const convertToCustomer = useConvertPayerToCustomer();
 
   const [isConvertOpen, setIsConvertOpen] = useState(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [revertReason, setRevertReason] = useState('');
@@ -168,10 +170,18 @@ export default function PayerDetailPage() {
     <div className="flex flex-col gap-6 max-w-5xl mx-auto w-full">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2">
         <PageHeader title="Detalle de Cobro" description={`Payer ID: ${payer.id}`} />
-        <div className="flex items-center gap-4 mt-4 md:mt-0">
+        <div className="flex items-center gap-3 mt-4 md:mt-0 flex-wrap">
           <StatusBadge status={payer.state} />
+          <Button
+            variant="outline"
+            onClick={() => setIsPdfModalOpen(true)}
+            className="gap-2 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/50 text-xs font-semibold rounded-xl h-9"
+          >
+            <FileText className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            Ver Comprobante Oficial
+          </Button>
           {payer.state === PayerState.VALIDATED && (
-            <Button onClick={() => setIsConvertOpen(true)} className="gap-2">
+            <Button onClick={() => setIsConvertOpen(true)} className="gap-2 text-xs font-semibold rounded-xl h-9">
               Pasar a CUSTOMER <ArrowRight className="w-4 h-4" />
             </Button>
           )}
@@ -376,6 +386,12 @@ export default function PayerDetailPage() {
           />
         </div>
       </ConfirmationDialog>
+
+      <PaymentNoticePdfModal
+        payer={payer}
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+      />
     </div>
   );
 }
