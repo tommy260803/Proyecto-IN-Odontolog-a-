@@ -1161,67 +1161,12 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                           value={`${['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][pref.Horario.dia_semana] || `Día ${pref.Horario.dia_semana}`} (${String(pref.Horario.hora_inicio).substring(11, 16)} – ${String(pref.Horario.hora_fin).substring(11, 16)})`}
                         />
                       )}
-                      {pref.Canal && <DataRow label="Medio de comunicación preferido" icon={<MessageSquare className="h-3.5 w-3.5" />} value={pref.Canal.nombre} />}
-                      {pref.Modalidad && <DataRow label="Modalidad preferida" icon={<Building2 className="h-3.5 w-3.5" />} value={pref.Modalidad.nombre} />}
                       {pref.sede_preferida && <DataRow label="Sede preferida" icon={<MapPin className="h-3.5 w-3.5" />} value={pref.sede_preferida} />}
-                      {pref.profesional_preferido && <DataRow label="Profesional preferido" icon={<Stethoscope className="h-3.5 w-3.5" />} value={`Esp. ${pref.profesional_preferido}`} />}
                     </>
                   )}
                 </AccordionSection>
 
-                {/* 3. Datos de estudiante — acordeón */}
-                <AccordionSection
-                  title="Datos de Estudiante"
-                  subtitle="Historial académico actual"
-                  icon={<GraduationCap className="h-3.5 w-3.5" />}
-                  defaultOpen={isStudent}
-                >
-                  {!datAcad ? (
-                    <p className="text-xs text-slate-400 dark:text-slate-500 italic">Sin datos registrados</p>
-                  ) : datAcad.aplica === false ? (
-                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
-                      <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 mt-0.5">
-                        <X className="w-3 h-3 text-slate-500" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Condición de estudiante: <span className="font-bold">No aplica</span></p>
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">La persona no se encuentra matriculada actualmente en programas universitarios.</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 flex items-center gap-1 font-semibold">
-                          <Award className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                          Estudiante Activo
-                        </Badge>
-                      </div>
-                      <DataRow label="Universidad" value={datAcad.universidad} />
-                      <DataRow label="Carrera" value={datAcad.carrera} />
-                      <DataRow label="Ciclo" value={datAcad.ciclo} />
-                    </div>
-                  )}
-                </AccordionSection>
-
-                {/* 4. Datos laborales — acordeón */}
-                <AccordionSection
-                  title="Datos Laborales"
-                  subtitle="Ocupación y régimen laboral"
-                  icon={<Briefcase className="h-3.5 w-3.5" />}
-                >
-                  {!datLab ? (
-                    <p className="text-xs text-slate-400 dark:text-slate-500 italic">Sin datos laborales registrados</p>
-                  ) : (
-                    <>
-                      {datLab.ocupacion && <DataRow label="Ocupación" icon={<Activity className="h-3.5 w-3.5" />} value={datLab.ocupacion} />}
-                      {datLab.empresa && <DataRow label="Tipo o lugar de trabajo" icon={<Building2 className="h-3.5 w-3.5" />} value={datLab.empresa} />}
-                      {datLab.modalidad && <DataRow label="Horario laboral" icon={<Clock className="h-3.5 w-3.5" />} value={datLab.modalidad} />}
-                      {datLab.disponibilidad && <DataRow label="Disponibilidad para coordinaciones" value={datLab.disponibilidad} />}
-                    </>
-                  )}
-                </AccordionSection>
-
-                {/* 5. Salud Odontológica — acordeón */}
+                {/* 3. Salud Odontológica — acordeón */}
                 <AccordionSection
                   title="Salud Odontológica"
                   subtitle="Antecedentes clínicos y contexto bucal del paciente"
@@ -1237,15 +1182,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                         <DataRow label="Motivo de consulta" value={saludOdonto.motivo_consulta} />
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <DataRow label="Tratamiento previo" value={saludOdonto.tratamiento_previo} />
                         <DataRow label="Nivel de dolor" value={saludOdonto.nivel_dolor} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-1.5 pt-1">
-                        <CondChip label="Sensibilidad" value={saludOdonto.presenta_sensibilidad} />
-                        <CondChip label="Sangrado / Inflamación" value={saludOdonto.sangrado_o_inflamacion} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <DataRow label="Aparato / Prótesis" value={saludOdonto.usa_aparato_o_protesis} />
                         <DataRow label="Cond. especial de atención" value={saludOdonto.condicion_atencion_especial} />
                       </div>
                     </div>

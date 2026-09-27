@@ -51,6 +51,7 @@ import {
   ExternalLink,
   Download,
   Image as ImageIcon,
+  History,
 } from 'lucide-react';
 
 // ── Logo oficial de Canva (Icon-Icons / Simple Icons) ───────────────────────
@@ -571,29 +572,11 @@ export default function LeadNegotiationPage() {
               </div>
             </div>
 
-            {/* Datos Académicos */}
-            <div className="p-5 space-y-2">
-              <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Condición Académica</Label>
-              {datAcad?.aplica ? (
-                <div className="space-y-2">
-                  <Badge variant="outline" className="text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 flex items-center gap-1 font-semibold w-fit">
-                    <Award className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    Estudiante Activo
-                  </Badge>
-                  <p className="text-slate-800 dark:text-slate-200"><span className="font-semibold">Universidad:</span> {datAcad.universidad}</p>
-                  <p className="text-slate-800 dark:text-slate-200"><span className="font-semibold">Carrera:</span> {datAcad.carrera} ({datAcad.ciclo})</p>
-                </div>
-              ) : (
-                <p className="text-slate-500 italic">No registrado como estudiante universitario</p>
-              )}
-            </div>
-
             {/* Preferencias */}
             <div className="p-5 space-y-2">
               <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Preferencias de Atención</Label>
               <div className="space-y-1.5 text-slate-700 dark:text-slate-300">
                 <p><span className="font-semibold">Sede:</span> {pref?.sede_preferida || 'Indiferente'}</p>
-                <p><span className="font-semibold">Especialista:</span> {pref?.profesional_preferido || 'Indiferente'}</p>
               </div>
             </div>
           </CardContent>
@@ -624,11 +607,11 @@ export default function LeadNegotiationPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
               <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 space-y-1 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300 font-bold text-[11px]">
-                  <GraduationCap className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
-                  <span>Perfil Universitario</span>
+                  <History className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>Historial de Consultas</span>
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
-                  {isStudent ? `Perfil universitario identificado (${datAcad?.universidad || 'Universidad'}).` : 'Tarifa regular sugerida.'}
+                  {lead.Solicitudes?.length > 1 ? `Prospecto recurrente: ${lead.Solicitudes.length} consultas previas.` : 'Primera consulta registrada.'}
                 </p>
               </div>
 
@@ -648,7 +631,7 @@ export default function LeadNegotiationPage() {
                   <span>Preferencias</span>
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
-                  {pref?.sede_preferida || pref?.profesional_preferido ? `Sede ${pref?.sede_preferida || 'Indiferente'} / Esp. ${pref?.profesional_preferido || 'Indiferente'}.` : 'Sin restricciones.'}
+                  {pref?.sede_preferida ? `Sede preferida: ${pref.sede_preferida}.` : 'Sin restricciones de sede.'}
                 </p>
               </div>
             </div>
