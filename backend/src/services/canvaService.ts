@@ -343,21 +343,18 @@ export class CanvaService {
       Tratamiento_1_Desc: { type: 'text', text: t1Desc },
       Tratamiento_1_Precio_Ant: { type: 'text', text: t1PrecioAnt },
       Tratamiento_1_Precio_Desp: { type: 'text', text: t1PrecioDesp },
-      Tratamiento_1_Precio: { type: 'text', text: t1PrecioDesp },
 
       // BLOQUE DE TRATAMIENTO 2 (CENTRAL)
       Tratamiento_2_Titulo: { type: 'text', text: t2Titulo },
       Tratamiento_2_Desc: { type: 'text', text: t2Desc },
       Tratamiento_2_Precio_Ant: { type: 'text', text: t2PrecioAnt },
       Tratamiento_2_Precio_Desp: { type: 'text', text: t2PrecioDesp },
-      Tratamiento_2_Precio: { type: 'text', text: t2PrecioDesp },
 
       // BLOQUE DE TRATAMIENTO 3 (INFERIOR)
       Tratamiento_3_Titulo: { type: 'text', text: t3Titulo },
       Tratamiento_3_Desc: { type: 'text', text: t3Desc },
       Tratamiento_3_Precio_Ant: { type: 'text', text: t3PrecioAnt },
       Tratamiento_3_Precio_Desp: { type: 'text', text: t3PrecioDesp },
-      Tratamiento_3_Precio: { type: 'text', text: t3PrecioDesp },
     };
   }
 
@@ -490,17 +487,22 @@ export class CanvaService {
 
           let autofillJob = autofillJson.job;
           let pollAttempts = 0;
-          while (autofillJob?.status === 'in_progress' && pollAttempts < 10) {
-            await new Promise((r) => setTimeout(r, 1500));
+          while (autofillJob?.status === 'in_progress' && pollAttempts < 8) {
+            const delay = pollAttempts === 0 ? 400 : (pollAttempts === 1 ? 600 : 800);
+            await new Promise((r) => setTimeout(r, delay));
             const pollRes = await fetch(`https://api.canva.com/rest/v1/autofills/${autofillJobId}`, {
               headers: { Authorization: `Bearer ${token}` },
             });
             if (pollRes.ok) {
               const pollData: any = await pollRes.json();
               autofillJob = pollData.job;
-              console.log(`🎨 [Canva Connect] Polling Autofill (${pollAttempts + 1}/10): ${autofillJob?.status}`);
+              console.log(`🎨 [Canva Connect] Polling Autofill (${pollAttempts + 1}/8): ${autofillJob?.status}`);
             }
             pollAttempts++;
+          }
+
+          if (autofillJob?.status === 'failed') {
+            console.error('❌ [Canva Connect] Autofill Job falló:', JSON.stringify(autofillJob.error || autofillJob));
           }
 
           const customizedDesign = autofillJob?.result?.design;
@@ -529,17 +531,22 @@ export class CanvaService {
               let exportJob = exportJson.job;
               let exportPoll = 0;
 
-              while (exportJob?.status === 'in_progress' && exportPoll < 10) {
-                await new Promise((r) => setTimeout(r, 1500));
+              while (exportJob?.status === 'in_progress' && exportPoll < 8) {
+                const delay = exportPoll === 0 ? 400 : (exportPoll === 1 ? 600 : 800);
+                await new Promise((r) => setTimeout(r, delay));
                 const pRes = await fetch(`https://api.canva.com/rest/v1/exports/${exportJobId}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
                 if (pRes.ok) {
                   const pData: any = await pRes.json();
                   exportJob = pData.job;
-                  console.log(`🎨 [Canva Connect] Polling Exportación PNG (${exportPoll + 1}/10): ${exportJob?.status}`);
+                  console.log(`🎨 [Canva Connect] Polling Exportación PNG (${exportPoll + 1}/8): ${exportJob?.status}`);
                 }
                 exportPoll++;
+              }
+
+              if (exportJob?.status === 'failed') {
+                console.error('❌ [Canva Connect] Export Job falló:', JSON.stringify(exportJob.error || exportJob));
               }
 
               if (exportJob?.status === 'success' && exportJob.urls && exportJob.urls.length > 0) {
@@ -567,7 +574,7 @@ export class CanvaService {
 
         // Respaldo de exportación directa si Autofill no se completa
         const designId = process.env.CANVA_DESIGN_ID || 'DAHWLeZ6ETo';
-        console.log('🎨 [Canva Connect] Usando exportación directa del diseño base:', designId);
+        console.log('🎨 [Canva Connect] Usando exportación directa rápida del diseño base:', designId);
 
         const fallbackExportRes = await fetch('https://api.canva.com/rest/v1/exports', {
           method: 'POST',
@@ -585,8 +592,9 @@ export class CanvaService {
           const fJson: any = await fallbackExportRes.json();
           let fJob = fJson.job;
           let fPoll = 0;
-          while (fJob?.status === 'in_progress' && fPoll < 10) {
-            await new Promise((r) => setTimeout(r, 1500));
+          while (fJob?.status === 'in_progress' && fPoll < 4) {
+            const delay = fPoll === 0 ? 400 : (fPoll === 1 ? 600 : 800);
+            await new Promise((r) => setTimeout(r, delay));
             const pRes = await fetch(`https://api.canva.com/rest/v1/exports/${fJson.job?.id}`, {
               headers: { Authorization: `Bearer ${token}` },
             });

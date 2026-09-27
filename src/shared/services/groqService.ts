@@ -715,36 +715,36 @@ REGLAS DE ORO:
    - "RENUEVA TU SONRISA"
 5. NUNCA uses términos clínicos aburridos, preposiciones raras o frases incompletas. Responde ÚNICAMENTE las 2 o 3 palabras en MAYÚSCULAS sin comillas ni puntos.`;
 
-    for (const model of GROQ_MODELS) {
-      try {
-        const response = await fetch(GROQ_API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: 'system', content: 'Eres un copywriter publicitario dental de élite. Responde únicamente un titular impactante en mayúsculas de 2 o 3 palabras.' },
-              { role: 'user', content: prompt },
-            ],
-            temperature: 0.5,
-            max_tokens: 20,
-          }),
-        });
+    // Intentar con el modelo más rápido con timeout estricto de 1.2s para no demorar la generación
+    try {
+      const response = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: GROQ_MODELS[0],
+          messages: [
+            { role: 'system', content: 'Eres un copywriter publicitario dental de élite. Responde únicamente un titular impactante en mayúsculas de 2 o 3 palabras.' },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.5,
+          max_tokens: 20,
+        }),
+        signal: AbortSignal.timeout(1200),
+      });
 
-        if (response.ok) {
-          const data = await response.json();
-          let raw = data.choices?.[0]?.message?.content?.trim() || '';
-          raw = raw.replace(/["'«».:;\n\r]/g, '').trim();
-          const words = raw.split(/\s+/).filter(Boolean);
-          if (words.length >= 2) {
-            return words.slice(0, 3).join(' ').toUpperCase();
-          }
+      if (response.ok) {
+        const data = await response.json();
+        let raw = data.choices?.[0]?.message?.content?.trim() || '';
+        raw = raw.replace(/["'«».:;\n\r]/g, '').trim();
+        const words = raw.split(/\s+/).filter(Boolean);
+        if (words.length >= 2) {
+          return words.slice(0, 3).join(' ').toUpperCase();
         }
-      } catch (_) {}
-    }
+      }
+    } catch (_) {}
   }
 
   // Fallback heurístico de alta persuasión por servicio (máximo 3 palabras)
