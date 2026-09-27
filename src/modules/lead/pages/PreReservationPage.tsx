@@ -25,6 +25,7 @@ import {
   Phone,
   Mail,
   Calendar,
+  CalendarDays,
   Clock,
   MapPin,
   CheckCircle2,
@@ -60,6 +61,20 @@ interface ChatMessage {
   timestamp: string;
 }
 
+const formatDateIso = (d: Date): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getRecommendedOffset = (dolor: string): number => {
+  const d = (dolor || '').toLowerCase();
+  if (d.includes('intenso') || d.includes('agudo')) return 0; // Hoy o Mañana
+  if (d.includes('moderado')) return 1; // 24-48 horas
+  return 3; // Leve o Ninguno: 3 días después para holgura de pago
+};
+
 export default function PreReservationPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -70,6 +85,8 @@ export default function PreReservationPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Form states
+  const [selectedServiceKey, setSelectedServiceKey] = useState<string>('main');
+  const [showCalendarInput, setShowCalendarInput] = useState(false);
   const [dni, setDni] = useState('');
   const [nombres, setNombres] = useState('');
   const [apellidos, setApellidos] = useState('');
@@ -99,6 +116,85 @@ export default function PreReservationPage() {
   const [isAiTyping, setIsAiTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Próximos 7 días interactivos
+  const upcomingDays = React.useMemo(() => {
+    const days = [];
+    const today = new Date();
+    const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Dic'];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(today.getDate() + i);
+      const iso = formatDateIso(d);
+      days.push({
+        offset: i,
+        iso,
+        dayName: i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : daysOfWeek[d.getDay()],
+        dayNum: d.getDate(),
+        month: months[d.getMonth()],
+      });
+    }
+    return days;
+  }, []);
+
+  // Lista consolidada de servicios: Cotizado principal + Cruzados relacionados
+  const availableServices = React.useMemo(() => {
+    if (!offerData) return [];
+    const list: any[] = [
+      {
+        key: 'main',
+        id_servicio: offerData.id_servicio || 1,
+        name: offerData.serviceName,
+        description: offerData.serviceDescription || 'Tratamiento odontológico principal cotizado.',
+        originalPrice: Number(offerData.originalPrice || 0),
+        offeredPrice: Number(offerData.offeredPrice || 0),
+        discountPct: offerData.discountPct || 0,
+        isMain: true,
+        tag: 'Cotizado Principal',
+      },
+    ];
+
+    if (offerData.relatedServices && Array.isArray(offerData.relatedServices)) {
+      offerData.relatedServices.forEach((rel: any, idx: number) => {
+        list.push({
+          key: `related-${idx}`,
+          id_servicio: rel.id_servicio,
+          name: rel.name,
+          description: rel.description || 'Tratamiento complementario con tarifa preferencial.',
+          originalPrice: Number(rel.originalPrice || 0),
+          offeredPrice: Number(rel.offeredPrice || 0),
+          discountPct: rel.discountPct || offerData.discountPct,
+          isMain: false,
+          tag: 'Tarifa Especial',
+        });
+      });
+    }
+    return list;
+  }, [offerData]);
+
+  // Servicio activo seleccionado
+  const activeService = React.useMemo(() => {
+    return availableServices.find((s) => s.key === selectedServiceKey) || availableServices[0] || {
+      id_servicio: 1,
+      name: offerData?.serviceName || '',
+      description: offerData?.serviceDescription || '',
+      originalPrice: Number(offerData?.originalPrice || 0),
+      offeredPrice: Number(offerData?.offeredPrice || 0),
+      discountPct: offerData?.discountPct || 0,
+      isMain: true,
+    };
+  }, [availableServices, selectedServiceKey, offerData]);
+
+  // Cambio inteligente de dolor y ajuste reactivo de fecha recomendada
+  const handleSelectNivelDolor = (nuevoNivel: string) => {
+    setNivelDolor(nuevoNivel);
+    const offset = getRecommendedOffset(nuevoNivel);
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + offset);
+    setFechaCita(formatDateIso(targetDate));
+  };
+
   // Cargar datos de la oferta pública
   useEffect(() => {
     if (!id) return;
@@ -114,7 +210,14 @@ export default function PreReservationPage() {
         setEmail(data.email || '');
         setDni(data.dni || '');
         setSelectedSedeId(data.sedeId || (data.sedes?.[0]?.id_sede || 1));
-        setFechaCita(data.expirationDate || new Date().toISOString().split('T')[0]);
+
+        // Inicializar nivel de dolor y sugerir fecha según molestia (por defecto 3 días si leve/ninguno)
+        const initialDolor = data.nivelDolor || 'Ninguno (Preventivo)';
+        setNivelDolor(initialDolor);
+        const offset = getRecommendedOffset(initialDolor);
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + offset);
+        setFechaCita(formatDateIso(targetDate));
 
         // Mensaje de bienvenida inicial del Asistente NexoSalud
         const patientGreeting = data.firstName ? `¡Hola ${data.firstName}!` : '¡Hola!';
@@ -160,10 +263,10 @@ export default function PreReservationPage() {
     try {
       const chatContext: NegotiatorChatContext = {
         patientName: nombres || offerData.firstName || offerData.patientName,
-        serviceName: offerData.serviceName,
-        offeredPrice: Number(offerData.offeredPrice),
-        originalPrice: Number(offerData.originalPrice),
-        discountPct: offerData.discountPct,
+        serviceName: activeService.name,
+        offeredPrice: Number(activeService.offeredPrice),
+        originalPrice: Number(activeService.originalPrice),
+        discountPct: activeService.discountPct,
         doctor: offerData.doctor,
         sede: offerData.sede,
         expirationDate: offerData.expirationDate,
@@ -239,6 +342,9 @@ export default function PreReservationPage() {
         alergias,
         canal_pago: canalPago,
         dudaOComentario: comentarios.trim(),
+        id_servicio_seleccionado: activeService.id_servicio,
+        selectedServiceName: activeService.name,
+        selectedServicePrice: activeService.offeredPrice,
       };
 
       const result = await leadService.submitPublicPreReserve(id, payload);
@@ -405,7 +511,7 @@ export default function PreReservationPage() {
                 </Badge>
                 <h2 className="text-lg sm:text-xl font-black tracking-tight mt-0.5">¡Felicitaciones, {nombres}!</h2>
                 <p className="text-teal-100 text-xs mt-0.5 max-w-md mx-auto">
-                  Tu cupo y tarifa para <span className="font-bold text-white underline">{offerData.serviceName}</span> han quedado congelados por 48 horas en nuestra central clínica.
+                  Tu cupo y tarifa para <span className="font-bold text-white underline">{activeService.name}</span> han quedado congelados por 48 horas en nuestra central clínica.
                 </p>
               </div>
 
@@ -444,7 +550,7 @@ export default function PreReservationPage() {
                   )}
                   <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Tratamiento Asignado:</span>
-                    <span className="font-bold text-teal-700">{offerData.serviceName}</span>
+                    <span className="font-bold text-teal-700">{activeService.name}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Sede Odontológica:</span>
@@ -470,8 +576,8 @@ export default function PreReservationPage() {
                   <div className="flex justify-between items-center pt-1">
                     <span className="text-xs font-bold text-slate-800">Total Promocional a abonar:</span>
                     <div className="text-right">
-                      <span className="text-xl font-black text-emerald-600 font-mono">S/ {Number(offerData.offeredPrice).toFixed(2)}</span>
-                      <span className="block text-[10px] text-slate-400 line-through">S/ {Number(offerData.originalPrice).toFixed(2)}</span>
+                      <span className="text-xl font-black text-emerald-600 font-mono">S/ {Number(activeService.offeredPrice).toFixed(2)}</span>
+                      <span className="block text-[10px] text-slate-400 line-through">S/ {Number(activeService.originalPrice).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -484,8 +590,8 @@ export default function PreReservationPage() {
                         `¡Hola NexoSalud! Confirmé mi pre-reserva online.\n\n` +
                         `📋 *Código:* ${preReserveSuccess.codigoReserva}\n` +
                         `👤 *Paciente:* ${nombres} ${apellidos}\n` +
-                        `🦷 *Tratamiento:* ${offerData.serviceName}\n` +
-                        `💰 *Monto Promocional:* S/ ${Number(offerData.offeredPrice).toFixed(2)}\n` +
+                        `🦷 *Tratamiento:* ${activeService.name}\n` +
+                        `💰 *Monto Promocional:* S/ ${Number(activeService.offeredPrice).toFixed(2)}\n` +
                         `💳 *Pago:* ${canalPago}\n` +
                         `📍 *Sede:* ${(() => {
                           const match = offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId));
@@ -528,7 +634,7 @@ export default function PreReservationPage() {
                     </div>
                   </div>
                   <Badge className="bg-amber-400 text-slate-950 font-black hover:bg-amber-400 px-2 py-0.5 shadow-xs text-[10px] shrink-0">
-                    ¡{offerData.discountPct}% DSCTO!
+                    ¡{activeService.discountPct}% DSCTO!
                   </Badge>
                 </div>
               </div>
@@ -540,20 +646,94 @@ export default function PreReservationPage() {
                   {/* Resumen Compacto de la Oferta en Pantallas Móviles */}
                   <div className="lg:hidden p-3 bg-teal-50/70 border border-teal-100 rounded-2xl space-y-1.5">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-teal-900">{offerData.serviceName}</span>
-                      <span className="text-sm font-black text-teal-900">S/ {Number(offerData.offeredPrice).toFixed(2)}</span>
+                      <span className="text-xs font-bold text-teal-900">{activeService.name}</span>
+                      <span className="text-sm font-black text-teal-900">S/ {Number(activeService.offeredPrice).toFixed(2)}</span>
                     </div>
                     <div className="flex items-center justify-between text-[10.5px] text-slate-500">
-                      <span>Precio regular: S/ {Number(offerData.originalPrice).toFixed(2)}</span>
-                      <span className="text-emerald-700 font-bold">Ahorras S/ {(Number(offerData.originalPrice) - Number(offerData.offeredPrice)).toFixed(2)}</span>
+                      <span>Precio regular: S/ {Number(activeService.originalPrice).toFixed(2)}</span>
+                      <span className="text-emerald-700 font-bold">Ahorras S/ {(Number(activeService.originalPrice) - Number(activeService.offeredPrice)).toFixed(2)}</span>
                     </div>
                   </div>
 
-                  {/* 1. Datos del Paciente Titular */}
-                  <div className="space-y-3">
+                  {/* 1. Tratamiento Odontológico Solicitado */}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                        <Stethoscope className="w-3.5 h-3.5 text-teal-600" />
+                        <span>1. Tratamiento Odontológico</span>
+                      </div>
+                      {availableServices.length > 1 && (
+                        <span className="text-[10px] text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                          {availableServices.length} opciones disponibles
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      {availableServices.map((srv) => {
+                        const isSelected = selectedServiceKey === srv.key;
+                        return (
+                          <div
+                            key={srv.key}
+                            onClick={() => setSelectedServiceKey(srv.key)}
+                            className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 text-left ${
+                              isSelected
+                                ? '!bg-teal-50/80 !border-2 !border-teal-600 shadow-xs ring-1 ring-teal-500'
+                                : '!bg-white !border-slate-200 hover:!border-teal-400 hover:!bg-teal-50/30'
+                            }`}
+                          >
+                            <div className="flex items-start gap-2.5 min-w-0">
+                              <div
+                                className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
+                                  isSelected
+                                    ? '!bg-teal-600 !border-teal-600 text-white'
+                                    : '!bg-white !border-slate-300'
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`text-xs font-bold leading-tight ${isSelected ? 'text-teal-950' : 'text-slate-800'}`}>
+                                    {srv.name}
+                                  </span>
+                                  {srv.isMain ? (
+                                    <span className="text-[9.5px] font-bold bg-teal-100 text-teal-800 px-1.5 py-0.5 rounded-md">
+                                      Cotizado Principal
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9.5px] font-bold bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded-md">
+                                      Tarifa Preferente
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[10.5px] text-slate-500 line-clamp-1 mt-0.5">
+                                  {srv.description}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0">
+                              <span className="block text-xs sm:text-sm font-black text-teal-700 font-mono">
+                                S/ {Number(srv.offeredPrice).toFixed(2)}
+                              </span>
+                              {srv.originalPrice > srv.offeredPrice && (
+                                <span className="block text-[10px] text-slate-400 line-through">
+                                  S/ {Number(srv.originalPrice).toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 2. Datos del Paciente Titular */}
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
                     <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                       <User className="w-3.5 h-3.5 text-teal-600" />
-                      <span>1. Datos del Paciente Titular</span>
+                      <span>2. Datos del Paciente Titular</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -664,11 +844,11 @@ export default function PreReservationPage() {
                     </div>
                   </div>
 
-                  {/* 2. Coordinación de Cita & Sede */}
+                  {/* 3. Coordinación de Cita & Sede */}
                   <div className="space-y-3 pt-2 border-t border-slate-100">
                     <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-800 uppercase tracking-wider">
                       <Calendar className="w-3.5 h-3.5 text-teal-600" />
-                      <span>2. Coordinación de Cita & Sede</span>
+                      <span>3. Coordinación de Cita & Sede</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -700,29 +880,18 @@ export default function PreReservationPage() {
                       </div>
 
                       <div className="space-y-1">
-                        <Label className="text-[11px] font-semibold text-slate-700">Fecha Tentativa</Label>
-                        <Input
-                          type="date"
-                          value={fechaCita}
-                          min={new Date().toISOString().split('T')[0]}
-                          onChange={(e) => setFechaCita(e.target.value)}
-                          className="!bg-white !text-slate-900 !border-slate-200 text-xs h-9 rounded-xl shadow-2xs font-medium focus:!border-teal-500 focus:!ring-1 focus:!ring-teal-500"
-                        />
+                        <Label className="text-[11px] font-semibold text-slate-700">Turno Preferido de Atención</Label>
+                        <Select value={horaCita} onValueChange={setHoraCita}>
+                          <SelectTrigger className="!bg-white !text-slate-900 !border-slate-200 text-xs h-9 rounded-xl font-medium shadow-2xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                            <SelectValue placeholder="Selecciona turno preferido" />
+                          </SelectTrigger>
+                          <SelectContent className="!bg-white !border-slate-200 text-slate-900 shadow-xl">
+                            <SelectItem value="09:00 - 13:00 (Mañana)">Mañana (09:00 AM - 01:00 PM)</SelectItem>
+                            <SelectItem value="14:00 - 18:00 (Tarde)">Tarde (02:00 PM - 06:00 PM)</SelectItem>
+                            <SelectItem value="18:00 - 21:00 (Noche)">Noche (06:00 PM - 09:00 PM)</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-[11px] font-semibold text-slate-700">Turno Preferido de Atención</Label>
-                      <Select value={horaCita} onValueChange={setHoraCita}>
-                        <SelectTrigger className="!bg-white !text-slate-900 !border-slate-200 text-xs h-9 rounded-xl font-medium shadow-2xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
-                          <SelectValue placeholder="Selecciona turno preferido" />
-                        </SelectTrigger>
-                        <SelectContent className="!bg-white !border-slate-200 text-slate-900 shadow-xl">
-                          <SelectItem value="09:00 - 13:00 (Mañana)">Mañana (09:00 AM - 01:00 PM)</SelectItem>
-                          <SelectItem value="14:00 - 18:00 (Tarde)">Tarde (02:00 PM - 06:00 PM)</SelectItem>
-                          <SelectItem value="18:00 - 21:00 (Noche)">Noche (06:00 PM - 09:00 PM)</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
 
                     {/* Nivel de dolor con opciones blancas y hover Teal */}
@@ -742,7 +911,7 @@ export default function PreReservationPage() {
                             <button
                               key={nivel}
                               type="button"
-                              onClick={() => setNivelDolor(nivel)}
+                              onClick={() => handleSelectNivelDolor(nivel)}
                               className={`py-2 px-1.5 rounded-xl border text-[10.5px] font-semibold transition-all cursor-pointer text-center ${
                                 isSelected
                                   ? '!bg-teal-600 !border-teal-600 text-white shadow-xs ring-1 ring-teal-500'
@@ -756,6 +925,114 @@ export default function PreReservationPage() {
                       </div>
                     </div>
 
+                    {/* Banner clínico reactivo según dolor */}
+                    <div className={`p-2.5 rounded-xl border text-[11px] flex items-center gap-2 ${
+                      nivelDolor.includes('Intenso') || nivelDolor.includes('Agudo')
+                        ? 'bg-red-50 border-red-200 text-red-900'
+                        : nivelDolor.includes('Moderado')
+                        ? 'bg-amber-50 border-amber-200 text-amber-900'
+                        : 'bg-teal-50/80 border-teal-200 text-teal-900'
+                    }`}>
+                      <AlertCircle className={`w-4 h-4 shrink-0 ${
+                        nivelDolor.includes('Intenso') || nivelDolor.includes('Agudo')
+                          ? 'text-red-600'
+                          : nivelDolor.includes('Moderado')
+                          ? 'text-amber-600'
+                          : 'text-teal-600'
+                      }`} />
+                      <div className="leading-tight">
+                        {nivelDolor.includes('Intenso') || nivelDolor.includes('Agudo') ? (
+                          <span><strong>Atención Urgente Recomendada:</strong> Al presentar molestia intensa, preseleccionamos fecha prioritaria (Hoy o Mañana).</span>
+                        ) : nivelDolor.includes('Moderado') ? (
+                          <span><strong>Atención Pronta:</strong> Te sugerimos coordinar tu cita en las próximas 24 a 48 horas.</span>
+                        ) : (
+                          <span><strong>Fecha Sugerida (3 días después):</strong> Te damos 3 días de margen para coordinar tu pago y cita con total comodidad.</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Selector Interactivo de Fecha (Próximos 7 días) */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[11px] font-semibold text-slate-700">
+                          Selecciona el día de tu cita
+                        </Label>
+                        <span className="text-[10px] text-slate-500 font-medium">
+                          Elegido: <strong className="text-teal-700">{fechaCita}</strong>
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                        {upcomingDays.map((day) => {
+                          const isSelected = fechaCita === day.iso;
+                          const recommendedOffset = getRecommendedOffset(nivelDolor);
+                          const isRecommended =
+                            (recommendedOffset === 0 && (day.offset === 0 || day.offset === 1)) ||
+                            (recommendedOffset === 1 && (day.offset === 1 || day.offset === 2)) ||
+                            (recommendedOffset === 3 && day.offset === 3);
+
+                          return (
+                            <button
+                              key={day.iso}
+                              type="button"
+                              onClick={() => {
+                                setFechaCita(day.iso);
+                                setShowCalendarInput(false);
+                              }}
+                              className={`py-2 px-1 rounded-xl border flex flex-col items-center justify-center transition-all cursor-pointer relative ${
+                                isSelected
+                                  ? '!bg-teal-600 !border-teal-600 text-white shadow-xs ring-1 ring-teal-500'
+                                  : '!bg-white !border-slate-200 text-slate-700 hover:!bg-teal-50/50 hover:!border-teal-400 hover:!text-teal-950 shadow-2xs'
+                              }`}
+                            >
+                              {isRecommended && (
+                                <span className={`absolute -top-1.5 text-[7.5px] font-black px-1 rounded-full uppercase tracking-tighter ${
+                                  isSelected
+                                    ? 'bg-amber-400 text-slate-950'
+                                    : 'bg-teal-100 text-teal-800'
+                                }`}>
+                                  {day.offset === 0 ? 'Hoy' : day.offset === 3 ? 'Ideal' : 'Sugerido'}
+                                </span>
+                              )}
+                              <span className={`text-[10px] font-bold ${isSelected ? 'text-teal-100' : 'text-slate-500'}`}>
+                                {day.dayName}
+                              </span>
+                              <span className="text-sm font-black tracking-tight leading-tight">
+                                {day.dayNum}
+                              </span>
+                              <span className={`text-[9px] uppercase font-semibold ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
+                                {day.month}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Botón para alternar a fecha personalizada */}
+                      <div className="pt-1 flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => setShowCalendarInput(!showCalendarInput)}
+                          className="text-[10.5px] font-semibold text-teal-700 hover:text-teal-800 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <CalendarDays className="w-3.5 h-3.5" />
+                          <span>{showCalendarInput ? 'Ocultar calendario' : '¿Deseas elegir otra fecha más adelante?'}</span>
+                        </button>
+                      </div>
+
+                      {showCalendarInput && (
+                        <div className="pt-1 animate-in fade-in-50 duration-200">
+                          <Input
+                            type="date"
+                            value={fechaCita}
+                            min={new Date().toISOString().split('T')[0]}
+                            onChange={(e) => setFechaCita(e.target.value)}
+                            className="!bg-white !text-slate-900 !border-slate-200 text-xs h-9 rounded-xl shadow-2xs font-medium focus:!border-teal-500 focus:!ring-1 focus:!ring-teal-500"
+                          />
+                        </div>
+                      )}
+                    </div>
+
                     <div className="space-y-1">
                       <Label className="text-[11px] font-semibold text-slate-700">Alergias o Condiciones Especiales (Opcional)</Label>
                       <Input
@@ -767,11 +1044,11 @@ export default function PreReservationPage() {
                     </div>
                   </div>
 
-                  {/* 3. Modalidad de Pago y Confirmación */}
+                  {/* 4. Modalidad de Pago Preferida */}
                   <div className="space-y-3 pt-2 border-t border-slate-100">
                     <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-800 uppercase tracking-wider">
                       <CreditCard className="w-3.5 h-3.5 text-teal-600" />
-                      <span>3. Modalidad de Pago Preferida</span>
+                      <span>4. Modalidad de Pago Preferida</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
@@ -882,7 +1159,7 @@ export default function PreReservationPage() {
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Confirmar Pre-Reserva (S/ {Number(offerData.offeredPrice).toFixed(2)})</span>
+                      <span>Confirmar Pre-Reserva (S/ {Number(activeService.offeredPrice).toFixed(2)})</span>
                     </>
                   )}
                 </Button>
@@ -905,11 +1182,11 @@ export default function PreReservationPage() {
               </div>
 
               <h1 className="text-2xl xl:text-3xl font-black text-white tracking-tight leading-tight">
-                {offerData.serviceName}
+                {activeService.name}
               </h1>
 
               <p className="text-slate-300 text-xs leading-relaxed max-w-md font-normal text-center">
-                {offerData.serviceDescription || 'Tratamiento odontológico integral con equipos de última tecnología, garantía NexoSalud y atención personalizada.'}
+                {activeService.description || offerData.serviceDescription || 'Tratamiento odontológico integral con equipos de última tecnología, garantía NexoSalud y atención personalizada.'}
               </p>
             </div>
 
@@ -919,7 +1196,7 @@ export default function PreReservationPage() {
                 <div className="flex items-center gap-2">
                   <Tag className="w-4 h-4 text-amber-400" />
                   <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                    ¡{offerData.discountPct}% de Descuento!
+                    ¡{activeService.discountPct}% de Descuento!
                   </span>
                 </div>
                 <div className="flex items-center gap-1 text-[11px] text-teal-200 bg-teal-500/20 px-2 py-0.5 rounded-full border border-teal-500/30">
@@ -932,16 +1209,16 @@ export default function PreReservationPage() {
                 <div>
                   <span className="text-[11px] text-slate-400 block">Tarifa regular:</span>
                   <span className="text-sm line-through text-slate-500 font-bold">
-                    S/ {Number(offerData.originalPrice).toFixed(2)}
+                    S/ {Number(activeService.originalPrice).toFixed(2)}
                   </span>
                   <div className="text-xs font-bold text-emerald-400 mt-0.5">
-                    Ahorras: S/ {(Number(offerData.originalPrice) - Number(offerData.offeredPrice)).toFixed(2)}
+                    Ahorras: S/ {(Number(activeService.originalPrice) - Number(activeService.offeredPrice)).toFixed(2)}
                   </div>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] uppercase font-bold text-teal-300 tracking-wider block">Tarifa Especial</span>
                   <span className="text-3xl font-black text-white tracking-tight">
-                    S/ {Number(offerData.offeredPrice).toFixed(2)}
+                    S/ {Number(activeService.offeredPrice).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -1248,24 +1525,24 @@ export default function PreReservationPage() {
               <div className="p-4 space-y-2 text-xs">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="font-extrabold text-sm text-slate-900">{offerData.serviceName}</p>
+                    <p className="font-extrabold text-sm text-slate-900">{activeService.name}</p>
                     <p className="text-[11px] text-slate-500 max-w-md mt-0.5">
-                      {offerData.serviceDescription || 'Atención clínica integral con tecnología de diagnóstico digital y garantía NexoSalud.'}
+                      {activeService.description || offerData.serviceDescription || 'Atención clínica integral con tecnología de diagnóstico digital y garantía NexoSalud.'}
                     </p>
                   </div>
                   <span className="font-mono text-slate-500 line-through">
-                    S/ {Number(offerData.originalPrice).toFixed(2)}
+                    S/ {Number(activeService.originalPrice).toFixed(2)}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-emerald-700 font-semibold pt-1 border-t border-slate-100">
-                  <span>Descuento Promocional Congelado ({offerData.discountPct}%)</span>
-                  <span>- S/ {(Number(offerData.originalPrice) - Number(offerData.offeredPrice)).toFixed(2)}</span>
+                  <span>Descuento Promocional Congelado ({activeService.discountPct}%)</span>
+                  <span>- S/ {(Number(activeService.originalPrice) - Number(activeService.offeredPrice)).toFixed(2)}</span>
                 </div>
 
                 <div className="flex justify-between items-center pt-2 border-t-2 border-slate-900 text-sm font-black text-slate-950">
                   <span>TOTAL A PAGAR EN CLÍNICA:</span>
-                  <span className="text-xl text-teal-700 font-mono">S/ {Number(offerData.offeredPrice).toFixed(2)}</span>
+                  <span className="text-xl text-teal-700 font-mono">S/ {Number(activeService.offeredPrice).toFixed(2)}</span>
                 </div>
               </div>
             </div>

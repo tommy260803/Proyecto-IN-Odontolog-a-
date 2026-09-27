@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma, withRetry } from '../db';
 import { NegotiatorAgentService } from '../services/negotiatorAgentService';
+import { getServicioCommercialInfo } from './config.routes';
 
 const router = Router();
 
@@ -672,6 +673,44 @@ router.get('/public/:id', async (req, res) => {
     const rawFecha = activeOpt?.Disponibilidad?.fecha ? activeOpt.Disponibilidad.fecha.toISOString().split('T')[0] : '';
     const rawHora = activeOpt?.Disponibilidad?.hora_inicio ? activeOpt.Disponibilidad.hora_inicio.toISOString().split('T')[1].substring(0, 5) : '10:00';
 
+    // Obtener servicios relacionados con tarifa comercial preferente
+    const commercialInfo = await getServicioCommercialInfo(sol?.Servicio?.id_servicio || serviceName);
+    let rawRelated = commercialInfo.serviciosRelacionados || [];
+    if (rawRelated.length === 0) {
+      const currentId = sol?.Servicio?.id_servicio || 1;
+      const otherServices = await withRetry(() =>
+        prisma.servicios.findMany({
+          where: { id_servicio: { not: currentId }, activo: true },
+          take: 2,
+          include: {
+            Tarifas: { where: { activo: true }, take: 1, orderBy: { fecha_inicio: 'desc' } },
+          },
+        })
+      );
+      rawRelated = otherServices.map((r: any) => ({
+        id_servicio: r.id_servicio,
+        nombre: r.nombre,
+        descripcion: r.descripcion || '',
+        precio: r.Tarifas?.[0] ? Number(r.Tarifas[0].precio) : 120,
+        imgUrl: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&auto=format&fit=crop&q=80',
+      }));
+    }
+
+    const relatedServices = rawRelated.map((rel: any) => {
+      const orig = Number(rel.precio || 120);
+      const disc = discountPct > 0 ? discountPct : (commercialInfo.descuentosPermitidos?.[0] || 15);
+      const off = Math.round(orig * (1 - disc / 100));
+      return {
+        id_servicio: rel.id_servicio,
+        nombre: rel.nombre,
+        descripcion: rel.descripcion,
+        originalPrice: orig,
+        offeredPrice: off,
+        discountPct: disc,
+        imgUrl: rel.imgUrl || 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&auto=format&fit=crop&q=80',
+      };
+    });
+
     res.json({
       id_persona: lead.id_persona,
       patientName: `${lead.nombres} ${lead.apellidos}`.trim(),
@@ -680,11 +719,13 @@ router.get('/public/:id', async (req, res) => {
       dni: lead.dni || '',
       phone: lead.numero || '',
       email: lead.email || '',
+      id_servicio: sol?.Servicio?.id_servicio || 1,
       serviceName,
       serviceDescription: sol?.Servicio?.descripcion || 'Atención odontológica integral con evaluación clínica completa.',
       originalPrice,
       offeredPrice,
       discountPct,
+      relatedServices,
       expirationDate: rawFecha,
       sede: activeOpt?.Disponibilidad?.Sede
         ? `${activeOpt.Disponibilidad.Sede.nombre}${activeOpt.Disponibilidad.Sede.direccion ? ' - ' + activeOpt.Disponibilidad.Sede.direccion : ''}`
@@ -717,6 +758,9 @@ router.post('/public/:id/pre-reserve', async (req, res) => {
     apellidos,
     numero,
     email,
+    id_servicio_seleccionado,
+    selectedServiceName,
+    selectedServicePrice,
     esParaFamiliar,
     nombreFamiliar,
     parentesco,
@@ -766,20 +810,18 @@ router.post('/public/:id/pre-reserve', async (req, res) => {
           ? `[Atención para ${parentesco || 'Familiar'}: ${nombreFamiliar}] ${dudaOComentario || ''}`.trim()
           : (dudaOComentario ? `[Comentario: ${dudaOComentario}]` : undefined);
 
-        if (detalleAtencion) {
-          await tx.solicitudes.update({
-            where: { id_solicitud: solId },
-            data: {
-              motivo: detalleAtencion,
-              estado: 'Convertida',
-            },
-          });
-        } else {
-          await tx.solicitudes.update({
-            where: { id_solicitud: solId },
-            data: { estado: 'Convertida' },
-          });
+        const updateSolData: any = { estado: 'Convertida' };
+        if (id_servicio_seleccionado) {
+          updateSolData.id_servicio = Number(id_servicio_seleccionado);
         }
+        if (detalleAtencion) {
+          updateSolData.motivo = detalleAtencion;
+        }
+
+        await tx.solicitudes.update({
+          where: { id_solicitud: solId },
+          data: updateSolData,
+        });
 
         // 3. Registrar o actualizar antecedentes médicos en PersonaSaludOdontologica
         const existingSalud = await tx.personaSaludOdontologica.findFirst({ where: { id_persona: numId } });
@@ -802,12 +844,16 @@ router.post('/public/:id/pre-reserve', async (req, res) => {
         }
 
         // 4. Seleccionar la opción en Opciones
+        const customPrice = selectedServicePrice ? Number(selectedServicePrice) : null;
         let optId = Number(id_opcion);
         let opcionActiva: any = null;
         if (optId) {
           opcionActiva = await tx.opciones.update({
             where: { id_opcion: optId },
-            data: { seleccionada: true },
+            data: {
+              seleccionada: true,
+              ...(customPrice ? { precio_ofrecido: customPrice } : {}),
+            },
             include: { Disponibilidad: { include: { Sede: true, Profesional: true } } },
           });
         } else {
@@ -818,13 +864,16 @@ router.post('/public/:id/pre-reserve', async (req, res) => {
           if (opcionActiva) {
             await tx.opciones.update({
               where: { id_opcion: opcionActiva.id_opcion },
-              data: { seleccionada: true },
+              data: {
+                seleccionada: true,
+                ...(customPrice ? { precio_ofrecido: customPrice } : {}),
+              },
             });
           }
         }
 
         const finalOptId = opcionActiva?.id_opcion || 1;
-        const finalImporte = opcionActiva?.precio_ofrecido || 150.00;
+        const finalImporte = customPrice || opcionActiva?.precio_ofrecido || 150.00;
 
         // 5. Crear la Reserva con código y bloqueo de 48 horas
         const fechaBloqueo = new Date(Date.now() + 48 * 3600 * 1000);
@@ -879,7 +928,7 @@ router.post('/public/:id/pre-reserve', async (req, res) => {
           data: {
             id_persona: numId,
             tipo: 'Portal Web Pre-Reserva',
-            mensaje: `Pre-reserva emitida por el paciente. Canal de pago: ${canal_pago || 'En clínica'}. Código: NEXO-${reserva.id_reserva.toString().padStart(5, '0')}`,
+            mensaje: `Pre-reserva emitida por el paciente. Tratamiento: ${selectedServiceName || 'Odontología'}. Modalidad: ${canal_pago || 'En clínica'}. Código: NEXO-${reserva.id_reserva.toString().padStart(5, '0')}`,
             resultado: 'Pre-reserva formalizada exitosamente',
             es_respuesta_util: true,
           },
