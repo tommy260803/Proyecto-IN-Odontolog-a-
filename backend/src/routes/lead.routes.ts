@@ -711,6 +711,31 @@ router.get('/public/:id', async (req, res) => {
       };
     });
 
+    // Catálogo completo de servicios activos de la clínica (por si el paciente busca otro tratamiento)
+    const allServicesList = await withRetry(() =>
+      prisma.servicios.findMany({
+        where: { activo: true },
+        include: {
+          Tarifas: { where: { activo: true }, take: 1, orderBy: { fecha_inicio: 'desc' } },
+        },
+        orderBy: { nombre: 'asc' },
+      })
+    );
+
+    const catalogServices = allServicesList.map((srv: any) => {
+      const pRegular = srv.Tarifas?.[0] ? Number(srv.Tarifas[0].precio) : 150;
+      const disc = discountPct > 0 ? discountPct : 15;
+      const pOffered = Math.round(pRegular * (1 - disc / 100));
+      return {
+        id_servicio: srv.id_servicio,
+        nombre: srv.nombre,
+        descripcion: srv.descripcion || 'Tratamiento odontológico profesional NexoSalud.',
+        originalPrice: pRegular,
+        offeredPrice: pOffered,
+        discountPct: disc,
+      };
+    });
+
     res.json({
       id_persona: lead.id_persona,
       patientName: `${lead.nombres} ${lead.apellidos}`.trim(),
@@ -726,6 +751,7 @@ router.get('/public/:id', async (req, res) => {
       offeredPrice,
       discountPct,
       relatedServices,
+      catalogServices,
       expirationDate: rawFecha,
       sede: activeOpt?.Disponibilidad?.Sede
         ? `${activeOpt.Disponibilidad.Sede.nombre}${activeOpt.Disponibilidad.Sede.direccion ? ' - ' + activeOpt.Disponibilidad.Sede.direccion : ''}`

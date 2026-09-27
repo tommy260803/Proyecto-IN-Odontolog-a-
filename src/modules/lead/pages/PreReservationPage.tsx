@@ -50,6 +50,7 @@ import {
   Check,
   FileText,
   Zap,
+  Search,
   Building2,
   Award,
 } from 'lucide-react';
@@ -87,6 +88,8 @@ export default function PreReservationPage() {
   // Form states
   const [selectedServiceKey, setSelectedServiceKey] = useState<string>('main');
   const [showCalendarInput, setShowCalendarInput] = useState(false);
+  const [customCatalogService, setCustomCatalogService] = useState<any>(null);
+  const [showCatalogSelector, setShowCatalogSelector] = useState(false);
   const [dni, setDni] = useState('');
   const [nombres, setNombres] = useState('');
   const [apellidos, setApellidos] = useState('');
@@ -170,8 +173,41 @@ export default function PreReservationPage() {
         });
       });
     }
+
+    if (customCatalogService) {
+      const alreadyInList = list.some((s) => s.id_servicio === customCatalogService.id_servicio);
+      if (!alreadyInList) {
+        list.push(customCatalogService);
+      }
+    }
+
     return list;
-  }, [offerData]);
+  }, [offerData, customCatalogService]);
+
+  const handleSelectCatalogService = (servicioIdStr: string) => {
+    if (!offerData?.catalogServices) return;
+    const found = offerData.catalogServices.find((s: any) => String(s.id_servicio) === String(servicioIdStr));
+    if (found) {
+      const custom = {
+        key: `catalog-${found.id_servicio}`,
+        id_servicio: found.id_servicio,
+        name: found.nombre,
+        description: found.descripcion || 'Tratamiento seleccionado del catálogo clínico NexoSalud.',
+        originalPrice: Number(found.originalPrice),
+        offeredPrice: Number(found.offeredPrice),
+        discountPct: found.discountPct,
+        isMain: false,
+        tag: 'Catálogo NexoSalud',
+      };
+      setCustomCatalogService(custom);
+      setSelectedServiceKey(custom.key);
+      setShowCatalogSelector(false);
+      toast({
+        title: 'Tratamiento Seleccionado',
+        description: `Has seleccionado: ${found.nombre}. Tarifa promocional aplicada.`,
+      });
+    }
+  };
 
   // Servicio activo seleccionado
   const activeService = React.useMemo(() => {
@@ -465,12 +501,12 @@ export default function PreReservationPage() {
         <div className="hidden lg:block" />
 
         {/* Mitad Derecha en Desktop: Branding NexoSalud en el LADO DERECHO */}
-        <div className="hidden lg:flex items-center justify-center pt-4 pb-1 px-6 xl:px-12">
-          <div className="w-full max-w-lg flex items-center justify-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-md flex items-center justify-center p-1.5 overflow-hidden">
+        <div className="hidden lg:flex items-center justify-end pt-4 pb-1 px-6 xl:px-12">
+          <div className="flex items-center justify-end gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white shadow-md flex items-center justify-center p-1.5 overflow-hidden border border-slate-100">
               <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
             </div>
-            <div>
+            <div className="text-left">
               <span className="font-extrabold text-base tracking-tight text-white block leading-tight">
                 NexoSalud <span className="text-teal-400 font-bold">Dental</span>
               </span>
@@ -727,6 +763,58 @@ export default function PreReservationPage() {
                         );
                       })}
                     </div>
+
+                    {/* Opción para explorar y elegir otro tratamiento del catálogo clínico */}
+                    {offerData.catalogServices && offerData.catalogServices.length > 0 && (
+                      <div className="pt-1 space-y-2">
+                        {!showCatalogSelector && !customCatalogService ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowCatalogSelector(true)}
+                            className="w-full py-2 px-3 rounded-xl border border-dashed border-teal-300 bg-teal-50/40 hover:bg-teal-50 text-teal-800 text-[11px] font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
+                          >
+                            <Search className="w-3.5 h-3.5 text-teal-600" />
+                            <span>¿Buscas otro tratamiento? Elige del catálogo general de la clínica</span>
+                          </button>
+                        ) : (
+                          <div className="p-3 rounded-2xl border border-teal-200 bg-teal-50/40 space-y-2 animate-in fade-in-50 duration-200 shadow-2xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-teal-950 flex items-center gap-1.5">
+                                <Search className="w-3.5 h-3.5 text-teal-600" />
+                                Catálogo General de Tratamientos ({offerData.catalogServices.length} opciones)
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowCatalogSelector(!showCatalogSelector)}
+                                className="text-[10.5px] text-teal-700 hover:text-teal-950 font-bold underline cursor-pointer"
+                              >
+                                {customCatalogService ? (showCatalogSelector ? 'Ocultar lista' : 'Cambiar por otro') : 'Cerrar'}
+                              </button>
+                            </div>
+                            {(showCatalogSelector || !customCatalogService) && (
+                              <Select
+                                value={customCatalogService ? String(customCatalogService.id_servicio) : ''}
+                                onValueChange={handleSelectCatalogService}
+                              >
+                                <SelectTrigger className="!bg-white !text-slate-900 !border-teal-300 text-xs h-9 rounded-xl font-medium shadow-2xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                                  <SelectValue placeholder="Selecciona un tratamiento de la clínica..." />
+                                </SelectTrigger>
+                                <SelectContent className="!bg-white !border-slate-200 text-slate-900 shadow-xl max-h-60">
+                                  {offerData.catalogServices.map((cs: any) => (
+                                    <SelectItem key={cs.id_servicio} value={String(cs.id_servicio)}>
+                                      <div className="flex justify-between items-center w-full gap-4">
+                                        <span className="font-semibold text-slate-900 text-xs">{cs.nombre}</span>
+                                        <span className="text-teal-700 font-bold font-mono text-[11px]">S/ {Number(cs.offeredPrice).toFixed(2)}</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* 2. Datos del Paciente Titular */}
