@@ -2,9 +2,12 @@ import { Router } from 'express';
 import { prisma } from '../db';
 import nodemailer from 'nodemailer';
 import { createPaymentDocumentPdf } from '../pdf/paymentDocument';
+import { readFileSync } from 'fs';
+import path from 'path';
 import { runDunningCycle, getLastExecutionStats } from '../services/dunningScheduler';
 
 const router = Router();
+const paymentLogoDataUrl = `data:image/png;base64,${readFileSync(path.resolve(__dirname, '../../assets/Logo_NexoSalud.png')).toString('base64')}`;
 
 // Ejecutar manualmente el ciclo de cobranza en 3 etapas (Dunning Cron)
 router.post('/run-dunning-cycle', async (req, res) => {
@@ -680,7 +683,7 @@ export function generateBackendPdfBase64(params: {
     amount: Number(params.amount || 0),
     paymentChannel: params.channel || undefined,
     operationNumber: isReceipt ? params.operationNumber || undefined : undefined,
-  });
+  }, paymentLogoDataUrl);
   const outputDataUri = doc.output('datauristring');
   return outputDataUri.split('base64,')[1] || outputDataUri;
 }

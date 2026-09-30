@@ -21,10 +21,11 @@ export interface PaymentDocumentData {
   familyPatient?: string;
 }
 
-const NAVY: [number, number, number] = [24, 42, 57];
-const TEAL: [number, number, number] = [0, 117, 111];
-const MUTED: [number, number, number] = [101, 117, 127];
-const RULE: [number, number, number] = [219, 226, 229];
+const INK: [number, number, number] = [37, 43, 47];
+const MUTED: [number, number, number] = [104, 113, 119];
+const RULE: [number, number, number] = [226, 230, 232];
+const SOFT: [number, number, number] = [249, 250, 250];
+const ACCENT: [number, number, number] = [0, 131, 128];
 
 function dateLabel(value?: string | Date): string {
   if (!value) return new Intl.DateTimeFormat('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date());
@@ -36,7 +37,7 @@ function dateLabel(value?: string | Date): string {
   return Number.isNaN(parsed.getTime()) ? String(value) : new Intl.DateTimeFormat('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' }).format(parsed);
 }
 
-export function createPaymentDocumentPdf(data: PaymentDocumentData): jsPDF {
+export function createPaymentDocumentPdf(data: PaymentDocumentData, logoDataUrl: string): jsPDF {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const paid = data.type === 'RECEIPT';
   const safe = (value?: string) => value?.trim() || 'No registrado';
@@ -48,126 +49,133 @@ export function createPaymentDocumentPdf(data: PaymentDocumentData): jsPDF {
   };
   const label = (value: string, x: number, y: number) => {
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.3);
+    doc.setFontSize(7.1);
     doc.setTextColor(...MUTED);
     doc.text(value.toUpperCase(), x, y);
   };
-  const field = (heading: string, value: string, x: number, y: number, width = 77) => {
+  const field = (heading: string, value: string, x: number, y: number, width = 73) => {
     label(heading, x, y);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(...NAVY);
-    doc.text(fit(safe(value), width), x, y + 7);
-  };
-  const section = (number: string, heading: string, y: number) => {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(...TEAL);
-    doc.text(number, 18, y);
-    doc.setTextColor(...NAVY);
-    doc.text(heading.toUpperCase(), 28, y);
-    doc.setDrawColor(...RULE);
-    doc.setLineWidth(0.25);
-    doc.line(18, y + 4, 192, y + 4);
+    doc.setFontSize(9.3);
+    doc.setTextColor(...INK);
+    doc.text(fit(safe(value), width), x, y + 6.5);
   };
 
-  doc.setFillColor(...TEAL);
-  doc.rect(0, 0, 210, 4, 'F');
-  doc.setFillColor(...NAVY);
-  doc.roundedRect(18, 17, 12, 12, 2, 2, 'F');
+  // Identidad: el archivo de public es la única nota de color del encabezado.
+  doc.addImage(logoDataUrl, 'PNG', 18, 10.5, 43, 24.2);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(255, 255, 255);
-  doc.text('N', 24, 25.4, { align: 'center' });
-  doc.setTextColor(...NAVY);
-  doc.setFontSize(13);
-  doc.text('NEXOSALUD', 34, 22.1);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(...MUTED);
-  doc.text('CLÍNICA ODONTOLÓGICA ESPECIALIZADA', 34, 27.2);
-  label('RUC 20608945123', 192 - 32, 21);
+  doc.setFontSize(7.8);
+  doc.setTextColor(...INK);
+  doc.text('DOCUMENTO DIGITAL', 192, 21, { align: 'right' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...MUTED);
-  doc.text('PERÚ', 192, 27, { align: 'right' });
+  doc.text('RUC 20608945123  |  PERÚ', 192, 28, { align: 'right' });
+  doc.setDrawColor(...RULE);
+  doc.setLineWidth(0.3);
+  doc.line(18, 42, 192, 42);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(19);
-  doc.setTextColor(...NAVY);
-  doc.text(paid ? 'Constancia de pago' : 'Orden de pago', 18, 50);
+  doc.setTextColor(...INK);
+  doc.text(paid ? 'Constancia de pago' : 'Orden de pago', 18, 59);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(...MUTED);
-  doc.text(paid ? 'Pago validado y cita confirmada' : 'Pre-reserva registrada · pago pendiente', 18, 57);
-  doc.setFillColor(244, 247, 247);
-  doc.roundedRect(126, 42, 66, 21, 2, 2, 'F');
-  label(paid ? 'NÚMERO DE CONSTANCIA' : 'REFERENCIA DE RESERVA', 130, 48);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(...NAVY);
-  doc.text(fit(data.code, 58), 130, 55);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(...MUTED);
-  doc.text(`Emitido: ${dateLabel(data.issuedAt)}`, 130, 60);
+  doc.text(paid ? 'Pago validado y cita confirmada' : 'Documento de pre-reserva', 18, 67);
 
-  section('01', 'Paciente', 76);
-  field('Nombre completo', data.patientName, 18, 87, 79);
-  field('Documento de identidad', safe(data.documentNumber), 108, 87);
-  field('Teléfono', safe(data.phone), 18, 104);
-  field('Correo electrónico', safe(data.email), 108, 104);
-
-  section('02', 'Atención odontológica', 126);
-  field('Sede', safe(data.branch), 18, 137);
-  field('Especialista', safe(data.professional), 108, 137);
-  field('Fecha de la cita', data.appointmentDate ? dateLabel(data.appointmentDate) : 'Por coordinar', 18, 154);
-  field('Hora', safe(data.appointmentTime), 108, 154);
-  field(paid ? 'Medio de pago' : 'Medio de pago elegido', safe(data.paymentChannel), 18, 171);
-  field(paid ? 'Referencia de operación' : data.familyPatient ? 'Paciente de la atención' : 'Estado de la reserva', paid ? safe(data.operationNumber) : data.familyPatient ? data.familyPatient : 'Pendiente de pago', 108, 171);
-
-  section('03', 'Detalle económico', 198);
-  label('CONCEPTO', 18, 209);
-  label('IMPORTE', 192 - 25, 209);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
-  doc.setTextColor(...NAVY);
-  doc.text(fit(data.serviceName, 132), 18, 218);
-  doc.text(`S/ ${data.amount.toFixed(2)}`, 192, 218, { align: 'right' });
+  doc.setFillColor(...SOFT);
   doc.setDrawColor(...RULE);
-  doc.line(18, 223, 192, 223);
+  doc.roundedRect(148, 50, 44, 10, 2, 2, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.3);
+  doc.setTextColor(...INK);
+  doc.text(paid ? 'PAGO VALIDADO' : 'PAGO PENDIENTE', 170, 56.4, { align: 'center' });
+
+  label(paid ? 'NÚMERO DE CONSTANCIA' : 'REFERENCIA DE RESERVA', 18, 79);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...INK);
+  doc.text(fit(data.code, 86), 18, 86);
+  label('FECHA DE EMISIÓN', 137, 79);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...INK);
+  doc.text(dateLabel(data.issuedAt), 137, 86);
+  doc.setDrawColor(...RULE);
+  doc.line(18, 93, 192, 93);
+
+  // Dos paneles de lectura rápida, sin bloques de color intensos.
+  doc.setFillColor(...SOFT);
+  doc.setDrawColor(...RULE);
+  doc.roundedRect(18, 102, 84, 101, 2.5, 2.5, 'FD');
+  doc.roundedRect(108, 102, 84, 101, 2.5, 2.5, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.6);
+  doc.setTextColor(...INK);
+  doc.text('PACIENTE', 23, 112);
+  doc.text('DETALLE DE LA CITA', 113, 112);
+  doc.setDrawColor(...RULE);
+  doc.line(23, 116, 97, 116);
+  doc.line(113, 116, 187, 116);
+
+  field('Nombre completo', data.patientName, 23, 125);
+  field('Documento', safe(data.documentNumber), 23, 143);
+  field('Teléfono', safe(data.phone), 23, 161);
+  field('Correo electrónico', safe(data.email), 23, 179);
+  field('Atención para', data.familyPatient || 'Titular de la reserva', 23, 193);
+
+  field('Sede', safe(data.branch), 113, 125);
+  field('Especialista', safe(data.professional), 113, 143);
+  field('Fecha y hora', data.appointmentDate ? `${dateLabel(data.appointmentDate)}  |  ${safe(data.appointmentTime)}` : 'Por coordinar', 113, 161);
+  field('Medio de pago', safe(data.paymentChannel), 113, 179);
+  field(paid ? 'Operación' : 'Estado', paid ? safe(data.operationNumber) : 'Pendiente de pago', 113, 193);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.7);
+  doc.setTextColor(...INK);
+  doc.text('DETALLE DEL IMPORTE', 18, 215);
+  doc.setDrawColor(...RULE);
+  doc.line(18, 219, 192, 219);
+  label('CONCEPTO', 18, 228);
+  label('IMPORTE', 168, 228);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.2);
+  doc.setTextColor(...INK);
+  doc.text(fit(data.serviceName, 132), 18, 239);
+  doc.text(`S/ ${data.amount.toFixed(2)}`, 192, 239, { align: 'right' });
+  doc.setDrawColor(...RULE);
+  doc.line(18, 244, 192, 244);
+  doc.setFontSize(8);
+  doc.setTextColor(...MUTED);
   if (data.originalPrice && data.originalPrice > data.amount) {
-    doc.setFontSize(8);
-    doc.setTextColor(...MUTED);
-    doc.text(`Tarifa regular: S/ ${data.originalPrice.toFixed(2)}`, 18, 231);
-    doc.text(`Beneficio aplicado: ${data.discountPercent ?? Math.round((1 - data.amount / data.originalPrice) * 100)}%`, 192, 231, { align: 'right' });
+    doc.text(`Tarifa regular  S/ ${data.originalPrice.toFixed(2)}`, 18, 252);
+    doc.text(`Descuento  ${data.discountPercent ?? Math.round((1 - data.amount / data.originalPrice) * 100)}%`, 192, 252, { align: 'right' });
   } else {
-    doc.setFontSize(8);
-    doc.setTextColor(...MUTED);
-    doc.text(paid ? 'Abono conciliado con la reserva.' : 'Importe correspondiente a la pre-reserva.', 18, 231);
+    doc.text(paid ? 'Abono conciliado con la reserva.' : 'Importe correspondiente a la pre-reserva.', 18, 252);
   }
 
-  doc.setFillColor(...NAVY);
-  doc.roundedRect(18, 242, 174, 27, 2, 2, 'F');
+  doc.setFillColor(245, 247, 247);
+  doc.roundedRect(18, 260, 174, 19, 2, 2, 'F');
+  doc.setFillColor(...ACCENT);
+  doc.rect(18, 260, 1.1, 19, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
-  doc.setTextColor(201, 225, 225);
-  doc.text(paid ? 'TOTAL PAGADO' : 'TOTAL PENDIENTE', 24, 252);
-  doc.setFontSize(18);
-  doc.setTextColor(255, 255, 255);
-  doc.text(`S/ ${data.amount.toFixed(2)}`, 186, 255, { align: 'right' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(230, 239, 239);
-  doc.text(paid ? 'Pago verificado · reserva confirmada' : 'Pago pendiente · reserva sujeta a confirmación', 24, 262);
-
-  doc.setDrawColor(...RULE);
-  doc.line(18, 278, 192, 278);
+  doc.setTextColor(...INK);
+  doc.text(paid ? 'TOTAL PAGADO' : 'TOTAL PENDIENTE', 24, 269);
+  doc.setFontSize(17);
+  doc.text(`S/ ${data.amount.toFixed(2)}`, 186, 270.5, { align: 'right' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(...MUTED);
-  doc.text(paid ? 'Constancia administrativa emitida después de validar el pago.' : 'Esta orden no acredita un pago realizado ni confirma la cita.', 18, 284);
-  doc.text('NexoSalud · Atención odontológica', 18, 289);
-  doc.text('Página 1 de 1', 192, 289, { align: 'right' });
+  doc.text(paid ? 'Pago verificado y reserva confirmada' : 'El pago está pendiente de validación', 24, 275);
+
+  doc.setDrawColor(...RULE);
+  doc.line(18, 285, 192, 285);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(...MUTED);
+  doc.text(paid ? 'Constancia administrativa emitida después de validar el pago.' : 'Esta orden no acredita un pago realizado ni confirma la cita.', 18, 291);
+  doc.text('1 / 1', 192, 291, { align: 'right' });
   return doc;
 }

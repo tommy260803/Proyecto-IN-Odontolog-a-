@@ -20,6 +20,7 @@ import { chatWithNegotiatorAgent, type NegotiatorChatContext } from '@/shared/se
 import { leadService } from '../services/lead.service';
 import jsPDF from 'jspdf';
 import { createPaymentDocumentPdf } from '@/shared/pdf/paymentDocument';
+import logoDataUrl from '@/shared/pdf/Logo_NexoSalud.png?inline';
 import {
   Sparkles,
   Bot,
@@ -118,7 +119,7 @@ function generatePaymentOrderPdf(data: PaymentOrderPdfData): jsPDF {
     familyPatient: data.nombreFamiliar
       ? `${data.nombreFamiliar} (${data.parentesco || 'Familiar'})`
       : undefined,
-  });
+  }, logoDataUrl);
 }
 
 export default function PreReservationPage() {

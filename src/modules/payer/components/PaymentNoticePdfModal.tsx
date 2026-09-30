@@ -10,6 +10,7 @@ import type { PayerWithDetails } from '@/application/use-cases/payer';
 import { useToast } from '@/shared/hooks/use-toast';
 import jsPDF from 'jspdf';
 import { createPaymentDocumentPdf } from '@/shared/pdf/paymentDocument';
+import logoDataUrl from '@/shared/pdf/Logo_NexoSalud.png?inline';
 
 import { PayerState } from '@/domain/enums';
 
@@ -55,7 +56,7 @@ export function generatePayerDocumentPdf(payer: PayerWithDetails, documentType: 
     amount: isReceipt ? Number(payment?.amount ?? payer.amountToPay) : payer.amountToPay,
     paymentChannel: payment?.channel,
     operationNumber: isReceipt ? payment?.operationNumber : undefined,
-  });
+  }, logoDataUrl);
 }
 
 export function PaymentNoticePdfModal({
