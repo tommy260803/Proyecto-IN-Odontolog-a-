@@ -40,6 +40,9 @@ function getPayerDocumentCode(payer: PayerWithDetails, documentType: PaymentDocu
 export function generatePayerDocumentPdf(payer: PayerWithDetails, documentType: PaymentDocumentType): jsPDF {
   const isReceipt = documentType === 'RECEIPT';
   const payment = payer.payment as (typeof payer.payment & { validationDate?: string; preReservationCode?: string }) | undefined;
+  const amount = isReceipt ? Number(payment?.amount ?? payer.amountToPay) : payer.amountToPay;
+  const originalPrice = Number(payer.originalPrice || 0);
+  const hasRecordedDiscount = originalPrice > amount && Math.abs(amount - payer.amountToPay) < 0.01;
   return createPaymentDocumentPdf({
     type: documentType,
     code: getPayerDocumentCode(payer, documentType),
@@ -52,8 +55,9 @@ export function generatePayerDocumentPdf(payer: PayerWithDetails, documentType: 
     professional: payer.reservation?.professionalId,
     appointmentDate: payer.reservation?.date,
     appointmentTime: payer.reservation?.time,
-    serviceName: 'Consulta y Tratamiento Odontológico Especializado',
-    amount: isReceipt ? Number(payment?.amount ?? payer.amountToPay) : payer.amountToPay,
+    serviceName: payer.serviceName || 'Consulta y Tratamiento Odontológico Especializado',
+    amount,
+    originalPrice: hasRecordedDiscount ? originalPrice : undefined,
     paymentChannel: payment?.channel,
     operationNumber: isReceipt ? payment?.operationNumber : undefined,
   }, logoDataUrl);

@@ -42,6 +42,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
     const reservas = await prisma.reservas.findMany({
       include: {
         Persona: true,
+        Solicitud: { include: { Servicio: { include: { Tarifas: { where: { activo: true }, orderBy: { fecha_inicio: 'desc' }, take: 1 } } } } },
         Opcion: {
           include: {
             Disponibilidad: {
@@ -78,7 +79,8 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
 
       const patientName = `${r.Persona.nombres} ${r.Persona.apellidos}`;
       const patientEmail = r.Persona.email || '';
-      const serviceName = 'Consulta Odontológica Especializada';
+      const serviceName = r.Solicitud?.Servicio?.nombre || 'Consulta Odontológica Especializada';
+      const originalPrice = r.Solicitud?.Servicio?.Tarifas[0] ? Number(r.Solicitud.Servicio.Tarifas[0].precio) : undefined;
       const branchName = r.Opcion?.Disponibilidad?.Sede?.nombre || 'Sede Principal';
       const professionalName = `Esp. ${r.Opcion?.Disponibilidad?.Profesional?.apellidos || 'Torres'}`;
       const reservationDateStr = apptDate.toISOString().split('T')[0];
@@ -144,6 +146,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
             subject: `Aviso de Cancelación de Cita Odontológica - NexoSalud (${reservationDateStr})`,
             message: cancelHtmlMessage,
             amount: amountToPay,
+            originalPrice,
             serviceName,
             reservationDate: reservationDateStr,
             reservationTime: reservationTimeStr,
@@ -189,6 +192,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
             subject: `⚠️ URGENTE: Confirmación Requerida para su Cita de Mañana - NexoSalud`,
             message: urgencyMessage,
             amount: amountToPay,
+            originalPrice,
             serviceName,
             reservationDate: reservationDateStr,
             reservationTime: reservationTimeStr,
@@ -245,6 +249,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
             subject: `Recordatorio Preventivo de Cita Odontológica - NexoSalud (${reservationDateStr})`,
             message: friendlyMessage,
             amount: amountToPay,
+            originalPrice,
             serviceName,
             reservationDate: reservationDateStr,
             reservationTime: reservationTimeStr,

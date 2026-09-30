@@ -10,6 +10,8 @@ export type PayerWithDetails = Payer & {
   person: any;
   reservation: any;
   payment?: Payment;
+  originalPrice?: number;
+  serviceName?: string;
   incidents: PaymentIncident[];
 };
 

@@ -32,7 +32,7 @@ async function validateAndPromotePayer(payerId: number | string, channel: string
         },
         Solicitud: {
           include: {
-            Servicio: true
+            Servicio: { include: { Tarifas: { where: { activo: true }, orderBy: { fecha_inicio: 'desc' }, take: 1 } } }
           }
         },
         Pagos: true
@@ -122,6 +122,7 @@ async function validateAndPromotePayer(payerId: number | string, channel: string
         phone: reserva.Persona?.numero || persona.numero,
         subject: `✅ Constancia Oficial de Pago y Confirmación de Cita - NexoSalud #${reserva.id_reserva}`,
         amount: amountVal,
+        originalPrice: reserva.Solicitud?.Servicio?.Tarifas[0] ? Number(reserva.Solicitud.Servicio.Tarifas[0].precio) : undefined,
         channel: channel || pago.canal_pago || 'YAPE',
         operationNumber: ref || pago.referencia_pago || `REF-${reserva.id_reserva}`,
         serviceName,

@@ -69,6 +69,7 @@ router.get('/', async (req, res) => {
       orderBy: { id_reserva: 'desc' },
       include: {
         Persona: true,
+        Solicitud: { include: { Servicio: { include: { Tarifas: { where: { activo: true }, orderBy: { fecha_inicio: 'desc' }, take: 1 } } } } },
         Opcion: {
           include: {
             Disponibilidad: {
@@ -107,6 +108,8 @@ router.get('/', async (req, res) => {
         leadId: r.id_persona.toString(),
         reservationId: r.id_reserva.toString(),
         amountToPay: Number(r.Opcion?.precio_ofrecido || 1.00),
+        originalPrice: r.Solicitud?.Servicio?.Tarifas[0] ? Number(r.Solicitud.Servicio.Tarifas[0].precio) : undefined,
+        serviceName: r.Solicitud?.Servicio?.nombre,
         currency: 'PEN',
         state,
         createdAt: r.fecha_reserva ? r.fecha_reserva.toISOString() : new Date().toISOString(),
@@ -172,6 +175,7 @@ router.get('/:id', async (req, res) => {
         },
         include: {
           Persona: true,
+          Solicitud: { include: { Servicio: { include: { Tarifas: { where: { activo: true }, orderBy: { fecha_inicio: 'desc' }, take: 1 } } } } },
           Opcion: {
             include: {
               Disponibilidad: {
@@ -190,6 +194,7 @@ router.get('/:id', async (req, res) => {
         orderBy: { id_reserva: 'desc' },
         include: {
           Persona: true,
+          Solicitud: { include: { Servicio: { include: { Tarifas: { where: { activo: true }, orderBy: { fecha_inicio: 'desc' }, take: 1 } } } } },
           Opcion: {
             include: {
               Disponibilidad: {
@@ -232,6 +237,8 @@ router.get('/:id', async (req, res) => {
       leadId: reserva.id_persona.toString(),
       reservationId: reserva.id_reserva.toString(),
       amountToPay: Number(reserva.Opcion?.precio_ofrecido || 1.00),
+      originalPrice: reserva.Solicitud?.Servicio?.Tarifas[0] ? Number(reserva.Solicitud.Servicio.Tarifas[0].precio) : undefined,
+      serviceName: reserva.Solicitud?.Servicio?.nombre,
       currency: 'PEN',
       state,
       createdAt: reserva.fecha_reserva ? reserva.fecha_reserva.toISOString() : new Date().toISOString(),
@@ -374,7 +381,7 @@ router.post('/:id/validate', async (req, res) => {
         },
         Solicitud: {
           include: {
-            Servicio: true
+            Servicio: { include: { Tarifas: { where: { activo: true }, orderBy: { fecha_inicio: 'desc' }, take: 1 } } }
           }
         },
         Pagos: true
@@ -461,6 +468,7 @@ router.post('/:id/validate', async (req, res) => {
         phone: reserva.Persona?.numero || persona.numero,
         subject: `✅ Constancia Oficial de Pago y Confirmación de Cita - NexoSalud #${reserva.id_reserva}`,
         amount: amountVal,
+        originalPrice: reserva.Solicitud?.Servicio?.Tarifas[0] ? Number(reserva.Solicitud.Servicio.Tarifas[0].precio) : undefined,
         channel: pago.canal_pago || 'YAPE',
         operationNumber: pago.referencia_pago || `REF-${reserva.id_reserva}`,
         serviceName,
@@ -663,6 +671,7 @@ export function generateBackendPdfBase64(params: {
   branch?: string | null;
   professional?: string | null;
   amount?: number | string | null;
+  originalPrice?: number | string | null;
   channel?: string | null;
   operationNumber?: string | null;
   code?: string | null;
@@ -681,6 +690,7 @@ export function generateBackendPdfBase64(params: {
     appointmentTime: params.reservationTime || undefined,
     serviceName: params.serviceName || 'Consulta odontológica especializada',
     amount: Number(params.amount || 0),
+    originalPrice: params.originalPrice == null ? undefined : Number(params.originalPrice),
     paymentChannel: params.channel || undefined,
     operationNumber: isReceipt ? params.operationNumber || undefined : undefined,
   }, paymentLogoDataUrl);
@@ -696,6 +706,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
   subject?: string | null;
   message?: string | null;
   amount?: number | string | null;
+  originalPrice?: number | string | null;
   channel?: string | null;
   operationNumber?: string | null;
   serviceName?: string | null;
@@ -717,6 +728,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
     subject,
     message,
     amount,
+    originalPrice,
     channel,
     operationNumber,
     serviceName,
@@ -837,6 +849,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
         branch,
         professional,
         amount,
+        originalPrice,
         channel,
         operationNumber,
         code
