@@ -5,6 +5,19 @@ import { getServicioCommercialInfo } from './config.routes';
 
 const router = Router();
 
+// @db.Date conserva el día del calendario; el mediodía UTC evita cambios de día
+// cuando la fecha se convierte posteriormente entre zonas horarias.
+function parseCalendarDate(fecha: string): Date {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    throw new Error('La fecha debe tener el formato YYYY-MM-DD');
+  }
+  const date = new Date(`${fecha}T12:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== fecha) {
+    throw new Error('Fecha inválida');
+  }
+  return date;
+}
+
 // ── Catálogos para el formulario de alternativas ─────────────────────────────
 router.get('/options/availability', async (req, res) => {
   try {
@@ -57,7 +70,7 @@ router.put('/options/:id_opcion', async (req, res) => {
       const dispData: any = {};
       if (id_sede) dispData.id_sede = Number(id_sede);
       if (id_profesional) dispData.id_profesional = Number(id_profesional);
-      if (fecha) dispData.fecha = new Date(fecha);
+      if (fecha) dispData.fecha = parseCalendarDate(fecha);
 
       if (Object.keys(dispData).length > 0) {
         await withRetry(() => prisma.disponibilidad.update({
@@ -391,7 +404,7 @@ router.post('/:id/alternative', async (req, res) => {
         data: {
           id_profesional: Number(id_profesional) || defaultProf?.id_profesional || 1,
           id_sede: Number(id_sede) || defaultSede?.id_sede || 1,
-          fecha: new Date(fecha),
+          fecha: parseCalendarDate(fecha),
           hora_inicio: new Date(`1970-01-01T${startH}:00`),
           hora_fin: new Date(`1970-01-01T${endH}:00`),
           estado: 'Disponible'
@@ -801,6 +814,20 @@ router.post('/public/:id/pre-reserve', async (req, res) => {
     dudaOComentario,
   } = req.body;
 
+  let fechaCita: Date;
+  let inicioTurno: Date;
+  let finTurno: Date;
+  try {
+    fechaCita = parseCalendarDate(fecha);
+    const turno = /^([01]\d|2[0-3]):([0-5]\d) - ([01]\d|2[0-3]):([0-5]\d)/.exec(hora || '');
+    if (!turno) throw new Error('Turno inválido');
+    inicioTurno = new Date(`1970-01-01T${turno[1]}:${turno[2]}:00.000Z`);
+    finTurno = new Date(`1970-01-01T${turno[3]}:${turno[4]}:00.000Z`);
+    if (finTurno <= inicioTurno) throw new Error('Turno inválido');
+  } catch (error: any) {
+    return res.status(400).json({ error: error.message });
+  }
+
   try {
     let etapaPayer = await withRetry(() => prisma.etapas.findFirst({ where: { nombre: 'PAYER' } }));
     if (!etapaPayer) etapaPayer = await withRetry(() => prisma.etapas.create({ data: { nombre: 'PAYER', descripcion: 'Pre-reserva y pago coordinado' } }));
@@ -941,11 +968,17 @@ router.post('/public/:id/pre-reserve', async (req, res) => {
           },
         });
 
-        // 8. Marcar disponibilidad como Ocupada si se seleccionó turno
+        // 8. Guardar el día y turno elegidos en la disponibilidad de la cita.
         if (opcionActiva?.id_disponibilidad) {
           await tx.disponibilidad.update({
             where: { id_disponibilidad: opcionActiva.id_disponibilidad },
-            data: { estado: 'Ocupado' },
+            data: {
+              fecha: fechaCita,
+              hora_inicio: inicioTurno,
+              hora_fin: finTurno,
+              ...(id_sede ? { id_sede: Number(id_sede) } : {}),
+              estado: 'Ocupado',
+            },
           });
         }
 

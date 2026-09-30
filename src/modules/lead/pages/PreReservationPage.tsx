@@ -18,6 +18,7 @@ import { useToast } from '@/shared/hooks/use-toast';
 import { Toaster } from '@/shared/components/ui/toaster';
 import { chatWithNegotiatorAgent, type NegotiatorChatContext } from '@/shared/services/groqService';
 import { leadService } from '../services/lead.service';
+import jsPDF from 'jspdf';
 import {
   Sparkles,
   Bot,
@@ -76,6 +77,157 @@ const getRecommendedOffset = (dolor: string): number => {
   return 3; // Leve o Ninguno: 3 días después para holgura de pago
 };
 
+interface PreReservationPdfData {
+  nombres: string;
+  apellidos: string;
+  dni: string;
+  phone: string;
+  email: string;
+  sede: string;
+  doctor: string;
+  fechaCita: string;
+  horaCita: string;
+  canalPago: string;
+  serviceName: string;
+  originalPrice: number;
+  offeredPrice: number;
+  discountPct: number;
+  codigoReserva: string;
+  nombreFamiliar?: string;
+  parentesco?: string;
+}
+
+function generatePreReservationPdf(data: PreReservationPdfData): jsPDF {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 15;
+  const teal: [number, number, number] = [13, 148, 136];
+  const dark: [number, number, number] = [15, 23, 42];
+  const gray: [number, number, number] = [100, 116, 139];
+  let y = 18;
+
+  const value = (text: string, width: number) => doc.splitTextToSize(text || 'No registrado', width)[0];
+  const box = (title: string, rows: Array<[string, string, string, string]>, height: number) => {
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(margin, y, pageWidth - 2 * margin, height, 3, 3, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...teal);
+    doc.text(title, margin + 4, y + 6);
+    rows.forEach(([leftLabel, leftValue, rightLabel, rightValue], index) => {
+      const rowY = y + 13 + index * 7;
+      doc.setFontSize(8);
+      doc.setTextColor(...gray);
+      doc.setFont('helvetica', 'normal');
+      doc.text(leftLabel, margin + 4, rowY);
+      doc.text(rightLabel, margin + 95, rowY);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...dark);
+      doc.text(value(leftValue, 53), margin + 40, rowY);
+      doc.text(value(rightValue, 58), margin + 118, rowY);
+    });
+    y += height + 5;
+  };
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(...teal);
+  doc.text('NEXOSALUD', margin, y);
+  doc.setFontSize(8.5);
+  doc.setFillColor(240, 253, 250);
+  doc.roundedRect(pageWidth - margin - 58, y - 6, 58, 8, 2, 2, 'F');
+  doc.text('PRE-RESERVA OFICIAL', pageWidth - margin - 29, y - 1, { align: 'center' });
+  y += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...gray);
+  doc.text('Clínica Odontológica Especializada', margin, y);
+  doc.text(`Código: ${data.codigoReserva}`, pageWidth - margin, y, { align: 'right' });
+  y += 4;
+  doc.text('NexoSalud Odontología Digital - Perú', margin, y);
+  doc.text(`Emisión: ${new Date().toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: 'long', year: 'numeric' })}`, pageWidth - margin, y, { align: 'right' });
+  y += 5;
+  doc.setDrawColor(...teal);
+  doc.setLineWidth(0.8);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 7;
+
+  box('DATOS DEL PACIENTE', [
+    ['Nombre:', `${data.nombres} ${data.apellidos}`, 'DNI:', data.dni],
+    ['Teléfono:', data.phone, 'Correo:', data.email],
+  ], 26);
+  if (data.nombreFamiliar) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...dark);
+    doc.text(`Atención para familiar: ${value(`${data.nombreFamiliar} (${data.parentesco || 'Familiar'})`, 140)}`, margin + 4, y + 1);
+    y += 6;
+  }
+  box('DETALLE DE LA CITA TENTATIVA', [
+    ['Sede:', data.sede, 'Especialista:', data.doctor],
+    ['Fecha:', data.fechaCita, 'Turno:', data.horaCita],
+  ], 26);
+
+  doc.setFillColor(...teal);
+  doc.roundedRect(margin, y, pageWidth - 2 * margin, 8, 2, 2, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text('Servicio Odontológico', margin + 4, y + 5.5);
+  doc.text('Desc.', margin + 120, y + 5.5, { align: 'center' });
+  doc.text('Total', pageWidth - margin - 4, y + 5.5, { align: 'right' });
+  y += 8;
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(226, 232, 240);
+  doc.rect(margin, y, pageWidth - 2 * margin, 14, 'FD');
+  doc.setTextColor(...dark);
+  doc.text(value(data.serviceName, 105), margin + 4, y + 5);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...gray);
+  doc.text(`Precio normal: S/ ${data.originalPrice.toFixed(2)}`, margin + 4, y + 10);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...dark);
+  doc.text(`${data.discountPct}%`, margin + 120, y + 6, { align: 'center' });
+  doc.text(`S/ ${data.offeredPrice.toFixed(2)}`, pageWidth - margin - 4, y + 6, { align: 'right' });
+  y += 18;
+
+  const bannerWidth = 76;
+  const bannerX = pageWidth - margin - bannerWidth;
+  doc.setFillColor(240, 253, 250);
+  doc.setDrawColor(153, 246, 228);
+  doc.roundedRect(bannerX, y, bannerWidth, 16, 3, 3, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(15, 118, 110);
+  doc.text('TOTAL A PAGAR EN CLÍNICA', bannerX + bannerWidth / 2, y + 5, { align: 'center' });
+  doc.setFontSize(14);
+  doc.text(`S/ ${data.offeredPrice.toFixed(2)}`, bannerX + bannerWidth / 2, y + 12.5, { align: 'center' });
+  y += 20;
+
+  doc.setFillColor(240, 253, 250);
+  doc.setDrawColor(153, 246, 228);
+  doc.roundedRect(margin, y, pageWidth - 2 * margin, 18, 3, 3, 'FD');
+  doc.setFontSize(8);
+  doc.setTextColor(5, 150, 105);
+  doc.text('TARIFA OFICIAL CONGELADA POR 48 HORAS', margin + 4, y + 6);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...dark);
+  doc.text(`Presenta este comprobante o menciona el código ${data.codigoReserva} en recepción.`, margin + 4, y + 11);
+  doc.text(`Modalidad de pago: ${value(data.canalPago, 140)}`, margin + 4, y + 15.5);
+
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.setDrawColor(226, 232, 240);
+  doc.line(margin, 280, pageWidth - margin, 280);
+  doc.text('NexoSalud Odontología Digital', pageWidth / 2, 284, { align: 'center' });
+  doc.text('Pre-reserva informativa. La cita queda sujeta a confirmación dentro del plazo indicado.', pageWidth / 2, 288, { align: 'center' });
+  return doc;
+}
+
 export default function PreReservationPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -111,6 +263,8 @@ export default function PreReservationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [preReserveSuccess, setPreReserveSuccess] = useState<any>(null);
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState(false);
 
   // Floating Chatbot states
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -280,6 +434,45 @@ export default function PreReservationPage() {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [chatMessages, isAiTyping, isChatOpen]);
+
+  useEffect(() => {
+    if (!pdfModalOpen || !preReserveSuccess || !offerData) {
+      setPdfBlobUrl(null);
+      return;
+    }
+
+    let currentUrl: string | null = null;
+    setPdfError(false);
+    try {
+      const selectedSede = offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId));
+      const doc = generatePreReservationPdf({
+        nombres,
+        apellidos,
+        dni,
+        phone,
+        email,
+        sede: selectedSede?.nombre || offerData.sede || 'Sede Principal',
+        doctor: offerData.doctor || 'Por asignar',
+        fechaCita,
+        horaCita,
+        canalPago,
+        serviceName: activeService.name,
+        originalPrice: Number(activeService.originalPrice),
+        offeredPrice: Number(activeService.offeredPrice),
+        discountPct: Number(activeService.discountPct) || 0,
+        codigoReserva: preReserveSuccess.codigoReserva || 'NEXO-PROMO',
+        nombreFamiliar: esParaFamiliar ? nombreFamiliar : undefined,
+        parentesco: esParaFamiliar ? parentesco : undefined,
+      });
+      currentUrl = URL.createObjectURL(doc.output('blob'));
+      setPdfBlobUrl(currentUrl);
+    } catch (err) {
+      console.error('Error generando PDF:', err);
+      setPdfError(true);
+      setPdfBlobUrl(null);
+    }
+    return () => { if (currentUrl) URL.revokeObjectURL(currentUrl); };
+  }, [pdfModalOpen, preReserveSuccess, offerData, selectedSedeId, nombres, apellidos, dni, phone, email, fechaCita, horaCita, canalPago, activeService, esParaFamiliar, nombreFamiliar, parentesco]);
 
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || userInput).trim();
@@ -1113,7 +1306,7 @@ export default function PreReservationPage() {
                           <Input
                             type="date"
                             value={fechaCita}
-                            min={new Date().toISOString().split('T')[0]}
+                            min={formatDateIso(new Date())}
                             onChange={(e) => setFechaCita(e.target.value)}
                             className="!bg-white !text-slate-900 !border-slate-200 text-xs h-9 rounded-xl shadow-2xs font-medium focus:!border-teal-500 focus:!ring-1 focus:!ring-teal-500"
                           />
@@ -1515,10 +1708,10 @@ export default function PreReservationPage() {
       <Dialog open={pdfModalOpen} onOpenChange={setPdfModalOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto p-0 rounded-3xl bg-white border border-slate-200 shadow-2xl">
           {/* Header del Modal */}
-          <div className="bg-gradient-to-r from-teal-800 via-teal-700 to-slate-900 px-6 py-4 text-white flex items-center justify-between border-b border-teal-700/50">
+          <div className="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 p-1 flex items-center justify-center">
-                <img src="/Logo_NexoSalus_Oscuro.png" alt="NexoSalud" className="w-full h-full object-contain" />
+                <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
               </div>
               <div>
                 <DialogTitle className="text-sm font-extrabold text-white tracking-tight leading-tight">
@@ -1534,119 +1727,25 @@ export default function PreReservationPage() {
             </Badge>
           </div>
 
-          {/* Documento Clínico Estilo PDF (Hoja de Comprobante) */}
-          <div id="voucher-print-area" className="p-6 sm:p-8 space-y-5 bg-white text-slate-900 font-sans">
-            {/* Cabecera del Documento */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b-2 border-slate-900 gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-slate-900 p-1.5 flex items-center justify-center shadow-xs">
-                  <img src="/Logo_NexoSalus_Oscuro.png" alt="NexoSalud Dental" className="w-full h-full object-contain" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-black tracking-tight text-slate-950 uppercase">
-                    NexoSalud Odontología Especializada
-                  </h1>
-                  <p className="text-[11px] text-slate-600 font-medium">
-                    RUC: 20608945231 · Central de Citas: (01) 710-9000
-                  </p>
-                  <p className="text-[10px] text-teal-700 font-semibold">
-                    Portal de Emisión Digital · Orden de Pre-Reserva Clínica
-                  </p>
-                </div>
-              </div>
-
-              <div className="text-left sm:text-right bg-slate-50 border border-slate-200 p-3 rounded-xl sm:min-w-[190px]">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Código Comprobante</span>
-                <span className="text-lg font-black text-slate-950 tracking-wider block font-mono">
-                  {preReserveSuccess?.codigoReserva || 'NEXO-PROMO'}
-                </span>
-                <span className="text-[10px] text-slate-500 block">
-                  Emisión: {new Date().toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
-                </span>
-              </div>
-            </div>
-
-            {/* Grid de Información del Paciente y Cita */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/90 text-xs">
-              <div className="space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Datos del Paciente</span>
-                <p className="font-extrabold text-sm text-slate-950">{nombres} {apellidos}</p>
-                {dni && <p className="text-slate-600 font-medium"><span className="text-slate-400">Doc. Identidad:</span> {dni}</p>}
-                <p className="text-slate-600 font-medium"><span className="text-slate-400">WhatsApp:</span> {phone}</p>
-                {email && <p className="text-slate-600 font-medium"><span className="text-slate-400">Correo:</span> {email}</p>}
-                {esParaFamiliar && nombreFamiliar && (
-                  <div className="mt-2 p-2 bg-teal-50 border border-teal-200 rounded-lg text-teal-900 text-[11px]">
-                    <span className="font-bold">Paciente Asistente:</span> {nombreFamiliar} ({parentesco})
-                  </div>
+          {/* Visor de PDF real */}
+          <div className="flex-1 w-full bg-slate-800 flex justify-center items-center" style={{ minHeight: '520px' }}>
+            {pdfBlobUrl ? (
+              <iframe
+                src={pdfBlobUrl}
+                className="w-full border-0"
+                style={{ height: '520px' }}
+                title="Comprobante Pre-Reserva PDF"
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-3 text-slate-400">
+                {pdfError ? (
+                  <span className="text-sm">No se pudo generar el PDF. Cierra y vuelve a abrir esta vista.</span>
+                ) : (
+                  <><Loader2 className="w-8 h-8 animate-spin" /><span className="text-sm">Generando documento PDF...</span></>
                 )}
               </div>
-
-              <div className="space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Detalles de la Cita Médica</span>
-                <p className="font-bold text-slate-900">
-                  <span className="text-slate-400 font-normal">Sede:</span> {(() => {
-                    const match = offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId));
-                    return match ? `${match.nombre} - ${match.direccion || ''}`.trim() : offerData.sede;
-                  })()}
-                </p>
-                <p className="font-bold text-slate-900">
-                  <span className="text-slate-400 font-normal">Especialista:</span> {offerData.doctor}
-                </p>
-                <p className="font-bold text-slate-900">
-                  <span className="text-slate-400 font-normal">Fecha tentativa:</span> {fechaCita}
-                </p>
-                <p className="font-bold text-slate-900">
-                  <span className="text-slate-400 font-normal">Turno:</span> {horaCita}
-                </p>
-                <p className="font-bold text-slate-900">
-                  <span className="text-slate-400 font-normal">Modalidad elegida:</span> {canalPago}
-                </p>
-              </div>
-            </div>
-
-            {/* Cuadro de Liquidación Tarifaria */}
-            <div className="border border-slate-200 rounded-2xl overflow-hidden">
-              <div className="bg-slate-100 px-4 py-2 border-b border-slate-200 flex justify-between items-center text-xs font-bold text-slate-700">
-                <span>Descripción del Servicio Odontológico</span>
-                <span>Importe</span>
-              </div>
-              <div className="p-4 space-y-2 text-xs">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-extrabold text-sm text-slate-900">{activeService.name}</p>
-                    <p className="text-[11px] text-slate-500 max-w-md mt-0.5">
-                      {activeService.description || offerData.serviceDescription || 'Atención clínica integral con tecnología de diagnóstico digital y garantía NexoSalud.'}
-                    </p>
-                  </div>
-                  <span className="font-mono text-slate-500 line-through">
-                    S/ {Number(activeService.originalPrice).toFixed(2)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between text-emerald-700 font-semibold pt-1 border-t border-slate-100">
-                  <span>Descuento Promocional Congelado ({activeService.discountPct}%)</span>
-                  <span>- S/ {(Number(activeService.originalPrice) - Number(activeService.offeredPrice)).toFixed(2)}</span>
-                </div>
-
-                <div className="flex justify-between items-center pt-2 border-t-2 border-slate-900 text-sm font-black text-slate-950">
-                  <span>TOTAL A PAGAR EN CLÍNICA:</span>
-                  <span className="text-xl text-teal-700 font-mono">S/ {Number(activeService.offeredPrice).toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Cláusula de Validez y Garantía */}
-            <div className="p-3.5 bg-teal-50/80 border border-teal-200 rounded-xl text-[11px] text-teal-900 space-y-1">
-              <div className="flex items-center gap-1.5 font-bold text-teal-950">
-                <ShieldCheck className="w-4 h-4 text-teal-700 shrink-0" />
-                <span>Garantía de Tarifa Oficial Congelada por 48 Horas</span>
-              </div>
-              <p className="text-[10.5px] leading-relaxed text-teal-800">
-                Presenta este comprobante (en digital o impreso) o menciona tu código <strong className="text-teal-950 font-mono font-black">{preReserveSuccess?.codigoReserva || 'NEXO-PROMO'}</strong> al momento de tu llegada a recepción para hacer válido tu descuento preferencial.
-              </p>
-            </div>
+            )}
           </div>
-
           {/* Footer de Acciones del Modal */}
           <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
             <Button
@@ -1659,36 +1758,21 @@ export default function PreReservationPage() {
 
             <Button
               onClick={() => {
-                window.print();
+                if (!pdfBlobUrl) return;
+                const link = document.createElement('a');
+                link.href = pdfBlobUrl;
+                link.download = `Comprobante-${preReserveSuccess?.codigoReserva || 'NexoSalud'}.pdf`;
+                link.click();
               }}
-              className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs gap-2 shadow-md cursor-pointer"
+              disabled={!pdfBlobUrl}
+              className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs gap-2"
             >
-              <Download className="w-4 h-4" /> Imprimir o Guardar PDF
+              <Download className="w-4 h-4" /> Descargar PDF
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Reglas de Impresión para PDF */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          #voucher-print-area, #voucher-print-area * {
-            visibility: visible !important;
-          }
-          #voucher-print-area {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            padding: 24px !important;
-            background: white !important;
-            color: black !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }
