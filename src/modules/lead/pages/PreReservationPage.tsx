@@ -77,7 +77,7 @@ const getRecommendedOffset = (dolor: string): number => {
   return 3; // Leve o Ninguno: 3 días después para holgura de pago
 };
 
-interface PreReservationPdfData {
+interface PaymentOrderPdfData {
   nombres: string;
   apellidos: string;
   dni: string;
@@ -97,7 +97,7 @@ interface PreReservationPdfData {
   parentesco?: string;
 }
 
-function generatePreReservationPdf(data: PreReservationPdfData): jsPDF {
+function generatePaymentOrderPdf(data: PaymentOrderPdfData): jsPDF {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 15;
@@ -137,7 +137,7 @@ function generatePreReservationPdf(data: PreReservationPdfData): jsPDF {
   doc.setFontSize(8.5);
   doc.setFillColor(240, 253, 250);
   doc.roundedRect(pageWidth - margin - 58, y - 6, 58, 8, 2, 2, 'F');
-  doc.text('PRE-RESERVA OFICIAL', pageWidth - margin - 29, y - 1, { align: 'center' });
+  doc.text('ORDEN DE PAGO', pageWidth - margin - 29, y - 1, { align: 'center' });
   y += 5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
@@ -202,7 +202,7 @@ function generatePreReservationPdf(data: PreReservationPdfData): jsPDF {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.setTextColor(15, 118, 110);
-  doc.text('TOTAL A PAGAR EN CLÍNICA', bannerX + bannerWidth / 2, y + 5, { align: 'center' });
+  doc.text('TOTAL PENDIENTE DE PAGO', bannerX + bannerWidth / 2, y + 5, { align: 'center' });
   doc.setFontSize(14);
   doc.text(`S/ ${data.offeredPrice.toFixed(2)}`, bannerX + bannerWidth / 2, y + 12.5, { align: 'center' });
   y += 20;
@@ -216,7 +216,7 @@ function generatePreReservationPdf(data: PreReservationPdfData): jsPDF {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(...dark);
-  doc.text(`Presenta este comprobante o menciona el código ${data.codigoReserva} en recepción.`, margin + 4, y + 11);
+  doc.text(`Código de pre-reserva: ${data.codigoReserva}. Conserva esta orden para coordinar el pago.`, margin + 4, y + 11);
   doc.text(`Modalidad de pago: ${value(data.canalPago, 140)}`, margin + 4, y + 15.5);
 
   doc.setFontSize(7);
@@ -224,7 +224,7 @@ function generatePreReservationPdf(data: PreReservationPdfData): jsPDF {
   doc.setDrawColor(226, 232, 240);
   doc.line(margin, 280, pageWidth - margin, 280);
   doc.text('NexoSalud Odontología Digital', pageWidth / 2, 284, { align: 'center' });
-  doc.text('Pre-reserva informativa. La cita queda sujeta a confirmación dentro del plazo indicado.', pageWidth / 2, 288, { align: 'center' });
+  doc.text('Orden de pago informativa. No acredita un pago realizado ni confirma la cita.', pageWidth / 2, 288, { align: 'center' });
   return doc;
 }
 
@@ -445,7 +445,7 @@ export default function PreReservationPage() {
     setPdfError(false);
     try {
       const selectedSede = offerData.sedes?.find((s: any) => String(s.id_sede) === String(selectedSedeId));
-      const doc = generatePreReservationPdf({
+      const doc = generatePaymentOrderPdf({
         nombres,
         apellidos,
         dni,
@@ -578,6 +578,7 @@ export default function PreReservationPage() {
 
       const result = await leadService.submitPublicPreReserve(id, payload);
       setPreReserveSuccess(result.data);
+      setPdfModalOpen(true);
       toast({
         title: '¡Pre-Reserva Confirmada! 🎉',
         description: `Código: ${result.data?.codigoReserva || 'NEXO-CONFIRMADO'}. Hemos bloqueado tu tarifa por 48 horas.`,
@@ -722,7 +723,7 @@ export default function PreReservationPage() {
         <div className="w-full h-full flex justify-center items-center min-h-0 animate-in fade-in slide-in-from-left duration-300 p-4 sm:p-6 lg:p-8 xl:p-12">
           
           {preReserveSuccess ? (
-            /* Vista de Éxito / Comprobante de Reserva */
+            /* Vista de Éxito / Pre-reserva registrada */
             <div className="w-full max-w-xl bg-white rounded-3xl border border-slate-200 shadow-none overflow-hidden animate-in zoom-in-95 duration-200">
               <div className="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 px-5 py-4 text-white text-center">
                 {/* Check con animación moderna igual al formulario del cliente */}
@@ -763,7 +764,7 @@ export default function PreReservationPage() {
                   </Button>
                 </div>
 
-                {/* Resumen del Comprobante */}
+                {/* Resumen de la pre-reserva */}
                 <div className="space-y-1.5 text-xs bg-white p-3 rounded-xl border border-slate-200">
                   <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Paciente Titular:</span>
@@ -837,7 +838,7 @@ export default function PreReservationPage() {
                     onClick={() => setPdfModalOpen(true)}
                     className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs h-10 gap-2 cursor-pointer shadow-sm transition-all rounded-xl border border-slate-800"
                   >
-                    <FileText className="w-4 h-4 text-teal-400" /> Previsualizar PDF
+                    <FileText className="w-4 h-4 text-teal-400" /> Ver Orden de Pago PDF
                   </Button>
                 </div>
               </div>
@@ -1704,7 +1705,7 @@ export default function PreReservationPage() {
           </button>
         )}
       </div>
-      {/* Modal de Previsualización y Descarga del Comprobante PDF */}
+      {/* Modal de Previsualización y Descarga de la Orden de Pago */}
       <Dialog open={pdfModalOpen} onOpenChange={setPdfModalOpen}>
         <DialogContent className="flex h-[100dvh] w-[100vw] max-w-[100vw] flex-col gap-0 overflow-hidden rounded-none border border-slate-200 bg-white p-0 shadow-2xl sm:h-[92vh] sm:w-[96vw] sm:max-w-[96vw] sm:rounded-2xl [&>button]:text-white [&>button:hover]:text-white">
           {/* Header del Modal */}
@@ -1715,15 +1716,15 @@ export default function PreReservationPage() {
               </div>
               <div>
                 <DialogTitle className="text-sm font-extrabold text-white tracking-tight leading-tight">
-                  Vista Previa del Comprobante Oficial
+                  Vista Previa de la Orden de Pago
                 </DialogTitle>
                 <DialogDescription className="text-[11px] text-teal-200/90 leading-tight">
-                  Documento digital para congelar tarifa odontológica NexoSalud Dental
+                  Se genera al completar la pre-reserva. No acredita un pago realizado.
                 </DialogDescription>
               </div>
             </div>
             <Badge className="bg-emerald-500 text-slate-950 font-black text-[10px] px-2.5 py-0.5">
-              VÁLIDO POR 48H
+              PENDIENTE DE PAGO
             </Badge>
           </div>
 
@@ -1733,7 +1734,7 @@ export default function PreReservationPage() {
               <iframe
                 src={pdfBlobUrl}
                 className="h-full w-full border-0"
-                title="Comprobante Pre-Reserva PDF"
+                title="Orden de Pago PDF"
               />
             ) : (
               <div className="flex flex-col items-center gap-3 text-slate-400">
@@ -1760,7 +1761,7 @@ export default function PreReservationPage() {
                 if (!pdfBlobUrl) return;
                 const link = document.createElement('a');
                 link.href = pdfBlobUrl;
-                link.download = `Comprobante-${preReserveSuccess?.codigoReserva || 'NexoSalud'}.pdf`;
+                link.download = `Orden-de-Pago-${preReserveSuccess?.codigoReserva || 'NexoSalud'}.pdf`;
                 link.click();
               }}
               disabled={!pdfBlobUrl}

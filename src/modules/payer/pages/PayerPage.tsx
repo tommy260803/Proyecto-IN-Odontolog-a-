@@ -171,7 +171,7 @@ export default function PayerPage() {
             reservationId: resId,
             patientName,
             stage: 'ETAPA_1_PREVENTIVO',
-            details: `T-48h Preventivo: Enlace de pago y proforma PDF de S/ ${p.amountToPay?.toFixed(2)} remitidos por correo.`,
+            details: `T-48h Preventivo: Enlace de pago y Orden de Pago PDF de S/ ${p.amountToPay?.toFixed(2)} remitidos por correo.`,
             emailSent: true,
             emailRecipient: email,
             sentAt: new Date().toISOString()
@@ -191,7 +191,7 @@ export default function PayerPage() {
             reservationId: '101',
             patientName: 'Lucía Mendoza Rojas',
             stage: 'ETAPA_1_PREVENTIVO',
-            details: 'T-48h: Recordatorio preventivo y proforma PDF de S/ 120.00 enviada por correo.',
+            details: 'T-48h: Recordatorio preventivo y Orden de Pago PDF de S/ 120.00 enviada por correo.',
             emailSent: true,
             emailRecipient: 'lucia.mendoza@ejemplo.com',
             sentAt: new Date().toISOString()
@@ -648,7 +648,7 @@ export default function PayerPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
                 <div className="bg-white/80 dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700">
-                  <span className="font-bold text-teal-700 dark:text-teal-400">1. T-48h Preventivo:</span> Correo cordial con proforma PDF adjunta.
+                  <span className="font-bold text-teal-700 dark:text-teal-400">1. T-48h Preventivo:</span> Correo cordial con Orden de Pago PDF adjunta.
                 </div>
                 <div className="bg-white/80 dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700">
                   <span className="font-bold text-amber-700 dark:text-amber-400">2. T-24h Urgencia:</span> Alerta de plazo límite a medianoche (23:59).

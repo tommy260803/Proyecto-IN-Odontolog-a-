@@ -82,6 +82,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
       const branchName = r.Opcion?.Disponibilidad?.Sede?.nombre || 'Sede Principal';
       const professionalName = `Esp. ${r.Opcion?.Disponibilidad?.Profesional?.apellidos || 'Torres'}`;
       const reservationDateStr = apptDate.toISOString().split('T')[0];
+      const orderCode = `ORD-${String(r.id_reserva).padStart(5, '0')}-${apptDate.getUTCFullYear()}`;
       const reservationTimeStr = r.Opcion?.Disponibilidad?.hora_inicio
         ? r.Opcion.Disponibilidad.hora_inicio.toISOString().substring(11, 16)
         : '15:00';
@@ -148,7 +149,8 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
             reservationTime: reservationTimeStr,
             branch: branchName,
             professional: professionalName,
-            isValidated: false
+            isValidated: false,
+            includePdf: false
           });
           emailSent = emailRes.success;
         }
@@ -176,7 +178,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
             Estimado(a) <strong>${patientName}</strong>,<br/><br/>
             Le informamos que el sillón odontológico para su cita de <strong>${serviceName}</strong> con el <strong>${professionalName}</strong> programada para mañana <strong>${reservationDateStr} (${reservationTimeStr} hrs)</strong> se encuentra en <strong>RESERVA TEMPORAL</strong>.<br/><br/>
             Para evitar que el sistema libere automáticamente su cupo a las <strong>00:00 horas</strong> a otro paciente en espera, por favor confirme su abono de <strong>S/ ${amountToPay.toFixed(2)}</strong> hoy mediante Yape o transferencia bancaria.<br/><br/>
-            Adjunto encontrará la Proforma Oficial con los medios de pago autorizados.
+            Adjunto encontrará su Orden de Pago con el importe pendiente.
           `;
 
           const emailRes = await sendPaymentNoticeOrConfirmation({
@@ -192,7 +194,8 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
             reservationTime: reservationTimeStr,
             branch: branchName,
             professional: professionalName,
-            isValidated: false
+            isValidated: false,
+            code: orderCode
           });
           emailSent = emailRes.success;
         }
@@ -231,7 +234,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
             Esperamos que se encuentre muy bien. Le saludamos cordialmente de la Clínica Odontológica NexoSalud.<br/><br/>
             Le recordamos que tiene una cita programada de <strong>${serviceName}</strong> con el <strong>${professionalName}</strong> para el día <strong>${reservationDateStr}</strong> a las <strong>${reservationTimeStr} hrs</strong> en nuestra <strong>${branchName}</strong>.<br/><br/>
             Para garantizar la reserva de su horario y la preparación de los insumos clínicos, puede regularizar su abono de <strong>S/ ${amountToPay.toFixed(2)}</strong> a través de nuestros canales oficiales (Yape o Transferencia).<br/><br/>
-            Adjunto encontrará su Proforma Oficial en PDF. ¡Quedamos atentos para recibirle!
+            Adjunto encontrará su Orden de Pago en PDF. ¡Quedamos atentos para recibirle!
           `;
 
           const emailRes = await sendPaymentNoticeOrConfirmation({
@@ -247,7 +250,8 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
             reservationTime: reservationTimeStr,
             branch: branchName,
             professional: professionalName,
-            isValidated: false
+            isValidated: false,
+            code: orderCode
           });
           emailSent = emailRes.success;
         }

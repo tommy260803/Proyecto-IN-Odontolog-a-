@@ -689,10 +689,10 @@ export function generateBackendPdfBase64(params: {
 
   const docCode = params.code || (isValidated
     ? `CONST-${Math.floor(1000 + Math.random() * 9000)}-${new Date().getFullYear()}`
-    : `PRF-${Math.floor(1000 + Math.random() * 9000)}-${new Date().getFullYear()}`);
+    : `ORD-${Math.floor(1000 + Math.random() * 9000)}-${new Date().getFullYear()}`);
 
-  const tagTitle = isValidated ? 'CONSTANCIA DE PAGO' : 'ESTADO DE COBRO';
-  const tagWidth = isValidated ? 52 : 45;
+  const tagTitle = isValidated ? 'CONSTANCIA DE PAGO' : 'ORDEN DE PAGO';
+  const tagWidth = 52;
 
   doc.setFontSize(8.5);
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -861,20 +861,20 @@ export function generateBackendPdfBase64(params: {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(146, 64, 14);
-    doc.text('✓ CANALES DE PAGO HABILITADOS:', margin + 4, y + 5);
+    doc.text('PENDIENTE DE PAGO - CANAL ELEGIDO:', margin + 4, y + 5);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
-    doc.text('• Yape Oficial: Pagos directos desde la app con código de aprobación al 970 292 710 (Clínica NexoSalud)', margin + 4, y + 10);
-    doc.text('• Tarjeta de Débito / Crédito: Visa, Mastercard, American Express mediante pasarela web integrada', margin + 4, y + 14.5);
-    doc.text('• Transferencia Bancaria BCP: Cta Cte 191-2345678-0-12 (CCI: 002-191002345678012-54)', margin + 4, y + 19);
+    doc.text(`Medio solicitado: ${params.channel || 'Por coordinar con la clínica'}`, margin + 4, y + 10);
+    doc.text('Confirme las instrucciones del canal elegido con NexoSalud antes de realizar el abono.', margin + 4, y + 14.5);
+    doc.text('Esta orden no es una constancia de pago ni confirma la cita.', margin + 4, y + 19);
   }
 
   // Pie de Página
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
-  doc.text('Este documento es una constancia emitida electrónicamente por el Sistema de Gestión Clínica NexoSalud.', margin, 280);
+  doc.text(isValidated ? 'Constancia emitida tras la validación del pago por NexoSalud.' : 'Orden emitida al registrar la pre-reserva. No acredita un pago realizado.', margin, 280);
   doc.text('Para cualquier duda o reprogramación comuníquese con nuestra central de atención al paciente.', margin, 284);
 
   const outputDataUri = doc.output('datauristring');
@@ -901,6 +901,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
   code?: string | null;
   pdfBase64?: string | null;
   isValidated?: boolean | null;
+  includePdf?: boolean;
 }) {
   const {
     toEmail,
@@ -920,7 +921,8 @@ export async function sendPaymentNoticeOrConfirmation(params: {
     filename,
     code,
     pdfBase64,
-    isValidated
+    isValidated,
+    includePdf = true
   } = params;
 
   if (!toEmail) {
@@ -930,9 +932,9 @@ export async function sendPaymentNoticeOrConfirmation(params: {
   const formattedAmount = Number(amount || 0).toFixed(2);
   const emailSubject = subject || (isValidated
     ? `Constancia Oficial de Pago y Confirmación de Cita - Clínica NexoSalud`
-    : `Aviso de Cobro y Proforma Oficial - Clínica NexoSalud`);
+    : `Orden de Pago de su Pre-Reserva - Clínica NexoSalud`);
 
-  const titleHeader = isValidated ? 'Constancia Oficial de Pago & Reserva' : 'Aviso de Cobranza & Proforma de Tratamiento';
+  const titleHeader = isValidated ? 'Constancia de Pago y Cita' : (includePdf ? 'Orden de Pago de Pre-Reserva' : 'Aviso de Cita');
   const defaultBody = isValidated
     ? `Nos complace confirmarle que su pago por un importe de S/ ${formattedAmount} ha sido validado exitosamente. Su cita odontológica se encuentra confirmada y programada en nuestra agenda.`
     : (message ? message.replace(/\n/g, '<br/>') : 'Le recordamos que mantiene un importe pendiente de regularización correspondiente a su atención odontológica programada.');
@@ -992,9 +994,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
             <div class="total-amount">S/ ${formattedAmount}</div>
           </div>
 
-          <p style="font-size: 12px; color: #64748b; margin-top: 20px; text-align: center;">
-            <em>📎 ${isValidated ? 'Adjunto en este correo encontrará su Constancia Oficial de Pago en PDF.' : 'Adjunto en este correo encontrará el documento formal en PDF (Proforma de Aviso de Cobro).'}</em>
-          </p>
+          ${includePdf ? `<p style="font-size: 12px; color: #64748b; margin-top: 20px; text-align: center;"><em>📎 ${isValidated ? 'Adjuntamos su Constancia de Pago en PDF.' : 'Adjuntamos su Orden de Pago en PDF.'}</em></p>` : ''}
         </div>
         <div class="footer">
           <p>Clínica Odontológica NexoSalud S.A.C. | RUC: 20608930192</p>
@@ -1017,7 +1017,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
   }
 
   // Si no se proveyó PDF pre-generado, crearlo automáticamente con jsPDF
-  if (!cleanBase64) {
+  if (includePdf && !cleanBase64) {
     try {
       cleanBase64 = generateBackendPdfBase64({
         isValidated,
@@ -1035,7 +1035,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
         operationNumber,
         code
       });
-      console.log(`[PDF GENERATOR] PDF ${isValidated ? 'Constancia' : 'Proforma'} generado automáticamente para ${toEmail}`);
+      console.log(`[PDF GENERATOR] PDF ${isValidated ? 'Constancia' : 'Orden de Pago'} generado automáticamente para ${toEmail}`);
     } catch (pdfErr) {
       console.error('[PDF GENERATOR ERROR] Error generando PDF en backend:', pdfErr);
     }
@@ -1044,7 +1044,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
   const patientFileSlug = (patientName || 'Paciente').replace(/[^a-zA-Z0-9_-]/g, '_');
   const pdfFileName = filename
     ? (filename.endsWith('.pdf') ? filename : `${filename}.pdf`)
-    : (isValidated ? `Constancia_Pago_${patientFileSlug}.pdf` : `Proforma_Cobro_${patientFileSlug}.pdf`);
+    : (isValidated ? `Constancia_Pago_${patientFileSlug}.pdf` : `Orden_de_Pago_${patientFileSlug}.pdf`);
 
   // 1. MÉTODO 100% GARANTIZADO EN RENDER (HTTPS Port 443): Resend API
   const resendApiKey = process.env.RESEND_API_KEY;
@@ -1221,6 +1221,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
 // Endpoint para enviar aviso o constancia PDF por correo
 router.post('/send-notice-email', async (req, res) => {
   const {
+    payerId,
     toEmail,
     patientName,
     subject,
@@ -1241,6 +1242,29 @@ router.post('/send-notice-email', async (req, res) => {
   }
 
   try {
+    const reservationId = Number(payerId);
+    if (!Number.isSafeInteger(reservationId) || reservationId <= 0) {
+      return res.status(400).json({ error: 'La reserva es obligatoria para enviar el documento.' });
+    }
+    const reserva = await prisma.reservas.findUnique({
+      where: { id_reserva: reservationId },
+      include: { Pagos: true }
+    });
+    if (!reserva) {
+      return res.status(404).json({ error: 'No se encontró la reserva.' });
+    }
+    const paymentValidated = reserva.Pagos.some(pago => pago.estado === 'Validado');
+    if (Boolean(isValidated) !== paymentValidated) {
+      return res.status(409).json({
+        error: paymentValidated
+          ? 'El pago ya está validado. Solo puede enviarse la Constancia de Pago.'
+          : 'La Constancia de Pago solo puede enviarse después de validar el pago.'
+      });
+    }
+    if (!paymentValidated && ['Vencida', 'Cancelada'].includes(reserva.estado || '')) {
+      return res.status(409).json({ error: 'La pre-reserva venció o fue cancelada; no puede enviarse la Orden de Pago.' });
+    }
+
     const result = await sendPaymentNoticeOrConfirmation({
       toEmail,
       patientName,

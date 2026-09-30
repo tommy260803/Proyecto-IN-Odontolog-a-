@@ -253,15 +253,6 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
     toast({ title: 'WhatsApp Abierto', description: 'Redirigiendo a WhatsApp con la estrategia seleccionada.' });
   };
 
-  // Abrir modal de Proforma PDF con opción directa de envío al correo
-  const handleSendEmail = (p: PayerWithDetails) => {
-    setIsPdfModalOpen(true);
-    toast({ 
-      title: 'Proforma Lista', 
-      description: `Revisa la proforma oficial de ${p.person.firstName} y haz clic en "Enviar PDF al Correo".` 
-    });
-  };
-
   // Alertas estáticas según estado (complementan la IA)
   const getStaticAlerts = (p: PayerWithDetails) => {
     const alerts: { text: string; variant: 'warning' | 'rose' | 'teal' }[] = [];
@@ -314,20 +305,10 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
               type="button"
               onClick={() => setIsPdfModalOpen(true)}
               className="bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 border border-teal-500/40"
-              title="Ver constancia oficial de pago en PDF"
+              title="Ver la orden histórica y la constancia de pago"
             >
               <FileText className="w-4 h-4" />
-              <span>Ver Constancia PDF</span>
-            </Button>
-
-            <Button
-              type="button"
-              onClick={() => handleSendEmail(p)}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 border border-indigo-500/40"
-              title="Reenviar constancia y confirmación de cita por correo"
-            >
-              <Mail className="w-4 h-4" />
-              <span>Reenviar Correo</span>
+              <span>Ver Orden y Constancia PDF</span>
             </Button>
           </div>
         </div>
@@ -614,15 +595,6 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                     </span>
                   </Button>
 
-                  <Button
-                    type="button"
-                    onClick={() => handleSendEmail(p)}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-9.5 px-4 font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 border border-indigo-500/40"
-                    title="Enviar proforma y correo formal de cobranza"
-                  >
-                    <Mail className="w-4 h-4" />
-                    <span>Enviar Proforma Correo</span>
-                  </Button>
                 </>
               )}
 
@@ -630,10 +602,10 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                 type="button"
                 onClick={() => setIsPdfModalOpen(true)}
                 className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-xl text-xs h-9.5 px-4 font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 border border-slate-300/80 dark:border-slate-700"
-                title="Abrir visor oficial de proforma / constancia en PDF"
+                title="Abrir la orden de pago y, si el pago está validado, la constancia"
               >
                 <FileText className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                <span>Ver PDF</span>
+                <span>Ver Orden de Pago PDF</span>
               </Button>
             </div>
 

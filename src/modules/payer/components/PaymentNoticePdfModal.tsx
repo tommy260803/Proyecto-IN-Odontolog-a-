@@ -23,14 +23,16 @@ interface PaymentNoticePdfModalProps {
   emailBody?: string;
 }
 
-export function generatePayerProformaPdf(payer: PayerWithDetails, customMessage?: string): jsPDF {
+type PaymentDocumentType = 'ORDER' | 'RECEIPT';
+
+export function generatePayerDocumentPdf(payer: PayerWithDetails, documentType: PaymentDocumentType, customMessage?: string): jsPDF {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
   });
 
-  const isValidated = payer.state === PayerState.VALIDATED;
+  const isValidated = documentType === 'RECEIPT';
   const pageWidth = doc.internal.pageSize.getWidth(); // 210mm
   const margin = 15;
   let y = 18;
@@ -50,10 +52,10 @@ export function generatePayerProformaPdf(payer: PayerWithDetails, customMessage?
   // Document Tag on right
   const docCode = isValidated
     ? `CONST-${String(payer.id).padStart(5, '0')}-${new Date().getFullYear()}`
-    : `PRF-${String(payer.id).padStart(5, '0')}-${new Date().getFullYear()}`;
+    : `ORD-${String(payer.id).padStart(5, '0')}-${new Date().getFullYear()}`;
   
-  const tagTitle = isValidated ? 'CONSTANCIA DE PAGO' : 'ESTADO DE COBRO';
-  const tagWidth = isValidated ? 52 : 45;
+  const tagTitle = isValidated ? 'CONSTANCIA DE PAGO' : 'ORDEN DE PAGO';
+  const tagWidth = 52;
 
   doc.setFontSize(8.5);
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -222,17 +224,17 @@ export function generatePayerProformaPdf(payer: PayerWithDetails, customMessage?
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(146, 64, 14);
-    doc.text('✓ CANALES DE PAGO HABILITADOS:', margin + 4, y + 5);
+    doc.text('PENDIENTE DE PAGO - CANAL ELEGIDO:', margin + 4, y + 5);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
-    doc.text('• Yape Oficial: Pagos directos desde la app con código de aprobación al 970 292 710 (Clínica NexoSalud)', margin + 4, y + 10);
-    doc.text('• Tarjeta de Débito / Crédito: Visa, Mastercard, American Express mediante pasarela web integrada', margin + 4, y + 14.5);
-    doc.text('• Transferencia Bancaria BCP: Cta Cte 191-2345678-0-12 (CCI: 002-191002345678012-54)', margin + 4, y + 19);
+    doc.text(`Medio solicitado: ${payer.payment?.channel || 'Por coordinar con la clínica'}`, margin + 4, y + 10);
+    doc.text('Confirma las instrucciones del canal elegido con NexoSalud antes de realizar el abono.', margin + 4, y + 14.5);
+    doc.text('Esta orden no es una constancia de pago ni confirma la cita.', margin + 4, y + 19);
   }
 
   // 6. Mensaje IA (si existe)
-  if (customMessage) {
+  if (customMessage && !isValidated) {
     y += 26;
     doc.setFillColor(240, 253, 250);
     doc.setDrawColor(204, 251, 241);
@@ -253,8 +255,8 @@ export function generatePayerProformaPdf(payer: PayerWithDetails, customMessage?
   doc.text('NexoSalud Odontología Digital • Central Telefónica: (01) 680-4500 • WhatsApp: +51 987 654 321', pageWidth / 2, 284, { align: 'center' });
   doc.text(
     isValidated
-      ? 'Este documento es una constancia de confirmación y comprobante oficial de reserva de atención odontológica.'
-      : 'Este documento es una proforma informativa emitida para fines de cobranza y confirmación de citas.',
+      ? 'Constancia emitida tras validar el pago y confirmar la cita odontológica.'
+      : 'Orden emitida al registrar la pre-reserva. No acredita un pago realizado.',
     pageWidth / 2,
     288,
     { align: 'center' }
@@ -275,13 +277,20 @@ export function PaymentNoticePdfModal({
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [documentType, setDocumentType] = useState<PaymentDocumentType>('ORDER');
+
+  useEffect(() => {
+    if (isOpen && payer) {
+      setDocumentType(payer.state === PayerState.VALIDATED ? 'RECEIPT' : 'ORDER');
+    }
+  }, [isOpen, payer?.id, payer?.state]);
 
   useEffect(() => {
     let currentUrl: string | null = null;
     if (isOpen && payer) {
       setPdfError(false);
       try {
-        const doc = generatePayerProformaPdf(payer, customMessage);
+        const doc = generatePayerDocumentPdf(payer, documentType, customMessage);
         const pdfBlob = doc.output('blob');
         currentUrl = URL.createObjectURL(pdfBlob);
         setPdfBlobUrl(currentUrl);
@@ -300,17 +309,21 @@ export function PaymentNoticePdfModal({
         URL.revokeObjectURL(currentUrl);
       }
     };
-  }, [isOpen, payer?.id, customMessage]);
+  }, [isOpen, payer?.id, payer?.state, documentType, customMessage]);
 
   if (!isOpen || !payer) return null;
 
   const isValidated = payer.state === PayerState.VALIDATED;
+  const isReceiptDocument = documentType === 'RECEIPT';
+  const canEmailDocument = isReceiptDocument
+    ? isValidated
+    : payer.state === PayerState.PENDING || payer.state === PayerState.IN_REVIEW;
 
   // Descargar archivo .PDF directamente al computador
   const handleDownloadPdf = () => {
     try {
-      const doc = generatePayerProformaPdf(payer, customMessage);
-      const prefix = isValidated ? 'Constancia_Pago' : 'Proforma_Aviso_Cobro';
+      const doc = generatePayerDocumentPdf(payer, documentType, customMessage);
+      const prefix = isReceiptDocument ? 'Constancia_Pago' : 'Orden_de_Pago';
       const fileName = `${prefix}_${payer.person.lastName}_${payer.id}.pdf`;
       doc.save(fileName);
 
@@ -329,6 +342,7 @@ export function PaymentNoticePdfModal({
 
   // Enviar el correo oficial con el PDF adjunto al buzón del paciente
   const handleSendEmailWithPdf = async () => {
+    if (!canEmailDocument) return;
     const targetEmail = payer.person.email;
     if (!targetEmail) {
       toast({
@@ -343,31 +357,31 @@ export function PaymentNoticePdfModal({
     try {
       toast({
         title: 'Generando documento...',
-        description: isValidated 
+        description: isReceiptDocument
           ? 'Adjuntando Constancia oficial de Pago para enviar al correo...'
-          : 'Adjuntando Proforma PDF oficial para enviar al correo...',
+          : 'Adjuntando Orden de Pago PDF para enviar al correo...',
       });
 
-      const doc = generatePayerProformaPdf(payer, customMessage);
+      const doc = generatePayerDocumentPdf(payer, documentType, customMessage);
       const pdfBase64 = doc.output('datauristring');
-      const filename = isValidated
+      const filename = isReceiptDocument
         ? `Constancia_Pago_${payer.person.lastName.replace(/\s+/g, '_')}_${payer.id}.pdf`
-        : `Proforma_Aviso_Cobro_${payer.person.lastName.replace(/\s+/g, '_')}_${payer.id}.pdf`;
+        : `Orden_de_Pago_${payer.person.lastName.replace(/\s+/g, '_')}_${payer.id}.pdf`;
 
-      const defaultSubject = isValidated
+      const defaultSubject = isReceiptDocument
         ? `Constancia Oficial de Pago y Confirmación de Cita - NexoSalud`
-        : `Aviso de Cobro & Proforma Oficial de Atención - NexoSalud`;
+        : `Orden de Pago de su Pre-Reserva - NexoSalud`;
 
-      const defaultBody = isValidated
+      const defaultBody = isReceiptDocument
         ? `Estimado(a) ${payer.person.firstName}, le confirmamos que su pago ha sido validado exitosamente. Adjuntamos su constancia oficial de pago y reserva de cita.`
-        : `Estimado(a) ${payer.person.firstName}, le adjuntamos su proforma de cobro para confirmar su cita odontológica.`;
+        : `Estimado(a) ${payer.person.firstName}, registramos su pre-reserva. Adjuntamos la orden de pago para completar la confirmación de su cita odontológica.`;
 
       const payload = {
         payerId: payer.id,
         toEmail: targetEmail,
         patientName: `${payer.person.firstName} ${payer.person.lastName}`,
-        subject: emailSubject || defaultSubject,
-        message: emailBody || customMessage || defaultBody,
+        subject: isReceiptDocument ? defaultSubject : (emailSubject || defaultSubject),
+        message: isReceiptDocument ? defaultBody : (emailBody || customMessage || defaultBody),
         amount: payer.amountToPay,
         serviceName: 'Consulta y Tratamiento Odontológico Especializado',
         reservationDate: payer.reservation?.date,
@@ -376,6 +390,7 @@ export function PaymentNoticePdfModal({
         professional: payer.reservation?.professionalId,
         filename,
         pdfBase64,
+        isValidated: isReceiptDocument,
       };
 
       const res = await fetch(`${API_URL}/payer/send-notice-email`, {
@@ -393,9 +408,9 @@ export function PaymentNoticePdfModal({
 
       toast({
         title: '¡Correo y PDF Enviados!',
-        description: isValidated
+        description: isReceiptDocument
           ? `La constancia oficial fue enviada exitosamente a ${targetEmail}.`
-          : `La proforma oficial fue enviada exitosamente a ${targetEmail}.`,
+          : `La orden de pago fue enviada exitosamente a ${targetEmail}.`,
       });
     } catch (err: any) {
       console.error(err);
@@ -409,9 +424,9 @@ export function PaymentNoticePdfModal({
     }
   };
 
-  const docCode = isValidated
+  const docCode = isReceiptDocument
     ? `CONST-${String(payer.id).padStart(5, '0')}-${new Date().getFullYear()}`
-    : `PRF-${String(payer.id).padStart(5, '0')}-${new Date().getFullYear()}`;
+    : `ORD-${String(payer.id).padStart(5, '0')}-${new Date().getFullYear()}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -424,7 +439,7 @@ export function PaymentNoticePdfModal({
             </div>
             <div>
               <DialogTitle className="text-sm font-bold text-white">
-                {isValidated ? 'Visor Oficial de Constancia de Pago PDF' : 'Visor Oficial de Proforma PDF'}
+                {isReceiptDocument ? 'Constancia de Pago PDF' : 'Orden de Pago PDF'}
               </DialogTitle>
               <p className="text-[11px] text-slate-300">
                 {docCode} • Paciente: {payer.person.firstName} {payer.person.lastName}
@@ -433,8 +448,18 @@ export function PaymentNoticePdfModal({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {isValidated && (
+              <div role="tablist" aria-label="Documentos de la reserva" className="flex items-center gap-1 rounded-xl bg-slate-800 p-1">
+                <button type="button" role="tab" aria-selected={!isReceiptDocument} onClick={() => setDocumentType('ORDER')} className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${!isReceiptDocument ? 'bg-white text-slate-900' : 'text-slate-200 hover:bg-slate-700'}`}>
+                  Orden de Pago
+                </button>
+                <button type="button" role="tab" aria-selected={isReceiptDocument} onClick={() => setDocumentType('RECEIPT')} className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${isReceiptDocument ? 'bg-white text-slate-900' : 'text-slate-200 hover:bg-slate-700'}`}>
+                  Constancia de Pago
+                </button>
+              </div>
+            )}
             {/* Botón Enviar por Correo con PDF */}
-            <Button
+            {canEmailDocument && <Button
               onClick={handleSendEmailWithPdf}
               disabled={isSendingEmail}
               size="sm"
@@ -449,10 +474,10 @@ export function PaymentNoticePdfModal({
               ) : (
                 <>
                   <Send className="w-3.5 h-3.5" />
-                  {isValidated ? 'Enviar Constancia al Correo' : 'Enviar PDF al Correo'}
+                  {isReceiptDocument ? 'Enviar Constancia' : 'Enviar Orden de Pago'}
                 </>
               )}
-            </Button>
+            </Button>}
 
             {/* Botón Descargar PDF */}
             <Button
