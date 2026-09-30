@@ -81,7 +81,9 @@ router.get('/', async (req, res) => {
     const payers = reservas.map(r => {
       const pago = r.Pagos.length > 0 ? r.Pagos[0] : null;
       let state = 'PENDING';
-      if (pago) {
+      if (r.estado === 'Vencida' || r.estado === 'Cancelada') {
+        state = 'REJECTED';
+      } else if (pago) {
         if (pago.estado === 'Validado') {
           state = 'VALIDATED';
         } else if (pago.estado === 'Rechazado') {
@@ -92,8 +94,6 @@ router.get('/', async (req, res) => {
           // 'Pendiente' o cualquier otro estado inicial de pre-reserva
           state = 'PENDING';
         }
-      } else if (r.estado === 'Vencida' || r.estado === 'Cancelada') {
-        state = 'REJECTED'; // O Vencida
       }
 
       const isPendingPayment = !pago || pago.estado === 'Pendiente';
@@ -206,7 +206,9 @@ router.get('/:id', async (req, res) => {
 
     const pago = reserva.Pagos.length > 0 ? reserva.Pagos[0] : null;
     let state = 'PENDING';
-    if (pago) {
+    if (reserva.estado === 'Vencida' || reserva.estado === 'Cancelada') {
+      state = 'REJECTED';
+    } else if (pago) {
       if (pago.estado === 'Validado') {
         state = 'VALIDATED';
       } else if (pago.estado === 'Rechazado') {
@@ -217,8 +219,6 @@ router.get('/:id', async (req, res) => {
         // 'Pendiente' o reserva inicial sin pagar aún
         state = 'PENDING';
       }
-    } else if (reserva.estado === 'Vencida' || reserva.estado === 'Cancelada') {
-      state = 'REJECTED'; // O Vencida
     }
 
     const isPendingPayment = !pago || pago.estado === 'Pendiente';

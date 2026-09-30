@@ -1,5 +1,6 @@
 import { prisma } from '../db';
 import { sendPaymentNoticeOrConfirmation, generateBackendPdfBase64 } from '../routes/payer.routes';
+import { appointmentMidnightInLima } from './appointmentPolicy';
 
 export interface DunningCycleResult {
   timestamp: string;
@@ -55,10 +56,8 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
 
     for (const r of reservas) {
       const pago = r.Pagos.length > 0 ? r.Pagos[0] : null;
-      const isPaidOrInReview = pago && (pago.estado === 'Validado' || pago.estado === 'Pendiente' || pago.estado === 'En Revisión');
-      
-      // Si el pago ya fue validado, no aplicar dunning
-      if (pago && pago.estado === 'Validado') {
+      // Un comprobante en revisión ya fue presentado; el pendiente aún requiere avisos.
+      if (pago && ['Validado', 'En_Revision', 'En revisión', 'En Revisión', 'IN_REVIEW'].includes(pago.estado)) {
         continue;
       }
 
@@ -67,20 +66,14 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
         continue;
       }
 
-      // Obtener la fecha de la cita (a las 00:00:00 del día de la cita)
-      let apptDate: Date | null = null;
-      if (r.Opcion?.Disponibilidad?.fecha) {
-        apptDate = new Date(r.Opcion.Disponibilidad.fecha);
-      } else if (r.fecha_reserva) {
-        apptDate = new Date(r.fecha_reserva);
-      }
-
+      // La fecha de reserva es el día de la compra, nunca el día de la cita.
+      const apptDate = r.Opcion?.Disponibilidad?.fecha;
       if (!apptDate || isNaN(apptDate.getTime())) {
         continue;
       }
 
-      // Inicio del día de la cita: 00:00:00
-      const appointmentDayStart = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate(), 0, 0, 0, 0);
+      // Inicio del día de la cita en Perú, independiente de la zona del servidor.
+      const appointmentDayStart = appointmentMidnightInLima(apptDate);
       const hoursUntilMidnightDeadline = (appointmentDayStart.getTime() - now.getTime()) / (1000 * 60 * 60);
 
       const patientName = `${r.Persona.nombres} ${r.Persona.apellidos}`;
@@ -88,7 +81,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
       const serviceName = 'Consulta Odontológica Especializada';
       const branchName = r.Opcion?.Disponibilidad?.Sede?.nombre || 'Sede Principal';
       const professionalName = `Esp. ${r.Opcion?.Disponibilidad?.Profesional?.apellidos || 'Torres'}`;
-      const reservationDateStr = appointmentDayStart.toISOString().split('T')[0];
+      const reservationDateStr = apptDate.toISOString().split('T')[0];
       const reservationTimeStr = r.Opcion?.Disponibilidad?.hora_inicio
         ? r.Opcion.Disponibilidad.hora_inicio.toISOString().substring(11, 16)
         : '15:00';
@@ -176,7 +169,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
       // =========================================================================
       // ETAPA 2: FALTAN ENTRE 0h Y 24h PARA LAS 00:00 (DÍA ANTERIOR A LA CITA)
       // =========================================================================
-      if (hoursUntilMidnightDeadline <= 24 && hoursUntilMidnightDeadline > 0 && !sentStage2 && !isPaidOrInReview) {
+      if (hoursUntilMidnightDeadline <= 24 && hoursUntilMidnightDeadline > 0 && !sentStage2) {
         let emailSent = false;
         if (patientEmail) {
           const urgencyMessage = `
@@ -230,7 +223,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
       // =========================================================================
       // ETAPA 1: FALTAN ENTRE 24h Y 48h PARA LAS 00:00 (2 DÍAS ANTES DE LA CITA)
       // =========================================================================
-      if (hoursUntilMidnightDeadline <= 48 && hoursUntilMidnightDeadline > 24 && !sentStage1 && !isPaidOrInReview) {
+      if (hoursUntilMidnightDeadline <= 48 && hoursUntilMidnightDeadline > 24 && !sentStage1) {
         let emailSent = false;
         if (patientEmail) {
           const friendlyMessage = `

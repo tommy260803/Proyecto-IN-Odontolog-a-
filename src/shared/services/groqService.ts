@@ -66,6 +66,19 @@ const STATE_LABELS: Record<string, string> = {
   REVERTED: 'Pago revertido manualmente',
 };
 
+// Disponibilidad.fecha es un día de calendario. Su límite de pago es la
+// medianoche de ese día en Perú, no la medianoche del navegador ni de UTC.
+export function appointmentMidnightInLima(date: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const calendarDate = new Date(Date.UTC(year, month - 1, day));
+  if (calendarDate.getUTCFullYear() !== year || calendarDate.getUTCMonth() !== month - 1 || calendarDate.getUTCDate() !== day) return null;
+  return new Date(Date.UTC(year, month - 1, day, 5)); // 00:00 en Perú (UTC-5)
+}
+
 /**
  * Motor Heurístico de Scoring de Riesgo de Impago (Business Intelligence)
  * Política de Cierre: 00:00 hrs del día de la cita (Cancelación y Liberación)
@@ -84,16 +97,15 @@ export function calculatePayerRisk(ctx: PayerContext): RiskAnalysis {
     };
   }
 
-  // Factor 0: Citas vencidas o pasadas de las 00:00 hrs del día de la cita
+  // Factor 0: Citas vencidas a las 00:00 hrs de Perú del día de la cita
   if (ctx.reservationDate) {
-    try {
-      const apptDate = new Date(ctx.reservationDate);
-      const appointmentDayStart = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate(), 0, 0, 0, 0);
+    const appointmentDayStart = appointmentMidnightInLima(ctx.reservationDate);
+    if (appointmentDayStart) {
       const now = new Date();
       const hoursUntilMidnight = (appointmentDayStart.getTime() - now.getTime()) / (1000 * 60 * 60);
 
       // Si ya son las 00:00 hrs del día de la cita o ya pasó la fecha
-      if (now >= appointmentDayStart || hoursUntilMidnight <= 0 || ctx.state === 'REJECTED' && ctx.lastIncidentReason?.includes('AUTO_CANCELACION')) {
+      if (now >= appointmentDayStart || (ctx.state === 'REJECTED' && ctx.lastIncidentReason?.includes('AUTO_CANCELACION'))) {
         return {
           score: 0,
           level: 'BAJO',
@@ -115,8 +127,6 @@ export function calculatePayerRisk(ctx: PayerContext): RiskAnalysis {
         score += 15;
         factors.push('Cita programada en 2 días (etapa preventiva)');
       }
-    } catch {
-      // Ignore date parse errors
     }
   }
 
