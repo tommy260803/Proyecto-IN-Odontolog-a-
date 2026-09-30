@@ -19,6 +19,7 @@ import { Toaster } from '@/shared/components/ui/toaster';
 import { chatWithNegotiatorAgent, type NegotiatorChatContext } from '@/shared/services/groqService';
 import { leadService } from '../services/lead.service';
 import jsPDF from 'jspdf';
+import { createPaymentDocumentPdf } from '@/shared/pdf/paymentDocument';
 import {
   Sparkles,
   Bot,
@@ -98,134 +99,26 @@ interface PaymentOrderPdfData {
 }
 
 function generatePaymentOrderPdf(data: PaymentOrderPdfData): jsPDF {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 15;
-  const teal: [number, number, number] = [13, 148, 136];
-  const dark: [number, number, number] = [15, 23, 42];
-  const gray: [number, number, number] = [100, 116, 139];
-  let y = 18;
-
-  const value = (text: string, width: number) => doc.splitTextToSize(text || 'No registrado', width)[0];
-  const box = (title: string, rows: Array<[string, string, string, string]>, height: number) => {
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margin, y, pageWidth - 2 * margin, height, 3, 3, 'FD');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(...teal);
-    doc.text(title, margin + 4, y + 6);
-    rows.forEach(([leftLabel, leftValue, rightLabel, rightValue], index) => {
-      const rowY = y + 13 + index * 7;
-      doc.setFontSize(8);
-      doc.setTextColor(...gray);
-      doc.setFont('helvetica', 'normal');
-      doc.text(leftLabel, margin + 4, rowY);
-      doc.text(rightLabel, margin + 95, rowY);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...dark);
-      doc.text(value(leftValue, 53), margin + 40, rowY);
-      doc.text(value(rightValue, 58), margin + 118, rowY);
-    });
-    y += height + 5;
-  };
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(20);
-  doc.setTextColor(...teal);
-  doc.text('NEXOSALUD', margin, y);
-  doc.setFontSize(8.5);
-  doc.setFillColor(240, 253, 250);
-  doc.roundedRect(pageWidth - margin - 58, y - 6, 58, 8, 2, 2, 'F');
-  doc.text('ORDEN DE PAGO', pageWidth - margin - 29, y - 1, { align: 'center' });
-  y += 5;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(...gray);
-  doc.text('Clínica Odontológica Especializada', margin, y);
-  doc.text(`Código: ${data.codigoReserva}`, pageWidth - margin, y, { align: 'right' });
-  y += 4;
-  doc.text('NexoSalud Odontología Digital - Perú', margin, y);
-  doc.text(`Emisión: ${new Date().toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: 'long', year: 'numeric' })}`, pageWidth - margin, y, { align: 'right' });
-  y += 5;
-  doc.setDrawColor(...teal);
-  doc.setLineWidth(0.8);
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 7;
-
-  box('DATOS DEL PACIENTE', [
-    ['Nombre:', `${data.nombres} ${data.apellidos}`, 'DNI:', data.dni],
-    ['Teléfono:', data.phone, 'Correo:', data.email],
-  ], 26);
-  if (data.nombreFamiliar) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(...dark);
-    doc.text(`Atención para familiar: ${value(`${data.nombreFamiliar} (${data.parentesco || 'Familiar'})`, 140)}`, margin + 4, y + 1);
-    y += 6;
-  }
-  box('DETALLE DE LA CITA TENTATIVA', [
-    ['Sede:', data.sede, 'Especialista:', data.doctor],
-    ['Fecha:', data.fechaCita, 'Turno:', data.horaCita],
-  ], 26);
-
-  doc.setFillColor(...teal);
-  doc.roundedRect(margin, y, pageWidth - 2 * margin, 8, 2, 2, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(255, 255, 255);
-  doc.text('Servicio Odontológico', margin + 4, y + 5.5);
-  doc.text('Desc.', margin + 120, y + 5.5, { align: 'center' });
-  doc.text('Total', pageWidth - margin - 4, y + 5.5, { align: 'right' });
-  y += 8;
-  doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(226, 232, 240);
-  doc.rect(margin, y, pageWidth - 2 * margin, 14, 'FD');
-  doc.setTextColor(...dark);
-  doc.text(value(data.serviceName, 105), margin + 4, y + 5);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(...gray);
-  doc.text(`Precio normal: S/ ${data.originalPrice.toFixed(2)}`, margin + 4, y + 10);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(...dark);
-  doc.text(`${data.discountPct}%`, margin + 120, y + 6, { align: 'center' });
-  doc.text(`S/ ${data.offeredPrice.toFixed(2)}`, pageWidth - margin - 4, y + 6, { align: 'right' });
-  y += 18;
-
-  const bannerWidth = 76;
-  const bannerX = pageWidth - margin - bannerWidth;
-  doc.setFillColor(240, 253, 250);
-  doc.setDrawColor(153, 246, 228);
-  doc.roundedRect(bannerX, y, bannerWidth, 16, 3, 3, 'FD');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.setTextColor(15, 118, 110);
-  doc.text('TOTAL PENDIENTE DE PAGO', bannerX + bannerWidth / 2, y + 5, { align: 'center' });
-  doc.setFontSize(14);
-  doc.text(`S/ ${data.offeredPrice.toFixed(2)}`, bannerX + bannerWidth / 2, y + 12.5, { align: 'center' });
-  y += 20;
-
-  doc.setFillColor(240, 253, 250);
-  doc.setDrawColor(153, 246, 228);
-  doc.roundedRect(margin, y, pageWidth - 2 * margin, 18, 3, 3, 'FD');
-  doc.setFontSize(8);
-  doc.setTextColor(5, 150, 105);
-  doc.text('TARIFA OFICIAL CONGELADA POR 48 HORAS', margin + 4, y + 6);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(...dark);
-  doc.text(`Código de pre-reserva: ${data.codigoReserva}. Conserva esta orden para coordinar el pago.`, margin + 4, y + 11);
-  doc.text(`Modalidad de pago: ${value(data.canalPago, 140)}`, margin + 4, y + 15.5);
-
-  doc.setFontSize(7);
-  doc.setTextColor(148, 163, 184);
-  doc.setDrawColor(226, 232, 240);
-  doc.line(margin, 280, pageWidth - margin, 280);
-  doc.text('NexoSalud Odontología Digital', pageWidth / 2, 284, { align: 'center' });
-  doc.text('Orden de pago informativa. No acredita un pago realizado ni confirma la cita.', pageWidth / 2, 288, { align: 'center' });
-  return doc;
+  return createPaymentDocumentPdf({
+    type: 'ORDER',
+    code: data.codigoReserva,
+    patientName: `${data.nombres} ${data.apellidos}`,
+    documentNumber: data.dni,
+    phone: data.phone,
+    email: data.email,
+    branch: data.sede,
+    professional: data.doctor,
+    appointmentDate: data.fechaCita,
+    appointmentTime: data.horaCita,
+    serviceName: data.serviceName,
+    amount: data.offeredPrice,
+    originalPrice: data.originalPrice,
+    discountPercent: data.discountPct,
+    paymentChannel: data.canalPago,
+    familyPatient: data.nombreFamiliar
+      ? `${data.nombreFamiliar} (${data.parentesco || 'Familiar'})`
+      : undefined,
+  });
 }
 
 export default function PreReservationPage() {

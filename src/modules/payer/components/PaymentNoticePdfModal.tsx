@@ -9,6 +9,7 @@ import { Download, Send, RefreshCw } from 'lucide-react';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
 import { useToast } from '@/shared/hooks/use-toast';
 import jsPDF from 'jspdf';
+import { createPaymentDocumentPdf } from '@/shared/pdf/paymentDocument';
 
 import { PayerState } from '@/domain/enums';
 
@@ -25,244 +26,36 @@ interface PaymentNoticePdfModalProps {
 
 type PaymentDocumentType = 'ORDER' | 'RECEIPT';
 
-export function generatePayerDocumentPdf(payer: PayerWithDetails, documentType: PaymentDocumentType, customMessage?: string): jsPDF {
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
+function getPayerDocumentCode(payer: PayerWithDetails, documentType: PaymentDocumentType): string {
+  const isReceipt = documentType === 'RECEIPT';
+  const payment = payer.payment as (typeof payer.payment & { validationDate?: string; preReservationCode?: string }) | undefined;
+  const issueDate = isReceipt ? payment?.validationDate || payment?.operationDate : payer.createdAt;
+  const year = issueDate?.slice(0, 4) || String(new Date().getFullYear());
+  return isReceipt
+    ? `CONST-${String(payer.id).padStart(5, '0')}-${year}`
+    : payment?.preReservationCode || `ORD-${String(payer.id).padStart(5, '0')}-${year}`;
+}
+
+export function generatePayerDocumentPdf(payer: PayerWithDetails, documentType: PaymentDocumentType): jsPDF {
+  const isReceipt = documentType === 'RECEIPT';
+  const payment = payer.payment as (typeof payer.payment & { validationDate?: string; preReservationCode?: string }) | undefined;
+  return createPaymentDocumentPdf({
+    type: documentType,
+    code: getPayerDocumentCode(payer, documentType),
+    issuedAt: isReceipt ? payment?.validationDate || payment?.operationDate : payer.createdAt,
+    patientName: `${payer.person.firstName} ${payer.person.lastName}`,
+    documentNumber: payer.person.documentNumber,
+    phone: payer.person.phone,
+    email: payer.person.email,
+    branch: payer.reservation?.branchId,
+    professional: payer.reservation?.professionalId,
+    appointmentDate: payer.reservation?.date,
+    appointmentTime: payer.reservation?.time,
+    serviceName: 'Consulta y Tratamiento Odontológico Especializado',
+    amount: isReceipt ? Number(payment?.amount ?? payer.amountToPay) : payer.amountToPay,
+    paymentChannel: payment?.channel,
+    operationNumber: isReceipt ? payment?.operationNumber : undefined,
   });
-
-  const isValidated = documentType === 'RECEIPT';
-  const pageWidth = doc.internal.pageSize.getWidth(); // 210mm
-  const margin = 15;
-  let y = 18;
-
-  // Header Colors
-  const primaryColor = isValidated ? [16, 185, 129] : [13, 148, 136]; // #10b981 (Emerald) or #0d9488 (Teal)
-  const darkColor = [15, 23, 42]; // #0f172a
-  const grayColor = [100, 116, 139]; // #64748b
-  const lightBg = [248, 250, 252]; // #f8fafc
-
-  // Brand Header
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(20);
-  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.text('NEXOSALUD', margin, y);
-
-  // Document Tag on right
-  const docCode = isValidated
-    ? `CONST-${String(payer.id).padStart(5, '0')}-${new Date().getFullYear()}`
-    : `ORD-${String(payer.id).padStart(5, '0')}-${new Date().getFullYear()}`;
-  
-  const tagTitle = isValidated ? 'CONSTANCIA DE PAGO' : 'ORDEN DE PAGO';
-  const tagWidth = 52;
-
-  doc.setFontSize(8.5);
-  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.setFillColor(isValidated ? 236 : 240, isValidated ? 253 : 253, isValidated ? 245 : 250);
-  doc.roundedRect(pageWidth - margin - tagWidth, y - 6, tagWidth, 8, 2, 2, 'F');
-  doc.text(tagTitle, pageWidth - margin - (tagWidth / 2), y - 1, { align: 'center' });
-
-  y += 5;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
-  doc.text('Clínica Odontológica Especializada', margin, y);
-  doc.text(docCode, pageWidth - margin, y, { align: 'right' });
-
-  y += 4;
-  doc.text('RUC: 20608945123 • Trujillo / Lima, Perú', margin, y);
-  const currentDate = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' });
-  doc.text(`Emisión: ${currentDate}`, pageWidth - margin, y, { align: 'right' });
-
-  // Divider Line
-  y += 5;
-  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.setLineWidth(0.8);
-  doc.line(margin, y, pageWidth - margin, y);
-
-  // 1. Datos del Paciente Box
-  y += 7;
-  doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-  doc.setDrawColor(226, 232, 240);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(margin, y, pageWidth - (margin * 2), 26, 3, 3, 'FD');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.text('DATOS DEL PACIENTE', margin + 4, y + 6);
-
-  doc.setFontSize(8);
-  doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
-  doc.text('Nombre Completo:', margin + 4, y + 13);
-  doc.text('Documento:', margin + 95, y + 13);
-  doc.text('Teléfono:', margin + 4, y + 20);
-  doc.text('Correo:', margin + 95, y + 20);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-  doc.text(`${payer.person.firstName} ${payer.person.lastName}`, margin + 32, y + 13);
-  doc.text(`${payer.person.documentType || 'DNI'}: ${payer.person.documentNumber || 'No especificado'}`, margin + 115, y + 13);
-  doc.text(payer.person.phone || 'No registrado', margin + 32, y + 20);
-  doc.text(payer.person.email || 'No registrado', margin + 115, y + 20);
-
-  // 2. Detalle de Cita Box
-  y += 31;
-  doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-  doc.roundedRect(margin, y, pageWidth - (margin * 2), 26, 3, 3, 'FD');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.text('DETALLE DE CITA Y TRATAMIENTO ODONTOLÓGICO', margin + 4, y + 6);
-
-  doc.setFontSize(8);
-  doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
-  doc.text('Servicio:', margin + 4, y + 13);
-  doc.text('Sede:', margin + 95, y + 13);
-  doc.text('Fecha Programada:', margin + 4, y + 20);
-  doc.text('Hora:', margin + 95, y + 20);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-  doc.text('Consulta y Tratamiento Odontológico Especializado', margin + 20, y + 13);
-  doc.text(payer.reservation?.branchId || 'Sede Principal', margin + 106, y + 13);
-  doc.text(payer.reservation?.date || 'Por coordinar', margin + 34, y + 20);
-  doc.text(payer.reservation?.time || 'Turno asignado', margin + 106, y + 20);
-
-  // 3. Tabla de Conceptos
-  y += 32;
-  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.roundedRect(margin, y, pageWidth - (margin * 2), 8, 2, 2, 'F');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(255, 255, 255);
-  doc.text('Descripción del Concepto', margin + 4, y + 5.5);
-  doc.text('Cant.', margin + 120, y + 5.5, { align: 'center' });
-  doc.text('Importe', pageWidth - margin - 4, y + 5.5, { align: 'right' });
-
-  y += 8;
-  doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(226, 232, 240);
-  doc.rect(margin, y, pageWidth - (margin * 2), 12, 'FD');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-  doc.text(
-    isValidated
-      ? 'Abono Validado de Consulta Odontológica'
-      : 'Abono / Reserva de Consulta Odontológica',
-    margin + 4,
-    y + 5
-  );
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
-  doc.text(
-    isValidated
-      ? 'Reserva asegurada y confirmada en agenda clínica'
-      : 'Garantía de turno en agenda clínica',
-    margin + 4,
-    y + 9
-  );
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-  doc.text('1', margin + 120, y + 6, { align: 'center' });
-
-  doc.setFont('helvetica', 'bold');
-  doc.text(`S/ ${payer.amountToPay.toFixed(2)}`, pageWidth - margin - 4, y + 6, { align: 'right' });
-
-  // 4. Banner Total
-  y += 16;
-  const bannerWidth = 76;
-  const bannerX = pageWidth - margin - bannerWidth;
-  doc.setFillColor(isValidated ? 236 : 240, isValidated ? 253 : 253, isValidated ? 245 : 250);
-  doc.setDrawColor(isValidated ? 167 : 153, isValidated ? 243 : 246, isValidated ? 208 : 228);
-  doc.roundedRect(bannerX, y, bannerWidth, 16, 3, 3, 'FD');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.setTextColor(isValidated ? 5 : 15, isValidated ? 150 : 118, isValidated ? 105 : 110);
-  doc.text(
-    isValidated ? 'TOTAL ABONADO / CANCELADO' : 'TOTAL PENDIENTE DE ABONO',
-    bannerX + (bannerWidth / 2),
-    y + 5,
-    { align: 'center' }
-  );
-
-  doc.setFontSize(14);
-  doc.text(`S/ ${payer.amountToPay.toFixed(2)}`, bannerX + (bannerWidth / 2), y + 12.5, { align: 'center' });
-
-  // 5. Canales / Detalle de Pago
-  y += 20;
-  if (isValidated) {
-    doc.setFillColor(236, 253, 245);
-    doc.setDrawColor(167, 243, 208);
-    doc.roundedRect(margin, y, pageWidth - (margin * 2), 22, 3, 3, 'FD');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(5, 150, 105);
-    doc.text('✓ ESTADO DEL PAGO: VALIDADO Y CONCILIADO', margin + 4, y + 5);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-    doc.text(`• Canal / Medio de Pago: ${payer.payment?.channel || 'Pasarela / Yape / Transferencia Bancaria'}`, margin + 4, y + 10);
-    doc.text(`• N° de Operación / Ref: ${payer.payment?.operationNumber || 'CONCILIADO-OK'}`, margin + 4, y + 14.5);
-    doc.text(`• Estado en Agenda: Cita Confirmada y Programada (${payer.reservation?.date || 'Fecha coordinada'} - ${payer.reservation?.time || 'Hora asignada'})`, margin + 4, y + 19);
-  } else {
-    doc.setFillColor(255, 251, 235);
-    doc.setDrawColor(253, 230, 138);
-    doc.roundedRect(margin, y, pageWidth - (margin * 2), 22, 3, 3, 'FD');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(146, 64, 14);
-    doc.text('PENDIENTE DE PAGO - CANAL ELEGIDO:', margin + 4, y + 5);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.text(`Medio solicitado: ${payer.payment?.channel || 'Por coordinar con la clínica'}`, margin + 4, y + 10);
-    doc.text('Confirma las instrucciones del canal elegido con NexoSalud antes de realizar el abono.', margin + 4, y + 14.5);
-    doc.text('Esta orden no es una constancia de pago ni confirma la cita.', margin + 4, y + 19);
-  }
-
-  // 6. Mensaje IA (si existe)
-  if (customMessage && !isValidated) {
-    y += 26;
-    doc.setFillColor(240, 253, 250);
-    doc.setDrawColor(204, 251, 241);
-    doc.roundedRect(margin, y, pageWidth - (margin * 2), 14, 2, 2, 'FD');
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(7.5);
-    doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
-    const splitMsg = doc.splitTextToSize(`"${customMessage}"`, pageWidth - (margin * 2) - 8);
-    doc.text(splitMsg, margin + 4, y + 5);
-  }
-
-  // Footer
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(148, 163, 184);
-  doc.setDrawColor(226, 232, 240);
-  doc.line(margin, 280, pageWidth - margin, 280);
-  doc.text('NexoSalud Odontología Digital • Central Telefónica: (01) 680-4500 • WhatsApp: +51 987 654 321', pageWidth / 2, 284, { align: 'center' });
-  doc.text(
-    isValidated
-      ? 'Constancia emitida tras validar el pago y confirmar la cita odontológica.'
-      : 'Orden emitida al registrar la pre-reserva. No acredita un pago realizado.',
-    pageWidth / 2,
-    288,
-    { align: 'center' }
-  );
-
-  return doc;
 }
 
 export function PaymentNoticePdfModal({
@@ -290,7 +83,7 @@ export function PaymentNoticePdfModal({
     if (isOpen && payer) {
       setPdfError(false);
       try {
-        const doc = generatePayerDocumentPdf(payer, documentType, customMessage);
+        const doc = generatePayerDocumentPdf(payer, documentType);
         const pdfBlob = doc.output('blob');
         currentUrl = URL.createObjectURL(pdfBlob);
         setPdfBlobUrl(currentUrl);
@@ -309,7 +102,7 @@ export function PaymentNoticePdfModal({
         URL.revokeObjectURL(currentUrl);
       }
     };
-  }, [isOpen, payer?.id, payer?.state, documentType, customMessage]);
+  }, [isOpen, payer?.id, payer?.state, documentType]);
 
   if (!isOpen || !payer) return null;
 
@@ -322,7 +115,7 @@ export function PaymentNoticePdfModal({
   // Descargar archivo .PDF directamente al computador
   const handleDownloadPdf = () => {
     try {
-      const doc = generatePayerDocumentPdf(payer, documentType, customMessage);
+      const doc = generatePayerDocumentPdf(payer, documentType);
       const prefix = isReceiptDocument ? 'Constancia_Pago' : 'Orden_de_Pago';
       const fileName = `${prefix}_${payer.person.lastName}_${payer.id}.pdf`;
       doc.save(fileName);
@@ -362,7 +155,7 @@ export function PaymentNoticePdfModal({
           : 'Adjuntando Orden de Pago PDF para enviar al correo...',
       });
 
-      const doc = generatePayerDocumentPdf(payer, documentType, customMessage);
+      const doc = generatePayerDocumentPdf(payer, documentType);
       const pdfBase64 = doc.output('datauristring');
       const filename = isReceiptDocument
         ? `Constancia_Pago_${payer.person.lastName.replace(/\s+/g, '_')}_${payer.id}.pdf`
@@ -382,7 +175,7 @@ export function PaymentNoticePdfModal({
         patientName: `${payer.person.firstName} ${payer.person.lastName}`,
         subject: isReceiptDocument ? defaultSubject : (emailSubject || defaultSubject),
         message: isReceiptDocument ? defaultBody : (emailBody || customMessage || defaultBody),
-        amount: payer.amountToPay,
+        amount: isReceiptDocument ? Number(payer.payment?.amount ?? payer.amountToPay) : payer.amountToPay,
         serviceName: 'Consulta y Tratamiento Odontológico Especializado',
         reservationDate: payer.reservation?.date,
         reservationTime: payer.reservation?.time,
@@ -424,9 +217,7 @@ export function PaymentNoticePdfModal({
     }
   };
 
-  const docCode = isReceiptDocument
-    ? `CONST-${String(payer.id).padStart(5, '0')}-${new Date().getFullYear()}`
-    : `ORD-${String(payer.id).padStart(5, '0')}-${new Date().getFullYear()}`;
+  const docCode = getPayerDocumentCode(payer, documentType);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
