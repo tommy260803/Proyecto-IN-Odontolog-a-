@@ -837,7 +837,7 @@ export default function PreReservationPage() {
                     onClick={() => setPdfModalOpen(true)}
                     className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs h-10 gap-2 cursor-pointer shadow-sm transition-all rounded-xl border border-slate-800"
                   >
-                    <FileText className="w-4 h-4 text-teal-400" /> Comprobante PDF
+                    <FileText className="w-4 h-4 text-teal-400" /> Previsualizar PDF
                   </Button>
                 </div>
               </div>
@@ -1706,9 +1706,9 @@ export default function PreReservationPage() {
       </div>
       {/* Modal de Previsualización y Descarga del Comprobante PDF */}
       <Dialog open={pdfModalOpen} onOpenChange={setPdfModalOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto p-0 rounded-3xl bg-white border border-slate-200 shadow-2xl">
+        <DialogContent className="flex h-[100dvh] w-[100vw] max-w-[100vw] flex-col gap-0 overflow-hidden rounded-none border border-slate-200 bg-white p-0 shadow-2xl sm:h-[92vh] sm:w-[96vw] sm:max-w-[96vw] sm:rounded-2xl [&>button]:text-white [&>button:hover]:text-white">
           {/* Header del Modal */}
-          <div className="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
+          <div className="flex shrink-0 items-center justify-between bg-slate-900 px-6 py-4 pr-14 text-white">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 p-1 flex items-center justify-center">
                 <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
@@ -1728,12 +1728,11 @@ export default function PreReservationPage() {
           </div>
 
           {/* Visor de PDF real */}
-          <div className="flex-1 w-full bg-slate-800 flex justify-center items-center" style={{ minHeight: '520px' }}>
+          <div className="flex min-h-0 w-full flex-1 items-center justify-center bg-slate-800">
             {pdfBlobUrl ? (
               <iframe
                 src={pdfBlobUrl}
-                className="w-full border-0"
-                style={{ height: '520px' }}
+                className="h-full w-full border-0"
                 title="Comprobante Pre-Reserva PDF"
               />
             ) : (
@@ -1747,7 +1746,7 @@ export default function PreReservationPage() {
             )}
           </div>
           {/* Footer de Acciones del Modal */}
-          <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex shrink-0 flex-col items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row">
             <Button
               variant="outline"
               onClick={() => setPdfModalOpen(false)}
