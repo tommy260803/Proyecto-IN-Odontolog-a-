@@ -214,8 +214,47 @@ export default function PayerPage() {
     }
   };
 
+  const groupedPayers = useMemo(() => {
+    if (!payers || payers.length === 0) return [];
+
+    // Agrupar por paciente único (DNI, Email o ID de persona)
+    const groups = new Map<string, PayerWithDetails[]>();
+    payers.forEach((p: any) => {
+      const doc = p.person?.documentNumber?.trim();
+      const key = (doc && doc !== 'Sin Doc' && doc !== '')
+        ? doc
+        : (p.person?.email?.trim().toLowerCase() || p.leadId || p.id);
+
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)!.push(p);
+    });
+
+    const result: PayerWithDetails[] = [];
+    groups.forEach((group) => {
+      // Ordenar por ID de reserva descendente
+      const sorted = [...group].sort((a, b) => Number(b.reservationId || b.id) - Number(a.reservationId || a.id));
+
+      // Priorizar la reserva que esté activa (PENDING, IN_REVIEW, VALIDATED) sobre las canceladas/rechazadas
+      const activeRes = sorted.find(
+        item => item.state === PayerState.PENDING || item.state === PayerState.IN_REVIEW || item.state === PayerState.VALIDATED
+      );
+      const primary = activeRes || sorted[0];
+      const history = sorted.filter(item => item.id !== primary.id);
+
+      result.push({
+        ...primary,
+        preReservationsCount: sorted.length,
+        history,
+      });
+    });
+
+    return result;
+  }, [payers]);
+
   const filteredPayers = useMemo(() => {
-    return payers?.filter((p: any) => {
+    return groupedPayers.filter((p: PayerWithDetails) => {
       const term = searchTerm.trim().toLowerCase();
       let matchSearch = true;
       if (term) {
@@ -232,6 +271,12 @@ export default function PayerPage() {
         const opNumber = (p.payment?.operationNumber || '').toLowerCase();
         const state = (p.state || '').toLowerCase();
 
+        // Buscar también si alguna reserva histórica coincide con el término
+        const matchHistory = (p.history || []).some(h => 
+          (h.reservationId || '').toLowerCase().includes(term) ||
+          (h.serviceName || '').toLowerCase().includes(term)
+        );
+
         matchSearch = 
           fullName.includes(term) ||
           firstName.toLowerCase().includes(term) ||
@@ -244,7 +289,8 @@ export default function PayerPage() {
           id.includes(term) ||
           amount.includes(term) ||
           opNumber.includes(term) ||
-          state.includes(term);
+          state.includes(term) ||
+          matchHistory;
       }
 
       const matchStatus = statusFilter === 'ALL' || p.state === statusFilter;
@@ -260,8 +306,8 @@ export default function PayerPage() {
       }
       
       return matchSearch && matchStatus && matchDate;
-    }) || [];
-  }, [payers, searchTerm, statusFilter, startDate, endDate]);
+    });
+  }, [groupedPayers, searchTerm, statusFilter, startDate, endDate]);
 
   const hasActiveFilters = Boolean(searchTerm || statusFilter !== 'ALL' || startDate || endDate);
 
@@ -290,7 +336,17 @@ export default function PayerPage() {
       header: 'Persona', 
       cell: (p: PayerWithDetails) => (
         <div>
-          <p className="font-semibold text-slate-900 dark:text-white">{p.person.firstName} {p.person.lastName}</p>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="font-semibold text-slate-900 dark:text-white">{p.person.firstName} {p.person.lastName}</p>
+            {((p.preReservationsCount ?? 0) >= 2 || (p.history?.length ?? 0) >= 1) && (
+              <span 
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700" 
+                title={`Tiene ${p.preReservationsCount || (p.history ? p.history.length + 1 : 2)} pre-reservas en total`}
+              >
+                x{p.preReservationsCount || (p.history ? p.history.length + 1 : 2)}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">{p.person.documentNumber || 'Sin Doc'}</p>
         </div>
       )
@@ -308,8 +364,15 @@ export default function PayerPage() {
       cell: (p: PayerWithDetails) => <span className="text-slate-700 dark:text-slate-300">{p.payment?.channel || '-'}</span>
     },
     { 
-      header: 'Fecha Pago', 
-      cell: (p: PayerWithDetails) => <span className="text-slate-700 dark:text-slate-300">{p.payment ? format(new Date(p.payment.operationDate), 'dd MMM yy', { locale: es }) : '-'}</span> 
+      header: 'Fecha Pre-Reserva', 
+      cell: (p: PayerWithDetails) => {
+        const dateToShow = p.createdAt || p.payment?.operationDate;
+        return (
+          <span className="text-slate-700 dark:text-slate-300">
+            {dateToShow ? format(new Date(dateToShow), 'dd MMM yy', { locale: es }) : '-'}
+          </span>
+        );
+      }
     },
     { 
       header: 'Prioridad IA', 

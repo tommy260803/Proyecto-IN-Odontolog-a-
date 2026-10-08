@@ -232,6 +232,46 @@ router.get('/:id', async (req, res) => {
     const isPendingPayment = !pago || pago.estado === 'Pendiente';
     const isInternalRef = pago?.referencia_pago?.startsWith('PR-');
 
+    // Obtener todas las pre-reservas históricas del paciente para trazabilidad completa
+    const todasLasReservas = await prisma.reservas.findMany({
+      where: { id_persona: reserva.id_persona },
+      orderBy: { id_reserva: 'desc' },
+      include: {
+        Solicitud: { include: { Servicio: true } },
+        Opcion: { include: { Disponibilidad: { include: { Sede: true, Profesional: true } } } },
+        Pagos: true,
+        Incidencias: true
+      }
+    });
+
+    const reservationHistory = todasLasReservas.map(histRes => {
+      const histPago = histRes.Pagos.length > 0 ? histRes.Pagos[0] : null;
+      let histState = 'PENDING';
+      if (histRes.estado === 'Vencida' || histRes.estado === 'Cancelada') {
+        histState = 'REJECTED';
+      } else if (histPago) {
+        if (histPago.estado === 'Validado') histState = 'VALIDATED';
+        else if (histPago.estado === 'Rechazado') histState = 'REJECTED';
+        else if (histPago.estado === 'En_Revision' || histPago.estado === 'En revisión' || histPago.estado === 'IN_REVIEW') histState = 'IN_REVIEW';
+        else histState = 'PENDING';
+      }
+      return {
+        id: histRes.id_reserva.toString(),
+        reservationId: histRes.id_reserva.toString(),
+        isCurrent: histRes.id_reserva === reserva.id_reserva,
+        serviceName: histRes.Solicitud?.Servicio?.nombre || 'Consulta Odontológica',
+        amount: Number(histRes.Opcion?.precio_ofrecido || histPago?.importe || 1.00),
+        channel: histPago?.canal_pago || 'En clínica',
+        state: histState,
+        statusRaw: histRes.estado,
+        createdAt: histRes.fecha_reserva ? histRes.fecha_reserva.toISOString() : undefined,
+        appointmentDate: histRes.Opcion?.Disponibilidad?.fecha ? histRes.Opcion.Disponibilidad.fecha.toISOString().split('T')[0] : undefined,
+        appointmentTime: histRes.Opcion?.Disponibilidad?.hora_inicio ? histRes.Opcion.Disponibilidad.hora_inicio.toISOString().substring(11, 16) : undefined,
+        sede: histRes.Opcion?.Disponibilidad?.Sede?.nombre || 'Sede Principal',
+        cancellationReason: histRes.Incidencias?.[0]?.descripcion || (histRes.estado === 'Cancelada' ? 'Cancelado por expiración de plazo de pago (Dunning)' : undefined)
+      };
+    });
+
     const payerDetails = {
       id: reserva.id_reserva.toString(),
       leadId: reserva.id_persona.toString(),
@@ -269,6 +309,7 @@ router.get('/:id', async (req, res) => {
         branchId: reserva.Opcion?.Disponibilidad?.Sede?.nombre || 'Sede Norte',
         professionalId: `Dr. ${reserva.Opcion?.Disponibilidad?.Profesional?.apellidos || 'Perez'}`
       },
+      reservationHistory,
       incidents: reserva.Incidencias ? reserva.Incidencias.map(inc => ({
         id: inc.id_incidencia.toString(),
         payerId: reserva.id_reserva.toString(),

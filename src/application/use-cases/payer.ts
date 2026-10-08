@@ -4,6 +4,22 @@ import type {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+export type ReservationHistoryItem = {
+  id: string;
+  reservationId: string;
+  isCurrent: boolean;
+  serviceName: string;
+  amount: number;
+  channel?: string;
+  state: string;
+  statusRaw?: string;
+  createdAt?: string;
+  appointmentDate?: string;
+  appointmentTime?: string;
+  sede?: string;
+  cancellationReason?: string;
+};
+
 export type PayerWithDetails = Payer & { 
   lead: any;
   buyer: any;
@@ -13,6 +29,9 @@ export type PayerWithDetails = Payer & {
   originalPrice?: number;
   serviceName?: string;
   incidents: PaymentIncident[];
+  reservationHistory?: ReservationHistoryItem[];
+  preReservationsCount?: number;
+  history?: PayerWithDetails[];
 };
 
 export class PayerUseCases {

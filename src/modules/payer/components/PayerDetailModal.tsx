@@ -48,6 +48,7 @@ import {
   Clock,
   Calendar,
   User,
+  History,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
@@ -795,6 +796,67 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                             <span className="text-[10px] bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 font-semibold px-2 py-0.5 rounded mt-1 inline-block">
                               {inc.status}
                             </span>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Historial de Pre-reservas del Paciente */}
+                  {payer.reservationHistory && payer.reservationHistory.length > 0 && (
+                    <Card className="border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xs">
+                      <CardHeader className="py-2.5 px-3.5 bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
+                        <CardTitle className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <History className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                          Historial de Pre-reservas ({payer.reservationHistory.length})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2.5 p-3 text-xs">
+                        {payer.reservationHistory.map((item) => (
+                          <div 
+                            key={item.id} 
+                            className={`p-2.5 rounded-lg border transition-all ${
+                              item.isCurrent
+                                ? 'bg-teal-50/50 dark:bg-teal-950/30 border-teal-200/80 dark:border-teal-800/80'
+                                : 'bg-slate-50/60 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-700/60'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono font-bold text-[11px] text-slate-800 dark:text-slate-200">
+                                  Reserva #{item.reservationId}
+                                </span>
+                                {item.isCurrent && (
+                                  <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 uppercase">
+                                    Actual
+                                  </span>
+                                )}
+                              </div>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                                item.state === 'VALIDATED'
+                                  ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                  : item.state === 'REJECTED'
+                                  ? 'bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                  : 'bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                              }`}>
+                                {item.state === 'VALIDATED' ? 'Validado' : item.state === 'REJECTED' ? (item.statusRaw === 'Cancelada' ? 'Cancelada' : 'Rechazada') : 'Pendiente'}
+                              </span>
+                            </div>
+
+                            <p className="text-[11px] font-medium text-slate-700 dark:text-slate-300 truncate">
+                              {item.serviceName} · <strong className="text-slate-900 dark:text-white">S/ {item.amount.toFixed(2)}</strong>
+                            </p>
+
+                            <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                              <span>Canal: {item.channel || 'En clínica'}</span>
+                              <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '-'}</span>
+                            </div>
+
+                            {item.cancellationReason && (
+                              <p className="text-[10px] text-rose-600 dark:text-rose-400 mt-1 bg-rose-50/80 dark:bg-rose-950/40 p-1 rounded border border-rose-200/50 dark:border-rose-900/50">
+                                ⚠️ {item.cancellationReason}
+                              </p>
+                            )}
                           </div>
                         ))}
                       </CardContent>
