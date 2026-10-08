@@ -127,6 +127,40 @@ function formatConsultaMotivo(motivo: string | null | undefined): string {
     .replace(/Franja:\s*Flexible/gi, 'Horario: Flexible');
 }
 
+// ── Opciones de horas estándar para selectores interactivos ───────────────────
+const TIME_OPTIONS = [
+  '07:00 AM', '07:30 AM',
+  '08:00 AM', '08:30 AM',
+  '09:00 AM', '09:30 AM',
+  '10:00 AM', '10:30 AM',
+  '11:00 AM', '11:30 AM',
+  '12:00 PM', '12:30 PM',
+  '01:00 PM', '01:30 PM',
+  '02:00 PM', '02:30 PM',
+  '03:00 PM', '03:30 PM',
+  '04:00 PM', '04:30 PM',
+  '05:00 PM', '05:30 PM',
+  '06:00 PM', '06:30 PM',
+  '07:00 PM', '07:30 PM',
+  '08:00 PM', '08:30 PM',
+  '09:00 PM', '09:30 PM',
+  '10:00 PM',
+];
+
+function parseCompanyHours(companyHorario: string) {
+  if (!companyHorario) return { openTime: '08:00 AM', closeTime: '08:00 PM' };
+  const match = companyHorario.match(/(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)\s*[-–—a]\s*(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)/i);
+  let open = '08:00 AM';
+  let close = '08:00 PM';
+  if (match) {
+    open = match[1].trim().toUpperCase();
+    close = match[2].trim().toUpperCase();
+    if (!open.includes('AM') && !open.includes('PM')) open += ' AM';
+    if (!close.includes('AM') && !close.includes('PM')) close += ' PM';
+  }
+  return { openTime: open, closeTime: close };
+}
+
 // ── Estado de carga ──────────────────────────────────────────────────────────
 function LoadingState() {
   return (
@@ -248,10 +282,17 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const [altSedeId, setAltSedeId] = useState('');
   const [altVigencia, setAltVigencia] = useState<'24h' | '48h' | '72h' | '7d' | 'custom'>('48h');
   const [altVigenciaCustom, setAltVigenciaCustom] = useState('');
-  const [altFranja, setAltFranja] = useState('Horario Flexible (A elección del paciente al confirmar)');
+  const [altFranja, setAltFranja] = useState('Turno Mañana (08:00 AM – 01:00 PM)');
   const [isCustomHorario, setIsCustomHorario] = useState(false);
   const [customHorarioText, setCustomHorarioText] = useState('');
+  const [customStartHour, setCustomStartHour] = useState('08:00 AM');
+  const [customEndHour, setCustomEndHour] = useState('06:00 PM');
   const [companyHorario, setCompanyHorario] = useState('');
+
+  const { openTime, closeTime } = useMemo(() => {
+    return parseCompanyHours(companyHorario);
+  }, [companyHorario]);
+
   const [altPrecio, setAltPrecio] = useState('150.00');
   const [altCondiciones, setAltCondiciones] = useState('');
   const [addingAlternative, setAddingAlternative] = useState(false);
@@ -1161,67 +1202,12 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                           value={`${['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][pref.Horario.dia_semana] || `Día ${pref.Horario.dia_semana}`} (${String(pref.Horario.hora_inicio).substring(11, 16)} – ${String(pref.Horario.hora_fin).substring(11, 16)})`}
                         />
                       )}
-                      {pref.Canal && <DataRow label="Medio de comunicación preferido" icon={<MessageSquare className="h-3.5 w-3.5" />} value={pref.Canal.nombre} />}
-                      {pref.Modalidad && <DataRow label="Modalidad preferida" icon={<Building2 className="h-3.5 w-3.5" />} value={pref.Modalidad.nombre} />}
                       {pref.sede_preferida && <DataRow label="Sede preferida" icon={<MapPin className="h-3.5 w-3.5" />} value={pref.sede_preferida} />}
-                      {pref.profesional_preferido && <DataRow label="Profesional preferido" icon={<Stethoscope className="h-3.5 w-3.5" />} value={`Esp. ${pref.profesional_preferido}`} />}
                     </>
                   )}
                 </AccordionSection>
 
-                {/* 3. Datos de estudiante — acordeón */}
-                <AccordionSection
-                  title="Datos de Estudiante"
-                  subtitle="Historial académico actual"
-                  icon={<GraduationCap className="h-3.5 w-3.5" />}
-                  defaultOpen={isStudent}
-                >
-                  {!datAcad ? (
-                    <p className="text-xs text-slate-400 dark:text-slate-500 italic">Sin datos registrados</p>
-                  ) : datAcad.aplica === false ? (
-                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
-                      <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 mt-0.5">
-                        <X className="w-3 h-3 text-slate-500" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Condición de estudiante: <span className="font-bold">No aplica</span></p>
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">La persona no se encuentra matriculada actualmente en programas universitarios.</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 flex items-center gap-1 font-semibold">
-                          <Award className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                          Estudiante Activo
-                        </Badge>
-                      </div>
-                      <DataRow label="Universidad" value={datAcad.universidad} />
-                      <DataRow label="Carrera" value={datAcad.carrera} />
-                      <DataRow label="Ciclo" value={datAcad.ciclo} />
-                    </div>
-                  )}
-                </AccordionSection>
-
-                {/* 4. Datos laborales — acordeón */}
-                <AccordionSection
-                  title="Datos Laborales"
-                  subtitle="Ocupación y régimen laboral"
-                  icon={<Briefcase className="h-3.5 w-3.5" />}
-                >
-                  {!datLab ? (
-                    <p className="text-xs text-slate-400 dark:text-slate-500 italic">Sin datos laborales registrados</p>
-                  ) : (
-                    <>
-                      {datLab.ocupacion && <DataRow label="Ocupación" icon={<Activity className="h-3.5 w-3.5" />} value={datLab.ocupacion} />}
-                      {datLab.empresa && <DataRow label="Tipo o lugar de trabajo" icon={<Building2 className="h-3.5 w-3.5" />} value={datLab.empresa} />}
-                      {datLab.modalidad && <DataRow label="Horario laboral" icon={<Clock className="h-3.5 w-3.5" />} value={datLab.modalidad} />}
-                      {datLab.disponibilidad && <DataRow label="Disponibilidad para coordinaciones" value={datLab.disponibilidad} />}
-                    </>
-                  )}
-                </AccordionSection>
-
-                {/* 5. Salud Odontológica — acordeón */}
+                {/* 3. Salud Odontológica — acordeón */}
                 <AccordionSection
                   title="Salud Odontológica"
                   subtitle="Antecedentes clínicos y contexto bucal del paciente"
@@ -1237,15 +1223,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                         <DataRow label="Motivo de consulta" value={saludOdonto.motivo_consulta} />
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <DataRow label="Tratamiento previo" value={saludOdonto.tratamiento_previo} />
                         <DataRow label="Nivel de dolor" value={saludOdonto.nivel_dolor} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-1.5 pt-1">
-                        <CondChip label="Sensibilidad" value={saludOdonto.presenta_sensibilidad} />
-                        <CondChip label="Sangrado / Inflamación" value={saludOdonto.sangrado_o_inflamacion} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <DataRow label="Aparato / Prótesis" value={saludOdonto.usa_aparato_o_protesis} />
                         <DataRow label="Cond. especial de atención" value={saludOdonto.condicion_atencion_especial} />
                       </div>
                     </div>
@@ -1543,72 +1521,184 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {companyHorario && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setAltFranja(`Horario Clínica (${companyHorario})`);
-                              setIsCustomHorario(false);
-                              setCustomHorarioText(companyHorario);
-                            }}
-                            className={`p-2 rounded-xl text-[11px] font-semibold text-left border transition-all col-span-2 sm:col-span-3 ${!isCustomHorario && altFranja.includes('Horario Clínica')
-                                ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs'
-                                : 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200/80 dark:border-amber-800/60 text-amber-900 dark:text-amber-300 hover:border-amber-400'
-                              }`}
-                          >
-                            <span className="block font-bold">🏥 Horario Configurado en la Clínica:</span>
-                            <span className="text-[10px] font-normal">{companyHorario}</span>
-                          </button>
-                        )}
-                        {[
-                          'Horario Flexible (A elección del paciente al confirmar)',
-                          'Turno Tarde (01:00 PM – 09:00 PM)',
-                          'Turno Mañana (08:00 AM – 01:00 PM)',
-                          'Turno Noche (06:00 PM – 09:00 PM)',
-                          'Turno Mañana y Tarde (08:00 AM – 06:00 PM)',
-                          'Sábados Exclusivo (08:00 AM – 02:00 PM)',
-                        ].map((franja) => (
-                          <button
-                            key={franja}
-                            type="button"
-                            onClick={() => {
-                              setAltFranja(franja);
-                              setIsCustomHorario(false);
-                              setCustomHorarioText(franja);
-                            }}
-                            className={`p-2 rounded-xl text-[11px] font-semibold text-left border transition-all ${!isCustomHorario && altFranja === franja
-                                ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs'
-                                : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
-                              }`}
-                          >
-                            {franja}
-                          </button>
-                        ))}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                        {/* 1. Turno Mañana (adaptado a hora inicial de la clínica) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = `Turno Mañana (${openTime} – 01:00 PM)`;
+                            setAltFranja(val);
+                            setIsCustomHorario(false);
+                            setCustomHorarioText(val);
+                          }}
+                          className={`p-2.5 rounded-xl text-[11px] font-semibold text-left border transition-all ${!isCustomHorario && altFranja.startsWith('Turno Mañana')
+                              ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs ring-1 ring-teal-500'
+                              : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
+                            }`}
+                        >
+                          <span className="block font-bold text-teal-700 dark:text-teal-300">🌅 Turno Mañana</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{openTime} – 01:00 PM</span>
+                        </button>
+
+                        {/* 2. Turno Tarde */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = 'Turno Tarde (01:00 PM – 06:00 PM)';
+                            setAltFranja(val);
+                            setIsCustomHorario(false);
+                            setCustomHorarioText(val);
+                          }}
+                          className={`p-2.5 rounded-xl text-[11px] font-semibold text-left border transition-all ${!isCustomHorario && altFranja.startsWith('Turno Tarde')
+                              ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs ring-1 ring-teal-500'
+                              : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
+                            }`}
+                        >
+                          <span className="block font-bold text-teal-700 dark:text-teal-300">☀️ Turno Tarde</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">01:00 PM – 06:00 PM</span>
+                        </button>
+
+                        {/* 3. Turno Noche (adaptado a hora final de la clínica) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = `Turno Noche (06:00 PM – ${closeTime})`;
+                            setAltFranja(val);
+                            setIsCustomHorario(false);
+                            setCustomHorarioText(val);
+                          }}
+                          className={`p-2.5 rounded-xl text-[11px] font-semibold text-left border transition-all ${!isCustomHorario && altFranja.startsWith('Turno Noche')
+                              ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs ring-1 ring-teal-500'
+                              : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
+                            }`}
+                        >
+                          <span className="block font-bold text-teal-700 dark:text-teal-300">🌙 Turno Noche</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">06:00 PM – {closeTime}</span>
+                        </button>
+
+                        {/* 4. Turno Personalizado Interactivo */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsCustomHorario(true);
+                            const val = `Turno Personalizado (${customStartHour} – ${customEndHour})`;
+                            setAltFranja(val);
+                            setCustomHorarioText(val);
+                          }}
+                          className={`p-2.5 rounded-xl text-[11px] font-semibold text-left border transition-all ${isCustomHorario
+                              ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs ring-1 ring-teal-500'
+                              : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
+                            }`}
+                        >
+                          <span className="block font-bold text-teal-700 dark:text-teal-300">⚙️ Personalizado</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                            {isCustomHorario ? `${customStartHour} – ${customEndHour}` : 'Elegir horario'}
+                          </span>
+                        </button>
                       </div>
 
-                      {/* Input editable para Horario Personalizado por el Administrador */}
-                      <div className="space-y-1 pt-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1">
-                            <Edit2 className="w-3 h-3 text-teal-600 dark:text-teal-400" />
-                            Personalizar Horario / Turno para Canva:
-                          </span>
-                          <span className="text-[10px] text-slate-400">
-                            Escribe cualquier horario específico
-                          </span>
+                      {/* Selector Interactivo de Horario Personalizado (Sin escribir, solo clics rápidos) */}
+                      {isCustomHorario && (
+                        <div className="p-3 bg-teal-50/40 dark:bg-teal-950/20 border border-teal-200/70 dark:border-teal-800/60 rounded-xl space-y-2.5 animate-in fade-in-50 duration-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-teal-900 dark:text-teal-200 flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                              Configuración Rápida de Horario Personalizado:
+                            </span>
+                            <span className="text-[10px] text-teal-800 dark:text-teal-300 font-bold font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-teal-200 dark:border-teal-800">
+                              {customStartHour} a {customEndHour}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {/* Selector Hora Inicio */}
+                            <div className="space-y-1">
+                              <label className="text-[10.5px] font-semibold text-slate-600 dark:text-slate-300">
+                                Hora de Inicio:
+                              </label>
+                              <Select
+                                value={customStartHour}
+                                onValueChange={(val) => {
+                                  setCustomStartHour(val);
+                                  const newFranja = `Turno Personalizado (${val} – ${customEndHour})`;
+                                  setCustomHorarioText(newFranja);
+                                  setAltFranja(newFranja);
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900 border-teal-200 dark:border-teal-800 rounded-lg">
+                                  <SelectValue placeholder="Hora de inicio" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-56 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                                  {TIME_OPTIONS.map((time) => (
+                                    <SelectItem key={`modal-start-${time}`} value={time} className="text-xs">
+                                      {time}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Selector Hora Fin */}
+                            <div className="space-y-1">
+                              <label className="text-[10.5px] font-semibold text-slate-600 dark:text-slate-300">
+                                Hora de Fin / Cierre:
+                              </label>
+                              <Select
+                                value={customEndHour}
+                                onValueChange={(val) => {
+                                  setCustomEndHour(val);
+                                  const newFranja = `Turno Personalizado (${customStartHour} – ${val})`;
+                                  setCustomHorarioText(newFranja);
+                                  setAltFranja(newFranja);
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900 border-teal-200 dark:border-teal-800 rounded-lg">
+                                  <SelectValue placeholder="Hora de fin" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-56 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                                  {TIME_OPTIONS.map((time) => (
+                                    <SelectItem key={`modal-end-${time}`} value={time} className="text-xs">
+                                      {time}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Chips Rápidos de 1 Clic */}
+                          <div className="pt-1 flex flex-wrap items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Atajos rápidos:</span>
+                            {[
+                              { label: 'Todo el Día', start: openTime, end: closeTime },
+                              { label: 'Mañana Extendida', start: '08:00 AM', end: '03:00 PM' },
+                              { label: 'Tarde y Noche', start: '01:00 PM', end: '09:00 PM' },
+                              { label: 'Sábados Exclusivo', start: '08:00 AM', end: '02:00 PM' },
+                              { label: 'Flexible / A Elección', fullText: 'Horario Flexible (A elección del paciente al confirmar)' },
+                            ].map((preset) => (
+                              <button
+                                key={preset.label}
+                                type="button"
+                                onClick={() => {
+                                  if (preset.fullText) {
+                                    setCustomHorarioText(preset.fullText);
+                                    setAltFranja(preset.fullText);
+                                  } else if (preset.start && preset.end) {
+                                    setCustomStartHour(preset.start);
+                                    setCustomEndHour(preset.end);
+                                    const val = `Turno Personalizado (${preset.start} – ${preset.end})`;
+                                    setCustomHorarioText(val);
+                                    setAltFranja(val);
+                                  }
+                                }}
+                                className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-white dark:bg-slate-900 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 hover:bg-teal-100/60 transition-colors shadow-2xs"
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        <Input
-                          value={isCustomHorario ? customHorarioText : altFranja}
-                          onChange={(e) => {
-                            setIsCustomHorario(true);
-                            setCustomHorarioText(e.target.value);
-                            setAltFranja(e.target.value);
-                          }}
-                          placeholder="Ej: Tarde 1:00 pm - 9:00 pm / Lun a Sáb 08:00 AM - 08:00 PM"
-                          className="h-8 text-xs rounded-xl border-teal-300/80 dark:border-teal-700/80 bg-white dark:bg-slate-900 font-medium text-slate-800 dark:text-slate-200"
-                        />
-                      </div>
+                      )}
                     </div>
 
                     {/* D. Comparador Financiero en Vivo & Descuentos Rápidos */}

@@ -51,6 +51,7 @@ import {
   ExternalLink,
   Download,
   Image as ImageIcon,
+  History,
 } from 'lucide-react';
 
 // ── Logo oficial de Canva (Icon-Icons / Simple Icons) ───────────────────────
@@ -68,6 +69,40 @@ function CanvaIcon({ className = "w-4 h-4" }: { className?: string }) {
       <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zM6.962 7.68c.754 0 1.337.549 1.405 1.2.069.583-.171 1.097-.822 1.406-.343.171-.48.172-.549.069-.034-.069 0-.137.069-.206.617-.514.617-.926.548-1.508-.034-.378-.308-.618-.583-.618-1.2 0-2.914 2.674-2.674 4.629.103.754.549 1.646 1.509 1.646.308 0 .65-.103.96-.24.5-.264.799-.47 1.097-.8-.073-.885.704-2.046 1.851-2.046.515 0 .926.205.96.583.068.514-.377.582-.514.582s-.378-.034-.378-.17c-.034-.138.309-.07.275-.378-.035-.206-.24-.274-.446-.274-.72 0-1.131.994-1.029 1.611.035.275.172.549.447.549.205 0 .514-.31.617-.755.068-.308.343-.514.583-.514.102 0 .17.034.205.171v.138c-.034.137-.137.548-.102.651 0 .069.034.171.17.171.092 0 .436-.18.777-.459.117-.59.253-1.298.253-1.357.034-.24.137-.48.617-.48.103 0 .171.034.205.171v.138l-.136.617c.445-.583 1.097-.994 1.508-.994.172 0 .309.102.309.274 0 .103 0 .274-.069.446-.137.377-.309.96-.412 1.474 0 .137.035.274.207.274.171 0 .685-.206 1.096-.754l.007-.004c-.002-.068-.007-.134-.007-.202 0-.411.035-.754.104-.994.068-.274.411-.514.617-.514.103 0 .205.069.205.171 0 .035 0 .103-.034.137-.137.446-.24.857-.24 1.269 0 .24.034.582.102.788 0 .034.035.069.07.069.068 0 .548-.445.89-1.028-.308-.206-.48-.549-.48-.96 0-.72.446-1.097.858-1.097.343 0 .617.24.617.72 0 .308-.103.65-.274.96h.102a.77.77 0 0 0 .584-.24.293.293 0 0 1 .134-.117c.335-.425.83-.74 1.41-.74.48 0 .924.205.959.582.068.515-.378.618-.515.618l-.002-.002c-.138 0-.377-.035-.377-.172 0-.137.309-.068.274-.376-.034-.206-.24-.275-.446-.275-.686 0-1.13.891-1.028 1.611.034.275.171.583.445.583.206 0 .515-.308.652-.754.068-.274.343-.514.583-.514.103 0 .17.034.205.171 0 .069 0 .206-.137.652-.17.308-.171.48-.137.617.034.274.171.48.309.583.034.034.068.102.068.102 0 .069-.034.138-.137.138-.034 0-.068 0-.103-.035-.514-.205-.72-.548-.789-.891-.205.24-.445.377-.72.377-.445 0-.89-.411-.96-.926a1.609 1.609 0 0 1 .075-.649c-.203.13-.422.203-.623.203h-.17c-.447.652-.927 1.098-1.27 1.303a.896.896 0 0 1-.377.104c-.068 0-.171-.035-.205-.104-.095-.152-.156-.392-.193-.667-.481.527-1.145.805-1.453.805-.343 0-.548-.206-.582-.55v-.376c.102-.754.377-1.2.377-1.337a.074.074 0 0 0-.069-.07c-.24 0-1.028.824-1.166 1.373l-.103.445c-.068.309-.377.515-.582.515-.103 0-.172-.035-.206-.172v-.137l.046-.233c-.435.31-.87.508-1.075.508-.308 0-.48-.172-.514-.412-.206.274-.445.412-.754.412-.352 0-.696-.24-.862-.593-.244.275-.523.553-.852.764-.48.309-1.028.549-1.68.549-.582 0-1.097-.309-1.371-.583-.412-.377-.651-.96-.686-1.509-.205-1.68.823-3.84 2.4-4.8.378-.205.755-.343 1.132-.343zm9.77 3.291c-.104 0-.172.172-.172.343 0 .274.137.583.309.755a1.74 1.74 0 0 0 .102-.583c0-.343-.137-.515-.24-.515z" />
     </svg>
   );
+}
+
+// ── Opciones de horas estándar para selectores interactivos ───────────────────
+const TIME_OPTIONS = [
+  '07:00 AM', '07:30 AM',
+  '08:00 AM', '08:30 AM',
+  '09:00 AM', '09:30 AM',
+  '10:00 AM', '10:30 AM',
+  '11:00 AM', '11:30 AM',
+  '12:00 PM', '12:30 PM',
+  '01:00 PM', '01:30 PM',
+  '02:00 PM', '02:30 PM',
+  '03:00 PM', '03:30 PM',
+  '04:00 PM', '04:30 PM',
+  '05:00 PM', '05:30 PM',
+  '06:00 PM', '06:30 PM',
+  '07:00 PM', '07:30 PM',
+  '08:00 PM', '08:30 PM',
+  '09:00 PM', '09:30 PM',
+  '10:00 PM',
+];
+
+function parseCompanyHours(companyHorario: string) {
+  if (!companyHorario) return { openTime: '08:00 AM', closeTime: '08:00 PM' };
+  const match = companyHorario.match(/(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)\s*[-–—a]\s*(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)/i);
+  let open = '08:00 AM';
+  let close = '08:00 PM';
+  if (match) {
+    open = match[1].trim().toUpperCase();
+    close = match[2].trim().toUpperCase();
+    if (!open.includes('AM') && !open.includes('PM')) open += ' AM';
+    if (!close.includes('AM') && !close.includes('PM')) close += ' PM';
+  }
+  return { openTime: open, closeTime: close };
 }
 
 export default function LeadNegotiationPage() {
@@ -88,10 +123,17 @@ export default function LeadNegotiationPage() {
   const [selectedSedeId, setSelectedSedeId] = useState('');
   const [selectedVigencia, setSelectedVigencia] = useState<'24h' | '48h' | '72h' | '7d' | 'custom'>('48h');
   const [selectedVigenciaCustom, setSelectedVigenciaCustom] = useState('');
-  const [selectedFranja, setSelectedFranja] = useState('Horario Flexible (A elección del paciente al confirmar)');
+  const [selectedFranja, setSelectedFranja] = useState('Turno Mañana (08:00 AM – 01:00 PM)');
   const [isCustomHorario, setIsCustomHorario] = useState(false);
   const [customHorarioText, setCustomHorarioText] = useState('');
+  const [customStartHour, setCustomStartHour] = useState('08:00 AM');
+  const [customEndHour, setCustomEndHour] = useState('06:00 PM');
   const [companyHorario, setCompanyHorario] = useState('');
+
+  const { openTime, closeTime } = useMemo(() => {
+    return parseCompanyHours(companyHorario);
+  }, [companyHorario]);
+
   const [precioOfrecido, setPrecioOfrecido] = useState('150.00');
   const [condiciones, setCondiciones] = useState('');
   const [offerErrors, setOfferErrors] = useState<Record<string, string>>({});
@@ -571,29 +613,11 @@ export default function LeadNegotiationPage() {
               </div>
             </div>
 
-            {/* Datos Académicos */}
-            <div className="p-5 space-y-2">
-              <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Condición Académica</Label>
-              {datAcad?.aplica ? (
-                <div className="space-y-2">
-                  <Badge variant="outline" className="text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 flex items-center gap-1 font-semibold w-fit">
-                    <Award className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    Estudiante Activo
-                  </Badge>
-                  <p className="text-slate-800 dark:text-slate-200"><span className="font-semibold">Universidad:</span> {datAcad.universidad}</p>
-                  <p className="text-slate-800 dark:text-slate-200"><span className="font-semibold">Carrera:</span> {datAcad.carrera} ({datAcad.ciclo})</p>
-                </div>
-              ) : (
-                <p className="text-slate-500 italic">No registrado como estudiante universitario</p>
-              )}
-            </div>
-
             {/* Preferencias */}
             <div className="p-5 space-y-2">
               <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Preferencias de Atención</Label>
               <div className="space-y-1.5 text-slate-700 dark:text-slate-300">
                 <p><span className="font-semibold">Sede:</span> {pref?.sede_preferida || 'Indiferente'}</p>
-                <p><span className="font-semibold">Especialista:</span> {pref?.profesional_preferido || 'Indiferente'}</p>
               </div>
             </div>
           </CardContent>
@@ -624,11 +648,11 @@ export default function LeadNegotiationPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
               <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 space-y-1 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300 font-bold text-[11px]">
-                  <GraduationCap className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
-                  <span>Perfil Universitario</span>
+                  <History className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>Historial de Consultas</span>
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
-                  {isStudent ? `Perfil universitario identificado (${datAcad?.universidad || 'Universidad'}).` : 'Tarifa regular sugerida.'}
+                  {(lead.Solicitudes?.length || 1) > 1 ? `${lead.Solicitudes.length} consultas registradas. Interés recurrente.` : 'Primera consulta registrada.'}
                 </p>
               </div>
 
@@ -849,72 +873,184 @@ export default function LeadNegotiationPage() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {companyHorario && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedFranja(`Horario Clínica (${companyHorario})`);
-                          setIsCustomHorario(false);
-                          setCustomHorarioText(companyHorario);
-                        }}
-                        className={`p-2 rounded-xl text-[11px] font-semibold text-left border transition-all col-span-2 sm:col-span-3 ${!isCustomHorario && selectedFranja.includes('Horario Clínica')
-                            ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs'
-                            : 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200/80 dark:border-amber-800/60 text-amber-900 dark:text-amber-300 hover:border-amber-400'
-                          }`}
-                      >
-                        <span className="block font-bold">🏥 Horario Configurado en la Clínica:</span>
-                        <span className="text-[10px] font-normal">{companyHorario}</span>
-                      </button>
-                    )}
-                    {[
-                      'Horario Flexible (A elección del paciente al confirmar)',
-                      'Turno Tarde (01:00 PM – 09:00 PM)',
-                      'Turno Mañana (08:00 AM – 01:00 PM)',
-                      'Turno Noche (06:00 PM – 09:00 PM)',
-                      'Turno Mañana y Tarde (08:00 AM – 06:00 PM)',
-                      'Sábados Exclusivo (08:00 AM – 02:00 PM)',
-                    ].map((franja) => (
-                      <button
-                        key={franja}
-                        type="button"
-                        onClick={() => {
-                          setSelectedFranja(franja);
-                          setIsCustomHorario(false);
-                          setCustomHorarioText(franja);
-                        }}
-                        className={`p-2 rounded-xl text-[11px] font-semibold text-left border transition-all ${!isCustomHorario && selectedFranja === franja
-                            ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs'
-                            : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
-                          }`}
-                      >
-                        {franja}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                    {/* 1. Turno Mañana (adaptado a hora inicial de la clínica) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = `Turno Mañana (${openTime} – 01:00 PM)`;
+                        setSelectedFranja(val);
+                        setIsCustomHorario(false);
+                        setCustomHorarioText(val);
+                      }}
+                      className={`p-2.5 rounded-xl text-[11px] font-semibold text-left border transition-all ${!isCustomHorario && selectedFranja.startsWith('Turno Mañana')
+                          ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs ring-1 ring-teal-500'
+                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
+                        }`}
+                    >
+                      <span className="block font-bold text-teal-700 dark:text-teal-300">🌅 Turno Mañana</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{openTime} – 01:00 PM</span>
+                    </button>
+
+                    {/* 2. Turno Tarde */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = 'Turno Tarde (01:00 PM – 06:00 PM)';
+                        setSelectedFranja(val);
+                        setIsCustomHorario(false);
+                        setCustomHorarioText(val);
+                      }}
+                      className={`p-2.5 rounded-xl text-[11px] font-semibold text-left border transition-all ${!isCustomHorario && selectedFranja.startsWith('Turno Tarde')
+                          ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs ring-1 ring-teal-500'
+                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
+                        }`}
+                    >
+                      <span className="block font-bold text-teal-700 dark:text-teal-300">☀️ Turno Tarde</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">01:00 PM – 06:00 PM</span>
+                    </button>
+
+                    {/* 3. Turno Noche (adaptado a hora final de la clínica) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = `Turno Noche (06:00 PM – ${closeTime})`;
+                        setSelectedFranja(val);
+                        setIsCustomHorario(false);
+                        setCustomHorarioText(val);
+                      }}
+                      className={`p-2.5 rounded-xl text-[11px] font-semibold text-left border transition-all ${!isCustomHorario && selectedFranja.startsWith('Turno Noche')
+                          ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs ring-1 ring-teal-500'
+                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
+                        }`}
+                    >
+                      <span className="block font-bold text-teal-700 dark:text-teal-300">🌙 Turno Noche</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">06:00 PM – {closeTime}</span>
+                    </button>
+
+                    {/* 4. Turno Personalizado Interactivo */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomHorario(true);
+                        const val = `Turno Personalizado (${customStartHour} – ${customEndHour})`;
+                        setSelectedFranja(val);
+                        setCustomHorarioText(val);
+                      }}
+                      className={`p-2.5 rounded-xl text-[11px] font-semibold text-left border transition-all ${isCustomHorario
+                          ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-600 dark:border-teal-500 text-teal-900 dark:text-teal-200 shadow-2xs ring-1 ring-teal-500'
+                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-teal-300'
+                        }`}
+                    >
+                      <span className="block font-bold text-teal-700 dark:text-teal-300">⚙️ Personalizado</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                        {isCustomHorario ? `${customStartHour} – ${customEndHour}` : 'Elegir horario'}
+                      </span>
+                    </button>
                   </div>
 
-                  {/* Input editable para Horario Personalizado por el Administrador */}
-                  <div className="space-y-1 pt-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1">
-                        <Edit2 className="w-3 h-3 text-teal-600 dark:text-teal-400" />
-                        Personalizar Horario / Turno para Canva:
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        Escribe cualquier horario específico
-                      </span>
+                  {/* Selector Interactivo de Horario Personalizado (Sin escribir, solo clics rápidos) */}
+                  {isCustomHorario && (
+                    <div className="p-3 bg-teal-50/40 dark:bg-teal-950/20 border border-teal-200/70 dark:border-teal-800/60 rounded-xl space-y-2.5 animate-in fade-in-50 duration-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-teal-900 dark:text-teal-200 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                          Configuración Rápida de Horario Personalizado:
+                        </span>
+                        <span className="text-[10px] text-teal-800 dark:text-teal-300 font-bold font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-teal-200 dark:border-teal-800">
+                          {customStartHour} a {customEndHour}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {/* Selector Hora Inicio */}
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-semibold text-slate-600 dark:text-slate-300">
+                            Hora de Inicio:
+                          </label>
+                          <Select
+                            value={customStartHour}
+                            onValueChange={(val) => {
+                              setCustomStartHour(val);
+                              const newFranja = `Turno Personalizado (${val} – ${customEndHour})`;
+                              setCustomHorarioText(newFranja);
+                              setSelectedFranja(newFranja);
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900 border-teal-200 dark:border-teal-800 rounded-lg">
+                              <SelectValue placeholder="Hora de inicio" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-56 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                              {TIME_OPTIONS.map((time) => (
+                                <SelectItem key={`page-start-${time}`} value={time} className="text-xs">
+                                  {time}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Selector Hora Fin */}
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-semibold text-slate-600 dark:text-slate-300">
+                            Hora de Fin / Cierre:
+                          </label>
+                          <Select
+                            value={customEndHour}
+                            onValueChange={(val) => {
+                              setCustomEndHour(val);
+                              const newFranja = `Turno Personalizado (${customStartHour} – ${val})`;
+                              setCustomHorarioText(newFranja);
+                              setSelectedFranja(newFranja);
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900 border-teal-200 dark:border-teal-800 rounded-lg">
+                              <SelectValue placeholder="Hora de fin" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-56 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                              {TIME_OPTIONS.map((time) => (
+                                <SelectItem key={`page-end-${time}`} value={time} className="text-xs">
+                                  {time}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {/* Chips Rápidos de 1 Clic */}
+                      <div className="pt-1 flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Atajos rápidos:</span>
+                        {[
+                          { label: 'Todo el Día', start: openTime, end: closeTime },
+                          { label: 'Mañana Extendida', start: '08:00 AM', end: '03:00 PM' },
+                          { label: 'Tarde y Noche', start: '01:00 PM', end: '09:00 PM' },
+                          { label: 'Sábados Exclusivo', start: '08:00 AM', end: '02:00 PM' },
+                          { label: 'Flexible / A Elección', fullText: 'Horario Flexible (A elección del paciente al confirmar)' },
+                        ].map((preset) => (
+                          <button
+                            key={preset.label}
+                            type="button"
+                            onClick={() => {
+                              if (preset.fullText) {
+                                setCustomHorarioText(preset.fullText);
+                                setSelectedFranja(preset.fullText);
+                              } else if (preset.start && preset.end) {
+                                setCustomStartHour(preset.start);
+                                setCustomEndHour(preset.end);
+                                const val = `Turno Personalizado (${preset.start} – ${preset.end})`;
+                                setCustomHorarioText(val);
+                                setSelectedFranja(val);
+                              }
+                            }}
+                            className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-white dark:bg-slate-900 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 hover:bg-teal-100/60 transition-colors shadow-2xs"
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <Input
-                      value={isCustomHorario ? customHorarioText : selectedFranja}
-                      onChange={(e) => {
-                        setIsCustomHorario(true);
-                        setCustomHorarioText(e.target.value);
-                        setSelectedFranja(e.target.value);
-                      }}
-                      placeholder="Ej: Tarde 1:00 pm - 9:00 pm / Lun a Sáb 08:00 AM - 08:00 PM"
-                      className="h-8 text-xs rounded-xl border-teal-300/80 dark:border-teal-700/80 bg-white dark:bg-slate-900 font-medium text-slate-800 dark:text-slate-200"
-                    />
-                  </div>
+                  )}
                 </div>
 
                 {/* D. Comparador Financiero en Vivo & Descuentos Rápidos */}
