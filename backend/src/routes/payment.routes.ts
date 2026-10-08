@@ -315,9 +315,9 @@ router.post('/create-preference', async (req, res) => {
         email: (email && email.includes('@')) ? email : 'paciente_prueba@test.com',
       },
       back_urls: {
-        success: `http://localhost:5173/payer/${payerId}?status=approved`,
-        failure: `http://localhost:5173/payer/${payerId}?status=failure`,
-        pending: `http://localhost:5173/payer/${payerId}?status=pending`,
+        success: `${(process.env.FRONTEND_URL || process.env.APP_URL || 'https://proyecto-in-odontologia.vercel.app').replace(/\/+$/, '')}/payer/${payerId}?status=approved`,
+        failure: `${(process.env.FRONTEND_URL || process.env.APP_URL || 'https://proyecto-in-odontologia.vercel.app').replace(/\/+$/, '')}/payer/${payerId}?status=failure`,
+        pending: `${(process.env.FRONTEND_URL || process.env.APP_URL || 'https://proyecto-in-odontologia.vercel.app').replace(/\/+$/, '')}/payer/${payerId}?status=pending`,
       },
       payment_methods: {
         excluded_payment_types: [],

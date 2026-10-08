@@ -129,7 +129,8 @@ class PatientAuthService {
     instructions?: string;
   }) {
     const fullName = `${patient.nombres} ${patient.apellidos}`.trim();
-    const activationUrl = `http://localhost:5173/activar-cuenta?token=${patient.token}`;
+    const frontendUrl = (process.env.FRONTEND_URL || process.env.APP_URL || 'https://proyecto-in-odontologia.vercel.app').replace(/\/+$/, '');
+    const activationUrl = `${frontendUrl}/activar-cuenta?token=${patient.token}`;
 
     const htmlBody = `
       <!DOCTYPE html>

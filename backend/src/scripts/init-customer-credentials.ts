@@ -35,8 +35,9 @@ async function main() {
 
     // Generar token de activación
     const token = await patientAuthService.generateActivationTokenForCustomer(c.id_persona, dni);
+    const frontendUrl = (process.env.FRONTEND_URL || process.env.APP_URL || 'https://proyecto-in-odontologia.vercel.app').replace(/\/+$/, '');
     console.log(`  -> Token de Activación generado: ${token}`);
-    console.log(`  -> Enlace de Activación: http://localhost:5173/activar-cuenta?token=${token}`);
+    console.log(`  -> Enlace de Activación: ${frontendUrl}/activar-cuenta?token=${token}`);
 
     // Si tiene email, enviar correo de activación
     if (c.email) {
