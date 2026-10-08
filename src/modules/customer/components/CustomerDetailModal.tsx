@@ -165,30 +165,14 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
       
       toast({
         title: 'Bloqueo por Auditoría Clínica (Alerta ALT-C3)',
-        description: `No se permite finalizar la cita sin completar la ficha: falta ${missing.join(', ')}. Use las plantillas sugeridas o complete los campos.`,
+        description: `Para finalizar la cita y transferir a TURNED debe completar la ficha: falta ${missing.join(', ')}. Use las plantillas sugeridas o complete los campos.`,
         variant: 'destructive',
       });
       return;
     }
 
-    const time = new Date().toLocaleTimeString();
-    finishAttention.mutate({ id: customer.id, time }, {
-      onSuccess: () => {
-        // Auto guardar detalles ingresados
-        if (dentalFormRef.current) {
-          dentalFormRef.current.submit();
-        }
-        toast({ title: 'Atención Finalizada', description: 'Atención odontológica culminada con éxito y ficha 100% íntegra (KPI C4).' });
-        queryClient.setQueryData([QUERY_KEYS.CUSTOMERS, customer.id], (old: any) => old ? { 
-          ...old, 
-          state: CustomerState.ATTENDED,
-          attention: { ...(old.attention || {}), endTime: new Date().toISOString() } 
-        } : old);
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
-        queryClient.refetchQueries({ queryKey: [QUERY_KEYS.CUSTOMERS, customer.id] });
-      },
-      onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' })
-    });
+    // Abrir confirmación unificada
+    setIsConvertOpen(true);
   };
 
   const handleSaveAttentionDetails = (data: DentalAttentionFormValues) => {
@@ -227,15 +211,19 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
 
   const handleConvert = () => {
     if (!customer) return;
-    convertTurned.mutate(customer.id, {
+    const liveVals = dentalFormRef.current?.getValues() || currentFormData;
+    convertTurned.mutate({ id: customer.id, data: liveVals }, {
       onSuccess: () => {
-        toast({ title: 'Paciente Transferido', description: 'El paciente fue promovido al módulo TURNED para fidelización.' });
+        toast({ 
+          title: 'Atención Finalizada y Transferido a TURNED', 
+          description: 'Ficha clínica guardada con éxito y correo de acceso al Portal enviado al paciente.' 
+        });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TURNED] });
         setIsConvertOpen(false);
         onClose();
       },
-      onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' })
+      onError: (err) => toast({ title: 'Error al finalizar atención', description: err.message, variant: 'destructive' })
     });
   };
 
@@ -362,15 +350,15 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                     <Play className="w-4 h-4 text-teal-600 dark:text-teal-400 group-hover:text-white transition-colors shrink-0" /> Iniciar Atención
                   </Button>
 
-                  {/* Finalizar Atención */}
+                  {/* Finalizar Atención y Pasar a TURNED */}
                   <Button 
                     type="button"
-                    disabled={isTurned || customer.state !== CustomerState.IN_ATTENTION}
+                    disabled={isTurned || (customer.state !== CustomerState.IN_ATTENTION && customer.state !== CustomerState.ATTENDED)}
                     onClick={handleFinishAttention}
-                    className="group bg-indigo-50 hover:bg-indigo-600 text-indigo-800 hover:text-white border border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-700 dark:hover:bg-indigo-600 dark:hover:text-white font-semibold rounded-xl text-xs sm:text-[13px] h-10 px-4 gap-2 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
-                    title="Terminar la consulta odontológica"
+                    className="group bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs sm:text-[13px] h-10 px-5 gap-2 shadow-sm transition-all disabled:opacity-40 disabled:pointer-events-none"
+                    title="Finalizar consulta odontológica y transferir al paciente a TURNED"
                   >
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 group-hover:text-white transition-colors shrink-0" /> Finalizar Atención
+                    <CheckCircle2 className="w-4 h-4 text-white group-hover:scale-105 transition-transform shrink-0" /> Finalizar Atención y Pasar a TURNED
                   </Button>
 
                   <div className="ml-auto flex items-center gap-2">
@@ -630,32 +618,27 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
               Cerrar
             </Button>
 
-            {(!isTurned && transitionCheck.success) && (
+            {(!isTurned && (customer.state === CustomerState.IN_ATTENTION || customer.state === CustomerState.ATTENDED)) && (
               <Button
                 type="button"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold h-10 px-6 gap-2 shadow-sm transition-all whitespace-nowrap min-w-[190px]"
-                onClick={() => {
-                  if (dentalFormRef.current) {
-                    dentalFormRef.current.submit();
-                  }
-                  setIsConvertOpen(true);
-                }}
-                title="Finaliza la atención y transfiere al paciente a TURNED para su fidelización y portal web"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold h-10 px-6 gap-2 shadow-sm transition-all whitespace-nowrap min-w-[210px]"
+                onClick={handleFinishAttention}
+                title="Finaliza la atención médica y transfiere automáticamente al paciente a TURNED"
               >
-                Pasar a TURNED <ArrowRight className="w-4 h-4 shrink-0" />
+                Finalizar y Pasar a TURNED <ArrowRight className="w-4 h-4 shrink-0" />
               </Button>
             )}
           </div>
         </div>
 
-        {/* Modal de Confirmación para pasar a TURNED */}
+        {/* Modal de Confirmación Unificado para finalizar y pasar a TURNED */}
         <ConfirmationDialog
           isOpen={isConvertOpen}
           onClose={() => setIsConvertOpen(false)}
           onConfirm={handleConvert}
-          title="Finalizar Atención y Pasar a TURNED"
-          description="La atención odontológica ha finalizado exitosamente. El paciente será transferido al módulo TURNED para su seguimiento y fidelización."
-          confirmText="Sí, Transferir a TURNED"
+          title="Finalizar Consulta Odontológica y Pasar a TURNED"
+          description="Se guardará la ficha clínica completa y el paciente será promovido automáticamente a la etapa TURNED (Fidelización), enviándole su correo de agradecimiento e indicaciones junto con el enlace de acceso al Portal del Paciente."
+          confirmText="Sí, Finalizar Consulta y Transferir"
           variant="default"
         />
 

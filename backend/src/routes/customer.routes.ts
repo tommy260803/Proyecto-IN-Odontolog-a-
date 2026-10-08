@@ -281,6 +281,7 @@ router.post('/:id/convert-turned', async (req, res) => {
     ]);
     if (!customerStage) return res.status(500).json({ error: 'La etapa CUSTOMER no está configurada' });
 
+    const bodyData = req.body || {};
     const result = await prisma.$transaction(async tx => {
       const person = await tx.personas.findUnique({
         where: { id_persona: personId },
@@ -289,10 +290,34 @@ router.post('/:id/convert-turned', async (req, res) => {
       if (!person) return { status: 404, error: 'Customer no encontrado' };
       if (person.id_etapa_actual === turnedStage.id_etapa) return { status: 200, alreadyConverted: true };
       if (person.id_etapa_actual !== customerStage.id_etapa) return { status: 409, error: 'La persona no se encuentra en etapa CUSTOMER' };
-      const attention = person.Atenciones[0];
+      
+      let attention = person.Atenciones[0];
+      if (!attention) return { status: 404, error: 'No se encontró la atención médica asociada' };
+
+      // Actualizar datos clínicos si fueron provistos en el body
+      const updateData: any = {};
+      if (bodyData.reasonForConsultation) updateData.motivo_consulta = bodyData.reasonForConsultation;
+      if (bodyData.relevantBackground) updateData.antecedentes = bodyData.relevantBackground;
+      if (bodyData.allergies) updateData.alergias = bodyData.allergies;
+      if (bodyData.evaluation) updateData.evaluacion = bodyData.evaluation;
+      if (bodyData.procedure) updateData.procedimiento = bodyData.procedure;
+      if (bodyData.instructions) updateData.indicaciones_finales = bodyData.instructions;
+      if (bodyData.observations) updateData.observaciones = bodyData.observations;
+
+      if (attention.estado_servicio !== 'Finalizado') {
+        updateData.estado_servicio = 'Finalizado';
+        updateData.fecha_fin = attention.fecha_fin || new Date();
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        attention = await tx.atenciones.update({
+          where: { id_atencion: attention.id_atencion },
+          data: updateData,
+        });
+      }
+
       const legacy = parseLegacyObservations(attention?.observaciones);
       const procedure = attention?.procedimiento || legacy.procedure || attention?.resultado;
-      if (!attention || attention.estado_servicio !== 'Finalizado') return { status: 409, error: 'La atención debe estar finalizada' };
       if (!String(procedure || '').trim()) return { status: 409, error: 'Debe registrar el procedimiento realizado' };
       if (!String(attention.indicaciones_finales || '').trim()) return { status: 409, error: 'Debe registrar las indicaciones finales' };
 

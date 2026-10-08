@@ -84,10 +84,12 @@ export const customerService = {
     return res.json();
   },
 
-  convertToTurned: async (id: string) => {
+  convertToTurned: async (id: string, data?: Partial<DentalAttentionFormValues>) => {
     if (!useApi) return customerUseCases.convertToTurned(id);
     const res = await fetch(API_URL + '/customer/' + id + '/convert-turned', {
-      method: 'POST'
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data || {})
     });
     if (!res.ok) throw await apiError(res, 'Error al convertir a TURNED');
     return res.json();

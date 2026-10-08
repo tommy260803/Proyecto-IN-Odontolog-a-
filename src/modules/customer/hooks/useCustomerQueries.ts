@@ -80,8 +80,13 @@ export function useRegisterCustomerIncident() {
 export function useConvertCustomerToTurned() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => customerService.convertToTurned(id),
-    onSuccess: (_, id) => {
+    mutationFn: (variables: string | { id: string, data?: Partial<DentalAttentionFormValues> }) => {
+      const id = typeof variables === 'string' ? variables : variables.id;
+      const data = typeof variables === 'string' ? undefined : variables.data;
+      return customerService.convertToTurned(id, data);
+    },
+    onSuccess: (_, variables) => {
+      const id = typeof variables === 'string' ? variables : variables.id;
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CUSTOMERS, id] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TURNED] });
