@@ -188,7 +188,7 @@ export function BoxCopilotCard({
             </div>
           )}
 
-          {/* 2. Banner de Triaje Preventivo y Alergias (Actividad 2) */}
+          {/* 2. Banner de Triaje Preventivo y Alergias */}
           <div className={`p-3.5 rounded-xl border transition-all ${
             analysis.triage.level === 'CRITICO' ? 'bg-rose-50/90 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800'
             : analysis.triage.level === 'ALTO' ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
@@ -198,7 +198,7 @@ export function BoxCopilotCard({
               <div className="flex items-center gap-2">
                 <ShieldAlert className={`w-4 h-4 ${analysis.triage.level === 'CRITICO' ? 'text-rose-600' : analysis.triage.level === 'ALTO' ? 'text-amber-600' : 'text-teal-600'}`} />
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                  Triaje Clínico & Cruce de Antecedentes (Actividad 2)
+                  Triaje Clínico & Antecedentes Médicos
                 </span>
               </div>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${analysis.triage.badgeColor}`}>
@@ -236,13 +236,13 @@ export function BoxCopilotCard({
             </div>
           </div>
 
-          {/* 3. Monitoreo de Tiempo en Sillón & Alerta ALT-C2 (Actividad 4) */}
+          {/* 3. Monitoreo de Tiempo en Sillón & Alerta ALT-C2 */}
           {customer?.state === 'IN_ATTENTION' && (
             <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
                   <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                  <span>Monitoreo de Tiempo en Sillón (KPI C3 & Actividad 4)</span>
+                  <span>Monitoreo de Tiempo en Sillón</span>
                 </div>
                 <span className="font-mono text-xs font-black text-slate-900 dark:text-white">
                   {currentElapsedMins} / {standardMins} min ({progressPercent}%)
@@ -273,12 +273,12 @@ export function BoxCopilotCard({
             </div>
           )}
 
-          {/* 4. Plantillas Clínicas Estructuradas con 1 Clic (Actividad 3) */}
+          {/* 4. Plantillas Clínicas Estructuradas con 1 Clic */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                Plantillas Clínicas Estructuradas por Servicio (Actividad 3)
+                Plantillas Clínicas Estructuradas por Servicio
               </span>
               <span className="text-[10px] text-slate-400">1 clic para autocompletar</span>
             </div>
@@ -303,12 +303,12 @@ export function BoxCopilotCard({
             </div>
           </div>
 
-          {/* 5. Generador de Indicaciones Postoperatorias & WhatsApp (Actividad 5) */}
+          {/* 5. Generador de Indicaciones Postoperatorias & WhatsApp */}
           <div className="p-3 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200/70 dark:border-indigo-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
                 <MessageSquare className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                Prescripción e Indicaciones Postoperatorias (Actividad 5)
+                Prescripción e Indicaciones Postoperatorias
               </span>
               <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
                 Redacta recomendaciones claras de autocuidado y formato listo para WhatsApp del paciente.
@@ -330,12 +330,12 @@ export function BoxCopilotCard({
             </div>
           </div>
 
-          {/* 6. Auditoría de Integridad y Checklist de Calidad (Actividad 6 & ALT-C3) */}
+          {/* 6. Auditoría de Integridad y Checklist de Calidad */}
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                Auditoría de Integridad Documental (KPI C4 & Actividad 6)
+                Auditoría de Integridad Documental
               </span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                 analysis.qualityChecklist.isComplete 
