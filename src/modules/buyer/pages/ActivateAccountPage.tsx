@@ -116,75 +116,69 @@ export default function ActivateAccountPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-slate-100/90 flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 relative overflow-hidden selection:bg-teal-500/20 selection:text-teal-900">
+    <div className="min-h-screen w-full flex flex-col md:flex-row bg-white selection:bg-teal-500/20 selection:text-teal-900">
       
-      {/* Background Decor */}
-      <div className="absolute inset-0 pointer-events-none -z-10">
-        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-teal-200/40 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-emerald-200/40 blur-3xl" />
-      </div>
+      {/* PANEL IZQUIERDO: Fotografía Odontológica a pantalla completa (50% en desktop, 100vh) */}
+      <div className="relative hidden md:flex md:w-1/2 lg:w-5/12 flex-col justify-between p-8 lg:p-12 xl:p-16 text-white overflow-hidden bg-slate-950 min-h-screen shrink-0">
+        <img 
+          src="/Fondo_NexoSalud_3.jpg" 
+          alt="Instrumental Odontológico NexoSalud" 
+          className="absolute inset-0 w-full h-full object-cover object-center scale-100 opacity-80 transition-transform duration-1000 hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-900/30" />
 
-      <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden grid grid-cols-1 md:grid-cols-2 z-10 animate-in fade-in zoom-in-95 duration-400">
-        
-        {/* PANEL IZQUIERDO: Fotografía Odontológica & Branding */}
-        <div className="relative hidden md:flex flex-col justify-between p-8 lg:p-10 text-white overflow-hidden bg-slate-950">
-          <img 
-            src="/Fondo_NexoSalud_3.jpg" 
-            alt="Instrumental Odontológico NexoSalud" 
-            className="absolute inset-0 w-full h-full object-cover object-center scale-105 transition-transform duration-1000 hover:scale-100 opacity-70"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-900/40" />
-
-          {/* Top Brand Tag */}
-          <div className="relative z-10 space-y-3">
-            <div className="inline-flex items-center gap-3 p-2 pr-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 shadow-lg">
-              <div className="p-1.5 rounded-xl bg-white shadow-xs">
-                <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="h-7 w-7 object-contain" />
-              </div>
-              <div>
-                <span className="font-black text-sm text-white tracking-tight block">NexoSalud Dental</span>
-                <span className="text-[10px] text-teal-300 font-medium block">Portal del Paciente</span>
-              </div>
+        {/* Top Brand Tag */}
+        <div className="relative z-10 space-y-3">
+          <div className="inline-flex items-center gap-3.5 p-2.5 pr-5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 shadow-xl">
+            <div className="p-2 rounded-xl bg-white shadow-xs">
+              <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="h-8 w-8 object-contain" />
             </div>
-          </div>
-
-          {/* Bottom Highlights */}
-          <div className="relative z-10 space-y-4">
-            <Badge className="bg-teal-500/20 text-teal-300 border border-teal-400/30 text-[11px] px-3 py-1 rounded-full backdrop-blur-md">
-              <Sparkles className="w-3 h-3 mr-1.5 text-teal-400" /> Expediente Clínico Protegido
-            </Badge>
-
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black text-white leading-tight tracking-tight">
-                Tu Salud Dental en un Solo Lugar
-              </h2>
-              <p className="text-xs text-slate-300 leading-relaxed font-light">
-                Configura tu contraseña para acceder a tus recetas médicas, recomendaciones post-consulta y agendar atenciones futuras de manera inmediata.
-              </p>
-            </div>
-
-            <div className="pt-2 border-t border-white/10 space-y-2 text-xs text-slate-300">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
-                <span>Historial de atenciones y odontograma</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
-                <span>Agendamiento express de citas médicas</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
-                <span>Cifrado y privacidad de nivel clínico</span>
-              </div>
+            <div>
+              <span className="font-black text-base text-white tracking-tight block">NexoSalud Dental</span>
+              <span className="text-[11px] text-teal-300 font-medium block">Portal Digital del Paciente</span>
             </div>
           </div>
         </div>
 
-        {/* PANEL DERECHO: Formulario Blanco Puro */}
-        <div className="p-6 sm:p-8 lg:p-10 flex flex-col justify-center bg-white">
+        {/* Bottom Highlights */}
+        <div className="relative z-10 space-y-5 max-w-md">
+          <Badge className="bg-teal-500/20 text-teal-300 border border-teal-400/30 text-xs px-3.5 py-1 rounded-full backdrop-blur-md">
+            <Sparkles className="w-3.5 h-3.5 mr-1.5 text-teal-400" /> Expediente Clínico Protegido
+          </Badge>
+
+          <div className="space-y-2.5">
+            <h2 className="text-3xl lg:text-4xl font-black text-white leading-tight tracking-tight">
+              Tu Salud Dental en un Solo Lugar
+            </h2>
+            <p className="text-sm text-slate-300 leading-relaxed font-light">
+              Configura tu contraseña para acceder a tus recetas médicas, recomendaciones post-consulta y agendar atenciones futuras de manera inmediata.
+            </p>
+          </div>
+
+          <div className="pt-4 border-t border-white/10 space-y-3 text-sm text-slate-300">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+              <span>Historial de atenciones y odontograma</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+              <span>Agendamiento express de citas médicas</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+              <span>Cifrado y privacidad de nivel clínico</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* PANEL DERECHO: Formulario Blanco a pantalla completa */}
+      <div className="flex-1 min-h-screen flex flex-col justify-center items-center p-6 sm:p-10 lg:p-14 xl:p-20 bg-white">
+        
+        <div className="w-full max-w-md space-y-6">
           
           {/* Header móvil */}
-          <div className="md:hidden text-center space-y-2 mb-6">
+          <div className="md:hidden text-center space-y-2 mb-4">
             <div className="inline-flex items-center justify-center p-2.5 rounded-2xl bg-white shadow-md ring-1 ring-slate-200 border border-slate-100">
               <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="h-8 w-8 object-contain" />
             </div>
@@ -252,22 +246,22 @@ export default function ActivateAccountPage() {
                 <span className="text-[10px] font-bold text-teal-700 tracking-wider uppercase flex items-center gap-1">
                   <KeyRound className="w-3.5 h-3.5" /> Paso Final de Seguridad
                 </span>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                   Crea tu Contraseña
                 </h2>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs sm:text-sm text-slate-500">
                   Ingresa tu nueva clave de acceso para proteger tu expediente clínico.
                 </p>
               </div>
 
               {/* Ficha Resumen del Paciente */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center shrink-0 shadow-xs">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center shrink-0 shadow-xs">
                   <User className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-900 truncate">{patientData?.fullName}</p>
-                  <p className="text-[11px] text-slate-500 font-mono">DNI: {patientData?.dni}</p>
+                  <p className="text-sm font-bold text-slate-900 truncate">{patientData?.fullName}</p>
+                  <p className="text-xs text-slate-500 font-mono">DNI: {patientData?.dni}</p>
                 </div>
               </div>
 
@@ -322,7 +316,7 @@ export default function ActivateAccountPage() {
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-teal-50/80 border border-teal-100/90 text-teal-900 text-[11px] leading-relaxed flex items-start gap-2">
+                <div className="p-3.5 rounded-xl bg-teal-50/80 border border-teal-100/90 text-teal-900 text-[11px] leading-relaxed flex items-start gap-2.5">
                   <span className="shrink-0 text-sm">💡</span>
                   <span>Esta contraseña te servirá para ingresar siempre que desees consultar tus recetas, radiografías o pedir atenciones rápidas.</span>
                 </div>
@@ -331,7 +325,7 @@ export default function ActivateAccountPage() {
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="w-full h-11 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl text-xs gap-2 shadow-lg shadow-teal-700/20 cursor-pointer transition-all hover:scale-[1.01]"
+                    className="w-full h-12 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl text-xs sm:text-sm gap-2 shadow-lg shadow-teal-700/20 cursor-pointer transition-all hover:scale-[1.01]"
                   >
                     {submitting ? (
                       <span>Guardando contraseña...</span>
