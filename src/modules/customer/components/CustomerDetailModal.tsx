@@ -481,15 +481,16 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
 
                   {/* Tarjeta de Incidencias de Soporte */}
                   <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-                    <CardHeader className="flex flex-row items-center justify-between p-4 pb-2 border-b border-slate-100 dark:border-slate-800">
+                    <CardHeader className="flex flex-row items-center justify-between p-4 pb-2.5 border-b border-slate-100 dark:border-slate-800">
                       <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                         <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
                         Incidencias de Soporte
                       </CardTitle>
                       <Button 
-                        variant="ghost" 
+                        type="button"
+                        variant="outline" 
                         size="sm" 
-                        className="h-7 px-2 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 rounded-lg"
+                        className="h-7 px-2.5 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/80 hover:bg-amber-100 dark:hover:bg-amber-900/80 hover:text-amber-900 dark:hover:text-amber-100 rounded-lg shadow-none transition-all"
                         onClick={() => setIsIncidentOpen(true)}
                         title="Registrar nueva incidencia"
                       >
@@ -502,20 +503,36 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                           Sin incidencias reportadas en esta atención.
                         </p>
                       ) : (
-                        <div className="space-y-2">
-                          {customer.incidents.map((inc: any) => (
-                            <div key={inc.id} className="border-b border-slate-100 dark:border-slate-800 pb-2 last:border-0">
-                              <div className="flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500">
-                                <span>{new Date(inc.createdAt).toLocaleDateString()}</span>
-                                <span className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded">
-                                  {inc.status || 'OPEN'}
-                                </span>
+                        <div className="space-y-2.5">
+                          {customer.incidents.map((inc: any) => {
+                            const isSystemAudit = 
+                              inc.reason?.includes('ETAPA_') || 
+                              inc.reason?.includes('NOTIFICACION_') || 
+                              inc.reason?.includes('DUNNING_') ||
+                              inc.reason?.includes('liberado automáticamente') ||
+                              inc.reason?.includes('reactivó la pre-reserva');
+
+                            return (
+                              <div key={inc.id} className="border-b border-slate-100 dark:border-slate-800 pb-2.5 last:border-0">
+                                <div className="flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 mb-1">
+                                  <span className="font-semibold">{new Date(inc.createdAt).toLocaleDateString()}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    {isSystemAudit && (
+                                      <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold px-1.5 py-0.2 rounded text-[9px] border border-slate-200 dark:border-slate-700">
+                                        Auto-Cron
+                                      </span>
+                                    )}
+                                    <span className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded">
+                                      {inc.status || 'OPEN'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="text-slate-700 dark:text-slate-300 font-medium text-xs leading-relaxed">
+                                  {inc.reason}
+                                </p>
                               </div>
-                              <p className="text-slate-700 dark:text-slate-300 font-medium text-xs mt-1">
-                                {inc.reason}
-                              </p>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </CardContent>
@@ -529,12 +546,13 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
         {/* Barra Inferior (Footer Fijo) */}
         <div className="p-4 sm:p-5 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 flex items-center justify-between gap-3 rounded-b-2xl">
           <Button 
+            type="button"
             variant="outline" 
             size="sm"
-            className="text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 hover:bg-amber-600 hover:text-white text-xs rounded-xl h-9 px-3.5 font-semibold transition-all shadow-sm"
+            className="text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 hover:bg-amber-100 hover:text-amber-900 dark:hover:bg-amber-900/80 dark:hover:text-amber-100 text-xs rounded-xl h-9 px-3.5 font-bold transition-all shadow-sm"
             onClick={() => setIsIncidentOpen(true)}
           >
-            <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
+            <AlertTriangle className="w-3.5 h-3.5 mr-1.5 text-amber-600 dark:text-amber-400" />
             Reportar Incidencia
           </Button>
 
@@ -543,7 +561,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
               type="button"
               variant="outline"
               onClick={onClose}
-              className="rounded-xl bg-white hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-600 text-xs font-semibold h-9 px-4 shadow-sm transition-all"
+              className="rounded-xl bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 hover:text-slate-900 dark:text-slate-100 dark:hover:text-white border border-slate-300 dark:border-slate-600 text-xs font-bold h-9 px-4 shadow-sm transition-all"
             >
               Cerrar
             </Button>
