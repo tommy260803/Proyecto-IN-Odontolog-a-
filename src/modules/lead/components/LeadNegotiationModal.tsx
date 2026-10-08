@@ -29,6 +29,7 @@ import { configService } from '@/modules/config/services/config.service';
 import { useToast } from '@/shared/hooks/use-toast';
 import { generateFlyerTitleWithAI } from '@/shared/services/groqService';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
+import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
 import {
@@ -159,16 +160,6 @@ function parseCompanyHours(companyHorario: string) {
     if (!close.includes('AM') && !close.includes('PM')) close += ' PM';
   }
   return { openTime: open, closeTime: close };
-}
-
-// ── Estado de carga ──────────────────────────────────────────────────────────
-function LoadingState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-400">
-      <div className="w-8 h-8 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
-      <p className="text-xs font-medium">Cargando mesa de negociación inteligente...</p>
-    </div>
-  );
 }
 
 // ── Estado de error ──────────────────────────────────────────────────────────

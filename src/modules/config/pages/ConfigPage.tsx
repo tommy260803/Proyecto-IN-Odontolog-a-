@@ -12,6 +12,7 @@ import {
   DialogFooter,
 } from '@/shared/components/ui/dialog';
 import { useToast } from '@/shared/hooks/use-toast';
+import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { configService } from '../services/config.service';
 import type {
   EmpresaConfig,
@@ -576,10 +577,7 @@ export default function ConfigPage() {
 
       {/* Contenido Principal de Pestañas */}
       {loading ? (
-        <div className="py-20 flex flex-col items-center justify-center space-y-3">
-          <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
-          <p className="text-xs text-slate-500 font-medium">Cargando parámetros del sistema...</p>
-        </div>
+        <LoadingState />
       ) : (
         <div className="space-y-6">
           {/* TAB 1: EMPRESA */}

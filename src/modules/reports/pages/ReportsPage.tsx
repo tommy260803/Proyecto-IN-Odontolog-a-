@@ -20,6 +20,7 @@ import type {
 } from '@/shared/services/report.service';
 import { ExecutiveMatrixTable } from '../components/ExecutiveMatrixTable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import { LoadingState } from '@/shared/components/feedback/LoadingState';
 
 
 type ActiveTab = 'buyer' | 'lead' | 'payer' | 'customer' | 'all';
@@ -216,10 +217,7 @@ export default function ReportsPage() {
       </div>
 
       {loading ? (
-        <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-400">
-          <RefreshCw className="h-8 w-8 animate-spin text-teal-500" />
-          <p className="text-sm font-medium">Consultando matrices dimensionales desde NexoSalud_Mart...</p>
-        </div>
+        <LoadingState />
       ) : reports ? (
         <div className="space-y-10">
           {/* TAB: BUYER */}

@@ -16,6 +16,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { useToast } from '@/shared/hooks/use-toast';
 import { Toaster } from '@/shared/components/ui/toaster';
+import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { chatWithNegotiatorAgent, type NegotiatorChatContext } from '@/shared/services/groqService';
 import { leadService } from '../services/lead.service';
 import jsPDF from 'jspdf';
@@ -497,16 +498,7 @@ export default function PreReservationPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-        <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 shadow-md flex items-center justify-center p-2 mb-4 animate-bounce">
-          <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="w-full h-full object-contain" />
-        </div>
-        <Loader2 className="w-8 h-8 text-teal-600 animate-spin mb-3" />
-        <p className="text-slate-800 font-semibold text-sm">Cargando tu propuesta personalizada...</p>
-        <p className="text-slate-400 text-xs mt-1">Conectando con NexoSalud Dental</p>
-      </div>
-    );
+    return <LoadingState />;
   }
 
   if (error || !offerData) {

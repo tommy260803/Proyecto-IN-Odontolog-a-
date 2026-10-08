@@ -17,6 +17,7 @@ import { leadService } from '../services/lead.service';
 import { configService } from '@/modules/config/services/config.service';
 import { useToast } from '@/shared/hooks/use-toast';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
+import { LoadingState } from '@/shared/components/feedback/LoadingState';
 
 import {
   CheckCircle2,
@@ -405,7 +406,7 @@ export default function LeadNegotiationPage() {
     );
   }
 
-  if (loading) return <div className="p-12 text-center text-slate-500 animate-pulse font-medium">Preparando mesa de negociación inteligente...</div>;
+  if (loading) return <LoadingState />;
   if (!lead) return <div className="p-12 text-center text-rose-500 font-medium">LEAD no encontrado.</div>;
 
   const pref = lead.Preferencias?.[0];
