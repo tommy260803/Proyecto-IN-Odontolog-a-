@@ -59,6 +59,19 @@ interface CustomerDetailModalProps {
   onClose: () => void;
 }
 
+const formatAppointmentDate = (dateStr?: string, timeStr?: string) => {
+  if (!dateStr || dateStr === '-') return '-';
+  try {
+    const cleanDate = dateStr.split('T')[0];
+    const [year, month, day] = cleanDate.split('-').map(Number);
+    if (!year || !month || !day) return dateStr;
+    const formatted = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+    return timeStr ? `${formatted} · ${timeStr}` : formatted;
+  } catch {
+    return dateStr;
+  }
+};
+
 const formatPeruTime = (isoString?: string) => {
   if (!isoString || isoString === '-') return '-';
   try {
@@ -506,7 +519,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                         </div>
                         <div className="flex items-center gap-1.5 mt-1 text-slate-600 dark:text-slate-300">
                           <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
-                          <span>{formatPeruTime(customer.reservation?.date)}</span>
+                          <span>{formatAppointmentDate(customer.reservation?.date, customer.reservation?.time)}</span>
                         </div>
                       </div>
 

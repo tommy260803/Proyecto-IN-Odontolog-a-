@@ -217,10 +217,22 @@ export class BoxCopilotService {
         const now = new Date();
         const timeParts = params.scheduledTime.split(':');
         if (timeParts.length >= 2) {
-          const apptTime = new Date();
-          apptTime.setHours(Number(timeParts[0]), Number(timeParts[1]), 0, 0);
+          let apptTime = new Date();
+          if (params.scheduledDate) {
+            const cleanDate = params.scheduledDate.split('T')[0];
+            const [year, month, day] = cleanDate.split('-').map(Number);
+            if (year && month && day) {
+              apptTime = new Date(year, month - 1, day, Number(timeParts[0]), Number(timeParts[1]), 0, 0);
+            } else {
+              apptTime.setHours(Number(timeParts[0]), Number(timeParts[1]), 0, 0);
+            }
+          } else {
+            apptTime.setHours(Number(timeParts[0]), Number(timeParts[1]), 0, 0);
+          }
+
           const minutesPassed = Math.floor((now.getTime() - apptTime.getTime()) / 60000);
           
+          // Solo alertar si la fecha/hora de la cita ya ocurrió y han transcurrido más de 20 minutos de tolerancia
           if (minutesPassed > 20) {
             attendanceAlert = {
               code: 'ALT-C4',

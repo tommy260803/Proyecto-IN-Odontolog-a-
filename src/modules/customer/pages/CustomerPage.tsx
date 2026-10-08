@@ -31,10 +31,19 @@ export default function CustomerPage() {
   // Modales
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
+  const parseCleanDate = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const clean = dateStr.split('T')[0];
+    const [y, m, d] = clean.split('-').map(Number);
+    if (y && m && d) return new Date(y, m - 1, d);
+    const parsed = parseISO(dateStr);
+    return isValid(parsed) ? parsed : null;
+  };
+
   const periodCustomers = useMemo(() => {
     return customers?.filter((c: CustomerWithDetails) => {
-      const appointmentDate = parseISO(c.reservation?.date || '');
-      if (!isValid(appointmentDate)) return !startDate && !endDate;
+      const appointmentDate = parseCleanDate(c.reservation?.date);
+      if (!appointmentDate || !isValid(appointmentDate)) return !startDate && !endDate;
       if (startDate && isBefore(appointmentDate, startOfDay(parseISO(startDate)))) return false;
       if (endDate && isAfter(appointmentDate, endOfDay(parseISO(endDate)))) return false;
       return true;
@@ -124,12 +133,15 @@ export default function CustomerPage() {
     },
     { 
       header: 'Horario', 
-      cell: (c: CustomerWithDetails) => (
-        <div>
-          <p className="text-slate-900 dark:text-slate-200">{format(new Date(c.reservation.date), 'dd MMM yyyy', { locale: es })}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">{c.reservation.time}</p>
-        </div>
-      )
+      cell: (c: CustomerWithDetails) => {
+        const d = parseCleanDate(c.reservation.date);
+        return (
+          <div>
+            <p className="text-slate-900 dark:text-slate-200">{d ? format(d, 'dd MMM yyyy', { locale: es }) : '-'}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{c.reservation.time}</p>
+          </div>
+        );
+      }
     },
     { 
       header: 'Profesional / Sede', 
