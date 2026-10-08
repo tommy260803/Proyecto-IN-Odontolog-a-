@@ -1079,7 +1079,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-6xl max-h-[92vh] sm:max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <DialogContent className="max-w-6xl h-[92vh] max-h-[92vh] sm:max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
 
         {/* ── Header ─────────────────────────────────────────── */}
         <div className="p-5 pb-4 border-b border-slate-200/80 dark:border-slate-800 shrink-0">
@@ -1101,16 +1101,16 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
         </div>
 
         {/* ── Body ───────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto no-scrollbar">
+        <div className="flex-1 min-h-0 overflow-hidden">
           {loading ? (
             <div className="p-6"><LoadingState /></div>
           ) : !lead ? (
             <div className="p-6"><ErrorState message="No se encontró la oportunidad (LEAD)." /></div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] divide-y lg:divide-y-0 lg:divide-x divide-slate-200/80 dark:divide-slate-800 min-h-full">
+            <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] divide-y lg:divide-y-0 lg:divide-x divide-slate-200/80 dark:divide-slate-800 h-full max-h-full overflow-hidden">
 
-              {/* ══ COLUMNA IZQUIERDA: Información del paciente ══ */}
-              <div className="p-4 space-y-3 overflow-y-auto no-scrollbar">
+              {/* ══ COLUMNA IZQUIERDA: Información del paciente (Fija / Scroll independiente) ══ */}
+              <div className="p-4 space-y-3 overflow-y-auto h-full max-h-full no-scrollbar">
 
                 {/* 1. Datos personales — siempre abierto */}
                 <StaticSection
@@ -1252,8 +1252,8 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
               </div>
 
-              {/* ══ COLUMNA DERECHA: Negociación ══ */}
-              <div className="p-5 space-y-5 overflow-y-auto no-scrollbar">
+              {/* ══ COLUMNA DERECHA: Negociación (Scroll independiente) ══ */}
+              <div className="p-5 space-y-5 overflow-y-auto h-full max-h-full no-scrollbar">
 
                 {/* ── Tarjeta de Inteligencia & Scoring Comercial (Estrategia Recomendada) ── */}
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-teal-50/90 via-white to-slate-50 dark:from-teal-950/40 dark:via-slate-900 dark:to-slate-950 border border-teal-200/90 dark:border-teal-800/80 shadow-sm relative overflow-hidden transition-all">
