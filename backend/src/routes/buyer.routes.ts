@@ -507,7 +507,7 @@ router.get('/', async (req, res) => {
       const campaignName = p.CampanaOrigen?.nombre;
       const campaignCost = p.CampanaOrigen?.GastosCampana?.reduce((sum, g) => sum + Number(g.importe), 0);
 
-      const consultasCount = Math.max(p.Solicitudes.length, p.Interacciones.length, 1);
+      const consultasCount = p.Solicitudes.length || 1;
       const solicitudesHistory = p.Solicitudes.map(s => ({
         id: s.id_solicitud.toString(),
         servicio: s.Servicio?.nombre || 'Consulta General',
