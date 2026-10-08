@@ -151,22 +151,22 @@ export default function TurnedDetailPage() {
             <CardContent className="space-y-4 text-sm">
               <div>
                 <p className="font-semibold text-muted-foreground">Paciente</p>
-                <p>{turned.person.firstName} {turned.person.lastName}</p>
-                <p>{turned.person.phone}</p>
+                <p>{turned.person?.firstName} {turned.person?.lastName}</p>
+                <p>{turned.person?.phone || '-'}</p>
               </div>
               <div className="pt-2 border-t">
                 <p className="font-semibold text-muted-foreground">Servicio y Profesional</p>
-                <p>{turned.lead.requestedServiceId}</p>
-                <p>{turned.reservation.professionalId} ({turned.reservation.branchId})</p>
-                <p>Fecha finalización: {format(new Date(turned.reservation.date), 'dd MMM yyyy', { locale: es })}</p>
+                <p>{turned.lead?.requestedServiceId || 'Consulta Odontológica'}</p>
+                <p>{turned.reservation?.professionalId || 'Sin asignar'} ({turned.reservation?.branchId || 'Sin sede'})</p>
+                <p>Fecha finalización: {turned.reservation?.date ? format(new Date(turned.reservation.date), 'dd MMM yyyy', { locale: es }) : 'Sin fecha'}</p>
               </div>
               <div className="pt-2 border-t">
                 <p className="font-semibold text-muted-foreground">Procedimiento Realizado</p>
-                <p className="text-xs mt-1">{turned.attention.procedure}</p>
+                <p className="text-xs mt-1">{turned.attention?.procedure || 'No registrado'}</p>
               </div>
               <div className="pt-2 border-t">
                 <p className="font-semibold text-muted-foreground">Indicaciones Dadas</p>
-                <p className="text-xs mt-1">{turned.attention.instructions}</p>
+                <p className="text-xs mt-1">{turned.attention?.instructions || 'No registrado'}</p>
               </div>
             </CardContent>
           </Card>

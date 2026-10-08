@@ -199,22 +199,22 @@ export function TurnedDetailModal({ turnedId, isOpen, onClose }: TurnedDetailMod
                     <CardContent className="p-4 space-y-3 text-xs">
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Paciente</p>
-                        <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{turned.person.firstName} {turned.person.lastName}</p>
-                        <p className="text-slate-500 dark:text-slate-400">{turned.person.phone}</p>
+                        <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{turned.person?.firstName} {turned.person?.lastName}</p>
+                        <p className="text-slate-500 dark:text-slate-400">{turned.person?.phone || '-'}</p>
                       </div>
                       <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Tratamiento Realizado</p>
-                        <p className="text-slate-700 dark:text-slate-300 mt-0.5">{turned.lead.requestedServiceId}</p>
-                        <p className="text-slate-500 dark:text-slate-400">{turned.reservation.professionalId} ({turned.reservation.branchId})</p>
-                        <p className="text-slate-400 text-[10px] mt-0.5">Fecha fin: {format(new Date(turned.reservation.date), 'dd MMM yyyy', { locale: es })}</p>
+                        <p className="text-slate-700 dark:text-slate-300 mt-0.5">{turned.lead?.requestedServiceId || 'Consulta Odontológica'}</p>
+                        <p className="text-slate-500 dark:text-slate-400">{turned.reservation?.professionalId || 'Sin asignar'} ({turned.reservation?.branchId || 'Sin sede'})</p>
+                        <p className="text-slate-400 text-[10px] mt-0.5">Fecha fin: {turned.reservation?.date ? format(new Date(turned.reservation.date), 'dd MMM yyyy', { locale: es }) : 'Sin fecha'}</p>
                       </div>
                       <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Procedimiento Clínico</p>
-                        <p className="text-slate-700 dark:text-slate-300 mt-0.5">{turned.attention.procedure}</p>
+                        <p className="text-slate-700 dark:text-slate-300 mt-0.5">{turned.attention?.procedure || 'No registrado'}</p>
                       </div>
                       <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Indicaciones Dadas</p>
-                        <p className="text-slate-700 dark:text-slate-300 mt-0.5">{turned.attention.instructions}</p>
+                        <p className="text-slate-700 dark:text-slate-300 mt-0.5">{turned.attention?.instructions || 'No registrado'}</p>
                       </div>
                     </CardContent>
                   </Card>

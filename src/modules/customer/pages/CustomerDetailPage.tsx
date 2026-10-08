@@ -198,17 +198,17 @@ export default function CustomerDetailPage() {
             <CardContent className="space-y-4 text-sm">
               <div>
                 <p className="font-semibold text-muted-foreground">Paciente</p>
-                <p>{customer.person.firstName} {customer.person.lastName}</p>
+                <p>{customer.person?.firstName} {customer.person?.lastName}</p>
               </div>
               <div>
                 <p className="font-semibold text-muted-foreground">Servicio y Profesional</p>
-                <p>{customer.lead.requestedServiceId}</p>
-                <p>{customer.reservation.professionalId}</p>
+                <p>{customer.lead?.requestedServiceId || 'Consulta Odontológica'}</p>
+                <p>{customer.reservation?.professionalId || '-'}</p>
               </div>
               <div>
                 <p className="font-semibold text-muted-foreground">Sede, Fecha y Hora</p>
-                <p>{customer.reservation.branchId}</p>
-                <p>{customer.reservation.date} - {customer.reservation.time}</p>
+                <p>{customer.reservation?.branchId || '-'}</p>
+                <p>{customer.reservation?.date || '-'} {customer.reservation?.time ? `- ${customer.reservation.time}` : ''}</p>
               </div>
               <div className="pt-2 border-t">
                 <p className="font-semibold text-muted-foreground">Tiempos de Atención</p>
@@ -226,7 +226,7 @@ export default function CustomerDetailPage() {
               </Button>
             </CardHeader>
             <CardContent>
-              {customer.incidents.length === 0 ? (
+              {!customer.incidents || customer.incidents.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Sin incidencias de soporte registradas.</p>
               ) : (
                 <div className="space-y-3">

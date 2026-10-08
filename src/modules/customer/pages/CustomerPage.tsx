@@ -117,8 +117,8 @@ export default function CustomerPage() {
       header: 'Persona', 
       cell: (c: CustomerWithDetails) => (
         <div>
-          <p className="font-semibold text-slate-900 dark:text-white">{c.person.firstName} {c.person.lastName}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">{c.person.documentNumber || 'Sin Doc'}</p>
+          <p className="font-semibold text-slate-900 dark:text-white">{c.person?.firstName} {c.person?.lastName}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{c.person?.documentNumber || 'Sin Doc'}</p>
         </div>
       )
     },
@@ -126,19 +126,19 @@ export default function CustomerPage() {
       header: 'Servicio / Reserva', 
       cell: (c: CustomerWithDetails) => (
         <div>
-          <p className="font-medium text-slate-900 dark:text-slate-200">{c.lead.requestedServiceId}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">ID: {c.reservation.id.substring(0, 8)}</p>
+          <p className="font-medium text-slate-900 dark:text-slate-200">{c.lead?.requestedServiceId || 'Consulta Odontológica'}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">ID: {c.reservation?.id ? c.reservation.id.substring(0, 8) : '-'}</p>
         </div>
       )
     },
     { 
       header: 'Horario', 
       cell: (c: CustomerWithDetails) => {
-        const d = parseCleanDate(c.reservation.date);
+        const d = parseCleanDate(c.reservation?.date);
         return (
           <div>
             <p className="text-slate-900 dark:text-slate-200">{d ? format(d, 'dd MMM yyyy', { locale: es }) : '-'}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{c.reservation.time}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{c.reservation?.time || '-'}</p>
           </div>
         );
       }
@@ -147,8 +147,8 @@ export default function CustomerPage() {
       header: 'Profesional / Sede', 
       cell: (c: CustomerWithDetails) => (
         <div>
-          <p className="text-slate-900 dark:text-slate-200">{c.reservation.professionalId || '-'}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">{c.reservation.branchId || '-'}</p>
+          <p className="text-slate-900 dark:text-slate-200">{c.reservation?.professionalId || '-'}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{c.reservation?.branchId || '-'}</p>
         </div>
       )
     },

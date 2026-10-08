@@ -734,16 +734,16 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
                         <div className="space-y-1.5 text-slate-700 dark:text-slate-300 text-xs">
                           <div className="flex items-center gap-2 font-medium">
                             <Calendar className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                            <span>{payer.reservation.date} · {payer.reservation.time}</span>
+                            <span>{payer.reservation?.date || '-'} {payer.reservation?.time ? `· ${payer.reservation.time}` : ''}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-slate-400 shrink-0 text-[11px]">Sede:</span>
-                            <span className="font-semibold">{payer.reservation.branchId}</span>
+                            <span className="font-semibold">{payer.reservation?.branchId || 'Sede Principal'}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-slate-400 shrink-0 text-[11px]">Especialista:</span>
                             <span className="font-semibold text-teal-700 dark:text-teal-300">
-                              Esp. {payer.reservation.professionalId?.replace(/^(Dr\.|Dra\.|Dr\/a\.)\s*/i, '')}
+                              Esp. {payer.reservation?.professionalId?.replace(/^(Dr\.|Dra\.|Dr\/a\.)\s*/i, '') || 'Especialista'}
                             </span>
                           </div>
                         </div>

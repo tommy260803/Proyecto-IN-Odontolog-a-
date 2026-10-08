@@ -446,19 +446,19 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                           Paciente
                         </span>
                         <p className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">
-                          {customer.person.firstName} {customer.person.lastName}
+                          {customer.person?.firstName} {customer.person?.lastName}
                         </p>
                         <div className="flex flex-col gap-1 mt-1 text-[11px] text-slate-600 dark:text-slate-300">
                           <span className="flex items-center gap-1">
                             <span className="font-semibold text-slate-400 dark:text-slate-500">DNI:</span> 
-                            {customer.person.documentNumber || 'No registrado'}
+                            {customer.person?.documentNumber || 'No registrado'}
                           </span>
-                          {customer.person.phone && (
+                          {customer.person?.phone && (
                             <span className="flex items-center gap-1">
                               <Phone className="w-3 h-3 text-slate-400" /> {customer.person.phone}
                             </span>
                           )}
-                          {customer.person.email && (
+                          {customer.person?.email && (
                             <span className="flex items-center gap-1">
                               <Mail className="w-3 h-3 text-slate-400" /> {customer.person.email}
                             </span>

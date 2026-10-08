@@ -203,14 +203,14 @@ export default function PayerDetailPage() {
             <CardContent className="space-y-4 text-sm">
               <div>
                 <p className="font-semibold text-muted-foreground">Persona</p>
-                <p>{payer.person.firstName} {payer.person.lastName}</p>
-                <p>{payer.person.phone} | {payer.person.email}</p>
+                <p>{payer.person?.firstName} {payer.person?.lastName}</p>
+                <p>{payer.person?.phone || '-'} | {payer.person?.email || '-'}</p>
               </div>
               <div>
                 <p className="font-semibold text-muted-foreground">Reserva</p>
-                <p>Fecha: {payer.reservation.date} - {payer.reservation.time}</p>
-                <p>Sede: {payer.reservation.branchId}</p>
-                <p>Doctor: {payer.reservation.professionalId}</p>
+                <p>Fecha: {payer.reservation?.date || '-'} {payer.reservation?.time ? `- ${payer.reservation.time}` : ''}</p>
+                <p>Sede: {payer.reservation?.branchId || '-'}</p>
+                <p>Doctor: {payer.reservation?.professionalId || '-'}</p>
               </div>
               <div className="pt-4 border-t">
                 <p className="font-semibold text-muted-foreground">Monto a Pagar</p>
