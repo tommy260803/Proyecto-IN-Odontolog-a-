@@ -116,103 +116,152 @@ export default function ActivateAccountPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-slate-50 via-white to-teal-50/30 flex flex-col justify-center items-center p-4 relative overflow-hidden selection:bg-teal-500/20 selection:text-teal-900">
+    <div className="min-h-screen w-full bg-slate-100/90 flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 relative overflow-hidden selection:bg-teal-500/20 selection:text-teal-900">
       
       {/* Background Decor */}
       <div className="absolute inset-0 pointer-events-none -z-10">
-        <img 
-          src="/Fondo_NexoSalud.png" 
-          alt="Fondo NexoSalud" 
-          className="absolute inset-0 w-full h-full object-cover object-center opacity-10"
-        />
-        <div className="absolute inset-0 bg-radial from-transparent via-white/70 to-slate-50/90" />
+        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-teal-200/40 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-emerald-200/40 blur-3xl" />
       </div>
 
-      <div className="w-full max-w-md space-y-6 z-10 animate-in fade-in zoom-in-95 duration-400">
+      <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden grid grid-cols-1 md:grid-cols-2 z-10 animate-in fade-in zoom-in-95 duration-400">
         
-        {/* Header Branding */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-white shadow-lg ring-1 ring-slate-200/80 border border-slate-100 mb-1">
-            <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="h-10 w-10 object-contain" />
+        {/* PANEL IZQUIERDO: Fotografía Odontológica & Branding */}
+        <div className="relative hidden md:flex flex-col justify-between p-8 lg:p-10 text-white overflow-hidden bg-slate-950">
+          <img 
+            src="/Fondo_NexoSalud_3.jpg" 
+            alt="Instrumental Odontológico NexoSalud" 
+            className="absolute inset-0 w-full h-full object-cover object-center scale-105 transition-transform duration-1000 hover:scale-100 opacity-70"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-900/40" />
+
+          {/* Top Brand Tag */}
+          <div className="relative z-10 space-y-3">
+            <div className="inline-flex items-center gap-3 p-2 pr-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 shadow-lg">
+              <div className="p-1.5 rounded-xl bg-white shadow-xs">
+                <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="h-7 w-7 object-contain" />
+              </div>
+              <div>
+                <span className="font-black text-sm text-white tracking-tight block">NexoSalud Dental</span>
+                <span className="text-[10px] text-teal-300 font-medium block">Portal del Paciente</span>
+              </div>
+            </div>
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            NexoSalud <span className="text-teal-600 font-extrabold">Dental</span>
-          </h1>
-          <p className="text-xs text-slate-500 font-medium">
-            Activación Segura de Cuenta de Paciente · Primer Acceso
-          </p>
-        </div>
 
-        {!tokenValid ? (
-          /* Error en Token */
-          <Card className="bg-white border border-slate-200/90 text-slate-900 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/60 text-center space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
-              <AlertCircle className="w-7 h-7" />
-            </div>
-            <div className="space-y-1.5">
-              <h2 className="text-lg font-bold text-slate-900">Enlace No Válido o Expirado</h2>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                {tokenError || 'Este enlace de activación ya fue utilizado o caducó por límite de tiempo (24h).'}
-              </p>
-            </div>
-
-            <div className="pt-2">
-              <Button
-                onClick={() => navigate('/solicitar-informacion')}
-                className="w-full h-11 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs gap-2 cursor-pointer shadow-md shadow-teal-700/20 transition-all hover:shadow-lg"
-              >
-                <span>Ir al Portal del Paciente</span>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </Card>
-        ) : success ? (
-          /* Éxito */
-          <Card className="bg-white border border-teal-200/80 text-slate-900 rounded-3xl p-6 sm:p-8 shadow-xl shadow-teal-900/5 text-center space-y-5 animate-in fade-in duration-300">
-            <div className="w-16 h-16 rounded-2xl bg-teal-50 border border-teal-200 text-teal-600 flex items-center justify-center mx-auto shadow-md shadow-teal-500/10">
-              <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
-            </div>
+          {/* Bottom Highlights */}
+          <div className="relative z-10 space-y-4">
+            <Badge className="bg-teal-500/20 text-teal-300 border border-teal-400/30 text-[11px] px-3 py-1 rounded-full backdrop-blur-md">
+              <Sparkles className="w-3 h-3 mr-1.5 text-teal-400" /> Expediente Clínico Protegido
+            </Badge>
 
             <div className="space-y-2">
-              <Badge className="bg-teal-50 text-teal-700 border border-teal-200/80 text-[10px] px-2.5 py-0.5 rounded-full font-semibold">
-                <Sparkles className="w-2.5 h-2.5 mr-1 text-teal-600" /> Expediente Protegido
-              </Badge>
-              <h2 className="text-xl font-black text-slate-900">¡Contraseña Guardada con Éxito!</h2>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Tu cuenta de paciente ha quedado activada. A partir de ahora podrás iniciar sesión con tu <strong>DNI ({patientData?.dni})</strong> y tu nueva contraseña.
+              <h2 className="text-2xl font-black text-white leading-tight tracking-tight">
+                Tu Salud Dental en un Solo Lugar
+              </h2>
+              <p className="text-xs text-slate-300 leading-relaxed font-light">
+                Configura tu contraseña para acceder a tus recetas médicas, recomendaciones post-consulta y agendar atenciones futuras de manera inmediata.
               </p>
             </div>
 
-            <div className="pt-2">
-              <Button
-                onClick={() => navigate('/solicitar-informacion')}
-                className="w-full h-11 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl text-xs gap-2 cursor-pointer shadow-lg shadow-teal-700/25 transition-all hover:scale-[1.01]"
-              >
-                <span>Iniciar Sesión en el Portal</span>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </Card>
-        ) : (
-          /* Formulario de Activación */
-          <Card className="bg-white border border-slate-200/90 text-slate-900 rounded-3xl overflow-hidden shadow-xl shadow-slate-200/70">
-            
-            {/* Header Card */}
-            <div className="px-6 py-4 bg-gradient-to-r from-teal-600 to-emerald-600 text-white flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-semibold text-teal-100 uppercase tracking-wider block">
-                  Paso Final de Seguridad
-                </span>
-                <h2 className="text-sm sm:text-base font-black text-white">
-                  Crea tu Contraseña Personal
-                </h2>
+            <div className="pt-2 border-t border-white/10 space-y-2 text-xs text-slate-300">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+                <span>Historial de atenciones y odontograma</span>
               </div>
-              <KeyRound className="h-6 w-6 text-teal-100" />
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+                <span>Agendamiento express de citas médicas</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+                <span>Cifrado y privacidad de nivel clínico</span>
+              </div>
             </div>
+          </div>
+        </div>
 
-            {/* Ficha Resumen del Paciente */}
-            <div className="px-6 pt-5 pb-1">
-              <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 flex items-center gap-3">
+        {/* PANEL DERECHO: Formulario Blanco Puro */}
+        <div className="p-6 sm:p-8 lg:p-10 flex flex-col justify-center bg-white">
+          
+          {/* Header móvil */}
+          <div className="md:hidden text-center space-y-2 mb-6">
+            <div className="inline-flex items-center justify-center p-2.5 rounded-2xl bg-white shadow-md ring-1 ring-slate-200 border border-slate-100">
+              <img src="/Logo_NexoSalud.png" alt="NexoSalud" className="h-8 w-8 object-contain" />
+            </div>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">
+              NexoSalud <span className="text-teal-600 font-extrabold">Dental</span>
+            </h1>
+          </div>
+
+          {!tokenValid ? (
+            /* Error en Token */
+            <div className="text-center space-y-5 py-4">
+              <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-sm">
+                <AlertCircle className="w-8 h-8" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold text-slate-900">Enlace No Válido o Expirado</h2>
+                <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
+                  {tokenError || 'Este enlace de activación ya fue utilizado o caducó por límite de tiempo (24h).'}
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  onClick={() => navigate('/solicitar-informacion')}
+                  className="w-full h-11 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs gap-2 cursor-pointer shadow-md shadow-teal-700/20 transition-all hover:shadow-lg"
+                >
+                  <span>Ir al Portal del Paciente</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ) : success ? (
+            /* Éxito */
+            <div className="text-center space-y-5 py-4 animate-in fade-in duration-300">
+              <div className="w-16 h-16 rounded-2xl bg-teal-50 border border-teal-200 text-teal-600 flex items-center justify-center mx-auto shadow-md shadow-teal-500/10">
+                <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
+              </div>
+
+              <div className="space-y-2">
+                <Badge className="bg-teal-50 text-teal-700 border border-teal-200/80 text-[10px] px-3 py-0.5 rounded-full font-semibold">
+                  <Sparkles className="w-3 h-3 mr-1 text-teal-600" /> Cuenta Activada
+                </Badge>
+                <h2 className="text-2xl font-black text-slate-900">¡Contraseña Guardada!</h2>
+                <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
+                  Tu cuenta ha quedado activada. A partir de ahora podrás iniciar sesión con tu <strong>DNI ({patientData?.dni})</strong> y tu nueva contraseña.
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  onClick={() => navigate('/solicitar-informacion')}
+                  className="w-full h-11 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl text-xs gap-2 cursor-pointer shadow-lg shadow-teal-700/25 transition-all hover:scale-[1.01]"
+                >
+                  <span>Iniciar Sesión en el Portal</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* Formulario de Activación */
+            <div className="space-y-6">
+              
+              {/* Título de Formulario */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-teal-700 tracking-wider uppercase flex items-center gap-1">
+                  <KeyRound className="w-3.5 h-3.5" /> Paso Final de Seguridad
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  Crea tu Contraseña
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Ingresa tu nueva clave de acceso para proteger tu expediente clínico.
+                </p>
+              </div>
+
+              {/* Ficha Resumen del Paciente */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center shrink-0 shadow-xs">
                   <User className="h-5 w-5" />
                 </div>
@@ -221,84 +270,85 @@ export default function ActivateAccountPage() {
                   <p className="text-[11px] text-slate-500 font-mono">DNI: {patientData?.dni}</p>
                 </div>
               </div>
+
+              {/* Formulario */}
+              <form onSubmit={handleActivate} className="space-y-4">
+                
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <Lock className="h-3.5 w-3.5 text-teal-600" />
+                    Nueva Contraseña
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Mínimo 6 caracteres"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="h-11 rounded-xl text-xs bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 pr-10 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 shadow-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <ShieldCheck className="h-3.5 w-3.5 text-teal-600" />
+                    Confirmar Contraseña
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder="Repite tu nueva contraseña"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      className="h-11 rounded-xl text-xs bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 pr-10 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 shadow-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-teal-50/80 border border-teal-100/90 text-teal-900 text-[11px] leading-relaxed flex items-start gap-2">
+                  <span className="shrink-0 text-sm">💡</span>
+                  <span>Esta contraseña te servirá para ingresar siempre que desees consultar tus recetas, radiografías o pedir atenciones rápidas.</span>
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full h-11 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl text-xs gap-2 shadow-lg shadow-teal-700/20 cursor-pointer transition-all hover:scale-[1.01]"
+                  >
+                    {submitting ? (
+                      <span>Guardando contraseña...</span>
+                    ) : (
+                      <>
+                        <span>Activar y Guardar Contraseña</span>
+                        <CheckCircle2 className="h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+              </form>
             </div>
+          )}
 
-            {/* Inputs de Contraseña */}
-            <form onSubmit={handleActivate} className="p-6 space-y-4">
-              
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                  <Lock className="h-3.5 w-3.5 text-teal-600" />
-                  Nueva Contraseña
-                </Label>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Mínimo 6 caracteres"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-11 rounded-xl text-xs bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 pr-10 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 shadow-xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                  <ShieldCheck className="h-3.5 w-3.5 text-teal-600" />
-                  Confirmar Contraseña
-                </Label>
-                <div className="relative">
-                  <Input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="Repite tu nueva contraseña"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    className="h-11 rounded-xl text-xs bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 pr-10 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 shadow-xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-teal-50/70 border border-teal-100/90 text-teal-900 text-[11px] leading-relaxed flex items-start gap-2">
-                <span className="shrink-0 text-sm">💡</span>
-                <span>Esta contraseña te servirá para ingresar al Portal siempre que desees consultar tus recetas médicas, radiografías o pedir atenciones rápidas.</span>
-              </div>
-
-              <div className="pt-2">
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full h-11 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl text-xs gap-2 shadow-lg shadow-teal-700/20 cursor-pointer transition-all hover:scale-[1.01]"
-                >
-                  {submitting ? (
-                    <span>Guardando contraseña...</span>
-                  ) : (
-                    <>
-                      <span>Activar y Guardar Contraseña</span>
-                      <CheckCircle2 className="h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              </div>
-
-            </form>
-          </Card>
-        )}
+        </div>
 
       </div>
 
