@@ -1,35 +1,33 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
 import { cn } from '@/shared/utils/index';
 
 interface LoadingStateProps {
-  message?: string;
-  subMessage?: string;
-  size?: 'sm' | 'md' | 'lg';
   className?: string;
-  variant?: 'default' | 'minimal';
+  size?: 'sm' | 'md' | 'lg';
 }
 
 /**
- * Nexo Salud Animated Dental Tooth Loader
- * Ícono temático odontológico con halo de pulso clínico, destello de esmalte y anillo rotatorio
+ * Nexo Salud Minimal Dental Loader
+ * Diseño limpio y moderno: Diente anatómico + Anillo orbital rotatorio + 3 puntos de carga animados.
+ * Totalmente centrado vertical y horizontalmente.
  */
 export function DentalToothIcon({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  const dim = size === 'sm' ? 'w-10 h-10' : size === 'lg' ? 'w-20 h-20' : 'w-14 h-14';
-  const svgSize = size === 'sm' ? 24 : size === 'lg' ? 44 : 32;
+  const dim = size === 'sm' ? 'w-14 h-14' : size === 'lg' ? 'w-24 h-24' : 'w-18 h-18';
+  const svgSize = size === 'sm' ? 28 : size === 'lg' ? 48 : 36;
+  const ringSize = size === 'sm' ? 'w-16 h-16' : size === 'lg' ? 'w-28 h-28' : 'w-22 h-22';
 
   return (
-    <div className="relative flex items-center justify-center select-none">
+    <div className={cn("relative flex items-center justify-center select-none", dim)}>
       {/* 1. Aura de Pulso Clínico Radiante */}
-      <div className="absolute -inset-3 rounded-full bg-gradient-to-tr from-teal-500/25 via-cyan-400/20 to-emerald-400/15 blur-lg animate-dental-pulse-aura pointer-events-none" />
+      <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-teal-500/20 via-cyan-400/15 to-emerald-400/10 blur-md animate-dental-pulse-aura pointer-events-none" />
 
       {/* 2. Anillo de Escaneo Orbital con Giros Suaves */}
       <svg 
         className={cn(
-          "absolute text-teal-400/50 dark:text-teal-500/40 animate-spin pointer-events-none", 
-          size === 'sm' ? 'w-14 h-14' : size === 'lg' ? 'w-28 h-28' : 'w-20 h-20'
+          "absolute text-teal-500/60 dark:text-teal-400/50 animate-spin pointer-events-none", 
+          ringSize
         )}
-        style={{ animationDuration: '4s' }}
+        style={{ animationDuration: '3.5s' }}
         viewBox="0 0 100 100" 
         fill="none"
       >
@@ -38,34 +36,27 @@ export function DentalToothIcon({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) 
           cy="50" 
           r="46" 
           stroke="currentColor" 
-          strokeWidth="2" 
+          strokeWidth="2.5" 
           strokeDasharray="10 8 4 8"
           strokeLinecap="round"
         />
         <circle 
           cx="50" 
           cy="4" 
-          r="3" 
+          r="4" 
           className="fill-teal-500 text-teal-500 shadow-sm"
         />
       </svg>
 
-      {/* 3. Contenedor Principal del Diente (Bento Glass Badge) */}
-      <div className={cn(
-        "relative rounded-2xl bg-gradient-to-b from-white via-teal-50/60 to-teal-100/40 dark:from-slate-800 dark:via-slate-850 dark:to-slate-900 border border-teal-200/90 dark:border-teal-700/60 shadow-md flex items-center justify-center overflow-hidden animate-dental-float",
-        dim
-      )}>
-        {/* Barrido de Brillo/Esmalte Limpio */}
-        <div className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/70 dark:via-teal-300/20 to-transparent skew-x-12 animate-dental-shine-sweep pointer-events-none" />
-
-        {/* SVG Anatómico del Diente Estilizado Odontológico */}
+      {/* 3. Diente Odontológico Flotante (Sin recuadro) */}
+      <div className="relative flex items-center justify-center animate-dental-float">
         <svg
           width={svgSize}
           height={svgSize}
           viewBox="0 0 48 48"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          className="relative z-10 drop-shadow-xs"
+          className="relative z-10 drop-shadow-md"
         >
           <defs>
             <linearGradient id="dentalToothGrad" x1="8" y1="6" x2="40" y2="44" gradientUnits="userSpaceOnUse">
@@ -88,7 +79,7 @@ export function DentalToothIcon({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) 
             strokeLinejoin="round"
           />
 
-          {/* Reflejo de Esmalte en la Corona Superior Izquierda */}
+          {/* Reflejo de Esmalte en la Corona Superior */}
           <path
             d="M15 14 C15 14 18 10 24 10 C27 10 29 11 29 11 C26 12 21 14 18 19 C16 22 15 26 15 26 C15 26 14 20 15 14 Z"
             fill="url(#dentalEnamelHighlight)"
@@ -105,7 +96,7 @@ export function DentalToothIcon({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) 
         </svg>
 
         {/* 4. Destello Radiante en la Cúspide (Sparkle Star) */}
-        <div className="absolute top-1.5 right-1.5 z-20 text-teal-400 dark:text-teal-200 animate-dental-gleam pointer-events-none">
+        <div className="absolute -top-1 -right-1 z-20 text-teal-400 dark:text-teal-200 animate-dental-gleam pointer-events-none">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
           </svg>
@@ -116,58 +107,22 @@ export function DentalToothIcon({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) 
 }
 
 export function LoadingState({
-  message = 'Cargando registros...',
-  subMessage = 'Nexo Salud · Odontología Especializada',
   size = 'md',
   className,
-  variant = 'default',
 }: LoadingStateProps) {
-  if (variant === 'minimal') {
-    return (
-      <div className={cn("flex items-center justify-center gap-3 p-4", className)}>
-        <DentalToothIcon size="sm" />
-        <div className="text-left">
-          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{message}</p>
-          {subMessage && (
-            <p className="text-[10px] text-slate-500 dark:text-slate-400">{subMessage}</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={cn(
-      "flex flex-col items-center justify-center p-8 sm:p-12 text-center select-none animate-in fade-in duration-300",
+      "w-full h-full min-h-[160px] flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-300",
       className
     )}>
       {/* Ícono Odontológico Animado Nexo Salud */}
-      <div className="mb-4">
-        <DentalToothIcon size={size} />
-      </div>
+      <DentalToothIcon size={size} />
 
-      {/* Badge de Estado Activo */}
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/70 border border-teal-200/90 dark:border-teal-800/80 text-teal-800 dark:text-teal-300 text-[11px] font-bold shadow-2xs mb-2">
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-600 dark:bg-teal-400" />
-        </span>
-        <span>{message}</span>
-      </div>
-
-      {/* Subtítulo Clínico */}
-      {subMessage && (
-        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium max-w-xs flex items-center justify-center gap-1.5">
-          <Sparkles className="w-3 h-3 text-teal-600 dark:text-teal-400" />
-          <span>{subMessage}</span>
-        </p>
-      )}
-
-      {/* Indicador de Micro-Puntos de Procesamiento */}
-      <div className="flex items-center justify-center gap-1 mt-3">
-        <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-        <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-        <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+      {/* 3 Puntos de Carga Animados (Bouncing Dots) */}
+      <div className="flex items-center justify-center gap-1.5 mt-5">
+        <span className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+        <span className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+        <span className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: '300ms' }} />
       </div>
     </div>
   );
