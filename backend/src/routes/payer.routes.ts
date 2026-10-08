@@ -525,6 +525,22 @@ router.post('/:id/validate', async (req, res) => {
       }).catch(err => {
         console.error('[AUTO-EMAIL ERROR] No se pudo enviar la constancia automática por correo:', err);
       });
+
+      // Generar token único de activación de cuenta (One-Time Access Link) para el Portal del Paciente
+      const patientDni = reserva.Persona?.dni || persona.dni;
+      if (patientDni) {
+        import('../services/patientAuthService').then(({ patientAuthService }) => {
+          patientAuthService.generateActivationTokenForCustomer(persona.id_persona, patientDni).then(token => {
+            patientAuthService.sendWelcomeActivationEmail({
+              email: patientEmail,
+              nombres: reserva.Persona?.nombres || persona.nombres || '',
+              apellidos: reserva.Persona?.apellidos || persona.apellidos || '',
+              dni: patientDni,
+              token
+            });
+          }).catch(errToken => console.error('[PatientAuth] Error generando token:', errToken));
+        });
+      }
     }
 
     res.json({
@@ -760,6 +776,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
   pdfBase64?: string | null;
   isValidated?: boolean | null;
   includePdf?: boolean;
+  customHtml?: string | null;
 }) {
   const {
     toEmail,
@@ -781,7 +798,8 @@ export async function sendPaymentNoticeOrConfirmation(params: {
     code,
     pdfBase64,
     isValidated,
-    includePdf = true
+    includePdf = true,
+    customHtml
   } = params;
 
   if (!toEmail) {
@@ -798,7 +816,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
     ? `Nos complace confirmarle que su pago por un importe de S/ ${formattedAmount} ha sido validado exitosamente. Su cita odontológica se encuentra confirmada y programada en nuestra agenda.`
     : (message ? message.replace(/\n/g, '<br/>') : 'Le recordamos que mantiene un importe pendiente de regularización correspondiente a su atención odontológica programada.');
 
-  const htmlBody = `
+  const htmlBody = customHtml || `
     <!DOCTYPE html>
     <html>
     <head>
