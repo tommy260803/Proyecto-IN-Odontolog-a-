@@ -21,11 +21,15 @@ import {
 
 export interface DentalAttentionFormRef {
   submit: () => void;
+  applyTemplate: (template: { reasonForConsultation?: string; evaluation?: string; procedure?: string; instructions?: string }) => void;
+  applyInstructions: (instructions: string) => void;
+  getValues: () => DentalAttentionFormValues;
 }
 
 interface DentalAttentionFormProps {
   initialValues?: Partial<DentalAttentionFormValues>;
   onSubmit: (data: DentalAttentionFormValues) => void;
+  onValuesChange?: (values: DentalAttentionFormValues) => void;
   isLoading: boolean;
   disabled?: boolean;
   formId?: string;
@@ -33,7 +37,7 @@ interface DentalAttentionFormProps {
 }
 
 export const DentalAttentionForm = forwardRef<DentalAttentionFormRef, DentalAttentionFormProps>(function DentalAttentionForm(
-  { initialValues, onSubmit, isLoading, disabled, formId, hideSubmitButton },
+  { initialValues, onSubmit, onValuesChange, isLoading, disabled, formId, hideSubmitButton },
   ref
 ) {
   const { toast } = useToast();
@@ -52,6 +56,13 @@ export const DentalAttentionForm = forwardRef<DentalAttentionFormRef, DentalAtte
     },
   });
 
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      onValuesChange?.(values as DentalAttentionFormValues);
+    });
+    return () => subscription.unsubscribe();
+  }, [form, onValuesChange]);
+
   useImperativeHandle(ref, () => ({
     submit: () => {
       form.handleSubmit(
@@ -69,6 +80,18 @@ export const DentalAttentionForm = forwardRef<DentalAttentionFormRef, DentalAtte
         }
       )();
     },
+    applyTemplate: (tmpl) => {
+      if (tmpl.reasonForConsultation) form.setValue('reasonForConsultation', tmpl.reasonForConsultation, { shouldDirty: true });
+      if (tmpl.evaluation) form.setValue('evaluation', tmpl.evaluation, { shouldDirty: true });
+      if (tmpl.procedure) form.setValue('procedure', tmpl.procedure, { shouldDirty: true });
+      if (tmpl.instructions) form.setValue('instructions', tmpl.instructions, { shouldDirty: true });
+      onValuesChange?.(form.getValues());
+    },
+    applyInstructions: (instr) => {
+      form.setValue('instructions', instr, { shouldDirty: true });
+      onValuesChange?.(form.getValues());
+    },
+    getValues: () => form.getValues(),
   }));
 
   useEffect(() => {

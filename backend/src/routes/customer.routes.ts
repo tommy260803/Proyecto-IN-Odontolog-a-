@@ -6,6 +6,7 @@ const router = Router();
 
 const customerInclude = Prisma.validator<Prisma.PersonasInclude>()({
   Etapa: true,
+  SaludOdontologica: true,
   Reservas: {
     orderBy: { id_reserva: 'desc' as const },
     take: 1,
@@ -45,6 +46,7 @@ function serializeCustomer(person: CustomerPerson) {
   const availability = reservation?.Opcion?.Disponibilidad;
   const legacy = parseLegacyObservations(attention?.observaciones);
   const currentPhase = person.Etapa?.nombre === 'TURNED' ? 'TURNED' : 'CUSTOMER';
+  const dentalHealth = person.SaludOdontologica?.[0] || null;
 
   return {
     id: person.id_persona.toString(),
@@ -60,6 +62,18 @@ function serializeCustomer(person: CustomerPerson) {
       documentNumber: person.dni, email: person.email, phone: person.numero,
     },
     lead: { requestedServiceId: reservation?.Solicitud?.Servicio?.nombre || '' },
+    serviceName: reservation?.Solicitud?.Servicio?.nombre || 'Consulta Odontológica',
+    standardDurationMinutes: 45,
+    saludOdontologica: dentalHealth ? {
+      nivelDolor: dentalHealth.nivel_dolor,
+      sensibilidad: dentalHealth.presenta_sensibilidad,
+      sangradoOInflamacion: dentalHealth.sangrado_o_inflamacion,
+      protesis: dentalHealth.usa_aparato_o_protesis,
+      condicionEspecial: dentalHealth.condicion_atencion_especial,
+      ultimaVisita: dentalHealth.ultima_visita_odontologica,
+      motivoConsulta: dentalHealth.motivo_consulta,
+      tratamientoPrevio: dentalHealth.tratamiento_previo,
+    } : null,
     reservation: reservation ? {
       id: reservation.id_reserva.toString(), leadId: person.id_persona.toString(),
       date: availability?.fecha?.toISOString() || reservation.fecha_reserva.toISOString(),

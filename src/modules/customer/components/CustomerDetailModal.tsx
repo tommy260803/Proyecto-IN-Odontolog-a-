@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ import {
   useConvertCustomerToTurned
 } from '../hooks/useCustomerQueries';
 import { DentalAttentionForm, type DentalAttentionFormRef } from './DentalAttentionForm';
+import { BoxCopilotCard } from './BoxCopilotCard';
 import type { DentalAttentionFormValues } from '../schemas/customerSchema';
 import { 
   Play, 
@@ -91,7 +92,15 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
   const [incidentReason, setIncidentReason] = useState('');
   const [incidentError, setIncidentError] = useState('');
   const [isIncidentOpen, setIsIncidentOpen] = useState(false);
+  const [currentFormData, setCurrentFormData] = useState<Partial<DentalAttentionFormValues>>({});
   const dentalFormRef = useRef<DentalAttentionFormRef>(null);
+
+  // Sync initial attention values into currentFormData when customer loads
+  useEffect(() => {
+    if (customer?.attention) {
+      setCurrentFormData(customer.attention);
+    }
+  }, [customer?.attention]);
 
   if (!isOpen || !customerId) return null;
 
@@ -128,10 +137,35 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
 
   const handleFinishAttention = () => {
     if (!customer) return;
+
+    // Auditoría de integridad estricta (Actividad 6 / Alerta ALT-C3 / KPI C4)
+    const liveVals = dentalFormRef.current?.getValues() || currentFormData;
+    const hasDiag = Boolean(liveVals.reasonForConsultation?.trim() || liveVals.evaluation?.trim() || customer.attention?.reasonForConsultation || customer.attention?.evaluation);
+    const hasProc = Boolean(liveVals.procedure?.trim() || customer.attention?.procedure);
+    const hasInstr = Boolean(liveVals.instructions?.trim() || customer.attention?.instructions);
+
+    if (!hasDiag || !hasProc || !hasInstr) {
+      const missing: string[] = [];
+      if (!hasDiag) missing.push('Diagnóstico/Motivo');
+      if (!hasProc) missing.push('Procedimiento Realizado');
+      if (!hasInstr) missing.push('Indicaciones Postoperatorias');
+      
+      toast({
+        title: 'Bloqueo por Auditoría Clínica (Alerta ALT-C3)',
+        description: `No se permite finalizar la cita sin completar la ficha: falta ${missing.join(', ')}. Use las plantillas sugeridas o complete los campos.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const time = new Date().toLocaleTimeString();
     finishAttention.mutate({ id: customer.id, time }, {
       onSuccess: () => {
-        toast({ title: 'Atención Finalizada', description: 'Atención odontológica concluida con éxito.' });
+        // Auto guardar detalles ingresados
+        if (dentalFormRef.current) {
+          dentalFormRef.current.submit();
+        }
+        toast({ title: 'Atención Finalizada', description: 'Atención odontológica culminada con éxito y ficha 100% íntegra (KPI C4).' });
         queryClient.setQueryData([QUERY_KEYS.CUSTOMERS, customer.id], (old: any) => old ? { 
           ...old, 
           state: CustomerState.ATTENDED,
@@ -264,6 +298,29 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                 </div>
               )}
 
+              {/* Agente Copiloto de Box Odontológico (IA) */}
+              <BoxCopilotCard 
+                customer={customer} 
+                currentFormData={currentFormData}
+                onApplyTemplate={(template) => {
+                  dentalFormRef.current?.applyTemplate(template);
+                  setCurrentFormData((prev) => ({
+                    ...prev,
+                    reasonForConsultation: template.reasonForConsultation,
+                    evaluation: template.evaluation,
+                    procedure: template.procedure,
+                    instructions: template.instructions
+                  }));
+                }}
+                onApplyInstructions={(instructions) => {
+                  dentalFormRef.current?.applyInstructions(instructions);
+                  setCurrentFormData((prev) => ({
+                    ...prev,
+                    instructions
+                  }));
+                }}
+              />
+
               {/* Barra de Acciones del Flujo Clínico */}
               <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
                 <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
@@ -367,6 +424,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
                         formId="customer-dental-form"
                         initialValues={customer.attention} 
                         onSubmit={handleSaveAttentionDetails}
+                        onValuesChange={setCurrentFormData}
                         isLoading={registerDetails.isPending}
                         disabled={!canEditForm}
                         hideSubmitButton={true}
