@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Prisma, type Atenciones, type Reservas } from '@prisma/client';
 import { prisma } from '../db';
+import { patientAuthService } from '../services/patientAuthService';
 
 const router = Router();
 
@@ -303,6 +304,59 @@ router.post('/:id/convert-turned', async (req, res) => {
     });
 
     if ('error' in result) return res.status(result.status).json({ error: result.error });
+
+    if (!result.alreadyConverted) {
+      // Disparar correo de agradecimiento post-consulta con resumen de atención y enlace único de activación del Portal del Paciente
+      try {
+        const fullPerson = await prisma.personas.findUnique({
+          where: { id_persona: personId },
+          include: {
+            Atenciones: {
+              orderBy: { id_atencion: 'desc' },
+              take: 1,
+              include: {
+                Servicio: true,
+                Profesional: true,
+                Sede: true,
+              }
+            },
+            Reservas: {
+              orderBy: { id_reserva: 'desc' },
+              take: 1,
+              include: {
+                Solicitud: { include: { Servicio: true } },
+                Opcion: { include: { Disponibilidad: { include: { Profesional: true, Sede: true } } } }
+              }
+            }
+          }
+        });
+
+        if (fullPerson && fullPerson.dni && fullPerson.email) {
+          const latestAttention = fullPerson.Atenciones[0];
+          const latestReserva = fullPerson.Reservas[0];
+          const serviceName = latestAttention?.Servicio?.nombre || latestReserva?.Solicitud?.Servicio?.nombre || 'Consulta Odontológica Especializada';
+          const doctorName = latestAttention?.Profesional ? `Dr(a). ${latestAttention.Profesional.nombres} ${latestAttention.Profesional.apellidos}`.trim() : (latestReserva?.Opcion?.Disponibilidad?.Profesional ? `Dr(a). ${latestReserva.Opcion.Disponibilidad.Profesional.nombres} ${latestReserva.Opcion.Disponibilidad.Profesional.apellidos}`.trim() : undefined);
+          const branchName = latestAttention?.Sede?.nombre || latestReserva?.Opcion?.Disponibilidad?.Sede?.nombre || 'Sede Principal';
+
+          const token = await patientAuthService.generateActivationTokenForCustomer(fullPerson.id_persona, fullPerson.dni);
+          await patientAuthService.sendPostConsultationActivationEmail({
+            email: fullPerson.email,
+            nombres: fullPerson.nombres,
+            apellidos: fullPerson.apellidos,
+            dni: fullPerson.dni,
+            token,
+            serviceName,
+            doctorName,
+            branchName,
+            procedure: latestAttention?.procedimiento || undefined,
+            instructions: latestAttention?.indicaciones_finales || undefined,
+          });
+        }
+      } catch (errEmail) {
+        console.error('[TURNED] Error al enviar correo de activación post-consulta:', errEmail);
+      }
+    }
+
     res.json({ message: result.alreadyConverted ? 'El paciente ya estaba en TURNED' : 'Convertido a TURNED', currentPhase: 'TURNED' });
   } catch (error) {
     console.error('Error converting customer to TURNED:', error);

@@ -525,22 +525,6 @@ router.post('/:id/validate', async (req, res) => {
       }).catch(err => {
         console.error('[AUTO-EMAIL ERROR] No se pudo enviar la constancia automática por correo:', err);
       });
-
-      // Generar token único de activación de cuenta (One-Time Access Link) para el Portal del Paciente
-      const patientDni = reserva.Persona?.dni || persona.dni;
-      if (patientDni) {
-        import('../services/patientAuthService').then(({ patientAuthService }) => {
-          patientAuthService.generateActivationTokenForCustomer(persona.id_persona, patientDni).then(token => {
-            patientAuthService.sendWelcomeActivationEmail({
-              email: patientEmail,
-              nombres: reserva.Persona?.nombres || persona.nombres || '',
-              apellidos: reserva.Persona?.apellidos || persona.apellidos || '',
-              dni: patientDni,
-              token
-            });
-          }).catch(errToken => console.error('[PatientAuth] Error generando token:', errToken));
-        });
-      }
     }
 
     res.json({

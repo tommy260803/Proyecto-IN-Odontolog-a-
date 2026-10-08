@@ -114,14 +114,19 @@ class PatientAuthService {
   }
 
   /**
-   * Envía el correo de bienvenida y activación de cuenta segura al paciente.
+   * Envía el correo de agradecimiento post-consulta y activación del Portal del Paciente (etapa TURNED).
    */
-  async sendWelcomeActivationEmail(patient: {
+  async sendPostConsultationActivationEmail(patient: {
     email: string;
     nombres: string;
     apellidos: string;
     dni: string;
     token: string;
+    serviceName?: string;
+    doctorName?: string;
+    branchName?: string;
+    procedure?: string;
+    instructions?: string;
   }) {
     const fullName = `${patient.nombres} ${patient.apellidos}`.trim();
     const activationUrl = `http://localhost:5173/activar-cuenta?token=${patient.token}`;
@@ -139,12 +144,13 @@ class PatientAuthService {
           .header p { margin: 6px 0 0 0; font-size: 13px; opacity: 0.9; }
           .content { padding: 32px 28px; }
           .greeting { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
-          .message { font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 24px; }
-          .card-info { background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 12px; padding: 18px; margin-bottom: 24px; }
-          .card-info p { margin: 4px 0; font-size: 13.5px; color: #115e59; }
-          .btn-container { text-align: center; margin: 32px 0; }
+          .message { font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 20px; }
+          .card-summary { background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 12px; padding: 18px; margin-bottom: 20px; }
+          .card-summary h3 { margin: 0 0 10px 0; font-size: 14px; color: #0f766e; font-weight: 800; }
+          .card-summary p { margin: 5px 0; font-size: 13px; color: #134e4a; }
+          .btn-container { text-align: center; margin: 28px 0; }
           .btn { display: inline-block; background: linear-gradient(135deg, #0d9488 0%, #059669 100%); color: #ffffff !important; text-decoration: none; font-weight: 700; font-size: 15px; padding: 14px 32px; border-radius: 12px; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25); }
-          .expiry-note { font-size: 12px; text-align: center; color: #94a3b8; margin-top: 16px; }
+          .expiry-note { font-size: 12px; text-align: center; color: #94a3b8; margin-top: 14px; }
           .footer { background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 11.5px; color: #64748b; }
         </style>
       </head>
@@ -152,30 +158,36 @@ class PatientAuthService {
         <div class="container">
           <div class="header">
             <h1>🦷 NexoSalud Dental</h1>
-            <p>Clínica Odontológica Especializada · Portal del Paciente</p>
+            <p>Clínica Odontológica Especializada · Resultados y Portal del Paciente</p>
           </div>
           <div class="content">
-            <div class="greeting">¡Bienvenido(a), ${fullName}!</div>
+            <div class="greeting">¡Fue un gusto atenderte hoy, ${fullName}! 👋</div>
             <p class="message">
-              Tu expediente odontológico ha sido activado con éxito tras la confirmación de tu cita. A partir de ahora podrás gestionar tus próximas atenciones, consultar tus citas y solicitar servicios de forma exprés desde nuestro Portal del Paciente.
+              Agradecemos tu confianza en nuestro equipo odontológico. Tu atención médica ha finalizado con éxito y tus registros clínicos ya han sido actualizados en tu expediente digital.
             </p>
-            <div class="card-info">
-              <p><strong>🆔 DNI Registrado:</strong> ${patient.dni}</p>
-              <p><strong>🔒 Estado del Expediente:</strong> Paciente Registrado (Activo)</p>
+
+            <div class="card-summary">
+              <h3>📋 Resumen de tu Atención Odontológica</h3>
+              <p><strong>🦷 Tratamiento:</strong> ${patient.serviceName || 'Consulta Especializada'}</p>
+              ${patient.doctorName ? `<p><strong>👨‍⚕️ Especialista:</strong> ${patient.doctorName}</p>` : ''}
+              ${patient.branchName ? `<p><strong>📍 Sede:</strong> ${patient.branchName}</p>` : ''}
+              ${patient.procedure ? `<p><strong>✨ Procedimiento:</strong> ${patient.procedure}</p>` : ''}
+              ${patient.instructions ? `<p><strong>💊 Indicaciones:</strong> ${patient.instructions}</p>` : ''}
             </div>
+
             <p class="message">
-              Para crear tu contraseña personal de acceso seguro (estilo bancario), haz clic en el siguiente botón:
+              Para consultar tu historial de atenciones, descargar tus recetas médicas y solicitar futuros controles semestrales con <strong>1 solo clic (Agendamiento Express)</strong>, configura tu contraseña de acceso aquí:
             </p>
             <div class="btn-container">
-              <a href="${activationUrl}" class="btn" target="_blank">Configurar mi Contraseña de Acceso</a>
+              <a href="${activationUrl}" class="btn" target="_blank">Configurar mi Contraseña y Acceder al Portal</a>
             </div>
             <p class="expiry-note">
-              ⏱️ <strong>Nota de Seguridad:</strong> Este enlace es único y válido por <strong>24 horas</strong>. Una vez configurada tu contraseña, el enlace caducará automáticamente.
+              ⏱️ <strong>Seguridad Clínica:</strong> Este enlace es personal, de <strong>un solo uso</strong> y válido por <strong>24 horas</strong>.
             </p>
           </div>
           <div class="footer">
             NexoSalud Dental · Trujillo, Perú · Sede California, Primavera y Centro Histórico.<br>
-            Este es un correo confidencial automático de seguridad clínica.
+            Cuidamos tu sonrisa con tecnología médica avanzada.
           </div>
         </div>
       </body>
@@ -187,24 +199,43 @@ class PatientAuthService {
         toEmail: patient.email,
         patientName: fullName,
         documentNumber: patient.dni,
-        subject: `🦷 Activa tu Cuenta de Paciente NexoSalud - Enlace Seguro de Primer Acceso`,
+        subject: `🦷 ¡Gracias por tu visita! Tus Resultados y Acceso al Portal del Paciente NexoSalud`,
         amount: 0,
         channel: 'PORTAL_WEB',
-        operationNumber: `TOKEN-${patient.token.substring(0, 8).toUpperCase()}`,
-        serviceName: 'Activación de Cuenta de Paciente',
+        operationNumber: `CONS-${patient.token.substring(0, 8).toUpperCase()}`,
+        serviceName: patient.serviceName || 'Atención Odontológica',
         reservationDate: new Date().toISOString().split('T')[0],
         reservationTime: '10:00',
-        branch: 'NexoSalud Dental',
-        professional: 'Dirección Médica Odontológica',
-        filename: 'Bienvenida_NexoSalud',
-        code: `ACT-${patient.dni}`,
+        branch: patient.branchName || 'NexoSalud Dental',
+        professional: patient.doctorName || 'Dirección Médica Odontológica',
+        filename: 'Resultados_NexoSalud',
+        code: `RES-${patient.dni}`,
         isValidated: true,
+        includePdf: false,
         customHtml: htmlBody
       });
-      console.log(`[PatientAuth] Correo de activación enviado a ${patient.email}`);
+      console.log(`[PatientAuth] Correo post-consulta enviado a ${patient.email}`);
     } catch (err) {
-      console.error('[PatientAuth] Error enviando correo de bienvenida:', err);
+      console.error('[PatientAuth] Error enviando correo post-consulta:', err);
     }
+  }
+
+  /**
+   * Alias para bienvenida y activación general
+   */
+  async sendWelcomeActivationEmail(patient: {
+    email: string;
+    nombres: string;
+    apellidos: string;
+    dni: string;
+    token: string;
+    serviceName?: string;
+    doctorName?: string;
+    branchName?: string;
+    procedure?: string;
+    instructions?: string;
+  }) {
+    return this.sendPostConsultationActivationEmail(patient);
   }
 
   /**
