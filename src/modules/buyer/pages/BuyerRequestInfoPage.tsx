@@ -669,7 +669,7 @@ export default function BuyerRequestInfoPage() {
                       }`}
                     >
                       <UserPlus className="h-3.5 w-3.5" />
-                      <span>✨ Soy Paciente Nuevo</span>
+                      <span>Soy Paciente Nuevo</span>
                     </button>
                     <button
                       type="button"
@@ -681,7 +681,7 @@ export default function BuyerRequestInfoPage() {
                       }`}
                     >
                       <KeyRound className="h-3.5 w-3.5" />
-                      <span>🦷 Ya soy Paciente</span>
+                      <span>Ya soy Paciente</span>
                     </button>
                   </div>
                 )}
@@ -1125,12 +1125,11 @@ export default function BuyerRequestInfoPage() {
                     </div>
 
                     {/* Botón de Código Express por WhatsApp */}
-                    <Button
+                    <button
                       type="button"
-                      variant="outline"
                       onClick={handleSendOtp}
                       disabled={otpSending}
-                      className="w-full h-10 border-2 border-teal-200 hover:border-teal-500 bg-teal-50/50 hover:bg-teal-50 text-teal-800 font-bold rounded-xl text-xs gap-2 cursor-pointer transition-all shadow-xs"
+                      className="w-full h-11 border-2 border-teal-300 hover:border-teal-600 bg-teal-50/70 hover:bg-teal-100/90 text-teal-900 hover:text-teal-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs disabled:opacity-50"
                     >
                       {otpSending ? (
                         <>
@@ -1139,11 +1138,11 @@ export default function BuyerRequestInfoPage() {
                         </>
                       ) : (
                         <>
-                          <Phone className="h-4 w-4 text-emerald-600" />
-                          <span>📲 Recibir Código de Acceso Express a mi WhatsApp</span>
+                          <Phone className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <span>Recibir Código de Acceso Express a mi WhatsApp</span>
                         </>
                       )}
-                    </Button>
+                    </button>
 
                     <p className="text-[10px] text-slate-500 text-center leading-relaxed">
                       🔒 Tu información médica está protegida bajo estándares de confidencialidad clínica.
