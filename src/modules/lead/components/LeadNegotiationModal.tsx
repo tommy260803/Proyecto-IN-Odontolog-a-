@@ -627,7 +627,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
       });
       fetchData();
       resetAltForm();
-      toast({ title: '¡Promoción Registrada! 🎉', description: 'La oferta comercial con vigencia activa ha sido añadida al tablero.' });
+      toast({ title: 'Promoción Registrada', description: 'La oferta comercial con vigencia activa ha sido añadida al tablero.' });
     } catch {
       toast({ title: 'Error', description: 'No se pudo añadir la oferta comercial.', variant: 'destructive' });
     } finally {
@@ -644,7 +644,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     setReserving(true);
     try {
       await leadService.reserve(leadId.toString(), { id_solicitud: ultimaSolicitud?.id_solicitud || 1, id_opcion: selectedOpcion });
-      toast({ title: '¡Trato Cerrado! 🎉', description: 'El paciente pasa a la etapa PAYER.' });
+      toast({ title: 'Trato Cerrado', description: 'El paciente pasa a la etapa PAYER.' });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
       onClose();

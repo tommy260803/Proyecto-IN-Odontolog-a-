@@ -9,7 +9,7 @@ import type {
   ToastProps,
 } from "@/shared/components/ui/toast"
 
-const TOAST_LIMIT = 1
+const TOAST_LIMIT = 3
 const TOAST_REMOVE_DELAY = 1000000
 
 type ToasterToast = ToastProps & {

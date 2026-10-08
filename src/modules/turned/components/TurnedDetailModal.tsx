@@ -78,7 +78,7 @@ export function TurnedDetailModal({ turnedId, isOpen, onClose }: TurnedDetailMod
     if (!turned) return;
     createNewRequest.mutate({ id: turned.id, data }, {
       onSuccess: () => {
-        toast({ title: 'Reactivación Creada 🎉', description: 'Se ha creado un nuevo ciclo comercial en BUYER para este paciente.' });
+        toast({ title: 'Reactivación Creada', description: 'Se ha creado un nuevo ciclo comercial en BUYER para este paciente.' });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TURNED] });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUYERS] });
         setIsNewRequestOpen(false);

@@ -12,13 +12,19 @@ export function Toaster() {
   const { toasts } = useToast()
 
   return (
-    <ToastProvider>
+    <ToastProvider duration={5000}>
       {toasts.map(function (
-        { id, title, description, action, ...props }: ReturnType<typeof useToast>['toasts'][number]
+        { id, title, description, action, variant, ...props }: ReturnType<typeof useToast>['toasts'][number]
       ) {
         return (
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
+          <Toast 
+            key={id} 
+            variant={variant} 
+            title={title} 
+            description={description} 
+            {...props}
+          >
+            <div className="space-y-0.5">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && (
                 <ToastDescription>{description}</ToastDescription>
@@ -33,3 +39,4 @@ export function Toaster() {
     </ToastProvider>
   )
 }
+

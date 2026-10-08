@@ -212,7 +212,20 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   animation: checkmarkDraw 0.45s cubic-bezier(0.65, 0, 0.45, 1) 0.15s forwards;
 }
 
+/* Toast Countdown Progress Animation */
+@keyframes toast-progress {
+  0% {
+    width: 100%;
+  }
+  100% {
+    width: 0%;
+  }
+}
 
+.animate-toast-progress {
+  animation: toast-progress var(--toast-duration, 5000ms) linear forwards;
+}
 
-
-
+.group:hover .animate-toast-progress {
+  animation-play-state: paused;
+}

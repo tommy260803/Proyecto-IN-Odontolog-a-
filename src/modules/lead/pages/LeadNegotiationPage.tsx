@@ -314,7 +314,7 @@ export default function LeadNegotiationPage() {
       });
       fetchLeadData();
       setCondiciones('');
-      toast({ title: '¡Promoción Registrada! 🎉', description: 'La oferta comercial con vigencia activa ha sido añadida al tablero.' });
+      toast({ title: 'Promoción Registrada', description: 'La oferta comercial con vigencia activa ha sido añadida al tablero.' });
     } catch {
       toast({ title: 'Error', description: 'Error al añadir la oferta comercial.', variant: 'destructive' });
     } finally {
