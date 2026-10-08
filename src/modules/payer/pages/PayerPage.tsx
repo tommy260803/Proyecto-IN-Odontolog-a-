@@ -11,7 +11,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { usePayers } from '../hooks/usePayerQueries';
 import { PayerState } from '@/domain/enums';
-import { Search, Eye, AlertTriangle, Trash2, X, RotateCcw, Zap, Bot, Sparkles, CheckCircle2, Clock, Mail, ShieldCheck, RefreshCw, Radio, Play, Pause, Filter, Terminal, BarChart3 } from 'lucide-react';
+import { Search, Eye, AlertTriangle, Trash2, X, RotateCcw, Zap, Bot, Sparkles, CheckCircle2, Clock, Mail, ShieldCheck, RefreshCw, Radio, Play, Pause, Filter, Terminal, BarChart3, XCircle, Flame } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
@@ -312,10 +312,6 @@ export default function PayerPage() {
       cell: (p: PayerWithDetails) => <span className="text-slate-700 dark:text-slate-300">{p.payment ? format(new Date(p.payment.operationDate), 'dd MMM yy', { locale: es }) : '-'}</span> 
     },
     { 
-      header: 'Comprobante', 
-      cell: (p: PayerWithDetails) => <span className="text-slate-700 dark:text-slate-300">{p.payment?.receiptMetadata ? 'Sí' : 'No'}</span> 
-    },
-    { 
       header: 'Prioridad IA', 
       cell: (p: PayerWithDetails) => {
         const realIncidents = (p.incidents || []).filter(inc => 
@@ -340,6 +336,7 @@ export default function PayerPage() {
         if (p.state === PayerState.VALIDATED) {
           return (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 w-fit">
+              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
               Aprobado
             </span>
           );
@@ -348,10 +345,13 @@ export default function PayerPage() {
         if (risk.score === 0) {
           return (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 flex items-center gap-1 w-fit" title={risk.explanation}>
-              🚫 Cita Expirada (00:00)
+              <XCircle className="w-2.5 h-2.5 text-slate-500" />
+              Cita Expirada (00:00)
             </span>
           );
         }
+
+        const RiskIcon = risk.level === 'ALTO' ? Flame : risk.level === 'MODERADO' ? Clock : ShieldCheck;
 
         return (
           <div className="flex items-center gap-1.5" title={risk.explanation}>
@@ -362,7 +362,7 @@ export default function PayerPage() {
                 ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
                 : 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800'
             }`}>
-              <Zap className="w-2.5 h-2.5" />
+              <RiskIcon className="w-2.5 h-2.5" />
               {risk.score}% · {risk.level}
             </span>
           </div>
