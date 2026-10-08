@@ -61,11 +61,8 @@ export function calculateB1(buyers: Buyer[], journeys?: CustomerJourney[]): Indi
     if (!isUsableBuyer(buyer)) return;
 
     const buyerDate = parseISO(buyer.createdAt);
-    const daysElapsed = differenceInDays(now, buyerDate);
 
-    // Regla 1: Debe tener al menos 14 días transcurridos desde su fecha de registro para ser evaluable (cohorte finalizada)
-    if (daysElapsed < CONVERSION_WINDOW_DAYS) return;
-
+    // Es evaluable si es utilizable
     evaluableCount++;
 
     // Regla 2: Conversión BUYER -> LEAD dentro de <= 14 días
