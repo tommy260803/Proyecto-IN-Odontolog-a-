@@ -18,6 +18,7 @@ import { analyzeIdentityResolutionWithAI } from '@/shared/services/groqService';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/shared/hooks/use-toast';
 import { Toaster } from '@/shared/components/ui/toaster';
+import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { 
   Sparkles, 
   Phone, 
@@ -59,6 +60,7 @@ export default function BuyerRequestInfoPage() {
     fuentes: any[];
   }>({ servicios: [], sedes: [], canales: [], fuentes: [] });
 
+  const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
   const [isDuplicateSubmitted, setIsDuplicateSubmitted] = useState(false);
@@ -92,8 +94,17 @@ export default function BuyerRequestInfoPage() {
   useEffect(() => {
     buyerService.getCatalogs()
       .then((data) => setCatalogs(data))
-      .catch((err) => console.error('Error cargando catálogos:', err));
+      .catch((err) => console.error('Error cargando catálogos:', err))
+      .finally(() => setInitialLoading(false));
   }, []);
+
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen w-full bg-slate-950 flex flex-col items-center justify-center p-4">
+        <LoadingState />
+      </div>
+    );
+  }
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
