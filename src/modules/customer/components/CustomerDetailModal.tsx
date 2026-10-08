@@ -618,7 +618,7 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
               Cerrar
             </Button>
 
-            {(!isTurned && (customer.state === CustomerState.IN_ATTENTION || customer.state === CustomerState.ATTENDED)) && (
+            {(!isTurned && customer?.state && (customer.state === CustomerState.IN_ATTENTION || customer.state === CustomerState.ATTENDED)) && (
               <Button
                 type="button"
                 className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold h-10 px-6 gap-2 shadow-sm transition-all whitespace-nowrap min-w-[210px]"
