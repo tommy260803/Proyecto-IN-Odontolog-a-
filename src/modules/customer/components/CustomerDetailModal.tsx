@@ -625,29 +625,21 @@ export function CustomerDetailModal({ customerId, isOpen, onClose }: CustomerDet
               type="button"
               variant="outline"
               onClick={onClose}
-              className="rounded-xl bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 hover:text-slate-900 dark:text-slate-100 dark:hover:text-white border border-slate-300 dark:border-slate-600 text-xs sm:text-sm font-bold h-10 px-6 min-w-[100px] shadow-sm transition-all"
+              className="rounded-xl bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 hover:text-slate-900 dark:text-slate-100 dark:hover:text-white border border-slate-300 dark:border-slate-600 text-xs sm:text-sm font-bold h-10 px-6 min-w-[110px] shadow-sm transition-all"
             >
               Cerrar
             </Button>
-            
-            {canEditForm && (
-              <Button
-                type="button"
-                onClick={() => dentalFormRef.current?.submit()}
-                disabled={registerDetails.isPending}
-                className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs sm:text-sm font-bold h-10 px-6 gap-2 shadow-sm transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap min-w-[190px]"
-                title="Guarda los avances del diagnóstico, procedimiento e indicaciones sin cambiar la etapa del paciente"
-              >
-                <Save className="w-4 h-4 shrink-0" />
-                {registerDetails.isPending ? 'Guardando...' : 'Guardar Ficha Clínica'}
-              </Button>
-            )}
 
             {(!isTurned && transitionCheck.success) && (
               <Button
                 type="button"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold h-10 px-6 gap-2 shadow-sm transition-all whitespace-nowrap min-w-[180px]"
-                onClick={() => setIsConvertOpen(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold h-10 px-6 gap-2 shadow-sm transition-all whitespace-nowrap min-w-[190px]"
+                onClick={() => {
+                  if (dentalFormRef.current) {
+                    dentalFormRef.current.submit();
+                  }
+                  setIsConvertOpen(true);
+                }}
                 title="Finaliza la atención y transfiere al paciente a TURNED para su fidelización y portal web"
               >
                 Pasar a TURNED <ArrowRight className="w-4 h-4 shrink-0" />
