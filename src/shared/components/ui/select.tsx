@@ -17,7 +17,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background text-slate-900 dark:text-slate-100 data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       "aria-[invalid=true]:!border-rose-500 aria-[invalid=true]:focus:!ring-rose-500 aria-[invalid=true]:text-rose-900 dark:aria-[invalid=true]:text-rose-100",
       className
     )}
@@ -104,7 +104,7 @@ const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn("px-2 py-1.5 text-sm font-semibold", className)}
+    className={cn("px-2 py-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100", className)}
     {...props}
   />
 ))
@@ -117,7 +117,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-2.5 pr-8 text-xs outline-none focus:bg-teal-700 focus:text-white data-[highlighted]:bg-teal-700 data-[highlighted]:text-white data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-slate-800 transition-colors font-medium",
+      "relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-2.5 pr-8 text-xs outline-none focus:bg-teal-600 focus:text-white data-[highlighted]:bg-teal-600 data-[highlighted]:text-white data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-slate-800 dark:text-slate-100 transition-colors font-medium",
       className
     )}
     {...props}
