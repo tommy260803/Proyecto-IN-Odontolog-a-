@@ -432,7 +432,7 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
                           </h4>
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1">
                             <RotateCw className="w-2.5 h-2.5 text-amber-700 dark:text-amber-300 shrink-0" />
-                            <span>{buyer.consultasCount || (buyer.solicitudesHistory?.length || 1)} Consultas Web</span>
+                            <span>{buyer.solicitudesHistory?.length || 1} {buyer.solicitudesHistory?.length === 1 ? 'Consulta Web' : 'Consultas Web'}</span>
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
