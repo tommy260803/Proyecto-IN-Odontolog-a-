@@ -77,8 +77,8 @@ function serializeCustomer(person: CustomerPerson) {
     } : null,
     reservation: reservation ? {
       id: reservation.id_reserva.toString(), leadId: person.id_persona.toString(),
-      date: availability?.fecha?.toISOString() || reservation.fecha_reserva.toISOString(),
-      time: availability?.hora_inicio?.toISOString().slice(11, 16) || '',
+      date: availability?.fecha ? availability.fecha.toISOString().split('T')[0] : reservation.fecha_reserva.toISOString().split('T')[0],
+      time: availability?.hora_inicio ? availability.hora_inicio.toISOString().slice(11, 16) : '',
       professionalId: availability?.Profesional
         ? `${availability.Profesional.nombres} ${availability.Profesional.apellidos}`.trim() : 'Sin asignar',
       branchId: availability?.Sede?.nombre || 'Sin sede',
