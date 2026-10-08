@@ -36,6 +36,7 @@ export default function ActivateAccountPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -254,14 +255,23 @@ export default function ActivateAccountPage() {
                   <ShieldCheck className="h-3.5 w-3.5 text-teal-600" />
                   Confirmar Contraseña
                 </Label>
-                <Input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Repite tu nueva contraseña"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  className="h-11 rounded-xl text-xs bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 shadow-xs"
-                />
+                <div className="relative">
+                  <Input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="Repite tu nueva contraseña"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="h-11 rounded-xl text-xs bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 pr-10 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 shadow-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="p-3 rounded-xl bg-teal-50/70 border border-teal-100/90 text-teal-900 text-[11px] leading-relaxed flex items-start gap-2">
