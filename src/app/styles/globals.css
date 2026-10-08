@@ -229,3 +229,73 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .group:hover .animate-toast-progress {
   animation-play-state: paused;
 }
+
+/* ─── Nexo Salud Dental Loader Animations ─── */
+@keyframes dental-float {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.02);
+  }
+}
+
+@keyframes dental-gleam {
+  0%, 100% {
+    transform: scale(0.7) rotate(0deg);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.25) rotate(90deg);
+    opacity: 1;
+  }
+}
+
+@keyframes dental-pulse-aura {
+  0% {
+    transform: scale(0.88);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(0.88);
+    opacity: 0.7;
+  }
+}
+
+@keyframes dental-shine-sweep {
+  0% {
+    transform: translateX(-120%) rotate(25deg);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.8;
+  }
+  70% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(220%) rotate(25deg);
+    opacity: 0;
+  }
+}
+
+.animate-dental-float {
+  animation: dental-float 3s ease-in-out infinite;
+}
+
+.animate-dental-gleam {
+  animation: dental-gleam 2s ease-in-out infinite;
+}
+
+.animate-dental-pulse-aura {
+  animation: dental-pulse-aura 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-dental-shine-sweep {
+  animation: dental-shine-sweep 2.8s ease-in-out infinite;
+}
+
