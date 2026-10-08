@@ -119,7 +119,7 @@ app.post(['/api/canva/exchange', '/api/canva-exchange'], async (req, res) => {
     }
 
     console.log('✅ [Canva OAuth] ¡Tokens intercambiados y actualizados exitosamente!');
-    CanvaService.setTokens(data.access_token, data.refresh_token, data.expires_in);
+    await CanvaService.setTokens(data.access_token, data.refresh_token, data.expires_in);
 
     res.json({
       success: true,

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { prisma } from '../db';
 
 /**
  * Canva Connect API Service
@@ -58,17 +59,90 @@ export class CanvaService {
   private static BRAND_TEMPLATE_ID = 'EAHWLEXZ1lo';
   private static cachedAccessToken: string | null = null;
   private static tokenExpiresAt: number = 0;
+  private static tableEnsured: boolean = false;
 
   /**
-   * Actualiza en memoria y en variables de entorno los tokens recibidos tras un intercambio OAuth
+   * Garantiza que la tabla de persistencia de tokens de configuración exista en la base de datos
    */
-  public static setTokens(accessToken: string, refreshToken?: string, expiresIn?: number) {
+  private static async ensureTokensTable(): Promise<void> {
+    if (this.tableEnsured) return;
+    try {
+      await prisma.$executeRawUnsafe(`
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Configuracion_Tokens' AND xtype='U')
+        BEGIN
+          CREATE TABLE dbo.Configuracion_Tokens (
+            clave VARCHAR(100) PRIMARY KEY,
+            valor NVARCHAR(MAX) NOT NULL,
+            actualizado_en DATETIME2 DEFAULT GETDATE()
+          );
+        END
+      `);
+      this.tableEnsured = true;
+    } catch (err: any) {
+      console.warn('⚠️ [Canva DB] Verificación de tabla Configuracion_Tokens:', err?.message || err);
+    }
+  }
+
+  /**
+   * Guarda un token o parámetro en la base de datos de manera atómica y persistente
+   */
+  private static async saveTokenInDb(clave: string, valor: string): Promise<void> {
+    try {
+      await this.ensureTokensTable();
+      const escapedKey = clave.replace(/'/g, "''");
+      const escapedValue = valor.replace(/'/g, "''");
+      await prisma.$executeRawUnsafe(`
+        MERGE dbo.Configuracion_Tokens AS target
+        USING (SELECT '${escapedKey}' AS clave, N'${escapedValue}' AS valor) AS source
+        ON (target.clave = source.clave)
+        WHEN MATCHED THEN
+          UPDATE SET valor = source.valor, actualizado_en = GETDATE()
+        WHEN NOT MATCHED THEN
+          INSERT (clave, valor, actualizado_en) VALUES (source.clave, source.valor, GETDATE());
+      `);
+    } catch (err: any) {
+      console.warn(`⚠️ [Canva DB] Error al guardar token '${clave}' en BD:`, err?.message || err);
+    }
+  }
+
+  /**
+   * Obtiene un token o parámetro guardado en la base de datos
+   */
+  private static async getTokenFromDb(clave: string): Promise<string | null> {
+    try {
+      await this.ensureTokensTable();
+      const escapedKey = clave.replace(/'/g, "''");
+      const rows: any[] = await prisma.$queryRawUnsafe(`
+        SELECT valor FROM dbo.Configuracion_Tokens WHERE clave = '${escapedKey}'
+      `);
+      if (rows && rows.length > 0 && rows[0].valor) {
+        return String(rows[0].valor);
+      }
+    } catch (err: any) {
+      console.warn(`⚠️ [Canva DB] Error al leer token '${clave}' de BD:`, err?.message || err);
+    }
+    return null;
+  }
+
+  /**
+   * Actualiza en memoria, en base de datos persistente y en .env los tokens de Canva
+   */
+  public static async setTokens(accessToken: string, refreshToken?: string, expiresIn?: number) {
     this.cachedAccessToken = accessToken;
     this.tokenExpiresAt = Date.now() + ((expiresIn || 14400) * 1000);
     process.env.CANVA_ACCESS_TOKEN = accessToken;
     if (refreshToken) {
       process.env.CANVA_REFRESH_TOKEN = refreshToken;
     }
+
+    // 1. Guardar permanentemente en Base de Datos SQL Server
+    await this.saveTokenInDb('CANVA_ACCESS_TOKEN', accessToken);
+    await this.saveTokenInDb('CANVA_TOKEN_EXPIRES_AT', String(this.tokenExpiresAt));
+    if (refreshToken) {
+      await this.saveTokenInDb('CANVA_REFRESH_TOKEN', refreshToken);
+    }
+
+    // 2. Guardar en .env local si el archivo existe
     try {
       const envPath = path.resolve(__dirname, '../../.env');
       if (fs.existsSync(envPath)) {
@@ -80,26 +154,38 @@ export class CanvaService {
         fs.writeFileSync(envPath, content, 'utf8');
       }
     } catch (_) {}
-    console.log('🔑 [Canva Connect] Tokens actualizados en memoria.');
+    console.log('🔑 [Canva Connect] Tokens guardados exitosamente en RAM, BD y entorno.');
   }
 
   /**
-   * Obtiene un Access Token válido, renovándolo automáticamente mediante el Refresh Token si es necesario
+   * Obtiene un Access Token válido, recuperándolo de la BD o renovándolo automáticamente con el Refresh Token
    */
   public static async getValidAccessToken(): Promise<string | null> {
-    // Si tenemos un token en caché que no ha expirado (con margen de 2 minutos)
+    // 1. Si tenemos un token en caché RAM que aún es válido (con margen de seguridad de 2 minutos)
     if (this.cachedAccessToken && Date.now() < this.tokenExpiresAt - 120000) {
       return this.cachedAccessToken;
     }
 
-    const clientId = process.env.CANVA_CLIENT_ID;
-    const clientSecret = process.env.CANVA_CLIENT_SECRET;
-    const refreshToken = process.env.CANVA_REFRESH_TOKEN;
+    // 2. Si la app acaba de iniciar/reiniciar, intentar recuperar tokens guardados en Base de Datos
+    const dbRefreshToken = await this.getTokenFromDb('CANVA_REFRESH_TOKEN');
+    const dbAccessToken = await this.getTokenFromDb('CANVA_ACCESS_TOKEN');
+    const dbExpiresAtStr = await this.getTokenFromDb('CANVA_TOKEN_EXPIRES_AT');
+    const dbExpiresAt = dbExpiresAtStr ? Number(dbExpiresAtStr) : 0;
 
-    // Intentar renovar con Refresh Token
+    if (dbAccessToken && dbExpiresAt && Date.now() < dbExpiresAt - 120000) {
+      this.cachedAccessToken = dbAccessToken;
+      this.tokenExpiresAt = dbExpiresAt;
+      return this.cachedAccessToken;
+    }
+
+    const clientId = process.env.CANVA_CLIENT_ID || 'OC-AaDW_EAnA5pf';
+    const clientSecret = process.env.CANVA_CLIENT_SECRET;
+    const refreshToken = dbRefreshToken || process.env.CANVA_REFRESH_TOKEN;
+
+    // 3. Renovar automáticamente el Access Token usando el Refresh Token permanente
     if (clientId && clientSecret && refreshToken) {
       try {
-        console.log('🔄 [Canva Connect] Renovando Access Token usando Refresh Token...');
+        console.log('🔄 [Canva Connect] Renovando Access Token usando Refresh Token desde BD...');
         const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
         const tokenRes = await fetch('https://api.canva.com/rest/v1/oauth/token', {
           method: 'POST',
@@ -115,21 +201,12 @@ export class CanvaService {
 
         if (tokenRes.ok) {
           const tokenData: any = await tokenRes.json();
-          this.cachedAccessToken = tokenData.access_token;
-          this.tokenExpiresAt = Date.now() + ((tokenData.expires_in || 14400) * 1000);
-          if (tokenData.refresh_token) {
-            process.env.CANVA_REFRESH_TOKEN = tokenData.refresh_token;
-            try {
-              const envPath = path.resolve(__dirname, '../../.env');
-              if (fs.existsSync(envPath)) {
-                let content = fs.readFileSync(envPath, 'utf8');
-                content = content.replace(/CANVA_REFRESH_TOKEN=.*/g, `CANVA_REFRESH_TOKEN=${tokenData.refresh_token}`);
-                content = content.replace(/CANVA_ACCESS_TOKEN=.*/g, `CANVA_ACCESS_TOKEN=${tokenData.access_token}`);
-                fs.writeFileSync(envPath, content, 'utf8');
-              }
-            } catch (_) {}
-          }
-          console.log('✅ [Canva Connect] Access Token renovado exitosamente.');
+          await this.setTokens(
+            tokenData.access_token,
+            tokenData.refresh_token || refreshToken,
+            tokenData.expires_in
+          );
+          console.log('✅ [Canva Connect] Access Token renovado exitosamente y persistido.');
           return this.cachedAccessToken;
         } else {
           console.warn('⚠️ [Canva Connect] Falló la renovación del token con Canva:', await tokenRes.text());
@@ -139,8 +216,8 @@ export class CanvaService {
       }
     }
 
-    // Fallback al token estático de .env si existe
-    const fallbackToken = process.env.CANVA_API_KEY || process.env.CANVA_ACCESS_TOKEN || null;
+    // 4. Fallback al token estático de entorno o BD
+    const fallbackToken = process.env.CANVA_API_KEY || process.env.CANVA_ACCESS_TOKEN || dbAccessToken || null;
     return fallbackToken;
   }
 
