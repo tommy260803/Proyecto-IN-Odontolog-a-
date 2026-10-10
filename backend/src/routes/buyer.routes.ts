@@ -134,35 +134,64 @@ router.get('/check-duplicate', async (req, res) => {
       whereClause.id_persona = { not: Number(excludeId) };
     }
 
-    const existing = await prisma.personas.findFirst({
+    const matchedPersons = await prisma.personas.findMany({
       where: whereClause,
       include: {
         Etapa: true,
-      }
+      },
+      take: 5
     });
 
-    if (existing) {
-      let matchedBy = 'phone';
-      if (cleanDni && existing.dni === cleanDni) matchedBy = 'dni';
-      else if (cleanEmail && existing.email?.toLowerCase() === cleanEmail) matchedBy = 'email';
+    if (matchedPersons && matchedPersons.length > 0) {
+      const matches = matchedPersons.map(p => {
+        const phoneMatch = Boolean(cleanPhone && p.numero && p.numero.replace(/\D/g, '').includes(cleanPhone));
+        const emailMatch = Boolean(cleanEmail && p.email && p.email.toLowerCase() === cleanEmail);
+        const dniMatch = Boolean(cleanDni && p.dni && p.dni === cleanDni);
+
+        const matchedFields: string[] = [];
+        if (phoneMatch) matchedFields.push('Teléfono');
+        if (emailMatch) matchedFields.push('Correo');
+        if (dniMatch) matchedFields.push('DNI');
+
+        let matchedByType = 'phone';
+        if (phoneMatch && emailMatch) matchedByType = 'both';
+        else if (emailMatch) matchedByType = 'email';
+        else if (dniMatch) matchedByType = 'dni';
+
+        return {
+          id: p.id_persona,
+          firstName: p.nombres,
+          lastName: p.apellidos,
+          fullName: `${p.nombres} ${p.apellidos}`.trim(),
+          phone: p.numero,
+          email: p.email,
+          documentNumber: p.dni,
+          etapa: p.Etapa?.nombre || 'BUYER',
+          estadoCalidad: p.estado_calidad || 'Valido',
+          matchedByType, // 'phone' | 'email' | 'both' | 'dni'
+          matchedFieldsText: matchedFields.join(' y ') || 'Contacto',
+        };
+      });
+
+      const hasPhoneMatch = matches.some(m => m.matchedByType === 'phone' || m.matchedByType === 'both');
+      const hasEmailMatch = matches.some(m => m.matchedByType === 'email' || m.matchedByType === 'both');
+
+      let overallMatchedBy: 'phone' | 'email' | 'both' | 'dni' = 'phone';
+      if (hasPhoneMatch && hasEmailMatch) overallMatchedBy = 'both';
+      else if (hasEmailMatch) overallMatchedBy = 'email';
+      else if (hasPhoneMatch) overallMatchedBy = 'phone';
+      else overallMatchedBy = 'dni';
 
       return res.json({
         isDuplicate: true,
-        matchedBy,
-        person: {
-          id: existing.id_persona,
-          firstName: existing.nombres,
-          lastName: existing.apellidos,
-          phone: existing.numero,
-          email: existing.email,
-          documentNumber: existing.dni,
-          etapa: existing.Etapa?.nombre || 'BUYER',
-          estadoCalidad: existing.estado_calidad || 'Valido',
-        }
+        matchedBy: overallMatchedBy,
+        matchesCount: matches.length,
+        person: matches[0],
+        matches,
       });
     }
 
-    return res.json({ isDuplicate: false });
+    return res.json({ isDuplicate: false, matches: [] });
   } catch (error) {
     console.error('Error in check-duplicate:', error);
     res.status(500).json({ error: 'Error al verificar duplicados' });

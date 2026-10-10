@@ -23,7 +23,13 @@ import {
   Radio,
   Tag,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  EyeOff,
+  Users
 } from 'lucide-react';
 
 export interface BuyerFormRef {
@@ -87,9 +93,25 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
 
   const [duplicateWarning, setDuplicateWarning] = useState<{
     isDuplicate: boolean;
-    person?: { firstName: string; lastName: string; etapa: string; phone?: string; documentNumber?: string };
+    person?: { id?: number | string; firstName: string; lastName: string; etapa: string; phone?: string; email?: string; documentNumber?: string; matchedByType?: string; matchedFieldsText?: string };
     matchedBy?: string;
+    matchesCount?: number;
+    matches?: Array<{
+      id: number | string;
+      firstName: string;
+      lastName: string;
+      fullName: string;
+      phone?: string;
+      email?: string;
+      documentNumber?: string;
+      etapa: string;
+      estadoCalidad: string;
+      matchedByType: string;
+      matchedFieldsText: string;
+    }>;
   } | null>(null);
+
+  const [showDuplicateDetails, setShowDuplicateDetails] = useState(false);
 
   const watchedPhone = form.watch('phone');
   const watchedEmail = form.watch('email');
@@ -265,28 +287,179 @@ export const BuyerForm = forwardRef<BuyerFormRef, BuyerFormProps>(({
               )}
             />
 
-            {duplicateWarning?.isDuplicate && (
-              <div className="md:col-span-2 flex items-start gap-2.5 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 text-purple-900 dark:text-purple-200 text-xs animate-in fade-in slide-in-from-top-1">
-                <AlertCircle className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <p className="font-bold text-[12px] flex items-center gap-1.5 text-purple-900 dark:text-purple-100">
-                    <span>⚠️ Registro ya existente detectado en el sistema</span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-200 dark:bg-purple-900 text-purple-900 dark:text-purple-200 font-bold">DUPLICATED</span>
-                  </p>
-                  <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
-                    {isEdit ? (
-                      <>
-                        El {duplicateWarning.matchedBy === 'dni' ? 'DNI' : duplicateWarning.matchedBy === 'email' ? 'correo' : 'número telefónico'} ya se encuentra registrado a nombre de <strong>{duplicateWarning.person?.firstName} {duplicateWarning.person?.lastName}</strong> ({duplicateWarning.person?.etapa}). Verifica que no estés ingresando los datos de otro paciente existente.
-                      </>
-                    ) : (
-                      <>
-                        El {duplicateWarning.matchedBy === 'dni' ? 'DNI' : duplicateWarning.matchedBy === 'email' ? 'correo' : 'número telefónico'} ya se encuentra registrado a nombre de <strong>{duplicateWarning.person?.firstName} {duplicateWarning.person?.lastName}</strong> ({duplicateWarning.person?.etapa}). Al guardar, este registro se guardará con estado <strong className="font-mono bg-purple-200/80 dark:bg-purple-900/80 px-1 py-0.5 rounded">DUPLICATED</strong> para trazabilidad sin promover a LEAD.
-                      </>
-                    )}
-                  </p>
+            {/* Sección Permanente: Validación de Contacto y Duplicidad */}
+            <div className="md:col-span-2 transition-all duration-300">
+              {!duplicateWarning?.isDuplicate ? (
+                // Estado 1: Contacto Único / Sin Duplicados
+                <div className="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/50 text-emerald-950 dark:text-emerald-100 flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 shrink-0 mt-0.5">
+                      <ShieldCheck className="h-4 w-4" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                          Validación de Contacto y Unicidad
+                        </h4>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-700">
+                          ÚNICO / DISPONIBLE
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-emerald-700 dark:text-emerald-300/90 leading-relaxed">
+                        {watchedPhone || watchedEmail ? (
+                          'No se registran coincidencias de teléfono ni correo en la base de datos. El registro se calificará como prospecto válido.'
+                        ) : (
+                          'Ingresa el teléfono o correo para verificar unicidad y evitar duplicados en tiempo real.'
+                        )}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                // Estado 2: Duplicado Detectado con Mensaje Específico y Detalle Desplegable "Ver Detalles"
+                <div className="p-3.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700/60 text-amber-950 dark:text-amber-100 space-y-3 shadow-xs animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="flex items-start gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5">
+                        <AlertCircle className="h-4 w-4" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-xs font-bold text-amber-950 dark:text-amber-100">
+                            {duplicateWarning.matchedBy === 'email'
+                              ? 'Este correo ya está registrado'
+                              : duplicateWarning.matchedBy === 'phone'
+                              ? 'Este teléfono ya está registrado'
+                              : duplicateWarning.matchedBy === 'both'
+                              ? 'El teléfono y el correo electrónico ya están registrados'
+                              : 'Este DNI ya está registrado'}
+                          </h4>
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-200/90 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                            DUPLICADO DETECTADO ({duplicateWarning.matchesCount || duplicateWarning.matches?.length || 1})
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-amber-800 dark:text-amber-300/90 leading-relaxed">
+                          {isEdit ? (
+                            <>
+                              Los datos ingresados coinciden con pacientes ya registrados en el sistema. Verifica que no estés duplicando información.
+                            </>
+                          ) : (
+                            <>
+                              Se detectó coincidencia con {duplicateWarning.matchesCount || duplicateWarning.matches?.length || 1} paciente(s) existente(s). Al guardar, se mantendrá con estado <strong className="font-mono bg-amber-200/80 dark:bg-amber-900/60 px-1 py-0.5 rounded">DUPLICATED</strong>.
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Botón Ver Detalles */}
+                    <div className="shrink-0 flex sm:self-center">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowDuplicateDetails(prev => !prev)}
+                        className="h-8 px-3 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 hover:bg-amber-100/70 dark:hover:bg-amber-900/40 gap-1.5 shadow-xs transition-all cursor-pointer"
+                      >
+                        {showDuplicateDetails ? (
+                          <>
+                            <EyeOff className="h-3.5 w-3.5" />
+                            <span>Ocultar Detalles</span>
+                            <ChevronUp className="h-3.5 w-3.5 opacity-70" />
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>Ver Detalles</span>
+                            <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Panel Desplegable: Lista de Pacientes Coincidentes */}
+                  {showDuplicateDetails && (
+                    <div className="pt-3 border-t border-amber-200 dark:border-amber-800/60 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-amber-900 dark:text-amber-200 px-1">
+                        <span className="flex items-center gap-1.5">
+                          <Users className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                          Pacientes coincidentes en la base de datos:
+                        </span>
+                        <span className="text-[10px] text-amber-700 dark:text-amber-400 font-normal">
+                          {duplicateWarning.matches?.length || 1} coincidencia(s)
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2">
+                        {(duplicateWarning.matches && duplicateWarning.matches.length > 0 
+                          ? duplicateWarning.matches 
+                          : [duplicateWarning.person || { firstName: 'Paciente', lastName: 'Registrado', etapa: 'BUYER' }]
+                        ).map((m: any, idx: number) => {
+                          const fullName = m.fullName || `${m.firstName || ''} ${m.lastName || ''}`.trim() || 'Paciente sin nombre';
+                          const stage = (m.etapa || 'BUYER').toUpperCase();
+                          const matchedTag = m.matchedFieldsText || (m.matchedByType === 'both' ? 'Teléfono y Correo' : m.matchedByType === 'email' ? 'Correo' : m.matchedByType === 'dni' ? 'DNI' : 'Teléfono');
+                          
+                          let stageBadgeClass = 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200';
+                          if (stage === 'TURNED') stageBadgeClass = 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/80 dark:text-purple-300 dark:border-purple-800';
+                          else if (stage === 'LEAD') stageBadgeClass = 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/80 dark:text-blue-300 dark:border-blue-800';
+                          else if (stage === 'PAYER') stageBadgeClass = 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800';
+                          else if (stage === 'CUSTOMER') stageBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800';
+                          else if (stage === 'BUYER') stageBadgeClass = 'bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-950/80 dark:text-teal-300 dark:border-teal-800';
+
+                          return (
+                            <div 
+                              key={m.id || idx}
+                              className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-amber-200/90 dark:border-amber-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs shadow-2xs"
+                            >
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-slate-900 dark:text-white">
+                                    {fullName}
+                                  </span>
+                                  {m.id && (
+                                    <span className="text-[10px] font-mono text-slate-400">
+                                      ID: #{m.id}
+                                    </span>
+                                  )}
+                                  <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded border ${stageBadgeClass}`}>
+                                    Etapa: {stage}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-3 text-[11px] text-slate-600 dark:text-slate-400">
+                                  {m.phone && (
+                                    <span className="flex items-center gap-1">
+                                      <Phone className="h-3 w-3 text-slate-400" /> {m.phone}
+                                    </span>
+                                  )}
+                                  {m.email && (
+                                    <span className="flex items-center gap-1">
+                                      <Mail className="h-3 w-3 text-slate-400" /> {m.email}
+                                    </span>
+                                  )}
+                                  {m.documentNumber && (
+                                    <span className="font-mono text-[10.5px]">
+                                      DNI: {m.documentNumber}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="shrink-0 flex items-center gap-1.5 self-start sm:self-center">
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Duplicidad en:</span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800">
+                                  {matchedTag}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
