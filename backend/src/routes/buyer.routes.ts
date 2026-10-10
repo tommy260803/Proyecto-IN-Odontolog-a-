@@ -442,9 +442,10 @@ router.get('/', async (req, res) => {
       }
     });
 
-    // Precalcular frecuencias para identificar duplicados por teléfono (últimos 9 dígitos) o DNI
+    // Precalcular frecuencias para identificar duplicados por teléfono (últimos 9 dígitos), DNI o correo
     const phoneCounts = new Map<string, number>();
     const dniCounts = new Map<string, number>();
+    const emailCounts = new Map<string, number>();
     for (const p of personas) {
       const ph = (p.numero || '').replace(/\D/g, '').slice(-9);
       if (ph.length >= 8) {
@@ -454,22 +455,30 @@ router.get('/', async (req, res) => {
         const dn = p.dni.trim();
         dniCounts.set(dn, (dniCounts.get(dn) || 0) + 1);
       }
+      if (p.email && p.email.trim() && p.email.includes('@')) {
+        const em = p.email.trim().toLowerCase();
+        emailCounts.set(em, (emailCounts.get(em) || 0) + 1);
+      }
     }
 
     // Mapeamos a BuyerWithPerson
     const buyers = personas.map(p => {
       const ph = (p.numero || '').replace(/\D/g, '').slice(-9);
-      const isDuplicate = p.estado_calidad === 'Duplicado' || 
+      const em = p.email ? p.email.trim().toLowerCase() : '';
+      const hasDuplicate = 
         (ph.length >= 8 && (phoneCounts.get(ph) || 0) > 1) ||
-        (p.dni && (dniCounts.get(p.dni.trim()) || 0) > 1);
+        (p.dni && (dniCounts.get(p.dni.trim()) || 0) > 1) ||
+        (em && (emailCounts.get(em) || 0) > 1);
+
+      const isDuplicate = hasDuplicate || p.estado_calidad === 'Duplicado';
 
       let state = 'NEW';
       if (p.estado_calidad === 'Rechazado') {
         state = 'DISCARDED';
-      } else if (p.estado_calidad === 'Duplicado' || (isDuplicate && p.Etapa.nombre === 'BUYER')) {
-        state = 'DUPLICATED';
-      } else if (p.Etapa.nombre === 'LEAD' || p.Etapa.nombre === 'PAYER' || p.Etapa.nombre === 'CUSTOMER' || p.Etapa.nombre === 'TURNED') {
+      } else if (p.Etapa?.nombre === 'LEAD' || p.Etapa?.nombre === 'PAYER' || p.Etapa?.nombre === 'CUSTOMER' || p.Etapa?.nombre === 'TURNED') {
         state = 'CONVERTED';
+      } else if (p.estado_calidad === 'Duplicado' || (isDuplicate && p.Etapa?.nombre === 'BUYER')) {
+        state = 'DUPLICATED';
       }
 
       // Buscar fecha real de conversión a LEAD desde EventosEtapa
