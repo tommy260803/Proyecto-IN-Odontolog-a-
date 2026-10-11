@@ -27,7 +27,7 @@ import {
 import { leadService } from '../services/lead.service';
 import { configService } from '@/modules/config/services/config.service';
 import { useToast } from '@/shared/hooks/use-toast';
-import { generateFlyerTitleWithAI } from '@/shared/services/groqService';
+import { generateFlyerTitleWithAI, predictLeadNegotiationStrategy, type LeadNegotiationStrategy } from '@/shared/services/groqService';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { useQueryClient } from '@tanstack/react-query';
@@ -308,6 +308,11 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const [objectionCategory, setObjectionCategory] = useState<'PRECIO' | 'HORARIO' | 'SEDE'>('PRECIO');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+
+  // Estados para Actividad 1 del Agente Negociador: Recomendación Predictiva de Oferta (IA)
+  const [aiStrategy, setAiStrategy] = useState<LeadNegotiationStrategy | null>(null);
+  const [loadingStrategy, setLoadingStrategy] = useState(false);
+  const [copiedPitch, setCopiedPitch] = useState(false);
   const [generatingCanva, setGeneratingCanva] = useState(false);
   const [canvaResult, setCanvaResult] = useState<any>(null);
   const [flyerImageLoading, setFlyerImageLoading] = useState(false);
@@ -511,6 +516,48 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
       setAltFranja('Turno Mañana (08:00 AM – 01:00 PM)');
     }
   }, [lead, catalogs]);
+
+  // Actividad 1 del Agente Negociador: Predicción de Estrategia de Negociación y Matching
+  useEffect(() => {
+    if (!lead || !catalogs || !catalogs.servicios?.length) return;
+    setLoadingStrategy(true);
+    predictLeadNegotiationStrategy({ lead, catalogs })
+      .then((res) => {
+        setAiStrategy(res);
+      })
+      .catch((err) => console.warn('Error predicting lead strategy:', err))
+      .finally(() => setLoadingStrategy(false));
+  }, [lead, catalogs]);
+
+  const handleApplyAiStrategy = () => {
+    if (!aiStrategy) return;
+    setAltPrecio(aiStrategy.suggestedOfferedPrice.toFixed(2));
+    setAltVigencia(aiStrategy.suggestedVigencia);
+    if (aiStrategy.suggestedSedeId) {
+      setAltSedeId(aiStrategy.suggestedSedeId);
+    }
+    if (aiStrategy.suggestedFranjaTexto) {
+      setAltFranja(aiStrategy.suggestedFranjaTexto);
+    }
+    if (aiStrategy.suggestedConditions) {
+      setAltCondiciones(aiStrategy.suggestedConditions);
+    }
+    toast({
+      title: '¡Estrategia del Agente Negociador Aplicada!',
+      description: `Tarifa S/ ${aiStrategy.suggestedOfferedPrice.toFixed(2)} (${aiStrategy.suggestedDiscountPct}% OFF) y vigencia ${aiStrategy.suggestedVigencia} cargadas al formulario.`,
+    });
+  };
+
+  const handleCopyPitch = () => {
+    if (!aiStrategy?.persuasiveSalesPitch) return;
+    navigator.clipboard.writeText(aiStrategy.persuasiveSalesPitch);
+    setCopiedPitch(true);
+    toast({
+      title: 'Mensaje Copiado',
+      description: 'El argumento persuasivo de WhatsApp se copió al portapapeles.',
+    });
+    setTimeout(() => setCopiedPitch(false), 2500);
+  };
 
   // Auto-selección inteligente: Si hay opciones y no hay opción seleccionada, auto-seleccionar la primera (ejecutado incondicionalmente antes de returns tempranos)
   useEffect(() => {
@@ -1246,64 +1293,156 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
               {/* ══ COLUMNA DERECHA: Negociación (Scroll independiente) ══ */}
               <div className="p-5 space-y-5 overflow-y-auto h-full max-h-full no-scrollbar">
 
-                {/* ── Tarjeta de Inteligencia & Scoring Comercial (Estrategia Recomendada) ── */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-teal-50/90 via-white to-slate-50 dark:from-teal-950/40 dark:via-slate-900 dark:to-slate-950 border border-teal-200/90 dark:border-teal-800/80 shadow-sm relative overflow-hidden transition-all">
+                {/* ── Tarjeta de Inteligencia & Scoring Comercial: Agente Negociador (Actividad 1) ── */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-teal-50/90 via-white to-amber-50/40 dark:from-teal-950/40 dark:via-slate-900 dark:to-slate-950 border border-teal-200/90 dark:border-teal-800/80 shadow-sm relative overflow-hidden transition-all space-y-3.5">
                   <div className="relative z-10 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-100/80 dark:border-teal-900/60 pb-2.5">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300 border border-teal-200 dark:border-teal-400/30">
-                          <Zap className="h-3.5 w-3.5" />
-                        </span>
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-teal-900 dark:text-teal-200">
-                          Estrategia Comercial Recomendada & Matching
-                        </h4>
+                        <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-teal-600 text-white shadow-2xs">
+                          <Sparkles className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                              Agente Negociador · Recomendación Predictiva de Oferta
+                            </h4>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 dark:bg-teal-950/80 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800">
+                              Actividad 1 · IA / BI
+                            </span>
+                          </div>
+                          <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                            Estrategia de pricing, timing y persuasión basada en el perfil clínico y urgencia del prospecto.
+                          </p>
+                        </div>
                       </div>
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide bg-teal-100/80 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-300/60 dark:border-teal-800/80 shadow-2xs select-none">
-                        <Sparkles className="w-3 h-3 text-teal-600 dark:text-teal-300" />
-                        <span>Inteligencia BUYER → LEAD</span>
-                      </div>
+
+                      {/* Lead Scoring Badge */}
+                      {aiStrategy && (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100/90 text-amber-950 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700 shadow-2xs">
+                          <span>
+                            {aiStrategy.scoreLevel === 'HOT' ? '🔥' : aiStrategy.scoreLevel === 'WARM' ? '☀️' : '❄️'} Lead Score:
+                          </span>
+                          <span className="font-mono text-sm">{aiStrategy.leadScore}/100</span>
+                          <span className="text-[10px] uppercase font-bold tracking-wider opacity-85">({aiStrategy.scoreLevel})</span>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                      {/* Factor 1: Perfil del paciente */}
-                      <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 hover:border-teal-400/80 transition-colors space-y-1 shadow-2xs">
-                        <div className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300 font-bold text-[11px]">
-                          <GraduationCap className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
-                          <span>Perfil Universitario</span>
+                    {/* Grid de 3 Pilares Predictivos */}
+                    {aiStrategy ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                        {/* Pilar 1: Sensibilidad al Precio & Descuento Óptimo */}
+                        <div className="p-3 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 hover:border-teal-400/80 transition-colors space-y-1.5 shadow-2xs">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                            <span className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300">
+                              <DollarSign className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                              Sensibilidad Precio
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                              {aiStrategy.priceSensitivity}
+                            </span>
+                          </div>
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-bold text-teal-900 dark:text-teal-200">
+                              Sugerido: S/ {aiStrategy.suggestedOfferedPrice.toFixed(2)}
+                              <span className="text-[10.5px] font-normal text-slate-400 line-through ml-1.5">
+                                S/ {aiStrategy.originalPrice.toFixed(2)}
+                              </span>
+                            </p>
+                            <p className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                              Descuento óptimo: {aiStrategy.suggestedDiscountPct}% OFF
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
-                          {isStudent
-                            ? `Perfil universitario identificado (${datAcad?.universidad || 'Universidad'}).`
-                            : 'Tarifa regular sugerida.'}
-                        </p>
-                      </div>
 
-                      {/* Factor 2: Urgencia / Salud */}
-                      <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 hover:border-teal-400/80 transition-colors space-y-1 shadow-2xs">
-                        <div className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300 font-bold text-[11px]">
-                          <HeartPulse className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
-                          <span>Prioridad Clínica</span>
+                        {/* Pilar 2: Urgencia Clínica & Vigencia de la Oferta */}
+                        <div className="p-3 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 hover:border-teal-400/80 transition-colors space-y-1.5 shadow-2xs">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                            <span className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300">
+                              <HeartPulse className="h-3.5 w-3.5 text-rose-500" />
+                              Urgencia Clínica
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 truncate max-w-[90px]">
+                              {aiStrategy.urgencyLevel.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                              Vigencia sugerida: {aiStrategy.suggestedVigencia === '24h' ? '24 Horas (Flash)' : aiStrategy.suggestedVigencia === '48h' ? '48 Horas' : '72 Horas'}
+                            </p>
+                            <p className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight">
+                              {aiStrategy.urgencyLevel === 'CRÍTICA_DOLOR' ? 'Priorizar cita hoy mismo.' : 'Tratamiento planificado.'}
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
-                          {hasUrgentPain
-                            ? `Dolor ${saludOdonto?.nivel_dolor}. Priorizar turno cercano.`
-                            : 'Chequeo preventivo o estético estándar.'}
-                        </p>
-                      </div>
 
-                      {/* Factor 3: Preferencias */}
-                      <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 hover:border-teal-400/80 transition-colors space-y-1 shadow-2xs">
-                        <div className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300 font-bold text-[11px]">
-                          <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
-                          <span>Preferencias de Atención</span>
+                        {/* Pilar 3: Terna de Matching (Sede & Franja) */}
+                        <div className="p-3 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-slate-200/90 dark:border-teal-800/50 hover:border-teal-400/80 transition-colors space-y-1.5 shadow-2xs">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                            <span className="flex items-center gap-1.5 text-teal-700 dark:text-teal-300">
+                              <MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                              Sede & Franja
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300">
+                              MATCH
+                            </span>
+                          </div>
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                              {aiStrategy.suggestedSedeNombre}
+                            </p>
+                            <p className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate">
+                              {aiStrategy.suggestedFranjaTexto}
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
-                          {pref?.sede_preferida || pref?.profesional_preferido
-                            ? `Prefiere Sede ${pref?.sede_preferida || 'Indiferente'} / Esp. ${pref?.profesional_preferido || 'Indiferente'}.`
-                            : 'Sin restricciones de sede o especialista.'}
-                        </p>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-slate-50 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-teal-600" />
+                        <span>El Agente Negociador está analizando la mejor estrategia de oferta...</span>
+                      </div>
+                    )}
+
+                    {/* Argumento Persuasivo para WhatsApp & Botón de Aplicación con 1 Clic */}
+                    {aiStrategy && (
+                      <div className="p-3 rounded-xl bg-white/95 dark:bg-slate-900/95 border border-teal-200/80 dark:border-teal-800/60 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                            <MessageSquare className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                            Pitch Comercial Recomendado para WhatsApp:
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={handleCopyPitch}
+                              className="text-[10.5px] font-semibold text-teal-700 dark:text-teal-300 hover:text-teal-900 flex items-center gap-1 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 px-2.5 py-1 rounded-lg border border-teal-200 dark:border-teal-800 transition-colors cursor-pointer"
+                            >
+                              {copiedPitch ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+                              <span>{copiedPitch ? 'Copiado' : 'Copiar Pitch'}</span>
+                            </button>
+                            <Button
+                              type="button"
+                              onClick={handleApplyAiStrategy}
+                              className="h-7.5 px-3 rounded-lg text-[11px] font-bold bg-teal-600 hover:bg-teal-700 text-white shadow-2xs gap-1.5 cursor-pointer transition-all"
+                            >
+                              <Zap className="h-3 w-3 text-amber-300" />
+                              <span>Aplicar Recomendación a la Oferta</span>
+                            </Button>
+                          </div>
+                        </div>
+
+                        <p className="text-[11px] text-slate-700 dark:text-slate-300 italic bg-slate-50/80 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 leading-relaxed font-sans">
+                          "{aiStrategy.persuasiveSalesPitch}"
+                        </p>
+
+                        {aiStrategy.strategyReason && (
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                            💡 <strong>Criterio Comercial:</strong> {aiStrategy.strategyReason}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 

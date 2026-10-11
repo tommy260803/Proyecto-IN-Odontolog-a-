@@ -427,6 +427,10 @@ export interface BuyerMarketingAnalysis {
     intentReason: string;
     suggestedAction: 'CONVERT_TO_LEAD' | 'KEEP_IN_BUYER';
     marketingRecommendation: string;
+    urgencyLevel?: 'CRÍTICA_DOLOR' | 'URGENCIA_MODERADA' | 'ELECTIVA_ESTÉTICA' | 'PREVENTIVA';
+    ticketCategory?: 'TICKET_ALTO' | 'TICKET_MEDIO' | 'TICKET_ENTRADA';
+    leadScore?: number;
+    priceSensitivity?: 'BAJA' | 'MODERADA' | 'ALTA';
   };
 }
 
@@ -860,4 +864,250 @@ TU MISIÓN:
     return `¡Por supuesto! Puedes utilizar esta promoción para ti o para algún familiar. En el formulario tienes la opción de marcar "¿La cita es para un familiar?" e indicar su nombre para que preparemos su historia clínica con anticipación.`;
   }
   return `¡Hola ${ctx.patientName}! Con mucho gusto te asesoro. Tu propuesta para ${ctx.serviceName} a S/ ${ctx.offeredPrice.toFixed(2)} está reservada para ti en nuestra sede. Puedes asegurar tu turno llenando los datos del formulario aquí a la derecha y te esperamos con el ${ctx.doctor || 'especialista'}. ¿Tienes alguna otra duda o consulta?`;
+}
+
+// ── 7. Agente Negociador (Fase LEAD): Actividad - Recomendación Predictiva de Oferta ──
+export interface LeadNegotiationStrategy {
+  leadScore: number;
+  scoreLevel: 'HOT' | 'WARM' | 'COLD';
+  urgencyLevel: 'CRÍTICA_DOLOR' | 'URGENCIA_MODERADA' | 'ELECTIVA_ESTÉTICA' | 'PREVENTIVA';
+  ticketCategory: 'TICKET_ALTO' | 'TICKET_MEDIO' | 'TICKET_ENTRADA';
+  priceSensitivity: 'BAJA' | 'MODERADA' | 'ALTA';
+  
+  // Parámetros comerciales para auto-completar la alternativa
+  suggestedDiscountPct: number;
+  suggestedOfferedPrice: number;
+  originalPrice: number;
+  suggestedVigencia: '24h' | '48h' | '72h' | '7d';
+  suggestedSedeId?: string;
+  suggestedSedeNombre?: string;
+  suggestedFranjaTexto?: string;
+  suggestedConditions: string;
+  
+  // Justificación analítica & Pitch persuasivo
+  strategyReason: string;
+  persuasiveSalesPitch: string;
+}
+
+export async function predictLeadNegotiationStrategy(params: {
+  lead: any;
+  catalogs: any;
+}): Promise<LeadNegotiationStrategy> {
+  const { lead, catalogs } = params;
+  if (!lead) {
+    return {
+      leadScore: 65,
+      scoreLevel: 'WARM',
+      urgencyLevel: 'PREVENTIVA',
+      ticketCategory: 'TICKET_MEDIO',
+      priceSensitivity: 'MODERADA',
+      suggestedDiscountPct: 15,
+      suggestedOfferedPrice: 150,
+      originalPrice: 180,
+      suggestedVigencia: '48h',
+      suggestedConditions: 'Garantía clínica y cupo reservado por 48 horas.',
+      strategyReason: 'Tarifa comercial estándar con descuento preventivo sugerido.',
+      persuasiveSalesPitch: 'Hola, te saludamos de NexoSalud Dental. Tenemos una propuesta especial para tu atención odontológica.'
+    };
+  }
+
+  const patientName = `${lead.nombres || lead.person?.firstName || ''} ${lead.apellidos || lead.person?.lastName || ''}`.trim() || 'estimado paciente';
+  const firstName = lead.nombres || lead.person?.firstName || 'paciente';
+  
+  // Servicio y Solicitud
+  const sol = lead.Solicitudes?.[0] || {};
+  const reqServicio = sol.Servicio?.nombre || lead.serviceOfInterest || 'Consulta Odontológica General';
+  const reqMotivo = (sol.motivo || lead.concreteRequest || '').toLowerCase();
+  
+  // Salud Odontológica
+  const salud = lead.SaludOdontologica?.[0] || lead.saludOdontologica || {};
+  const dolor = (salud.nivel_dolor || '').toLowerCase();
+  const sangrado = Boolean(salud.sangrado_o_inflamacion && salud.sangrado_o_inflamacion !== 'No');
+  const sensibilidad = Boolean(salud.presenta_sensibilidad && salud.presenta_sensibilidad !== 'No');
+  
+  // Precios del Catálogo
+  const foundServicio = catalogs?.servicios?.find((s: any) =>
+    s.id_servicio === sol.id_servicio ||
+    (s.nombre && reqServicio && s.nombre.toLowerCase().includes(reqServicio.toLowerCase()))
+  );
+  const officialPrice = Number(foundServicio?.Tarifas?.[0]?.precio || 180);
+
+  // 1. Detección de Urgencia Clínica
+  const hasUrgentKeywords = reqMotivo.includes('dolor') || reqMotivo.includes('urgenc') || reqMotivo.includes('muela') || reqMotivo.includes('hinch') || reqMotivo.includes('emergenc') || reqMotivo.includes('infecc');
+  const hasPain = dolor.includes('alto') || dolor.includes('severo') || dolor.includes('fuerte') || dolor.includes('moderado') || hasUrgentKeywords;
+
+  let urgencyLevel: 'CRÍTICA_DOLOR' | 'URGENCIA_MODERADA' | 'ELECTIVA_ESTÉTICA' | 'PREVENTIVA' = 'PREVENTIVA';
+  if (hasPain || dolor.includes('alto') || dolor.includes('severo')) {
+    urgencyLevel = 'CRÍTICA_DOLOR';
+  } else if (sangrado || sensibilidad || dolor.includes('leve')) {
+    urgencyLevel = 'URGENCIA_MODERADA';
+  } else if (reqServicio.toLowerCase().includes('blanquea') || reqServicio.toLowerCase().includes('estét') || reqServicio.toLowerCase().includes('diseño') || reqServicio.toLowerCase().includes('carilla')) {
+    urgencyLevel = 'ELECTIVA_ESTÉTICA';
+  }
+
+  // 2. Clasificación de Ticket
+  const sLower = reqServicio.toLowerCase();
+  let ticketCategory: 'TICKET_ALTO' | 'TICKET_MEDIO' | 'TICKET_ENTRADA' = 'TICKET_ENTRADA';
+  if (sLower.includes('implante') || sLower.includes('ortodoncia') || sLower.includes('bracket') || sLower.includes('alineador') || sLower.includes('rehabilit') || sLower.includes('prótesis') || sLower.includes('corona') || officialPrice >= 600) {
+    ticketCategory = 'TICKET_ALTO';
+  } else if (sLower.includes('blanquea') || sLower.includes('endodoncia') || sLower.includes('periodoncia') || officialPrice >= 200) {
+    ticketCategory = 'TICKET_MEDIO';
+  }
+
+  // 3. Sensibilidad al Precio & Descuento Sugerido
+  let priceSensitivity: 'BAJA' | 'MODERADA' | 'ALTA' = 'MODERADA';
+  let suggestedDiscountPct = 15;
+  let suggestedVigencia: '24h' | '48h' | '72h' | '7d' = '48h';
+  let leadScore = 75;
+  let scoreLevel: 'HOT' | 'WARM' | 'COLD' = 'WARM';
+  let strategyReason = '';
+
+  if (urgencyLevel === 'CRÍTICA_DOLOR') {
+    // Paciente con dolor: Valora la inmediatez de alivio, NO el regateo
+    priceSensitivity = 'BAJA';
+    suggestedDiscountPct = 5; // Descuento de cortesía
+    suggestedVigencia = '24h';
+    leadScore = 95;
+    scoreLevel = 'HOT';
+    strategyReason = 'Prioridad de Emergencia Clínica. El paciente busca alivio inmediato hoy mismo; no requiere quemar margen comercial con descuentos altos. Asignar turno express.';
+  } else if (ticketCategory === 'TICKET_ALTO') {
+    // Ticket alto (Implantes / Ortodoncia): Decisión evaluada, valora cuotas y tecnología
+    priceSensitivity = 'MODERADA';
+    suggestedDiscountPct = 12;
+    suggestedVigencia = '72h';
+    leadScore = 84;
+    scoreLevel = 'WARM';
+    strategyReason = 'Procedimiento de alta inversión. Se sugiere evaluación 3D digital incluida y propuesta en cuotas para acelerar la toma de decisión sin comprometer rentabilidad.';
+  } else if (urgencyLevel === 'ELECTIVA_ESTÉTICA') {
+    // Estética (Blanqueamiento, Carillas): Decisión motivacional / sensible a ofertas
+    priceSensitivity = 'MODERADA';
+    suggestedDiscountPct = 18;
+    suggestedVigencia = '48h';
+    leadScore = 80;
+    scoreLevel = 'WARM';
+    strategyReason = 'Tratamiento estético electivo. Descuento promocional del 18% con vigencia de 48 horas como gatillo psicológico de escasez para cierre rápido.';
+  } else {
+    // Entrada / Preventivo (Limpieza, Curaciones)
+    priceSensitivity = 'ALTA';
+    suggestedDiscountPct = 20;
+    suggestedVigencia = '48h';
+    leadScore = 72;
+    scoreLevel = 'WARM';
+    strategyReason = 'Servicio de entrada. Descuento de captación del 20% para fidelizar al paciente y abrir oportunidad de tratamientos integrales posteriores.';
+  }
+
+  // Calcular precio con descuento
+  const suggestedOfferedPrice = Math.round(officialPrice * (1 - suggestedDiscountPct / 100));
+
+  // Sede sugerida
+  const prefSede = lead.Preferencias?.[0]?.sede_preferida;
+  let suggestedSedeId: string | undefined = undefined;
+  let suggestedSedeNombre: string = 'Sede California';
+  if (prefSede && catalogs?.sedes) {
+    const sMatch = catalogs.sedes.find((s: any) =>
+      s.nombre?.toLowerCase().includes(prefSede.toLowerCase()) ||
+      prefSede.toLowerCase().includes(s.nombre?.toLowerCase())
+    );
+    if (sMatch) {
+      suggestedSedeId = sMatch.id_sede?.toString();
+      suggestedSedeNombre = sMatch.nombre;
+    }
+  }
+
+  // Franja sugerida
+  let suggestedFranjaTexto = 'Turno Tarde (01:00 PM – 06:00 PM)';
+  if (urgencyLevel === 'CRÍTICA_DOLOR') {
+    suggestedFranjaTexto = 'Turno Prioritario Express (Hoy mismo)';
+  } else if (reqMotivo.includes('noche') || reqMotivo.includes('18:00')) {
+    suggestedFranjaTexto = 'Turno Noche (06:00 PM – 09:00 PM)';
+  } else if (reqMotivo.includes('mañana') || reqMotivo.includes('08:00')) {
+    suggestedFranjaTexto = 'Turno Mañana (08:00 AM – 01:00 PM)';
+  }
+
+  // Condiciones sugeridas
+  let suggestedConditions = 'Garantía clínica y cupo reservado por 48 horas.';
+  if (urgencyLevel === 'CRÍTICA_DOLOR') {
+    suggestedConditions = 'Atención prioritaria de alivio inmediato con cupo reservado hoy.';
+  } else if (ticketCategory === 'TICKET_ALTO') {
+    suggestedConditions = 'Diagnóstico digital 3D incluido y facilidades de pago en cuotas.';
+  }
+
+  // Pitch Comercial Persuasivo Heurístico Base
+  let persuasiveSalesPitch = '';
+  if (urgencyLevel === 'CRÍTICA_DOLOR') {
+    persuasiveSalesPitch = `¡Hola ${firstName}! 👋 Te saludamos de NexoSalud Dental. Notamos que presentas molestias. Hemos reservado un cupo de urgencia hoy mismo en nuestra ${suggestedSedeNombre} para evaluarte y aliviar el dolor con tecnología indolora. Tarifa especial de S/ ${suggestedOfferedPrice}.00. ¿Confirmamos tu horario para hoy? 🦷✨`;
+  } else if (ticketCategory === 'TICKET_ALTO') {
+    persuasiveSalesPitch = `¡Hola ${firstName}! 👋 En NexoSalud Dental preparamos una propuesta exclusiva para tu tratamiento de ${reqServicio}: Tarifa promocional de S/ ${suggestedOfferedPrice}.00 (Ahorras ${suggestedDiscountPct}%) con escaneo 3D incluido y opción en cuotas. Cupos disponibles esta semana en ${suggestedSedeNombre}. ¿Te gustaría conocer los horarios disponibles? 😊`;
+  } else {
+    persuasiveSalesPitch = `¡Hola ${firstName}! 👋 En NexoSalud Dental tenemos una promoción exclusiva para tu atención de ${reqServicio}: Tarifa especial de S/ ${suggestedOfferedPrice}.00 (precio regular S/ ${officialPrice.toFixed(2)}) válida por ${suggestedVigencia}. ¿Qué horario te acomoda mejor para agendar tu evaluación? ✨`;
+  }
+
+  // Enriquecimiento con Groq AI si la API Key está activa
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  if (apiKey && apiKey !== 'tu_groq_api_key_aqui') {
+    try {
+      const prompt = `Actúa como el Agente Negociador de la clínica odontológica NexoSalud Dental.
+Genera una estrategia de negociación personalizada y persuasiva:
+- Paciente: ${patientName}
+- Tratamiento: ${reqServicio} (Precio oficial: S/ ${officialPrice})
+- Motivo o Duda del paciente: "${reqMotivo || 'Consulta general'}"
+- Nivel de dolor: ${dolor || 'No reportado'}
+- Sede: ${suggestedSedeNombre}
+- Descuento recomendado: ${suggestedDiscountPct}% (Precio ofrecido: S/ ${suggestedOfferedPrice})
+- Vigencia: ${suggestedVigencia}
+
+Responde ÚNICAMENTE un JSON con:
+{
+  "strategyReason": "Justificación concisa en 1 o 2 oraciones para el asesor de ventas sobre por qué esta oferta es ideal",
+  "persuasiveSalesPitch": "Mensaje de WhatsApp cálido, empático, profesional y persuasivo listo para enviar (máximo 4 líneas con emojis)"
+}`;
+
+      const res = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: GROQ_MODELS[0],
+          messages: [
+            { role: 'system', content: 'Eres el Agente Negociador de NexoSalud Dental. Especialista en psicología de ventas y persuasión médica odontológica.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 300,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content?.replace(/```json/gi, '')?.replace(/```/g, '')?.trim();
+        if (content) {
+          const parsed = JSON.parse(content);
+          if (parsed.strategyReason) strategyReason = parsed.strategyReason;
+          if (parsed.persuasiveSalesPitch) persuasiveSalesPitch = parsed.persuasiveSalesPitch;
+        }
+      }
+    } catch {
+      // Mantiene el fallback heurístico
+    }
+  }
+
+  return {
+    leadScore,
+    scoreLevel,
+    urgencyLevel,
+    ticketCategory,
+    priceSensitivity,
+    suggestedDiscountPct,
+    suggestedOfferedPrice,
+    originalPrice: officialPrice,
+    suggestedVigencia,
+    suggestedSedeId,
+    suggestedSedeNombre,
+    suggestedFranjaTexto,
+    suggestedConditions,
+    strategyReason,
+    persuasiveSalesPitch
+  };
 }
