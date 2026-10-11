@@ -874,6 +874,14 @@ export interface LeadNegotiationStrategy {
   ticketCategory: 'TICKET_ALTO' | 'TICKET_MEDIO' | 'TICKET_ENTRADA';
   priceSensitivity: 'BAJA' | 'MODERADA' | 'ALTA';
   
+  // Preferencias operativas y comerciales para la negociación
+  preferredChannel: string;
+  paymentPreference: string;
+  decisionDriver: string;
+  agendaFlexibility: string;
+  crossSellingOpenness: string;
+  primaryBarrier: string;
+
   // Parámetros comerciales para auto-completar la alternativa
   suggestedDiscountPct: number;
   suggestedOfferedPrice: number;
@@ -901,6 +909,12 @@ export async function predictLeadNegotiationStrategy(params: {
       urgencyLevel: 'PREVENTIVA',
       ticketCategory: 'TICKET_MEDIO',
       priceSensitivity: 'MODERADA',
+      preferredChannel: 'WhatsApp (Mensajería rápida)',
+      paymentPreference: 'Pago al contado con descuento',
+      decisionDriver: 'Calidad y precio justo',
+      agendaFlexibility: 'Horario vespertino (Disponibilidad laboral condicionada)',
+      crossSellingOpenness: 'Receptivo a profilaxis previa o radiografía de diagnóstico',
+      primaryBarrier: 'Comparación de tarifas y tiempo de tratamiento',
       suggestedDiscountPct: 15,
       suggestedOfferedPrice: 150,
       originalPrice: 180,
@@ -1042,6 +1056,49 @@ export async function predictLeadNegotiationStrategy(params: {
     persuasiveSalesPitch = `¡Hola ${firstName}! 👋 En NexoSalud Dental tenemos una promoción exclusiva para tu atención de ${reqServicio}: Tarifa especial de S/ ${suggestedOfferedPrice}.00 (precio regular S/ ${officialPrice.toFixed(2)}) válida por ${suggestedVigencia}. ¿Qué horario te acomoda mejor para agendar tu evaluación? ✨`;
   }
 
+  // 4. Inferencia de Preferencias Operativas y Comerciales para la Negociación
+  const hasPhone = Boolean(lead.numero || lead.person?.phone);
+  const preferredChannel = hasPhone
+    ? 'WhatsApp (Mensajería rápida)'
+    : 'Correo electrónico institucional';
+
+  let paymentPreference = 'Pago al contado con descuento';
+  let decisionDriver = 'Calidad y precio justo';
+  let primaryBarrier = 'Comparación de presupuestos con otras clínicas';
+  let crossSellingOpenness = 'Receptivo a profilaxis previa o radiografía';
+
+  if (urgencyLevel === 'CRÍTICA_DOLOR') {
+    paymentPreference = 'Pago directo por sesión de alivio inmediato';
+    decisionDriver = 'Atención el mismo día y eliminación del dolor';
+    primaryBarrier = 'Miedo al procedimiento y tiempo de espera en sala';
+    crossSellingOpenness = 'Enfocado estrictamente en la urgencia puntual';
+  } else if (ticketCategory === 'TICKET_ALTO') {
+    paymentPreference = 'Fraccionamiento en cuotas / Inicial accesible';
+    decisionDriver = 'Garantía clínica, durabilidad de implantes y confianza médica';
+    primaryBarrier = 'Inversión total y temor al procedimiento quirúrgico';
+    crossSellingOpenness = 'Receptivo a paquete integral (Tomografía 3D + Limpieza previa)';
+  } else if (urgencyLevel === 'ELECTIVA_ESTÉTICA') {
+    paymentPreference = 'Cuotas con tarjeta de crédito sin intereses';
+    decisionDriver = 'Estética de sonrisa y rapidez en ver resultados visibles';
+    primaryBarrier = 'Sensibilidad dental post-tratamiento y duración de resultados';
+    crossSellingOpenness = 'Receptivo a aclaramiento + profilaxis premium';
+  } else {
+    paymentPreference = 'Pago contado con descuento promocional';
+    decisionDriver = 'Precio accesible y diagnóstico preventivo claro';
+    primaryBarrier = 'Sensibilidad al costo y postergación de la cita';
+    crossSellingOpenness = 'Receptivo a paquete familiar o limpieza dental profunda';
+  }
+
+  // Flexibilidad de agenda inferida
+  const prefHorario = lead.Preferencias?.[0]?.Horario;
+  let agendaFlexibility = 'Horario vespertino (Disponibilidad laboral condicionada)';
+  if (prefHorario) {
+    const diaNombre = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][prefHorario.dia_semana] || 'Día fijado';
+    agendaFlexibility = `${diaNombre} fijo (Preferencia estricta por horario elegido)`;
+  } else if (reqMotivo.includes('flexible')) {
+    agendaFlexibility = 'Flexible ante disponibilidad de la sede';
+  }
+
   // Enriquecimiento con Groq AI si la API Key está activa
   const apiKey = import.meta.env.VITE_GROQ_API_KEY;
   if (apiKey && apiKey !== 'tu_groq_api_key_aqui') {
@@ -1099,6 +1156,12 @@ Responde ÚNICAMENTE un JSON con:
     urgencyLevel,
     ticketCategory,
     priceSensitivity,
+    preferredChannel,
+    paymentPreference,
+    decisionDriver,
+    agendaFlexibility,
+    crossSellingOpenness,
+    primaryBarrier,
     suggestedDiscountPct,
     suggestedOfferedPrice,
     originalPrice: officialPrice,

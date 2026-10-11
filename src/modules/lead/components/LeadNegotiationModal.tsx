@@ -61,6 +61,10 @@ import {
   Flame,
   Sun,
   Snowflake,
+  CreditCard,
+  Target,
+  ShieldAlert,
+  Layers,
   ChevronDown,
   ChevronRight,
   Building2,
@@ -1228,24 +1232,85 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                 {/* 2. Gustos y preferencias — acordeón */}
                 <AccordionSection
                   title="Gustos y Preferencias"
-                  subtitle="Condiciones preferidas para comunicación y acuerdos"
-                  icon={<Settings2 className="h-3.5 w-3.5" />}
+                  subtitle="Condiciones preferidas y variables clave para la negociación"
+                  icon={<Settings2 className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />}
                   defaultOpen={true}
                 >
-                  {!pref ? (
-                    <p className="text-xs text-slate-400 dark:text-slate-500 italic">Sin preferencias registradas</p>
-                  ) : (
-                    <>
-                      {pref.Horario && (
+                  <div className="space-y-3">
+                    {/* Preferencias de Sede y Horario recolectadas */}
+                    <div className="space-y-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+                      {pref?.sede_preferida ? (
+                        <DataRow
+                          label="Sede preferida"
+                          icon={<MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />}
+                          value={pref.sede_preferida}
+                        />
+                      ) : aiStrategy?.suggestedSedeNombre ? (
+                        <DataRow
+                          label="Sede preferida sugerida"
+                          icon={<MapPin className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />}
+                          value={aiStrategy.suggestedSedeNombre}
+                        />
+                      ) : null}
+
+                      {pref?.Horario ? (
                         <DataRow
                           label="Horario preferido"
-                          icon={<Clock className="h-3.5 w-3.5" />}
+                          icon={<Clock className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />}
                           value={`${['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][pref.Horario.dia_semana] || `Día ${pref.Horario.dia_semana}`} (${String(pref.Horario.hora_inicio).substring(11, 16)} – ${String(pref.Horario.hora_fin).substring(11, 16)})`}
                         />
-                      )}
-                      {pref.sede_preferida && <DataRow label="Sede preferida" icon={<MapPin className="h-3.5 w-3.5" />} value={pref.sede_preferida} />}
-                    </>
-                  )}
+                      ) : aiStrategy?.suggestedFranjaTexto ? (
+                        <DataRow
+                          label="Horario preferido estimado"
+                          icon={<Clock className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />}
+                          value={aiStrategy.suggestedFranjaTexto}
+                        />
+                      ) : null}
+                    </div>
+
+                    {/* Patrones y Preferencias Determinantes para la Negociación Comercial */}
+                    {aiStrategy ? (
+                      <div className="space-y-2.5">
+                        <DataRow
+                          label="Canal prioritario de contacto"
+                          icon={<MessageSquare className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />}
+                          value={aiStrategy.preferredChannel}
+                        />
+
+                        <DataRow
+                          label="Modalidad de pago esperada"
+                          icon={<CreditCard className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />}
+                          value={aiStrategy.paymentPreference}
+                        />
+
+                        <DataRow
+                          label="Factor clave de decisión"
+                          icon={<Target className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />}
+                          value={aiStrategy.decisionDriver}
+                        />
+
+                        <DataRow
+                          label="Disposición a servicios complementarios"
+                          icon={<Layers className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />}
+                          value={aiStrategy.crossSellingOpenness}
+                        />
+
+                        <DataRow
+                          label="Freno / Barrera principal a mitigar"
+                          icon={<ShieldAlert className="h-3.5 w-3.5 text-rose-500" />}
+                          value={aiStrategy.primaryBarrier}
+                        />
+
+                        <DataRow
+                          label="Flexibilidad de agenda"
+                          icon={<Clock className="h-3.5 w-3.5 text-slate-500" />}
+                          value={aiStrategy.agendaFlexibility}
+                        />
+                      </div>
+                    ) : !pref && (
+                      <p className="text-xs text-slate-400 dark:text-slate-500 italic">Analizando preferencias del prospecto...</p>
+                    )}
+                  </div>
                 </AccordionSection>
 
                 {/* 3. Salud Odontológica — acordeón */}
