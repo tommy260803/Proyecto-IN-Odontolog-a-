@@ -58,6 +58,9 @@ import {
   TrendingDown,
   Award,
   Copy,
+  Flame,
+  Sun,
+  Snowflake,
   ChevronDown,
   ChevronRight,
   Building2,
@@ -1319,12 +1322,39 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
                       {/* Lead Scoring Badge */}
                       {aiStrategy && (
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100/90 text-amber-950 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700 shadow-2xs">
-                          <span>
-                            {aiStrategy.scoreLevel === 'HOT' ? '🔥' : aiStrategy.scoreLevel === 'WARM' ? '☀️' : '❄️'} Lead Score:
+                        <div
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-2xs transition-all ${
+                            aiStrategy.scoreLevel === 'HOT'
+                              ? 'bg-rose-50 text-rose-950 dark:bg-rose-950/70 dark:text-rose-200 border-rose-300 dark:border-rose-800'
+                              : aiStrategy.scoreLevel === 'WARM'
+                              ? 'bg-amber-50 text-amber-950 dark:bg-amber-950/70 dark:text-amber-200 border-amber-300 dark:border-amber-800'
+                              : 'bg-sky-50 text-sky-950 dark:bg-sky-950/70 dark:text-sky-200 border-sky-300 dark:border-sky-800'
+                          }`}
+                        >
+                          {aiStrategy.scoreLevel === 'HOT' ? (
+                            <Flame className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 fill-rose-500/20 shrink-0" />
+                          ) : aiStrategy.scoreLevel === 'WARM' ? (
+                            <Sun className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 fill-amber-500/20 shrink-0" />
+                          ) : (
+                            <Snowflake className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                          )}
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">Lead Score:</span>
+                          <span className="font-mono font-bold text-sm">{aiStrategy.leadScore}/100</span>
+                          <span
+                            className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${
+                              aiStrategy.scoreLevel === 'HOT'
+                                ? 'bg-rose-100/90 text-rose-800 border-rose-200 dark:bg-rose-900/60 dark:text-rose-200 dark:border-rose-800'
+                                : aiStrategy.scoreLevel === 'WARM'
+                                ? 'bg-amber-100/90 text-amber-800 border-amber-200 dark:bg-amber-900/60 dark:text-amber-200 dark:border-amber-800'
+                                : 'bg-sky-100/90 text-sky-800 border-sky-200 dark:bg-sky-900/60 dark:text-sky-200 dark:border-sky-800'
+                            }`}
+                          >
+                            {aiStrategy.scoreLevel === 'HOT'
+                              ? 'Caliente'
+                              : aiStrategy.scoreLevel === 'WARM'
+                              ? 'Tibio'
+                              : 'Frío'}
                           </span>
-                          <span className="font-mono text-sm">{aiStrategy.leadScore}/100</span>
-                          <span className="text-[10px] uppercase font-bold tracking-wider opacity-85">({aiStrategy.scoreLevel})</span>
                         </div>
                       )}
                     </div>
