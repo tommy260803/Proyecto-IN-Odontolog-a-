@@ -304,12 +304,12 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
   const [deletingOptionTarget, setDeletingOptionTarget] = useState<any | null>(null);
   const [isDeletingOption, setIsDeletingOption] = useState(false);
 
-  // Estados para Copiloto de Objeciones y Seguimiento WhatsApp (Actividades 3 y 4)
+  // Estados para Copiloto de Objeciones y Seguimiento WhatsApp
   const [objectionCategory, setObjectionCategory] = useState<'PRECIO' | 'HORARIO' | 'SEDE'>('PRECIO');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
 
-  // Estados para Actividad 1 del Agente Negociador: Recomendación Predictiva de Oferta (IA)
+  // Estados para Recomendación Predictiva de Oferta (IA)
   const [aiStrategy, setAiStrategy] = useState<LeadNegotiationStrategy | null>(null);
   const [loadingStrategy, setLoadingStrategy] = useState(false);
   const [copiedPitch, setCopiedPitch] = useState(false);
@@ -517,7 +517,7 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
     }
   }, [lead, catalogs]);
 
-  // Actividad 1 del Agente Negociador: Predicción de Estrategia de Negociación y Matching
+  // Predicción de Estrategia de Negociación y Matching (IA)
   useEffect(() => {
     if (!lead || !catalogs || !catalogs.servicios?.length) return;
     setLoadingStrategy(true);
@@ -1293,25 +1293,26 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
               {/* ══ COLUMNA DERECHA: Negociación (Scroll independiente) ══ */}
               <div className="p-5 space-y-5 overflow-y-auto h-full max-h-full no-scrollbar">
 
-                {/* ── Tarjeta de Inteligencia & Scoring Comercial: Agente Negociador (Actividad 1) ── */}
+                {/* ── 1. Recomendación Predictiva de Oferta (IA / BI) ── */}
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-teal-50/90 via-white to-amber-50/40 dark:from-teal-950/40 dark:via-slate-900 dark:to-slate-950 border border-teal-200/90 dark:border-teal-800/80 shadow-sm relative overflow-hidden transition-all space-y-3.5">
                   <div className="relative z-10 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-100/80 dark:border-teal-900/60 pb-2.5">
                       <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-teal-600 text-white shadow-2xs">
-                          <Sparkles className="h-4 w-4" />
-                        </div>
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">
+                          1
+                        </span>
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                              Agente Negociador · Recomendación Predictiva de Oferta
-                            </h4>
-                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 dark:bg-teal-950/80 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800">
-                              Actividad 1 · IA / BI
+                            <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              Recomendación Predictiva de Oferta
+                            </h3>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 dark:bg-teal-950/80 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800 flex items-center gap-1">
+                              <Sparkles className="w-2.5 h-2.5 text-teal-600 dark:text-teal-400" />
+                              IA / BI
                             </span>
                           </div>
                           <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                            Estrategia de pricing, timing y persuasión basada en el perfil clínico y urgencia del prospecto.
+                            Estrategia de pricing, timing y persuasión predictiva según perfil clínico y urgencia.
                           </p>
                         </div>
                       </div>
@@ -1470,11 +1471,11 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                   </div>
                 )}
 
-                {/* 1. Diseñar oferta comercial / promoción */}
+                {/* 2. Diseñar oferta comercial / promoción */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">1</span>
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">2</span>
                       Diseñar Oferta Comercial / Promoción
                     </h3>
                     <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/60 flex items-center gap-1">
@@ -1937,10 +1938,10 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                   </div>
                 </div>
 
-                {/* 2. Tablero de ofertas comerciales activas */}
+                {/* 3. Tablero de ofertas comerciales activas */}
                 <div>
                   <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">2</span>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">3</span>
                     Ofertas Comerciales sobre la Mesa (Selecciona una para enviar o cerrar trato)
                   </h3>
 
@@ -2062,12 +2063,12 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                   )}
                 </div>
 
-                {/* ── 3. Envío de Oferta Omnicanal & Generador Gráfico Canva (Actividad 3) ── */}
+                {/* ── 4. Envío de Oferta Omnicanal & Generador Gráfico Canva ── */}
                 <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-purple-200/80 dark:border-purple-900/60 space-y-3.5">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-purple-100 dark:border-purple-900/60 pb-2.5">
                     <div className="flex items-center gap-2">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[10px] font-bold">
-                        3
+                        4
                       </span>
                       <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                         Envío de Oferta Omnicanal & Generador Canva
@@ -2307,12 +2308,12 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                   </div>
                 </div>
 
-                {/* ── 4. Copiloto de Detección y Apoyo ante Objeciones (Actividad 4) ── */}
+                {/* ── 5. Copiloto de Detección y Apoyo ante Objeciones ── */}
                 <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 space-y-3.5">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/80 pb-2.5">
                     <div className="flex items-center gap-2">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white text-[10px] font-bold">
-                        4
+                        5
                       </span>
                       <h3 className="text-xs font-bold text-slate-900 dark:text-white">
                         Copiloto de Apoyo ante Objeciones
@@ -2440,13 +2441,13 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                   )}
                 </div>
 
-                {/* ── 5. Preparación y Resumen del Paso a PAYER (Actividad 5) ── */}
+                {/* ── 6. Preparación y Resumen del Paso a PAYER ── */}
                 {selectedOptData && (
                   <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-50/90 to-emerald-50/80 dark:from-teal-950/40 dark:to-emerald-950/30 border border-teal-200/90 dark:border-teal-800/80 shadow-sm space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
                     <div className="flex items-center justify-between border-b border-teal-100 dark:border-teal-900/60 pb-2">
                       <div className="flex items-center gap-2">
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-bold">
-                          5
+                          6
                         </span>
                         <h4 className="text-xs font-bold text-teal-950 dark:text-teal-200 uppercase tracking-wider">
                           Resumen del Trato Comercial (Paso a PAYER)

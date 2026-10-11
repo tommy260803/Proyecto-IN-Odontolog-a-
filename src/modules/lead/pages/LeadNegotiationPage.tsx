@@ -145,7 +145,7 @@ export default function LeadNegotiationPage() {
   const [deletingOptionTarget, setDeletingOptionTarget] = useState<any | null>(null);
   const [isDeletingOption, setIsDeletingOption] = useState(false);
 
-  // Estados para Copiloto de Objeciones y Seguimiento WhatsApp (Actividades 3 y 4)
+  // Estados para Copiloto de Objeciones y Seguimiento WhatsApp
   const [objectionCategory, setObjectionCategory] = useState<'PRECIO' | 'HORARIO' | 'SEDE'>('PRECIO');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
   const [generatingCanva, setGeneratingCanva] = useState(false);
@@ -1268,7 +1268,7 @@ export default function LeadNegotiationPage() {
               )}
             </section>
 
-            {/* ── 3. Envío de Oferta Omnicanal & Generador Gráfico Canva (Actividad 3) ── */}
+            {/* ── 3. Envío de Oferta Omnicanal & Generador Gráfico Canva ── */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-purple-200/80 dark:border-purple-900/60 space-y-3.5">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-purple-100 dark:border-purple-900/60 pb-2.5">
                 <div className="flex items-center gap-2">
@@ -1495,7 +1495,7 @@ export default function LeadNegotiationPage() {
               </div>
             </div>
 
-            {/* ── 4. Copiloto de Detección y Apoyo ante Objeciones (Actividad 4) ── */}
+            {/* ── 4. Copiloto de Detección y Apoyo ante Objeciones ── */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 space-y-3.5">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/80 pb-2.5">
                 <div className="flex items-center gap-2">
@@ -1619,7 +1619,7 @@ export default function LeadNegotiationPage() {
               )}
             </div>
 
-            {/* ── 5. Preparación y Resumen del Paso a PAYER (Actividad 5) ── */}
+            {/* ── 5. Preparación y Resumen del Paso a PAYER ── */}
             {selectedOptData && (
               <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-50/90 to-emerald-50/80 dark:from-teal-950/40 dark:to-emerald-950/30 border border-teal-200/90 dark:border-teal-800/80 shadow-sm space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
                 <div className="flex items-center justify-between border-b border-teal-100 dark:border-teal-900/60 pb-2">
