@@ -16,7 +16,7 @@ export interface ExecutiveReportCategory {
 }
 
 export interface ExecutiveReportData {
-  stage: 'BUYER' | 'LEAD' | 'PAYER' | 'CUSTOMER';
+  stage: 'BUYER' | 'LEAD' | 'PAYER' | 'CUSTOMER' | 'TURNED';
   reportTitle: string;
   period: string;
   metric: string;
@@ -31,6 +31,93 @@ export interface ExecutiveReportData {
   isCurrency: boolean;
   generatedAt: string;
   sourceMart: string;
+  /** Código del período consultado: 'all' o 'YYYY-MM'. */
+  periodKey: string;
+  /** Comparación contra el período inmediatamente anterior (null si no aplica). */
+  comparison: { periodKey: string; period: string; grandTotal: number } | null;
+}
+
+// ── PERÍODOS (Dim_Tiempo.KeyTiempo = yyyyMMdd) ──────────────────────────────
+const MONTHS_ES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+interface PeriodRange {
+  key: string;
+  label: string;
+  from?: number;
+  to?: number;
+}
+
+const ALL_PERIODS: PeriodRange = { key: 'all', label: 'Histórico completo' };
+
+function monthRange(year: number, month: number): PeriodRange {
+  const ym = year * 100 + month;
+  return {
+    key: `${year}-${String(month).padStart(2, '0')}`,
+    label: `${MONTHS_ES[month - 1]} ${year}`,
+    from: ym * 100 + 1,
+    to: ym * 100 + 31,
+  };
+}
+
+/** Interpreta `?period=` ('all' | 'YYYY-MM') y calcula su período de comparación. */
+function resolvePeriod(raw?: unknown): { current: PeriodRange; previous: PeriodRange | null } {
+  const value = typeof raw === 'string' ? raw.trim() : '';
+  const match = /^(\d{4})-(\d{2})$/.exec(value);
+  if (!match) return { current: ALL_PERIODS, previous: null };
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) return { current: ALL_PERIODS, previous: null };
+
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevMonth = month === 1 ? 12 : month - 1;
+  return { current: monthRange(year, month), previous: monthRange(prevYear, prevMonth) };
+}
+
+/** Cláusula WHERE parametrizada para filtrar una tabla de hechos por rango de KeyTiempo. */
+function timeFilter(alias: string, range: PeriodRange): { sql: string; params: Record<string, number> } {
+  if (range.from === undefined || range.to === undefined) return { sql: '', params: {} };
+  return {
+    sql: `WHERE ${alias}.KeyTiempo BETWEEN @fromKey AND @toKey`,
+    params: { fromKey: range.from, toKey: range.to },
+  };
+}
+
+type MatrixBuilder = (measure: string | undefined, range: PeriodRange) => Promise<ExecutiveReportData>;
+
+/** Ejecuta el builder para el período actual y adjunta el total general del período anterior. */
+async function withComparison(
+  builder: MatrixBuilder,
+  measure: string | undefined,
+  period: { current: PeriodRange; previous: PeriodRange | null }
+): Promise<ExecutiveReportData> {
+  const [current, previous] = await Promise.all([
+    builder(measure, period.current),
+    period.previous ? builder(measure, period.previous) : Promise.resolve(null),
+  ]);
+  return {
+    ...current,
+    comparison:
+      previous && period.previous
+        ? { periodKey: period.previous.key, period: period.previous.label, grandTotal: previous.grandTotal }
+        : null,
+  };
+}
+
+/** Pivotea filas (categoria, item, columna, valor) a filas anchas por ítem. */
+function pivotRows(rawData: Array<{ categoria: string; item: string; columna: string; valor: number }>) {
+  const itemMap = new Map<string, Record<string, any>>();
+  rawData.forEach((r) => {
+    const key = `${r.categoria}|||${r.item}`;
+    if (!itemMap.has(key)) {
+      itemMap.set(key, { categoria: r.categoria, item: r.item });
+    }
+    itemMap.get(key)![r.columna] = Number(r.valor) || 0;
+  });
+  return Array.from(itemMap.values());
 }
 
 /**
@@ -41,9 +128,10 @@ export interface ExecutiveReportData {
 function buildDynamicMatrix(
   rows: Array<Record<string, any>>,
   options: {
-    stage: 'BUYER' | 'LEAD' | 'PAYER' | 'CUSTOMER';
+    stage: 'BUYER' | 'LEAD' | 'PAYER' | 'CUSTOMER' | 'TURNED';
     reportTitle: string;
     period: string;
+    periodKey: string;
     metric: string;
     rowHeader: string;
     superHeader: string;
@@ -165,7 +253,8 @@ function buildDynamicMatrix(
       items,
       subtotals,
       subtotalTotal,
-      subtotalLabel: `** Total ${catName} **`,
+      // Etiqueta limpia: el formato visual (negrita, fondo) lo aplica el frontend.
+      subtotalLabel: `Subtotal ${catName}`,
     });
   }
 
@@ -181,34 +270,49 @@ function buildDynamicMatrix(
     categories,
     grandTotals,
     grandTotal,
-    grandTotalLabel: options.grandTotalLabel || '** Totales **',
+    grandTotalLabel: options.grandTotalLabel || 'Total general',
     isCurrency: Boolean(options.isCurrency),
     generatedAt: new Date().toISOString(),
     sourceMart: options.sourceMart,
+    periodKey: options.periodKey,
+    comparison: null,
   };
 }
 
 // ── GET /api/reports/status ──────────────────────────────────────────────────
 router.get('/status', async (_req: Request, res: Response) => {
   try {
-    const dbInfo = await queryMart<{ db: string; tiempoCount: number }>(`
-      SELECT DB_NAME() as db, 
-             (SELECT COUNT(*) FROM Dim_Tiempo) as tiempoCount
+    const dbInfo = await queryMart<{ db: string; tiempoCount: number; serverVersion: string }>(`
+      SELECT DB_NAME() as db,
+             (SELECT COUNT(*) FROM Dim_Tiempo) as tiempoCount,
+             CAST(SERVERPROPERTY('ProductVersion') AS NVARCHAR(64)) as serverVersion
     `);
 
-    const counts = await queryMart<{ tabla: string; registros: number }>(`
-      SELECT 'Fact_CaptacionBuyer' as tabla, COUNT(*) as registros FROM Fact_CaptacionBuyer
-      UNION ALL SELECT 'Fact_NegociacionLead', COUNT(*) FROM Fact_NegociacionLead
-      UNION ALL SELECT 'Fact_GestionPayer', COUNT(*) FROM Fact_GestionPayer
-      UNION ALL SELECT 'Fact_AtencionCustomer', COUNT(*) FROM Fact_AtencionCustomer
+    const counts = await queryMart<{ tabla: string; registros: number; ultimaFecha: number | null }>(`
+      SELECT 'Fact_CaptacionBuyer' as tabla, COUNT(*) as registros, MAX(KeyTiempo) as ultimaFecha FROM Fact_CaptacionBuyer
+      UNION ALL SELECT 'Fact_NegociacionLead', COUNT(*), MAX(KeyTiempo) FROM Fact_NegociacionLead
+      UNION ALL SELECT 'Fact_GestionPayer', COUNT(*), MAX(KeyTiempo) FROM Fact_GestionPayer
+      UNION ALL SELECT 'Fact_AtencionCustomer', COUNT(*), MAX(KeyTiempo) FROM Fact_AtencionCustomer
+      UNION ALL SELECT 'Fact_SeguimientoTurned', COUNT(*), MAX(KeyTiempo) FROM Fact_SeguimientoTurned
     `);
+
+    const latestKey = counts.reduce<number | null>(
+      (max, t) => (t.ultimaFecha && (!max || t.ultimaFecha > max) ? t.ultimaFecha : max),
+      null
+    );
+    const latestDataDate = latestKey
+      ? `${String(latestKey).slice(0, 4)}-${String(latestKey).slice(4, 6)}-${String(latestKey).slice(6, 8)}`
+      : null;
 
     res.json({
       status: 'online',
       source: 'NexoSalud_Mart (Datamart Dimensional)',
-      driver: 'mssql (Sin Prisma)',
+      driver: 'SQL Server · mssql',
+      serverVersion: dbInfo[0]?.serverVersion || null,
       database: dbInfo[0]?.db || 'NexoSalud_Mart',
-      tables: counts,
+      checkedAt: new Date().toISOString(),
+      latestDataDate,
+      tables: counts.map(({ tabla, registros }) => ({ tabla, registros })),
     });
   } catch (error: any) {
     console.error('Error al consultar estado de NexoSalud_Mart:', error);
@@ -216,32 +320,70 @@ router.get('/status', async (_req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/reports/periods ─────────────────────────────────────────────────
+// Meses que contienen hechos en cualquiera de las 4 tablas, del más reciente al más antiguo.
+router.get('/periods', async (_req: Request, res: Response) => {
+  try {
+    const rows = await queryMart<{ ym: number }>(`
+      SELECT DISTINCT ym FROM (
+        SELECT KeyTiempo / 100 AS ym FROM Fact_CaptacionBuyer
+        UNION SELECT KeyTiempo / 100 FROM Fact_NegociacionLead
+        UNION SELECT KeyTiempo / 100 FROM Fact_GestionPayer
+        UNION SELECT KeyTiempo / 100 FROM Fact_AtencionCustomer
+      ) p
+      WHERE ym IS NOT NULL
+      ORDER BY ym DESC
+    `);
+
+    const periods = rows.map(({ ym }) => {
+      const range = monthRange(Math.floor(ym / 100), ym % 100);
+      return { value: range.key, label: range.label };
+    });
+
+    res.json([{ value: ALL_PERIODS.key, label: ALL_PERIODS.label }, ...periods]);
+  } catch (error: any) {
+    console.error('Error en /api/reports/periods:', error);
+    res.status(500).json({ error: 'Error al consultar períodos disponibles', details: error.message });
+  }
+});
+
 // ── BUILDER: BUYER MATRIX (DINÁMICO) ─────────────────────────────────────────
-async function getBuyerMatrix(measure: string = 'contactos_registrados'): Promise<ExecutiveReportData> {
+async function getBuyerMatrix(measure: string = 'contacto_registrado', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
   let measureSQL = 'SUM(fc.ContactosRegistrados)';
   let isCurrency = false;
-  let metricTitle = 'Contactos Registrados [Cant.]';
+  let metricTitle = 'contacto_registrado';
 
   switch (measure) {
+    case 'contacto_utilizable':
     case 'contactos_utilizables':
       measureSQL = 'SUM(fc.ContactosUtilizables)';
-      metricTitle = 'Contactos Utilizables [Cant.]';
+      metricTitle = 'contacto_utilizable';
       break;
+    case 'conversion_lead':
     case 'conversiones_lead':
       measureSQL = 'SUM(fc.ConversionesALead)';
-      metricTitle = 'Conversiones a LEAD [Cant.]';
+      metricTitle = 'conversion_lead';
       break;
+    case 'tiempo_conversion_dia':
     case 'tiempo_conversion':
       measureSQL = 'ROUND(AVG(CAST(fc.TiempoConversionDias AS FLOAT)), 1)';
-      metricTitle = 'Tiempo de Conversión [Días]';
+      metricTitle = 'tiempo_conversion_dia';
       break;
+    case 'costo_atribuido_captacion':
     case 'costo_atribuido':
       measureSQL = 'SUM(fc.CostoAtribuidoCaptacion)';
-      metricTitle = 'Costo Atribuido de Captación [S/.]';
+      metricTitle = 'costo_atribuido_captacion';
       isCurrency = true;
+      break;
+    case 'contacto_registrado':
+    case 'contactos_registrados':
+    default:
+      measureSQL = 'SUM(fc.ContactosRegistrados)';
+      metricTitle = 'contacto_registrado';
       break;
   }
 
+  const filter = timeFilter('fc', range);
   const rawData = await queryMart<{
     categoria: string;
     item: string;
@@ -257,62 +399,66 @@ async function getBuyerMatrix(measure: string = 'contactos_registrados'): Promis
     LEFT JOIN Dim_Canal c ON c.KeyCanal = fc.KeyCanal
     LEFT JOIN Dim_Fuente f ON f.KeyFuente = fc.KeyFuente
     LEFT JOIN Dim_Sede s ON s.KeySede = fc.KeySede
+    ${filter.sql}
     GROUP BY f.TipoOrigen, c.NombreCanal, s.Sede
-  `);
+  `, filter.params);
 
-  const itemMap = new Map<string, Record<string, any>>();
-  rawData.forEach((r) => {
-    const key = `${r.categoria}|||${r.item}`;
-    if (!itemMap.has(key)) {
-      itemMap.set(key, { categoria: r.categoria, item: r.item });
-    }
-    itemMap.get(key)![r.columna] = Number(r.valor) || 0;
-  });
-  const rows = Array.from(itemMap.values());
-
-  return buildDynamicMatrix(rows, {
+  return buildDynamicMatrix(pivotRows(rawData), {
     stage: 'BUYER',
-    reportTitle: 'RESUMEN DE CAPTACIÓN. Etapa BUYER',
-    period: 'Septiembre 2026',
+    reportTitle: 'Resumen de captación',
+    period: range.label,
+    periodKey: range.key,
     metric: metricTitle,
     rowHeader: 'Fuente de Atracción / Canal',
     superHeader: 'Sede Física',
     totalColumnName: 'Total',
-    grandTotalLabel: '** Totales Generales **',
+    grandTotalLabel: 'Total general',
     isCurrency,
-    sourceMart: 'NexoSalud_Mart.Fact_CaptacionBuyer',
+    sourceMart: 'NexoSalud_Mart.fact_captacion_buyer',
     preferredColumnsOrder: ['Sede Centro Historico', 'Sede California'],
   });
 }
 
 // ── BUILDER: LEAD MATRIX (DINÁMICO) ──────────────────────────────────────────
-async function getLeadMatrix(measure: string = 'leads_cohorte'): Promise<ExecutiveReportData> {
+async function getLeadMatrix(measure: string = 'cohorte_evaluable', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
   let measureSQL = 'SUM(f.LeadsCohorteEvaluable)';
-  let metricTitle = 'LEADs de Cohorte Evaluable [Cant.]';
+  let metricTitle = 'cohorte_evaluable';
 
   switch (measure) {
+    case 'conversion_payer_14_dia':
     case 'leads_convertidos_14d':
       measureSQL = 'SUM(f.LeadsConvertidosPayer14Dias)';
-      metricTitle = 'LEADs Convertidos a PAYER en ≤ 14 días [Cant.]';
+      metricTitle = 'conversion_payer_14_dia';
       break;
+    case 'solicitud_requiere_respuesta':
     case 'leads_requieren_resp':
       measureSQL = 'SUM(f.LeadsRequierenRespuesta)';
-      metricTitle = 'LEADs que Requieren Respuesta [Cant.]';
+      metricTitle = 'solicitud_requiere_respuesta';
       break;
+    case 'respuesta_util_15_min':
     case 'leads_resp_15m':
       measureSQL = 'SUM(f.LeadsRespuestaUtil15Min)';
-      metricTitle = 'LEADs con Primera Respuesta ≤ 15 min [Cant.]';
+      metricTitle = 'respuesta_util_15_min';
       break;
+    case 'negociacion_finalizada':
     case 'leads_resultado_final':
       measureSQL = 'SUM(f.LeadsResultadoFinal)';
-      metricTitle = 'LEADs con Resultado Final [Cant.]';
+      metricTitle = 'negociacion_finalizada';
       break;
+    case 'negociacion_abandonada':
     case 'leads_abandonados':
       measureSQL = 'SUM(f.LeadsAbandonados)';
-      metricTitle = 'LEADs Abandonados [Cant.]';
+      metricTitle = 'negociacion_abandonada';
+      break;
+    case 'cohorte_evaluable':
+    case 'leads_cohorte':
+    default:
+      measureSQL = 'SUM(f.LeadsCohorteEvaluable)';
+      metricTitle = 'cohorte_evaluable';
       break;
   }
 
+  const filter = timeFilter('f', range);
   const rawData = await queryMart<{
     categoria: string;
     item: string;
@@ -328,70 +474,75 @@ async function getLeadMatrix(measure: string = 'leads_cohorte'): Promise<Executi
     LEFT JOIN Dim_Sede s ON s.KeySede = f.KeySede
     LEFT JOIN Dim_Negociador n ON n.KeyNegociador = f.KeyNegociador
     LEFT JOIN Dim_Servicio serv ON serv.KeyServicio = f.KeyServicio
+    ${filter.sql}
     GROUP BY s.KeySede, s.Sede, n.KeyNegociador, n.NombreNegociador, serv.Categoria
     ORDER BY s.KeySede ASC, n.KeyNegociador ASC
-  `);
+  `, filter.params);
 
-  const itemMap = new Map<string, Record<string, any>>();
-  rawData.forEach((r) => {
-    const key = `${r.categoria}|||${r.item}`;
-    if (!itemMap.has(key)) {
-      itemMap.set(key, { categoria: r.categoria, item: r.item });
-    }
-    itemMap.get(key)![r.columna] = Number(r.valor) || 0;
-  });
-  const rows = Array.from(itemMap.values());
-
-  return buildDynamicMatrix(rows, {
+  return buildDynamicMatrix(pivotRows(rawData), {
     stage: 'LEAD',
-    reportTitle: 'RESUMEN DE NEGOCIACIÓN. Etapa LEAD',
-    period: 'Septiembre 2026',
+    reportTitle: 'Resumen de negociación',
+    period: range.label,
+    periodKey: range.key,
     metric: metricTitle,
     rowHeader: 'Sede / Negociador',
     superHeader: 'Categoría del tratamiento',
     totalColumnName: 'Total',
-    grandTotalLabel: '** Totales Generales **',
+    grandTotalLabel: 'Total general',
     isCurrency: false,
-    sourceMart: 'NexoSalud_Mart.Fact_NegociacionLead',
+    sourceMart: 'NexoSalud_Mart.fact_negociacion_lead',
     preferredColumnsOrder: ['Odontología Preventiva', 'Odontología Especializada'],
   });
 }
 
 // ── BUILDER: PAYER MATRIX (DINÁMICO) ─────────────────────────────────────────
-async function getPayerMatrix(measure: string = 'pagos_registrados'): Promise<ExecutiveReportData> {
+async function getPayerMatrix(measure: string = 'pago_registrado', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
   let measureSQL = 'SUM(f.PagosRegistrados)';
-  let metricTitle = 'Pagos Registrados [Cant.]';
+  let metricTitle = 'pago_registrado';
   let isCurrency = false;
 
   switch (measure) {
+    case 'pago_validado':
     case 'pagos_validados':
       measureSQL = 'SUM(f.PagosValidados)';
-      metricTitle = 'Pagos Validados [Cant.]';
+      metricTitle = 'pago_validado';
       break;
+    case 'pago_rechazado':
     case 'pagos_rechazados':
       measureSQL = 'SUM(f.PagosRechazados)';
-      metricTitle = 'Pagos Rechazados [Cant.]';
+      metricTitle = 'pago_rechazado';
       break;
+    case 'conversion_customer':
     case 'conversiones_customer':
       measureSQL = 'SUM(f.ConversionesACustomer)';
-      metricTitle = 'Conversiones a CUSTOMER [Cant.]';
+      metricTitle = 'conversion_customer';
       break;
-    case 'importe_total':
-      measureSQL = 'SUM(f.ImporteTotalCobro)';
-      metricTitle = 'Importe Total de Cobro [S/.]';
-      isCurrency = true;
-      break;
+    case 'costo_transaccion':
     case 'costo_transacciones':
       measureSQL = 'SUM(f.CostoTotalTransacciones)';
-      metricTitle = 'Costo Total de Transacciones [S/.]';
+      metricTitle = 'costo_transaccion';
       isCurrency = true;
       break;
+    case 'tiempo_validacion_minuto':
     case 'tiempo_validacion':
       measureSQL = 'ROUND(AVG(CAST(f.TiempoTotalValidacionMin AS FLOAT)), 1)';
-      metricTitle = 'Tiempo Total de Validación [Min.]';
+      metricTitle = 'tiempo_validacion_minuto';
+      break;
+    case 'importe_total_cobro':
+    case 'importe_total':
+      measureSQL = 'SUM(f.ImporteTotalCobro)';
+      metricTitle = 'importe_total_cobro';
+      isCurrency = true;
+      break;
+    case 'pago_registrado':
+    case 'pagos_registrados':
+    default:
+      measureSQL = 'SUM(f.PagosRegistrados)';
+      metricTitle = 'pago_registrado';
       break;
   }
 
+  const filter = timeFilter('f', range);
   const rawData = await queryMart<{
     categoria: string;
     item: string;
@@ -406,58 +557,61 @@ async function getPayerMatrix(measure: string = 'pagos_registrados'): Promise<Ex
     FROM Fact_GestionPayer f
     LEFT JOIN Dim_Pasarela p ON p.KeyPasarela = f.KeyPasarela
     LEFT JOIN Dim_Cobro c ON c.KeyCobro = f.KeyCobro
+    ${filter.sql}
     GROUP BY p.TipoMedio, p.MetodoPago, c.EstadoPago
-  `);
+  `, filter.params);
 
-  const itemMap = new Map<string, Record<string, any>>();
-  rawData.forEach((r) => {
-    const key = `${r.categoria}|||${r.item}`;
-    if (!itemMap.has(key)) {
-      itemMap.set(key, { categoria: r.categoria, item: r.item });
-    }
-    itemMap.get(key)![r.columna] = Number(r.valor) || 0;
-  });
-  const rows = Array.from(itemMap.values());
-
-  return buildDynamicMatrix(rows, {
+  return buildDynamicMatrix(pivotRows(rawData), {
     stage: 'PAYER',
-    reportTitle: 'RESUMEN DE RECAUDACIÓN. Etapa PAYER',
-    period: 'Septiembre 2026',
+    reportTitle: 'Resumen de recaudación',
+    period: range.label,
+    periodKey: range.key,
     metric: metricTitle,
     rowHeader: 'Modalidad / Canal',
     superHeader: 'Estado del Pago',
     totalColumnName: 'Total',
-    grandTotalLabel: '** Totales **',
+    grandTotalLabel: 'Total general',
     isCurrency,
-    sourceMart: 'NexoSalud_Mart.Fact_GestionPayer',
+    sourceMart: 'NexoSalud_Mart.fact_gestion_payer',
     preferredColumnsOrder: ['VALIDATED', 'PENDING', 'REJECTED'],
   });
 }
 
 // ── BUILDER: CUSTOMER MATRIX (DINÁMICO) ──────────────────────────────────────
-async function getCustomerMatrix(measure: string = 'citas_evaluables'): Promise<ExecutiveReportData> {
+async function getCustomerMatrix(measure: string = 'cita_evaluable', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
   let measureSQL = 'SUM(fa.CitasEvaluables)';
-  let metricTitle = 'Citas Evaluables [Cant.]';
+  let metricTitle = 'cita_evaluable';
 
   switch (measure) {
+    case 'atencion_realizada':
     case 'atenciones_realizadas':
       measureSQL = 'SUM(fa.AtencionesRealizadas)';
-      metricTitle = 'Atenciones Realizadas [Cant.]';
+      metricTitle = 'atencion_realizada';
       break;
+    case 'cita_inasistencia':
     case 'citas_inasistencia':
       measureSQL = 'SUM(fa.CitasConInasistencia)';
-      metricTitle = 'Citas con Inasistencia [Cant.]';
+      metricTitle = 'cita_inasistencia';
       break;
+    case 'tiempo_sillon_dental_minuto':
     case 'tiempo_sillon':
       measureSQL = 'ROUND(AVG(CAST(fa.TiempoEnSillonDentalMin AS FLOAT)), 1)';
-      metricTitle = 'Tiempo en Sillón Dental [Min.]';
+      metricTitle = 'tiempo_sillon_dental_minuto';
       break;
+    case 'atencion_finalizada_conforme':
     case 'atenciones_conformes':
       measureSQL = 'SUM(fa.AtencionesFinalizadasConformes)';
-      metricTitle = 'Atenciones Finalizadas Conformes [Cant.]';
+      metricTitle = 'atencion_finalizada_conforme';
+      break;
+    case 'cita_evaluable':
+    case 'citas_evaluables':
+    default:
+      measureSQL = 'SUM(fa.CitasEvaluables)';
+      metricTitle = 'cita_evaluable';
       break;
   }
 
+  const filter = timeFilter('fa', range);
   const rawData = await queryMart<{
     categoria: string;
     item: string;
@@ -472,56 +626,120 @@ async function getCustomerMatrix(measure: string = 'citas_evaluables'): Promise<
     FROM Fact_AtencionCustomer fa
     LEFT JOIN Dim_Sede s ON s.KeySede = fa.KeySede
     LEFT JOIN Dim_Servicio serv ON serv.KeyServicio = fa.KeyServicio
+    ${filter.sql}
     GROUP BY serv.Categoria, serv.ServicioOdontologico, s.Sede
-  `);
+  `, filter.params);
 
-  const itemMap = new Map<string, Record<string, any>>();
-  rawData.forEach((r) => {
-    const key = `${r.categoria}|||${r.item}`;
-    if (!itemMap.has(key)) {
-      itemMap.set(key, { categoria: r.categoria, item: r.item });
-    }
-    itemMap.get(key)![r.columna] = Number(r.valor) || 0;
-  });
-  const rows = Array.from(itemMap.values());
-
-  return buildDynamicMatrix(rows, {
+  return buildDynamicMatrix(pivotRows(rawData), {
     stage: 'CUSTOMER',
-    reportTitle: 'RESUMEN DE PRESTACIÓN CLÍNICA. Etapa CUSTOMER',
-    period: 'Septiembre 2026',
+    reportTitle: 'Resumen de prestación clínica',
+    period: range.label,
+    periodKey: range.key,
     metric: metricTitle,
     rowHeader: 'Categoría / Servicio',
     superHeader: 'Sede Clínica',
     totalColumnName: 'Total',
-    grandTotalLabel: '** Totales **',
+    grandTotalLabel: 'Total general',
     isCurrency: false,
-    sourceMart: 'NexoSalud_Mart.Fact_AtencionCustomer',
+    sourceMart: 'NexoSalud_Mart.fact_atencion_customer',
     preferredColumnsOrder: ['Sede Centro Historico', 'Sede California'],
   });
 }
 
-// ── GET /api/reports/executive/:stage ───────────────────────────────────────
+
+// ── BUILDER: TURNED MATRIX (DINÁMICO) ─────────────────────────────────────────
+async function getTurnedMatrix(measure: string = 'seguimiento_registrado', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
+  let measureSQL = 'SUM(ft.SeguimientosRegistrados)';
+  let metricTitle = 'seguimiento_registrado';
+
+  switch (measure) {
+    case 'seguimiento_efectivo':
+    case 'seguimientos_efectivos':
+      measureSQL = 'SUM(ft.SeguimientosEfectivos)';
+      metricTitle = 'seguimiento_efectivo';
+      break;
+    case 'incidencia_reportada':
+    case 'incidencias_reportadas':
+      measureSQL = 'SUM(ft.IncidenciasReportadas)';
+      metricTitle = 'incidencia_reportada';
+      break;
+    case 'incidencia_resuelta_24_hora':
+    case 'incidencias_resueltas':
+      measureSQL = 'SUM(ft.IncidenciasResueltas24h)';
+      metricTitle = 'incidencia_resuelta_24_hora';
+      break;
+    case 'retorno_cohorte_90_dia':
+    case 'retornos_cohorte':
+    case 'retornos_90dias':
+      measureSQL = 'SUM(ft.RetornosCohorte90Dias)';
+      metricTitle = 'retorno_cohorte_90_dia';
+      break;
+    case 'paciente_elegible_retorno':
+    case 'pacientes_elegibles':
+      measureSQL = 'SUM(ft.PacientesElegiblesRetorno)';
+      metricTitle = 'paciente_elegible_retorno';
+      break;
+    case 'seguimiento_registrado':
+    case 'seguimientos_registrados':
+    default:
+      measureSQL = 'SUM(ft.SeguimientosRegistrados)';
+      metricTitle = 'seguimiento_registrado';
+      break;
+  }
+
+  const filter = timeFilter('ft', range);
+  const rawData = await queryMart<{
+    categoria: string;
+    item: string;
+    columna: string;
+    valor: number;
+  }>(`
+    SELECT 
+      ISNULL(serv.Categoria, 'Fidelización Postventa') AS categoria,
+      ISNULL(serv.ServicioOdontologico, 'Control Odontológico') AS item,
+      ISNULL(s.Sede, 'Sede Principal') AS columna,
+      ${measureSQL} AS valor
+    FROM Fact_SeguimientoTurned ft
+    LEFT JOIN Dim_Sede s ON s.KeySede = ft.KeySede
+    LEFT JOIN Dim_Servicio serv ON serv.KeyServicio = ft.KeyServicio
+    ${filter.sql}
+    GROUP BY serv.Categoria, serv.ServicioOdontologico, s.Sede
+  `, filter.params);
+
+  return buildDynamicMatrix(pivotRows(rawData), {
+    stage: 'TURNED',
+    reportTitle: 'Resumen de fidelización y retorno',
+    period: range.label,
+    periodKey: range.key,
+    metric: metricTitle,
+    rowHeader: 'Categoría / Servicio',
+    superHeader: 'Sede Clínica',
+    totalColumnName: 'Total',
+    grandTotalLabel: 'Total general',
+    isCurrency: false,
+    sourceMart: 'NexoSalud_Mart.fact_seguimiento_turned',
+    preferredColumnsOrder: ['Sede Centro Historico', 'Sede California'],
+  });
+}
+
+const BUILDERS: Record<'buyer' | 'lead' | 'payer' | 'customer' | 'turned', MatrixBuilder> = {
+  buyer: getBuyerMatrix,
+  lead: getLeadMatrix,
+  payer: getPayerMatrix,
+  customer: getCustomerMatrix,
+  turned: getTurnedMatrix,
+};
+
+// ── GET /api/reports/executive/:stage?measure=&period= ──────────────────────
 router.get('/executive/:stage', async (req: Request, res: Response) => {
   try {
-    const stage = String(req.params.stage || '').toLowerCase();
+    const stage = String(req.params.stage || '').toLowerCase() as keyof typeof BUILDERS;
     const measure = req.query.measure ? String(req.query.measure) : undefined;
-    let data: ExecutiveReportData;
-    switch (stage) {
-      case 'buyer':
-        data = await getBuyerMatrix(measure);
-        break;
-      case 'lead':
-        data = await getLeadMatrix(measure);
-        break;
-      case 'payer':
-        data = await getPayerMatrix(measure);
-        break;
-      case 'customer':
-        data = await getCustomerMatrix(measure);
-        break;
-      default:
-        return res.status(400).json({ error: `Etapa inválida: ${stage}. Use buyer, lead, payer o customer.` });
+    const builder = BUILDERS[stage];
+    if (!builder) {
+      return res.status(400).json({ error: `Etapa inválida: ${stage}. Use buyer, lead, payer, customer o turned.` });
     }
+    const data = await withComparison(builder, measure, resolvePeriod(req.query.period));
     res.json(data);
   } catch (error: any) {
     console.error(`Error en /api/reports/executive/${req.params.stage}:`, error);
@@ -536,12 +754,15 @@ router.get('/all-executive', async (req: Request, res: Response) => {
     const leadMeasure = req.query.leadMeasure ? String(req.query.leadMeasure) : undefined;
     const payerMeasure = req.query.payerMeasure ? String(req.query.payerMeasure) : undefined;
     const customerMeasure = req.query.customerMeasure ? String(req.query.customerMeasure) : undefined;
+    const turnedMeasure = req.query.turnedMeasure ? String(req.query.turnedMeasure) : undefined;
+    const period = resolvePeriod(req.query.period);
 
-    const [buyer, lead, payer, customer] = await Promise.all([
-      getBuyerMatrix(buyerMeasure),
-      getLeadMatrix(leadMeasure),
-      getPayerMatrix(payerMeasure),
-      getCustomerMatrix(customerMeasure),
+    const [buyer, lead, payer, customer, turned] = await Promise.all([
+      withComparison(getBuyerMatrix, buyerMeasure, period),
+      withComparison(getLeadMatrix, leadMeasure, period),
+      withComparison(getPayerMatrix, payerMeasure, period),
+      withComparison(getCustomerMatrix, customerMeasure, period),
+      withComparison(getTurnedMatrix, turnedMeasure, period),
     ]);
 
     res.json({
@@ -549,6 +770,7 @@ router.get('/all-executive', async (req: Request, res: Response) => {
       lead,
       payer,
       customer,
+      turned,
     });
   } catch (error: any) {
     console.error('Error en /api/reports/all-executive:', error);

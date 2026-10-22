@@ -15,13 +15,22 @@ import CustomerDetailPage from '@/modules/customer/pages/CustomerDetailPage';
 import TurnedPage from '@/modules/turned/pages/TurnedPage';
 import TurnedDetailPage from '@/modules/turned/pages/TurnedDetailPage';
 import ReportsPage from '@/modules/reports/pages/ReportsPage';
+import CohortsAnalyticsPage from '@/modules/reports/pages/CohortsAnalyticsPage';
+import ClinicalPerformancePage from '@/modules/reports/pages/ClinicalPerformancePage';
+import ClinicalPatientsPage from '@/modules/clinical/pages/ClinicalPatientsPage';
+import ClinicalAppointmentsPage from '@/modules/clinical/pages/ClinicalAppointmentsPage';
+import ClinicalOdontogramPage from '@/modules/clinical/pages/ClinicalOdontogramPage';
 import ConfigPage from '@/modules/config/pages/ConfigPage';
 import AppLayout from '@/app/layouts/AppLayout';
 
 export const router = createBrowserRouter([
   {
-    path: '/solicitar-informacion',
+    path: '/',
     element: <BuyerRequestInfoPage />,
+  },
+  {
+    path: '/solicitar-informacion',
+    element: <Navigate to="/" replace />,
   },
   {
     path: '/activar-cuenta',
@@ -32,16 +41,27 @@ export const router = createBrowserRouter([
     element: <PreReservationPage />,
   },
   {
-    path: '/',
     element: <AppLayout />,
     children: [
       {
-        path: '/',
-        element: <Navigate to="/buyer" replace />,
+        path: 'clinica/pacientes',
+        element: <ClinicalPatientsPage />,
+      },
+      {
+        path: 'clinica/citas',
+        element: <ClinicalAppointmentsPage />,
+      },
+      {
+        path: 'clinica/odontogramas',
+        element: <ClinicalOdontogramPage />,
       },
       {
         path: 'buyer',
         element: <BuyerPage />,
+      },
+      {
+        path: 'buyer/nuevo',
+        element: <NewBuyerPage />,
       },
       {
         path: 'buyer/new',
@@ -90,6 +110,14 @@ export const router = createBrowserRouter([
       {
         path: 'reportes',
         element: <ReportsPage />,
+      },
+      {
+        path: 'analitica/cohortes',
+        element: <CohortsAnalyticsPage />,
+      },
+      {
+        path: 'analitica/rendimiento',
+        element: <ClinicalPerformancePage />,
       },
       {
         path: 'configuracion',

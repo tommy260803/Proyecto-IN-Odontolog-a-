@@ -314,3 +314,93 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   animation: dental-dot-jump 0.85s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
+
+/* ─── Reportes analíticos: micro-interacciones sobrias ─── */
+@keyframes ns-float-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ns-float-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+/* Popovers, tooltips y menús Radix */
+.ns-floating[data-state='open'],
+.ns-floating[data-state='delayed-open'],
+.ns-floating[data-state='instant-open'] {
+  animation: ns-float-in 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ns-floating[data-state='closed'] {
+  animation: ns-float-out 100ms ease-in;
+}
+
+@keyframes ns-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Skeleton con barrido de luz */
+.ns-skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: rgb(241 245 249);
+  border-radius: 0.375rem;
+}
+
+.dark .ns-skeleton {
+  background-color: rgb(30 41 59);
+}
+
+.ns-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: ns-shimmer 1.6s infinite;
+}
+
+.dark .ns-skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.08), transparent);
+}
+
+@keyframes ns-progress {
+  0% {
+    transform: translateX(-100%) scaleX(0.4);
+  }
+  50% {
+    transform: translateX(30%) scaleX(0.6);
+  }
+  100% {
+    transform: translateX(110%) scaleX(0.4);
+  }
+}
+
+/* Barra de progreso indeterminada (recarga en segundo plano) */
+.ns-progress-bar {
+  transform-origin: left;
+  animation: ns-progress 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ns-floating,
+  .ns-skeleton::after,
+  .ns-progress-bar {
+    animation: none !important;
+  }
+}

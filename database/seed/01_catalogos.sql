@@ -1,3 +1,5 @@
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
 -- =================================================================================
 -- CATÁLOGOS BASE Y POBLAMIENTO TRANSACCIONAL PARA NEXOSALUDDB (Trujillo, Perú)
 -- Fusión completa del ecosistema transaccional y dimensiones analíticas
@@ -5,6 +7,8 @@
 
 USE NexoSaludDB;
 GO
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
 
 SET NOCOUNT ON;
 
@@ -172,6 +176,8 @@ WHERE NOT EXISTS (
 
 PRINT 'Catálogos base cargados exitosamente.';
 GO
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
 
 -- =================================================================================
 -- SCRIPT DE POBLAMIENTO TRANSACCIONAL MASIVO DEL FUNNEL
@@ -367,28 +373,28 @@ BEGIN
   BEGIN
     SET @opId = @uOp01; SET @dispId = @dispCentro;
     IF @k <= 32 BEGIN SET @isConverted = 1; SET @isAbandoned = 0; SET @estSol = 'Convertida'; END
-    ELSE IF @k <= 75 BEGIN SET @isConverted = 0; SET @isAbandoned = 0; SET @estSol = 'En Negociacion'; END
+    ELSE IF @k <= 75 BEGIN SET @isConverted = 0; SET @isAbandoned = 0; SET @estSol = 'En negociación'; END
     ELSE BEGIN SET @isConverted = 0; SET @isAbandoned = 1; SET @estSol = 'Abandonada'; END
   END
   ELSE IF @k <= 155
   BEGIN
     SET @opId = @uOp02; SET @dispId = @dispCentro;
     IF @k <= 85 + 18 BEGIN SET @isConverted = 1; SET @isAbandoned = 0; SET @estSol = 'Convertida'; END
-    ELSE IF @k <= 85 + 18 + 37 BEGIN SET @isConverted = 0; SET @isAbandoned = 0; SET @estSol = 'En Negociacion'; END
+    ELSE IF @k <= 85 + 18 + 37 BEGIN SET @isConverted = 0; SET @isAbandoned = 0; SET @estSol = 'En negociación'; END
     ELSE BEGIN SET @isConverted = 0; SET @isAbandoned = 1; SET @estSol = 'Abandonada'; END
   END
   ELSE IF @k <= 250
   BEGIN
     SET @opId = @uOp03; SET @dispId = @dispCalif;
     IF @k <= 155 + 45 BEGIN SET @isConverted = 1; SET @isAbandoned = 0; SET @estSol = 'Convertida'; END
-    ELSE IF @k <= 155 + 45 + 42 BEGIN SET @isConverted = 0; SET @isAbandoned = 0; SET @estSol = 'En Negociacion'; END
+    ELSE IF @k <= 155 + 45 + 42 BEGIN SET @isConverted = 0; SET @isAbandoned = 0; SET @estSol = 'En negociación'; END
     ELSE BEGIN SET @isConverted = 0; SET @isAbandoned = 1; SET @estSol = 'Abandonada'; END
   END
   ELSE
   BEGIN
     SET @opId = @uOp04; SET @dispId = @dispCalif;
     IF @k <= 250 + 15 BEGIN SET @isConverted = 1; SET @isAbandoned = 0; SET @estSol = 'Convertida'; END
-    ELSE IF @k <= 250 + 15 + 33 BEGIN SET @isConverted = 0; SET @isAbandoned = 0; SET @estSol = 'En Negociacion'; END
+    ELSE IF @k <= 250 + 15 + 33 BEGIN SET @isConverted = 0; SET @isAbandoned = 0; SET @estSol = 'En negociación'; END
     ELSE BEGIN SET @isConverted = 0; SET @isAbandoned = 1; SET @estSol = 'Abandonada'; END
   END
 
@@ -429,26 +435,26 @@ DECLARE @payerAssignments TABLE (
 
 -- Yape (49 pagos: 45 Validado, 2 Pendiente, 2 Rechazado) -> S/4,850
 DECLARE @cnt INT = 1;
-WHILE @cnt <= 45 BEGIN INSERT INTO @payerAssignments VALUES ('Yape', 100.00, 'VALIDATED', 1); SET @cnt = @cnt + 1; END
-WHILE @cnt <= 47 BEGIN INSERT INTO @payerAssignments VALUES ('Yape', 100.00, 'PENDING', 0); SET @cnt = @cnt + 1; END
-WHILE @cnt <= 49 BEGIN INSERT INTO @payerAssignments VALUES ('Yape', 75.00, 'REJECTED', 0); SET @cnt = @cnt + 1; END
+WHILE @cnt <= 45 BEGIN INSERT INTO @payerAssignments VALUES ('Yape', 100.00, 'Confirmado', 1); SET @cnt = @cnt + 1; END
+WHILE @cnt <= 47 BEGIN INSERT INTO @payerAssignments VALUES ('Yape', 100.00, 'Pendiente', 0); SET @cnt = @cnt + 1; END
+WHILE @cnt <= 49 BEGIN INSERT INTO @payerAssignments VALUES ('Yape', 75.00, 'Fallido', 0); SET @cnt = @cnt + 1; END
 
 -- Plin (22 pagos: 20 Validado, 1 Pendiente, 1 Rechazado) -> S/2,200
 SET @cnt = 1;
-WHILE @cnt <= 20 BEGIN INSERT INTO @payerAssignments VALUES ('Plin', 100.00, 'VALIDATED', 1); SET @cnt = @cnt + 1; END
-WHILE @cnt <= 21 BEGIN INSERT INTO @payerAssignments VALUES ('Plin', 100.00, 'PENDING', 0); SET @cnt = @cnt + 1; END
-WHILE @cnt <= 22 BEGIN INSERT INTO @payerAssignments VALUES ('Plin', 100.00, 'REJECTED', 0); SET @cnt = @cnt + 1; END
+WHILE @cnt <= 20 BEGIN INSERT INTO @payerAssignments VALUES ('Plin', 100.00, 'Confirmado', 1); SET @cnt = @cnt + 1; END
+WHILE @cnt <= 21 BEGIN INSERT INTO @payerAssignments VALUES ('Plin', 100.00, 'Pendiente', 0); SET @cnt = @cnt + 1; END
+WHILE @cnt <= 22 BEGIN INSERT INTO @payerAssignments VALUES ('Plin', 100.00, 'Fallido', 0); SET @cnt = @cnt + 1; END
 
 -- Transferencia (34 pagos: 27 Validado x 300 = 8,100, 5 Pendiente x 300 = 1,500, 2 Rechazado x 200 = 400) -> S/10,000
 SET @cnt = 1;
-WHILE @cnt <= 27 BEGIN INSERT INTO @payerAssignments VALUES ('Transferencia', 300.00, 'VALIDATED', 1); SET @cnt = @cnt + 1; END
-WHILE @cnt <= 32 BEGIN INSERT INTO @payerAssignments VALUES ('Transferencia', 300.00, 'PENDING', 0); SET @cnt = @cnt + 1; END
-WHILE @cnt <= 34 BEGIN INSERT INTO @payerAssignments VALUES ('Transferencia', 200.00, 'REJECTED', 0); SET @cnt = @cnt + 1; END
+WHILE @cnt <= 27 BEGIN INSERT INTO @payerAssignments VALUES ('Transferencia', 300.00, 'Confirmado', 1); SET @cnt = @cnt + 1; END
+WHILE @cnt <= 32 BEGIN INSERT INTO @payerAssignments VALUES ('Transferencia', 300.00, 'Pendiente', 0); SET @cnt = @cnt + 1; END
+WHILE @cnt <= 34 BEGIN INSERT INTO @payerAssignments VALUES ('Transferencia', 200.00, 'Fallido', 0); SET @cnt = @cnt + 1; END
 
 -- Tarjeta (Web) (19 pagos: 18 Validado x 250 = 4,500, 0 Pendiente, 1 Rechazado x 50 = 50) -> S/4,550
 SET @cnt = 1;
-WHILE @cnt <= 18 BEGIN INSERT INTO @payerAssignments VALUES ('Tarjeta (Web)', 250.00, 'VALIDATED', 1); SET @cnt = @cnt + 1; END
-WHILE @cnt <= 19 BEGIN INSERT INTO @payerAssignments VALUES ('Tarjeta (Web)', 50.00, 'REJECTED', 0); SET @cnt = @cnt + 1; END
+WHILE @cnt <= 18 BEGIN INSERT INTO @payerAssignments VALUES ('Tarjeta (Web)', 250.00, 'Confirmado', 1); SET @cnt = @cnt + 1; END
+WHILE @cnt <= 19 BEGIN INSERT INTO @payerAssignments VALUES ('Tarjeta (Web)', 50.00, 'Fallido', 0); SET @cnt = @cnt + 1; END
 
 DECLARE @totalPagos INT = (SELECT COUNT(*) FROM @payerAssignments);
 DECLARE @p INT = 1;
@@ -481,12 +487,12 @@ BEGIN
   VALUES (@targetPersona, @targetSol, @targetOpc, DATEADD(HOUR, 2, @fechaSol), 'Confirmada');
   SET @idRes = SCOPE_IDENTITY();
 
-  IF @estPago = 'VALIDATED'
+  IF @estPago = 'Confirmado'
   BEGIN
     SET @uVal = @uOp01;
     SET @fVal = DATEADD(MINUTE, 15, @fechaSol);
   END
-  ELSE IF @estPago = 'REJECTED'
+  ELSE IF @estPago = 'Fallido'
   BEGIN
     SET @uVal = @uOp01;
     SET @fVal = DATEADD(MINUTE, 5, @fechaSol);
@@ -500,7 +506,7 @@ BEGIN
   INSERT INTO Pagos (id_persona, id_reserva, importe, canal_pago, fecha_registro, fecha_validacion, estado, validado_por)
   VALUES (@targetPersona, @idRes, @impPago, @canalPago, DATEADD(HOUR, 2, @fechaSol), @fVal, @estPago, @uVal);
 
-  IF @estPago = 'VALIDATED'
+  IF @estPago = 'Confirmado'
   BEGIN
     UPDATE Personas SET id_etapa_actual = @idPayer WHERE id_persona = @targetPersona;
     INSERT INTO EventosEtapa (id_persona, etapa_origen, etapa_destino, fecha_hora, id_usuario, motivo)
@@ -537,9 +543,9 @@ BEGIN
       SELECT id_persona, ROW_NUMBER() OVER (ORDER BY id_persona) as rn FROM @convertedPersonas WHERE id_sede = @sCentro
     ) t WHERE rn = ((@a % 50) + 1);
 
-    IF @a <= 85 BEGIN SET @asist = 'Asistió'; SET @estServ = 'Finalizado'; END
-    ELSE IF @a <= 97 BEGIN SET @asist = 'No asistió'; SET @estServ = 'No presentado'; END
-    ELSE BEGIN SET @asist = 'Cancelado'; SET @estServ = 'Cancelado'; END
+    IF @a <= 85 BEGIN SET @asist = 'Asistió'; SET @estServ = 'Realizado'; END
+    ELSE IF @a <= 97 BEGIN SET @asist = 'No asistió'; SET @estServ = 'Cancelado'; END
+    ELSE BEGIN SET @asist = 'No asistió'; SET @estServ = 'Cancelado'; END
   END
   ELSE IF @a <= 100 + 52
   BEGIN
@@ -548,9 +554,9 @@ BEGIN
       SELECT id_persona, ROW_NUMBER() OVER (ORDER BY id_persona) as rn FROM @convertedPersonas WHERE id_sede = @sCentro
     ) t WHERE rn = (((@a - 100) % 50) + 1);
 
-    IF @a <= 100 + 45 BEGIN SET @asist = 'Asistió'; SET @estServ = 'Finalizado'; END
-    ELSE IF @a <= 100 + 50 BEGIN SET @asist = 'No asistió'; SET @estServ = 'No presentado'; END
-    ELSE BEGIN SET @asist = 'Cancelado'; SET @estServ = 'Cancelado'; END
+    IF @a <= 100 + 45 BEGIN SET @asist = 'Asistió'; SET @estServ = 'Realizado'; END
+    ELSE IF @a <= 100 + 50 BEGIN SET @asist = 'No asistió'; SET @estServ = 'Cancelado'; END
+    ELSE BEGIN SET @asist = 'No asistió'; SET @estServ = 'Cancelado'; END
   END
   ELSE IF @a <= 100 + 52 + 50
   BEGIN
@@ -559,9 +565,9 @@ BEGIN
       SELECT id_persona, ROW_NUMBER() OVER (ORDER BY id_persona) as rn FROM @convertedPersonas WHERE id_sede = @sCalif
     ) t WHERE rn = (((@a - 152) % 60) + 1);
 
-    IF @a <= 100 + 52 + 40 BEGIN SET @asist = 'Asistió'; SET @estServ = 'Finalizado'; END
-    ELSE IF @a <= 100 + 52 + 48 BEGIN SET @asist = 'No asistió'; SET @estServ = 'No presentado'; END
-    ELSE BEGIN SET @asist = 'Cancelado'; SET @estServ = 'Cancelado'; END
+    IF @a <= 100 + 52 + 40 BEGIN SET @asist = 'Asistió'; SET @estServ = 'Realizado'; END
+    ELSE IF @a <= 100 + 52 + 48 BEGIN SET @asist = 'No asistió'; SET @estServ = 'Cancelado'; END
+    ELSE BEGIN SET @asist = 'No asistió'; SET @estServ = 'Cancelado'; END
   END
   ELSE
   BEGIN
@@ -570,8 +576,8 @@ BEGIN
       SELECT id_persona, ROW_NUMBER() OVER (ORDER BY id_persona) as rn FROM @convertedPersonas WHERE id_sede = @sCalif
     ) t WHERE rn = (((@a - 202) % 60) + 1);
 
-    IF @a <= 100 + 52 + 50 + 15 BEGIN SET @asist = 'Asistió'; SET @estServ = 'Finalizado'; END
-    ELSE BEGIN SET @asist = 'Cancelado'; SET @estServ = 'Cancelado'; END
+    IF @a <= 100 + 52 + 50 + 15 BEGIN SET @asist = 'Asistió'; SET @estServ = 'Realizado'; END
+    ELSE BEGIN SET @asist = 'No asistió'; SET @estServ = 'Cancelado'; END
   END
 
   SET @idRes = (SELECT TOP 1 id_reserva FROM Reservas WHERE id_persona = @idPersona);

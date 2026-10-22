@@ -1,3 +1,6 @@
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+USE NexoSaludDB;
 -- Limpieza total de tablas e identidades de NexoSaludDB
 SET NOCOUNT ON;
 

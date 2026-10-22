@@ -3,6 +3,13 @@ import { turnedService } from '../services/turned.service';
 import { QUERY_KEYS } from '@/shared/constants';
 import type { NewRequestFormValues } from '../schemas/turnedSchema';
 
+export const useTurnedList = () => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.TURNED],
+    queryFn: () => turnedService.getAllTurneds(),
+  });
+};
+
 export const useTurneds = () => {
   return useQuery({
     queryKey: [QUERY_KEYS.TURNED],

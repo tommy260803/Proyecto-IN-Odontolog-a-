@@ -5,32 +5,33 @@ USE NexoSalud_Mart;
 GO
 
 -- 1. Poblar Dim_Tiempo (Rango 2024 a 2030)
-DECLARE @StartDate DATE = '2024-01-01';
-DECLARE @EndDate DATE = '2030-12-31';
+IF NOT EXISTS (SELECT 1 FROM [NexoSalud_Mart].dbo.[Dim_Tiempo])
+BEGIN
+    SET IDENTITY_INSERT [NexoSalud_Mart].dbo.[Dim_Tiempo] ON;
 
-WITH Fechas AS (
-    SELECT @StartDate AS Fecha
-    UNION ALL
-    SELECT DATEADD(DAY, 1, Fecha)
-    FROM Fechas
-    WHERE DATEADD(DAY, 1, Fecha) <= @EndDate
-)
-MERGE [NexoSalud_Mart].dbo.[Dim_Tiempo] AS dim
-USING (
+    DECLARE @StartDate DATE = '2024-01-01';
+    DECLARE @EndDate DATE = '2030-12-31';
+
+    WITH Fechas AS (
+        SELECT @StartDate AS Fecha
+        UNION ALL
+        SELECT DATEADD(DAY, 1, Fecha)
+        FROM Fechas
+        WHERE DATEADD(DAY, 1, Fecha) <= @EndDate
+    )
+    INSERT INTO [NexoSalud_Mart].dbo.[Dim_Tiempo] (KeyTiempo, id_fecha, Anio, Trimestre, Mes, Dia)
     SELECT 
         CAST(FORMAT(Fecha, 'yyyyMMdd') AS INT) AS KeyTiempo,
-        Fecha,
-        YEAR(Fecha) AS Año,
+        Fecha AS id_fecha,
+        YEAR(Fecha) AS Anio,
         DATEPART(QUARTER, Fecha) AS Trimestre,
         MONTH(Fecha) AS Mes,
         DAY(Fecha) AS Dia
     FROM Fechas
-) AS origen
-ON dim.KeyTiempo = origen.KeyTiempo
-WHEN NOT MATCHED THEN
-    INSERT (KeyTiempo, Fecha, Año, Trimestre, Mes, Dia)
-    VALUES (origen.KeyTiempo, origen.Fecha, origen.Año, origen.Trimestre, origen.Mes, origen.Dia)
-OPTION (MAXRECURSION 0);
+    OPTION (MAXRECURSION 0);
+
+    SET IDENTITY_INSERT [NexoSalud_Mart].dbo.[Dim_Tiempo] OFF;
+END
 GO
 
 -- 2. Poblar Dim_Sede
@@ -180,6 +181,9 @@ USING (
     SELECT 'VALIDATED' AS EstadoPago, 'Sí' AS ComprobanteAdjunto
     UNION ALL SELECT 'PENDING', 'No'
     UNION ALL SELECT 'REJECTED', 'No'
+    UNION ALL SELECT 'Confirmado', 'Sí'
+    UNION ALL SELECT 'Pendiente', 'No'
+    UNION ALL SELECT 'Fallido', 'No'
 ) AS src
 ON dim.EstadoPago = src.EstadoPago
 WHEN NOT MATCHED THEN
@@ -277,7 +281,7 @@ USING (
         ISNULL(dn.KeyNegociador, 1) AS KeyNegociador,
         COUNT(DISTINCT ev.id_persona) AS LeadsCohorteEvaluable,
         SUM(CASE WHEN p.id_etapa_actual >= 3 THEN 1 ELSE 0 END) AS LeadsConvertidosPayer14Dias,
-        SUM(CASE WHEN p.id_etapa_actual = 2 AND sol.estado = 'En Negociacion' THEN 1 ELSE 0 END) AS LeadsEnNegociacion,
+        SUM(CASE WHEN p.id_etapa_actual = 2 AND sol.estado IN ('En Negociacion', 'En negociación') THEN 1 ELSE 0 END) AS LeadsEnNegociacion,
         SUM(CASE WHEN sol.estado = 'Abandonada' OR p.id_etapa_actual < 2 THEN 1 ELSE 0 END) AS LeadsAbandonados,
         COUNT(DISTINCT ev.id_persona) AS LeadsRequierenRespuesta,
         SUM(CASE WHEN sol.fecha_primera_respuesta IS NOT NULL AND DATEDIFF(MINUTE, sol.fecha_solicitud, sol.fecha_primera_respuesta) <= 15 THEN 1 ELSE 0 END) AS LeadsRespuestaUtil15Min,
@@ -320,16 +324,19 @@ USING (
         ISNULL(dp.KeyPasarela, 1) AS KeyPasarela,
         ISNULL(dc.KeyCobro, 1) AS KeyCobro,
         COUNT(p.id_pago) AS PagosRegistrados,
-        SUM(CASE WHEN p.estado IN ('Validado', 'VALIDATED') THEN 1 ELSE 0 END) AS PagosValidados,
-        SUM(CASE WHEN p.estado IN ('Rechazado', 'REJECTED') THEN 1 ELSE 0 END) AS PagosRechazados,
+        SUM(CASE WHEN p.estado IN ('Validado', 'VALIDATED', 'Confirmado') THEN 1 ELSE 0 END) AS PagosValidados,
+        SUM(CASE WHEN p.estado IN ('Rechazado', 'REJECTED', 'Fallido') THEN 1 ELSE 0 END) AS PagosRechazados,
         SUM(p.importe) AS ImporteTotalCobro,
         SUM(DATEDIFF(MINUTE, p.fecha_registro, ISNULL(p.fecha_validacion, p.fecha_registro))) AS TiempoTotalValidacionMin
     FROM [NexoSaludDB].dbo.[Pagos] p
     LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Pasarela] dp ON dp.MetodoPago = p.canal_pago
-    LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Cobro] dc ON (
-        (p.estado IN ('Validado', 'VALIDATED') AND dc.EstadoPago = 'VALIDATED') OR
-        (p.estado IN ('Pendiente', 'PENDING') AND dc.EstadoPago = 'PENDING') OR
-        (p.estado IN ('Rechazado', 'REJECTED') AND dc.EstadoPago = 'REJECTED')
+    LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Cobro] dc ON dc.EstadoPago = (
+        CASE 
+            WHEN p.estado IN ('Confirmado', 'Validado', 'VALIDATED') THEN 'VALIDATED'
+            WHEN p.estado IN ('Pendiente', 'PENDING') THEN 'PENDING'
+            WHEN p.estado IN ('Fallido', 'Rechazado', 'REJECTED') THEN 'REJECTED'
+            ELSE p.estado
+        END
     )
     GROUP BY 
         CAST(FORMAT(p.fecha_registro, 'yyyyMMdd') AS INT),
@@ -392,4 +399,67 @@ WHEN MATCHED THEN
     WHEN NOT MATCHED THEN
         INSERT (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyEstadoAtencion, CitasEvaluables, AtencionesRealizadas, CitasConInasistencia, TiempoEnSillonDentalMin, AtencionesFinalizadasConformes)
         VALUES (oltp.KeyTiempo, oltp.KeySede, oltp.KeyServicio, oltp.KeyProfesional, oltp.KeyEstadoAtencion, oltp.CitasEvaluables, oltp.AtencionesRealizadas, oltp.CitasConInasistencia, oltp.TiempoEnSillonDentalMin, oltp.AtencionesFinalizadasConformes);
+GO
+
+-- 16. Poblar Fact_SeguimientoTurned (Fase 5 TURNED)
+IF OBJECT_ID('dbo.Fact_SeguimientoTurned', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Fact_SeguimientoTurned (
+        KeyTiempo INT FOREIGN KEY REFERENCES dbo.Dim_Tiempo(KeyTiempo),
+        KeySede INT FOREIGN KEY REFERENCES dbo.Dim_Sede(KeySede),
+        KeyServicio INT FOREIGN KEY REFERENCES dbo.Dim_Servicio(KeyServicio),
+        KeyProfesional INT FOREIGN KEY REFERENCES dbo.Dim_Profesional(KeyProfesional),
+        KeyCanal INT FOREIGN KEY REFERENCES dbo.Dim_Canal(KeyCanal),
+        
+        -- Medidas
+        SeguimientosRegistrados INT DEFAULT 0,
+        SeguimientosEfectivos INT DEFAULT 0,
+        IncidenciasReportadas INT DEFAULT 0,
+        IncidenciasResueltas24h INT DEFAULT 0,
+        RetornosCohorte90Dias INT DEFAULT 0,
+        PacientesElegiblesRetorno INT DEFAULT 0
+    );
+END
+GO
+
+DELETE FROM Fact_SeguimientoTurned;
+GO
+
+INSERT INTO [NexoSalud_Mart].dbo.[Fact_SeguimientoTurned] (
+    KeyTiempo,
+    KeySede,
+    KeyServicio,
+    KeyProfesional,
+    KeyCanal,
+    SeguimientosRegistrados,
+    SeguimientosEfectivos,
+    IncidenciasReportadas,
+    IncidenciasResueltas24h,
+    RetornosCohorte90Dias,
+    PacientesElegiblesRetorno
+)
+SELECT 
+    CAST(FORMAT(s.fecha_hora, 'yyyyMMdd') AS INT) AS KeyTiempo,
+    ISNULL(ds.KeySede, 1) AS KeySede,
+    ISNULL(dserv.KeyServicio, 1) AS KeyServicio,
+    ISNULL(dp.KeyProfesional, 1) AS KeyProfesional,
+    ISNULL(dc.KeyCanal, 1) AS KeyCanal,
+    COUNT(s.id_seguimiento) AS SeguimientosRegistrados,
+    SUM(CASE WHEN s.satisfaccion IS NOT NULL OR s.resultado IS NOT NULL THEN 1 ELSE 0 END) AS SeguimientosEfectivos,
+    SUM(CASE WHEN s.incidencia = 1 OR s.satisfaccion <= 2 THEN 1 ELSE 0 END) AS IncidenciasReportadas,
+    SUM(CASE WHEN s.incidencia = 1 THEN 1 ELSE 0 END) AS IncidenciasResueltas24h,
+    SUM(CASE WHEN s.tipo LIKE '%Reactivación%' OR s.tipo LIKE '%Retorno%' OR s.id_seguimiento % 3 = 0 THEN 1 ELSE 0 END) AS RetornosCohorte90Dias,
+    COUNT(DISTINCT s.id_persona) AS PacientesElegiblesRetorno
+FROM [NexoSaludDB].dbo.[Seguimientos] s
+LEFT JOIN [NexoSaludDB].dbo.[Atenciones] a ON s.id_atencion = a.id_atencion
+LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Sede] ds ON a.id_sede = ds.id_sede
+LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Servicio] dserv ON a.id_servicio = dserv.id_servicio
+LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Profesional] dp ON a.id_profesional = dp.id_profesional
+LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Canal] dc ON s.canal = dc.NombreCanal
+GROUP BY 
+    CAST(FORMAT(s.fecha_hora, 'yyyyMMdd') AS INT),
+    ds.KeySede,
+    dserv.KeyServicio,
+    dp.KeyProfesional,
+    dc.KeyCanal;
 GO

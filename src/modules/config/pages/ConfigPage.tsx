@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -53,7 +54,24 @@ type TabKey = 'empresa' | 'servicios' | 'sedes' | 'profesionales' | 'canales' | 
 
 export default function ConfigPage() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<TabKey>('empresa');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const validTabs: TabKey[] = ['empresa', 'servicios', 'sedes', 'profesionales', 'canales', 'usuarios'];
+  const tabParam = searchParams.get('tab') as TabKey | null;
+  const [activeTab, setActiveTabState] = useState<TabKey>(
+    tabParam && validTabs.includes(tabParam) ? tabParam : 'empresa'
+  );
+
+  useEffect(() => {
+    const nextTab = searchParams.get('tab') as TabKey | null;
+    if (nextTab && validTabs.includes(nextTab) && nextTab !== activeTab) {
+      setActiveTabState(nextTab);
+    }
+  }, [searchParams, activeTab]);
+
+  const setActiveTab = (tab: TabKey) => {
+    setActiveTabState(tab);
+    setSearchParams({ tab }, { replace: true });
+  };
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -510,7 +528,7 @@ export default function ConfigPage() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto pb-8">
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
         <div>

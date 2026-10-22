@@ -1,26 +1,23 @@
 import { useTheme } from '@/shared/context/ThemeContext';
 import { Sun, Moon } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
 
   return (
-    <Button
-      variant="outline"
-      size="icon"
+    <button
+      type="button"
       onClick={toggleTheme}
-      title={isDark ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
-      className="h-9 w-9 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 shadow-sm"
+      title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+      aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/20 active:scale-[0.98] cursor-pointer"
     >
       {isDark ? (
-        <Sun className="h-4 w-4 text-amber-400 rotate-0 scale-100 transition-all" />
+        <Sun className="h-[15px] w-[15px] text-amber-400 transition-transform duration-200" strokeWidth={1.75} />
       ) : (
-        <Moon className="h-4 w-4 text-slate-700 -rotate-90 scale-100 transition-all" />
+        <Moon className="h-[15px] w-[15px] text-slate-600 transition-transform duration-200" strokeWidth={1.75} />
       )}
-      <span className="sr-only">Alternar modo oscuro/claro</span>
-    </Button>
+    </button>
   );
 }
-
