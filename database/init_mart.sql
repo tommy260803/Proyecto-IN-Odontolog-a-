@@ -167,37 +167,39 @@ CREATE TABLE dbo.Dim_EstadoAtencion (
 GO
 
 -- ====================================================================
--- 2. CREACIÓN DE TABLAS DE HECHOS (FACT TABLES)
+-- 2. CREACIÓN DE TABLAS DE HECHOS (FACT TABLES CON LLAVE PRIMARIA COMPUESTA)
 -- ====================================================================
 
--- 2.1 Hecho: CAPTACIÓN BUYER
+-- 2.1 Hecho: CAPTACIÓN BUYER (Grano: Día, Sede, Canal, Fuente, Estado Calidad)
 IF OBJECT_ID('dbo.Fact_CaptacionBuyer', 'U') IS NULL
 CREATE TABLE dbo.Fact_CaptacionBuyer (
-    KeyTiempo INT FOREIGN KEY REFERENCES dbo.Dim_Tiempo(KeyTiempo),
-    KeySede INT FOREIGN KEY REFERENCES dbo.Dim_Sede(KeySede),
-    KeyServicio INT FOREIGN KEY REFERENCES dbo.Dim_Servicio(KeyServicio),
-    KeyCanal INT FOREIGN KEY REFERENCES dbo.Dim_Canal(KeyCanal),
-    KeyFuente INT FOREIGN KEY REFERENCES dbo.Dim_Fuente(KeyFuente),
-    KeyTipoPersona INT FOREIGN KEY REFERENCES dbo.Dim_TipoPersona(KeyTipoPersona),
-    KeyEstadoRegistro INT FOREIGN KEY REFERENCES dbo.Dim_EstadoRegistro(KeyEstadoRegistro),
+    KeyTiempo INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Tiempo(KeyTiempo),
+    KeySede INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Sede(KeySede),
+    KeyServicio INT NULL FOREIGN KEY REFERENCES dbo.Dim_Servicio(KeyServicio),
+    KeyCanal INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Canal(KeyCanal),
+    KeyFuente INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Fuente(KeyFuente),
+    KeyTipoPersona INT NULL FOREIGN KEY REFERENCES dbo.Dim_TipoPersona(KeyTipoPersona),
+    KeyEstadoRegistro INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_EstadoRegistro(KeyEstadoRegistro),
     
     -- Medidas
     ContactosRegistrados INT DEFAULT 0,
     ContactosUtilizables INT DEFAULT 0,
     ConversionesALead INT DEFAULT 0,
     TiempoConversionDias INT DEFAULT 0,
-    CostoAtribuidoCaptacion DECIMAL(10,2) DEFAULT 0.00
+    CostoAtribuidoCaptacion DECIMAL(10,2) DEFAULT 0.00,
+
+    CONSTRAINT PK_Fact_CaptacionBuyer PRIMARY KEY (KeyTiempo, KeySede, KeyCanal, KeyFuente, KeyEstadoRegistro)
 );
 GO
 
--- 2.2 Hecho: NEGOCIACIÓN LEAD
+-- 2.2 Hecho: NEGOCIACIÓN LEAD (Grano: Día, Sede, Servicio, Profesional, Negociador)
 IF OBJECT_ID('dbo.Fact_NegociacionLead', 'U') IS NULL
 CREATE TABLE dbo.Fact_NegociacionLead (
-    KeyTiempo INT FOREIGN KEY REFERENCES dbo.Dim_Tiempo(KeyTiempo),
-    KeySede INT FOREIGN KEY REFERENCES dbo.Dim_Sede(KeySede),
-    KeyServicio INT FOREIGN KEY REFERENCES dbo.Dim_Servicio(KeyServicio),
-    KeyProfesional INT FOREIGN KEY REFERENCES dbo.Dim_Profesional(KeyProfesional),
-    KeyNegociador INT FOREIGN KEY REFERENCES dbo.Dim_Negociador(KeyNegociador),
+    KeyTiempo INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Tiempo(KeyTiempo),
+    KeySede INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Sede(KeySede),
+    KeyServicio INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Servicio(KeyServicio),
+    KeyProfesional INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Profesional(KeyProfesional),
+    KeyNegociador INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Negociador(KeyNegociador),
     
     -- Medidas
     LeadsCohorteEvaluable INT DEFAULT 0,
@@ -206,21 +208,23 @@ CREATE TABLE dbo.Fact_NegociacionLead (
     LeadsRespuestaUtil15Min INT DEFAULT 0,
     LeadsResultadoFinal INT DEFAULT 0,
     LeadsAbandonados INT DEFAULT 0,
-    LeadsEnNegociacion INT DEFAULT 0
+    LeadsEnNegociacion INT DEFAULT 0,
+
+    CONSTRAINT PK_Fact_NegociacionLead PRIMARY KEY (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyNegociador)
 );
 GO
 
--- 2.3 Hecho: GESTIÓN PAYER
+-- 2.3 Hecho: GESTIÓN PAYER (Grano: Día, Pasarela, Cobro, Sede, Servicio)
 IF OBJECT_ID('dbo.Fact_GestionPayer', 'U') IS NULL
 CREATE TABLE dbo.Fact_GestionPayer (
-    KeyTiempo INT FOREIGN KEY REFERENCES dbo.Dim_Tiempo(KeyTiempo),
-    KeyHora INT FOREIGN KEY REFERENCES dbo.Dim_Hora(KeyHora),
-    KeySede INT FOREIGN KEY REFERENCES dbo.Dim_Sede(KeySede),
-    KeyServicio INT FOREIGN KEY REFERENCES dbo.Dim_Servicio(KeyServicio),
-    KeyFuente INT FOREIGN KEY REFERENCES dbo.Dim_Fuente(KeyFuente),
-    KeyPasarela INT FOREIGN KEY REFERENCES dbo.Dim_Pasarela(KeyPasarela),
-    KeyPagador INT FOREIGN KEY REFERENCES dbo.Dim_Pagador(KeyPagador),
-    KeyCobro INT FOREIGN KEY REFERENCES dbo.Dim_Cobro(KeyCobro),
+    KeyTiempo INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Tiempo(KeyTiempo),
+    KeyHora INT NULL FOREIGN KEY REFERENCES dbo.Dim_Hora(KeyHora),
+    KeySede INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Sede(KeySede),
+    KeyServicio INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Servicio(KeyServicio),
+    KeyFuente INT NULL FOREIGN KEY REFERENCES dbo.Dim_Fuente(KeyFuente),
+    KeyPasarela INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Pasarela(KeyPasarela),
+    KeyPagador INT NULL FOREIGN KEY REFERENCES dbo.Dim_Pagador(KeyPagador),
+    KeyCobro INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Cobro(KeyCobro),
     
     -- Medidas
     PagosRegistrados INT DEFAULT 0,
@@ -229,37 +233,41 @@ CREATE TABLE dbo.Fact_GestionPayer (
     ConversionesACustomer INT DEFAULT 0,
     ImporteTotalCobro DECIMAL(12,2) DEFAULT 0.00,
     CostoTotalTransacciones DECIMAL(10,2) DEFAULT 0.00,
-    TiempoTotalValidacionMin INT DEFAULT 0
+    TiempoTotalValidacionMin INT DEFAULT 0,
+
+    CONSTRAINT PK_Fact_GestionPayer PRIMARY KEY (KeyTiempo, KeyPasarela, KeyCobro, KeySede, KeyServicio)
 );
 GO
 
--- 2.4 Hecho: ATENCIÓN CUSTOMER
+-- 2.4 Hecho: ATENCIÓN CUSTOMER (Grano: Día, Sede, Servicio, Profesional, Estado Atención)
 IF OBJECT_ID('dbo.Fact_AtencionCustomer', 'U') IS NULL
 CREATE TABLE dbo.Fact_AtencionCustomer (
-    KeyTiempo INT FOREIGN KEY REFERENCES dbo.Dim_Tiempo(KeyTiempo),
-    KeyHora INT FOREIGN KEY REFERENCES dbo.Dim_Hora(KeyHora),
-    KeySede INT FOREIGN KEY REFERENCES dbo.Dim_Sede(KeySede),
-    KeyServicio INT FOREIGN KEY REFERENCES dbo.Dim_Servicio(KeyServicio),
-    KeyProfesional INT FOREIGN KEY REFERENCES dbo.Dim_Profesional(KeyProfesional),
-    KeyEstadoAtencion INT FOREIGN KEY REFERENCES dbo.Dim_EstadoAtencion(KeyEstadoAtencion),
+    KeyTiempo INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Tiempo(KeyTiempo),
+    KeyHora INT NULL FOREIGN KEY REFERENCES dbo.Dim_Hora(KeyHora),
+    KeySede INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Sede(KeySede),
+    KeyServicio INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Servicio(KeyServicio),
+    KeyProfesional INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Profesional(KeyProfesional),
+    KeyEstadoAtencion INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_EstadoAtencion(KeyEstadoAtencion),
     
     -- Medidas
     CitasEvaluables INT DEFAULT 0,
     AtencionesRealizadas INT DEFAULT 0,
     CitasConInasistencia INT DEFAULT 0,
     TiempoEnSillonDentalMin INT DEFAULT 0,
-    AtencionesFinalizadasConformes INT DEFAULT 0
+    AtencionesFinalizadasConformes INT DEFAULT 0,
+
+    CONSTRAINT PK_Fact_AtencionCustomer PRIMARY KEY (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyEstadoAtencion)
 );
 GO
 
--- 2.5 Hecho: SEGUIMIENTO TURNED
+-- 2.5 Hecho: SEGUIMIENTO TURNED (Grano: Día, Sede, Servicio, Profesional, Canal)
 IF OBJECT_ID('dbo.Fact_SeguimientoTurned', 'U') IS NULL
 CREATE TABLE dbo.Fact_SeguimientoTurned (
-    KeyTiempo INT FOREIGN KEY REFERENCES dbo.Dim_Tiempo(KeyTiempo),
-    KeySede INT FOREIGN KEY REFERENCES dbo.Dim_Sede(KeySede),
-    KeyServicio INT FOREIGN KEY REFERENCES dbo.Dim_Servicio(KeyServicio),
-    KeyProfesional INT FOREIGN KEY REFERENCES dbo.Dim_Profesional(KeyProfesional),
-    KeyCanal INT FOREIGN KEY REFERENCES dbo.Dim_Canal(KeyCanal),
+    KeyTiempo INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Tiempo(KeyTiempo),
+    KeySede INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Sede(KeySede),
+    KeyServicio INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Servicio(KeyServicio),
+    KeyProfesional INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Profesional(KeyProfesional),
+    KeyCanal INT NOT NULL FOREIGN KEY REFERENCES dbo.Dim_Canal(KeyCanal),
     
     -- Medidas
     SeguimientosRegistrados INT DEFAULT 0,
@@ -267,30 +275,8 @@ CREATE TABLE dbo.Fact_SeguimientoTurned (
     IncidenciasReportadas INT DEFAULT 0,
     IncidenciasResueltas24h INT DEFAULT 0,
     RetornosCohorte90Dias INT DEFAULT 0,
-    PacientesElegiblesRetorno INT DEFAULT 0
+    PacientesElegiblesRetorno INT DEFAULT 0,
+
+    CONSTRAINT PK_Fact_SeguimientoTurned PRIMARY KEY (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyCanal)
 );
-GO
-
--- ====================================================================
--- 3. ÍNDICES DE UNICIDAD FÍSICA PARA EL GRANO ANALÍTICO
--- ====================================================================
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactCaptacionBuyer_Grain' AND object_id = OBJECT_ID('Fact_CaptacionBuyer'))
-    CREATE UNIQUE NONCLUSTERED INDEX UQ_FactCaptacionBuyer_Grain 
-    ON Fact_CaptacionBuyer (KeyTiempo, KeySede, KeyCanal, KeyFuente, KeyEstadoRegistro);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactNegociacionLead_Grain' AND object_id = OBJECT_ID('Fact_NegociacionLead'))
-    CREATE UNIQUE NONCLUSTERED INDEX UQ_FactNegociacionLead_Grain 
-    ON Fact_NegociacionLead (KeyTiempo, KeySede, KeyNegociador, KeyServicio, KeyProfesional);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactGestionPayer_Grain' AND object_id = OBJECT_ID('Fact_GestionPayer'))
-    CREATE UNIQUE NONCLUSTERED INDEX UQ_FactGestionPayer_Grain 
-    ON Fact_GestionPayer (KeyTiempo, KeyPasarela, KeyCobro, KeySede, KeyServicio);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactAtencionCustomer_Grain' AND object_id = OBJECT_ID('Fact_AtencionCustomer'))
-    CREATE UNIQUE NONCLUSTERED INDEX UQ_FactAtencionCustomer_Grain 
-    ON Fact_AtencionCustomer (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyEstadoAtencion);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactSeguimientoTurned_Grain' AND object_id = OBJECT_ID('Fact_SeguimientoTurned'))
-    CREATE UNIQUE NONCLUSTERED INDEX UQ_FactSeguimientoTurned_Grain 
-    ON Fact_SeguimientoTurned (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyCanal);
 GO
