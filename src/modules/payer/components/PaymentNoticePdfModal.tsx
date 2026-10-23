@@ -12,7 +12,7 @@ import jsPDF from 'jspdf';
 import { createPaymentDocumentPdf } from '@/shared/pdf/paymentDocument';
 import logoDataUrl from '@/shared/pdf/Logo_NexoSalud.png?inline';
 
-import { PayerState } from '@/domain/enums';
+import { PayerState, normalizePayerState } from '@/domain/enums';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -79,7 +79,7 @@ export function PaymentNoticePdfModal({
 
   useEffect(() => {
     if (isOpen && payer) {
-      setDocumentType(payer.state === PayerState.VALIDATED ? 'RECEIPT' : 'ORDER');
+      setDocumentType(normalizePayerState(payer.state) === PayerState.VALIDADO ? 'RECEIPT' : 'ORDER');
     }
   }, [isOpen, payer?.id, payer?.state]);
 
@@ -111,11 +111,12 @@ export function PaymentNoticePdfModal({
 
   if (!isOpen || !payer) return null;
 
-  const isValidated = payer.state === PayerState.VALIDATED;
+  const payerState = normalizePayerState(payer.state);
+  const isValidated = payerState === PayerState.VALIDADO;
   const isReceiptDocument = documentType === 'RECEIPT';
   const canEmailDocument = isReceiptDocument
     ? isValidated
-    : payer.state === PayerState.PENDING || payer.state === PayerState.IN_REVIEW;
+    : payerState === PayerState.PENDIENTE || payerState === PayerState.EN_REVISION;
 
   // Descargar archivo .PDF directamente al computador
   const handleDownloadPdf = () => {

@@ -17,13 +17,30 @@ export const LeadState = {
 export type LeadState = (typeof LeadState)[keyof typeof LeadState];
 
 export const PayerState = {
-  PENDING: 'PENDING',
-  IN_REVIEW: 'IN_REVIEW',
-  VALIDATED: 'VALIDATED',
-  REJECTED: 'REJECTED',
-  REVERTED: 'REVERTED',
+  PENDING: 'PENDIENTE',
+  IN_REVIEW: 'EN_REVISION',
+  VALIDATED: 'VALIDADO',
+  REJECTED: 'RECHAZADO',
+  REVERTED: 'REVERTIDO',
+
+  // Identificadores canónicos en español
+  PENDIENTE: 'PENDIENTE',
+  EN_REVISION: 'EN_REVISION',
+  VALIDADO: 'VALIDADO',
+  RECHAZADO: 'RECHAZADO',
+  REVERTIDO: 'REVERTIDO',
 } as const;
 export type PayerState = (typeof PayerState)[keyof typeof PayerState];
+
+export function normalizePayerState(state?: string | null): PayerState {
+  if (!state) return PayerState.PENDIENTE;
+  const s = state.toUpperCase().trim();
+  if (s === 'VALIDATED' || s === 'VALIDADO') return PayerState.VALIDADO;
+  if (s === 'IN_REVIEW' || s === 'EN_REVISION' || s === 'EN REVISIÓN' || s === 'EN REVISION') return PayerState.EN_REVISION;
+  if (s === 'REJECTED' || s === 'RECHAZADO') return PayerState.RECHAZADO;
+  if (s === 'REVERTED' || s === 'REVERTIDO') return PayerState.REVERTIDO;
+  return PayerState.PENDIENTE;
+}
 
 export const CustomerState = {
   SCHEDULED: 'SCHEDULED',

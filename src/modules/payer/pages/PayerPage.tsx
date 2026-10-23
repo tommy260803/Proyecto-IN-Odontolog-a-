@@ -144,7 +144,7 @@ export default function PayerPage() {
         const email = p.person?.email || 'contacto@ejemplo.com';
         const resId = p.reservationId || p.id;
         
-        if (p.state === 'VALIDATED') {
+        if (p.state === 'VALIDADO' || p.state === 'VALIDATED') {
           logs.push({
             reservationId: resId,
             patientName,
@@ -238,7 +238,7 @@ export default function PayerPage() {
 
       // Priorizar la reserva que esté activa (PENDING, IN_REVIEW, VALIDATED) sobre las canceladas/rechazadas
       const activeRes = sorted.find(
-        item => item.state === PayerState.PENDING || item.state === PayerState.IN_REVIEW || item.state === PayerState.VALIDATED
+        item => item.state === PayerState.PENDIENTE || item.state === PayerState.EN_REVISION || item.state === PayerState.VALIDADO || (item.state as string) === 'VALIDATED' || (item.state as string) === 'PENDING' || (item.state as string) === 'IN_REVIEW'
       );
       const primary = activeRes || sorted[0];
       const history = sorted.filter(item => item.id !== primary.id);

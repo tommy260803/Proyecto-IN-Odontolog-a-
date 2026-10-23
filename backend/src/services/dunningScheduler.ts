@@ -58,7 +58,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
     for (const r of reservas) {
       const pago = r.Pagos.length > 0 ? r.Pagos[0] : null;
       // Un comprobante en revisión ya fue presentado; el pendiente aún requiere avisos.
-      if (pago && ['Validado', 'En_Revision', 'En revisión', 'En Revisión', 'IN_REVIEW'].includes(pago.estado)) {
+      if (pago && ['Validado', 'VALIDADO', 'En_Revision', 'En revisión', 'En Revisión', 'EN_REVISION', 'IN_REVIEW'].includes(pago.estado)) {
         continue;
       }
 

@@ -44,7 +44,7 @@ export function canTransitionPayerToCustomer(
   payer: Payer,
   reservation?: Reservation,
 ): TransitionResult {
-  if (payer.state !== PayerState.VALIDATED) {
+  if (payer.state !== PayerState.VALIDADO && (payer.state as string) !== 'VALIDATED') {
     return { success: false, error: 'El pago debe estar validado.' };
   }
   if (!payer.reservationId) {

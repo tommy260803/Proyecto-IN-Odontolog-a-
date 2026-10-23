@@ -38,10 +38,19 @@ export function cleanLabel(label: string): string {
 /** Traducción de valores de dimensión técnicos a lenguaje de negocio. */
 const COLUMN_LABELS: Record<string, string> = {
   VALIDATED: 'Validado',
+  VALIDADO: 'Validado',
   PENDING: 'Pendiente',
+  PENDIENTE: 'Pendiente',
   REJECTED: 'Rechazado',
+  RECHAZADO: 'Rechazado',
+  IN_REVIEW: 'En revisión',
+  EN_REVISION: 'En revisión',
+  REVERTED: 'Revertido',
+  REVERTIDO: 'Revertido',
   CANCELLED: 'Anulado',
+  CANCELADO: 'Cancelado',
   REFUNDED: 'Reembolsado',
+  REEMBOLSADO: 'Reembolsado',
 };
 
 export function columnLabel(column: string): string {

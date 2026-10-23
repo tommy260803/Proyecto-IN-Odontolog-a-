@@ -113,7 +113,7 @@ async function seedMartReports() {
   await insertWithIdentity('Dim_Cobro', `
     INSERT INTO Dim_Cobro (KeyCobro, EstadoPago, ComprobanteAdjunto)
     VALUES 
-      (1, 'VALIDATED', 'SI'),
+      (1, 'VALIDADO', 'SI'),
       (2, 'PENDING', 'NO'),
       (3, 'REJECTED', 'NO');
   `);

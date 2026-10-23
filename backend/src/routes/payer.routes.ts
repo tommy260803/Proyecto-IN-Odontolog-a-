@@ -84,19 +84,18 @@ router.get('/', async (req, res) => {
 
     const payers = reservas.map(r => {
       const pago = r.Pagos.length > 0 ? r.Pagos[0] : null;
-      let state = 'PENDING';
+      let state = 'PENDIENTE';
       if (r.estado === 'Vencida' || r.estado === 'Cancelada') {
-        state = 'REJECTED';
+        state = 'RECHAZADO';
       } else if (pago) {
-        if (pago.estado === 'Validado') {
-          state = 'VALIDATED';
-        } else if (pago.estado === 'Rechazado') {
-          state = 'REJECTED';
-        } else if (pago.estado === 'En_Revision' || pago.estado === 'En revisión' || pago.estado === 'IN_REVIEW') {
-          state = 'IN_REVIEW';
+        if (pago.estado === 'Validado' || pago.estado === 'Confirmado' || pago.estado === 'VALIDADO' || pago.estado === 'VALIDATED') {
+          state = 'VALIDADO';
+        } else if (pago.estado === 'Rechazado' || pago.estado === 'Fallido' || pago.estado === 'RECHAZADO' || pago.estado === 'REJECTED') {
+          state = 'RECHAZADO';
+        } else if (pago.estado === 'En_Revision' || pago.estado === 'En revisión' || pago.estado === 'EN_REVISION' || pago.estado === 'IN_REVIEW') {
+          state = 'EN_REVISION';
         } else {
-          // 'Pendiente' o cualquier otro estado inicial de pre-reserva
-          state = 'PENDING';
+          state = 'PENDIENTE';
         }
       }
 
@@ -213,19 +212,18 @@ router.get('/:id', async (req, res) => {
     }
 
     const pago = reserva.Pagos.length > 0 ? reserva.Pagos[0] : null;
-    let state = 'PENDING';
+    let state = 'PENDIENTE';
     if (reserva.estado === 'Vencida' || reserva.estado === 'Cancelada') {
-      state = 'REJECTED';
+      state = 'RECHAZADO';
     } else if (pago) {
-      if (pago.estado === 'Validado') {
-        state = 'VALIDATED';
-      } else if (pago.estado === 'Rechazado') {
-        state = 'REJECTED';
-      } else if (pago.estado === 'En_Revision' || pago.estado === 'En revisión' || pago.estado === 'IN_REVIEW') {
-        state = 'IN_REVIEW';
+      if (pago.estado === 'Validado' || pago.estado === 'Confirmado' || pago.estado === 'VALIDADO' || pago.estado === 'VALIDATED') {
+        state = 'VALIDADO';
+      } else if (pago.estado === 'Rechazado' || pago.estado === 'Fallido' || pago.estado === 'RECHAZADO' || pago.estado === 'REJECTED') {
+        state = 'RECHAZADO';
+      } else if (pago.estado === 'En_Revision' || pago.estado === 'En revisión' || pago.estado === 'EN_REVISION' || pago.estado === 'IN_REVIEW') {
+        state = 'EN_REVISION';
       } else {
-        // 'Pendiente' o reserva inicial sin pagar aún
-        state = 'PENDING';
+        state = 'PENDIENTE';
       }
     }
 
@@ -246,14 +244,14 @@ router.get('/:id', async (req, res) => {
 
     const reservationHistory = todasLasReservas.map(histRes => {
       const histPago = histRes.Pagos.length > 0 ? histRes.Pagos[0] : null;
-      let histState = 'PENDING';
+      let histState = 'PENDIENTE';
       if (histRes.estado === 'Vencida' || histRes.estado === 'Cancelada') {
-        histState = 'REJECTED';
+        histState = 'RECHAZADO';
       } else if (histPago) {
-        if (histPago.estado === 'Validado') histState = 'VALIDATED';
-        else if (histPago.estado === 'Rechazado') histState = 'REJECTED';
-        else if (histPago.estado === 'En_Revision' || histPago.estado === 'En revisión' || histPago.estado === 'IN_REVIEW') histState = 'IN_REVIEW';
-        else histState = 'PENDING';
+        if (histPago.estado === 'Validado' || histPago.estado === 'Confirmado' || histPago.estado === 'VALIDADO' || histPago.estado === 'VALIDATED') histState = 'VALIDADO';
+        else if (histPago.estado === 'Rechazado' || histPago.estado === 'Fallido' || histPago.estado === 'RECHAZADO' || histPago.estado === 'REJECTED') histState = 'RECHAZADO';
+        else if (histPago.estado === 'En_Revision' || histPago.estado === 'En revisión' || histPago.estado === 'EN_REVISION' || histPago.estado === 'IN_REVIEW') histState = 'EN_REVISION';
+        else histState = 'PENDIENTE';
       }
       return {
         id: histRes.id_reserva.toString(),

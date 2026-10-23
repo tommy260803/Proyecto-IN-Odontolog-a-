@@ -361,15 +361,193 @@ router.post('/:id/abandon', async (req, res) => {
   }
 });
 
-// ── Actualizar un LEAD ──────────────────────────────────────────────────────
+// ── Actualizar un LEAD y su Perfil de Negociación ───────────────────────────
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const data = req.body;
+  const numId = Number(id) || Number(id.replace(/\D/g, ''));
+  if (isNaN(numId) || !numId) {
+    return res.status(400).json({ error: 'ID de LEAD inválido' });
+  }
+
+  const {
+    person,
+    nombres, apellidos, email, numero, phone, dni, documentNumber,
+    pref_sede_preferida, sede_preferida, pref_id_horario, id_horario, pref_id_modalidad, id_modalidad, pref_profesional_preferido, profesional_preferido,
+    estudianteAplica, aplica_estudiante, universidad, carrera, ciclo,
+    laboralAplica, aplica_laboral, ocupacion, empresa, modalidadLaboral, modalidad_laboral, disponibilidadLaboral, disponibilidad_laboral,
+    ultima_visita_odontologica, tratamiento_previo, nivel_dolor, presenta_sensibilidad, sangrado_o_inflamacion, usa_aparato_o_protesis, condicion_atencion_especial, motivo_consulta,
+    serviceOfInterestId, id_servicio, concreteRequest, motivo
+  } = req.body;
+
   try {
-    res.json({ message: 'Lead actualizado', data });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al actualizar LEAD' });
+    const updatePersonData: any = {};
+    const finalNombres = nombres || person?.firstName;
+    const finalApellidos = apellidos || person?.lastName;
+    const finalEmail = email !== undefined ? email : person?.email;
+    const finalNumero = numero || phone || person?.phone;
+    const finalDni = dni || documentNumber || person?.documentNumber;
+
+    if (finalNombres) updatePersonData.nombres = String(finalNombres).trim();
+    if (finalApellidos) updatePersonData.apellidos = String(finalApellidos).trim();
+    if (finalEmail !== undefined) updatePersonData.email = finalEmail ? String(finalEmail).trim() : null;
+    if (finalNumero !== undefined) updatePersonData.numero = finalNumero ? String(finalNumero).trim() : null;
+    if (finalDni !== undefined) updatePersonData.dni = finalDni ? String(finalDni).trim() : null;
+
+    await prisma.$transaction(async (tx) => {
+      if (Object.keys(updatePersonData).length > 0) {
+        await tx.personas.update({
+          where: { id_persona: numId },
+          data: updatePersonData
+        });
+      }
+
+      // 1. Preferencias de Atención
+      const finalSede = pref_sede_preferida || sede_preferida;
+      const finalHorarioId = Number(pref_id_horario || id_horario) || null;
+      const finalModalidadId = Number(pref_id_modalidad || id_modalidad) || null;
+      const finalProfesional = pref_profesional_preferido || profesional_preferido;
+
+      if (finalSede || finalHorarioId || finalModalidadId || finalProfesional) {
+        await tx.personaPreferencias.deleteMany({ where: { id_persona: numId } });
+        await tx.personaPreferencias.create({
+          data: {
+            id_persona: numId,
+            sede_preferida: finalSede ? String(finalSede).trim() : null,
+            id_horario: finalHorarioId,
+            id_modalidad: finalModalidadId,
+            profesional_preferido: finalProfesional ? String(finalProfesional).trim() : null,
+          }
+        });
+      }
+
+      // 2. Salud Odontológica
+      if (
+        ultima_visita_odontologica !== undefined ||
+        motivo_consulta !== undefined ||
+        tratamiento_previo !== undefined ||
+        nivel_dolor !== undefined ||
+        presenta_sensibilidad !== undefined ||
+        sangrado_o_inflamacion !== undefined ||
+        usa_aparato_o_protesis !== undefined ||
+        condicion_atencion_especial !== undefined
+      ) {
+        await tx.personaSaludOdontologica.deleteMany({ where: { id_persona: numId } });
+        await tx.personaSaludOdontologica.create({
+          data: {
+            id_persona: numId,
+            ultima_visita_odontologica: ultima_visita_odontologica || null,
+            motivo_consulta: motivo_consulta || motivo || null,
+            tratamiento_previo: tratamiento_previo || null,
+            nivel_dolor: nivel_dolor || 'Ninguno',
+            presenta_sensibilidad: presenta_sensibilidad || 'No',
+            sangrado_o_inflamacion: sangrado_o_inflamacion || 'Ninguno',
+            usa_aparato_o_protesis: usa_aparato_o_protesis || 'Ninguno',
+            condicion_atencion_especial: condicion_atencion_especial || 'Ninguna',
+          }
+        });
+      }
+
+      // 3. Datos Académicos (Convenio Estudiantil)
+      if (estudianteAplica !== undefined || aplica_estudiante !== undefined || universidad !== undefined || carrera !== undefined) {
+        const shouldApply = estudianteAplica ?? aplica_estudiante ?? Boolean(universidad || carrera);
+        await tx.datosAcademicos.deleteMany({ where: { id_persona: numId } });
+        if (shouldApply && (universidad || carrera)) {
+          await tx.datosAcademicos.create({
+            data: {
+              id_persona: numId,
+              aplica: true,
+              universidad: universidad ? String(universidad).trim() : null,
+              carrera: carrera ? String(carrera).trim() : null,
+              ciclo: ciclo ? String(ciclo).trim() : null,
+            }
+          });
+        }
+      }
+
+      // 4. Datos Laborales
+      if (laboralAplica !== undefined || aplica_laboral !== undefined || ocupacion !== undefined || empresa !== undefined) {
+        const shouldApply = laboralAplica ?? aplica_laboral ?? Boolean(ocupacion || empresa);
+        await tx.datosLaborales.deleteMany({ where: { id_persona: numId } });
+        if (shouldApply && (ocupacion || empresa)) {
+          await tx.datosLaborales.create({
+            data: {
+              id_persona: numId,
+              aplica: true,
+              ocupacion: ocupacion ? String(ocupacion).trim() : null,
+              empresa: empresa ? String(empresa).trim() : null,
+              modalidad: (modalidadLaboral || modalidad_laboral) ? String(modalidadLaboral || modalidad_laboral).trim() : null,
+              disponibilidad: (disponibilidadLaboral || disponibilidad_laboral) ? String(disponibilidadLaboral || disponibilidad_laboral).trim() : null,
+            }
+          });
+        }
+      }
+
+      // 5. Solicitud
+      const finalMotivo = concreteRequest || motivo;
+      const finalServicioId = Number(serviceOfInterestId || id_servicio) || null;
+      if (finalMotivo !== undefined || finalServicioId) {
+        const sol = await tx.solicitudes.findFirst({ where: { id_persona: numId }, orderBy: { id_solicitud: 'desc' } });
+        if (sol) {
+          await tx.solicitudes.update({
+            where: { id_solicitud: sol.id_solicitud },
+            data: {
+              motivo: finalMotivo !== undefined ? String(finalMotivo).trim() : sol.motivo,
+              ...(finalServicioId ? { id_servicio: finalServicioId } : {})
+            }
+          });
+        } else if (finalMotivo || finalServicioId) {
+          await tx.solicitudes.create({
+            data: {
+              id_persona: numId,
+              motivo: finalMotivo || 'Evaluación odontológica',
+              id_servicio: finalServicioId || 1
+            }
+          });
+        }
+      }
+    });
+
+    const updatedLead = await prisma.personas.findUnique({
+      where: { id_persona: numId },
+      include: {
+        Etapa: true,
+        CanalOrigen: true,
+        Preferencias: {
+          include: {
+            Canal: true,
+            Horario: true,
+            Modalidad: true,
+            ServicioInteres: true,
+          }
+        },
+        DatosAcademicos: true,
+        DatosLaborales: true,
+        SaludOdontologica: true,
+        Interacciones: {
+          include: { Canal: true, Fuente: true },
+          orderBy: { fecha_hora: 'desc' },
+          take: 5,
+        },
+        Solicitudes: {
+          include: {
+            Servicio: true,
+            Opciones: {
+              include: {
+                Disponibilidad: {
+                  include: { Profesional: true, Sede: true }
+                }
+              }
+            }
+          },
+          orderBy: { fecha_solicitud: 'desc' },
+        },
+      }
+    });
+
+    res.json({ message: 'Lead actualizado con éxito', data: updatedLead });
+  } catch (error: any) {
+    console.error('Error al actualizar LEAD:', error);
+    res.status(500).json({ error: error.message || 'Error al actualizar LEAD' });
   }
 });
 

@@ -419,7 +419,7 @@ export function calculateL3(leads: Lead[]): IndicatorResult {
 // P1: Porcentaje de pagos validados
 export function calculateP1(payers: Payer[]): IndicatorResult {
   if (payers.length === 0) return { id: 'P1', name: 'Pagos Validados', value: 0, unit: '%', formula: '', status: 'red', format: 'percentage' };
-  const validated = payers.filter(p => p.state === PayerState.VALIDATED).length;
+  const validated = payers.filter(p => p.state === PayerState.VALIDADO || (p.state as string) === 'VALIDATED').length;
   const value = (validated / payers.length) * 100;
   
   return {
@@ -433,7 +433,7 @@ export function calculateP1(payers: Payer[]): IndicatorResult {
 export function calculateP2(payers: Payer[], payments?: Payment[]): IndicatorResult {
   let totalMins = 0;
   let count = 0;
-  payers.filter(p => p.state === PayerState.VALIDATED).forEach(p => {
+  payers.filter(p => p.state === PayerState.VALIDADO || (p.state as string) === 'VALIDATED').forEach(p => {
     const payment = payments?.find(pay => pay.payerId === p.id) || (p as any).payment;
     if (payment) {
       const createdAt = p.createdAt ? parseISO(p.createdAt) : new Date();
@@ -461,7 +461,7 @@ export function calculateP2(payers: Payer[], payments?: Payment[]): IndicatorRes
 // P3: Porcentaje de pagos rechazados
 export function calculateP3(payers: Payer[]): IndicatorResult {
   if (payers.length === 0) return { id: 'P3', name: 'Pagos Rechazados', value: 0, unit: '%', formula: '', status: 'green', format: 'percentage' };
-  const rejected = payers.filter(p => p.state === PayerState.REJECTED || p.state === PayerState.REVERTED).length;
+  const rejected = payers.filter(p => p.state === PayerState.RECHAZADO || p.state === PayerState.REVERTIDO || (p.state as string) === 'REJECTED' || (p.state as string) === 'REVERTED').length;
   const value = (rejected / payers.length) * 100;
   
   return {
@@ -473,7 +473,7 @@ export function calculateP3(payers: Payer[]): IndicatorResult {
 
 // P4: Conversión PAYER a CUSTOMER
 export function calculateP4(payers: Payer[], journeys?: CustomerJourney[]): IndicatorResult {
-  const validated = payers.filter(p => p.state === PayerState.VALIDATED);
+  const validated = payers.filter(p => p.state === PayerState.VALIDADO || (p.state as string) === 'VALIDATED');
   if (validated.length === 0) return { id: 'P4', name: 'Conversión a CUSTOMER', value: 0, unit: '%', formula: '', status: 'red', format: 'percentage' };
   
   let converted = 0;

@@ -55,7 +55,10 @@ export const leadService = {
             }
           }))
         }],
-        Preferencias: [{ sede_preferida: data.declaredPreferences || data.buyer?.preferences || 'Sede Central' }]
+        Preferencias: [{ sede_preferida: data.declaredPreferences || data.buyer?.preferences || 'Sede Central' }],
+        SaludOdontologica: data.SaludOdontologica || (data.saludOdontologica ? [data.saludOdontologica] : (data.buyer?.saludOdontologica ? [data.buyer.saludOdontologica] : [])),
+        DatosAcademicos: data.DatosAcademicos || (data.datosAcademicos ? [data.datosAcademicos] : (data.buyer?.datosAcademicos ? [data.buyer.datosAcademicos] : [])),
+        DatosLaborales: data.DatosLaborales || (data.datosLaborales ? [data.datosLaborales] : (data.buyer?.datosLaborales ? [data.buyer.datosLaborales] : [])),
       };
     }
 

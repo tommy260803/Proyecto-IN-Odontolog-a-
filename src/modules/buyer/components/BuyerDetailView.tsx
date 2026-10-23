@@ -23,6 +23,10 @@ import {
   Phone,
   Mail,
   Activity,
+  Bot,
+  Flame,
+  Zap,
+  AlertTriangle,
 } from 'lucide-react';
 import { useBuyer, useUpdateBuyer, useConvertBuyerToLead } from '../hooks/useBuyerQueries';
 import { buyerService } from '../services/buyer.service';
@@ -137,6 +141,8 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
         concreteRequest: b.concreteRequest,
         contactAuthorization: b.contactAuthorization,
         qualityStatus: b.state === BuyerState.CONVERTED ? 'Valido' : undefined,
+        state: b.state,
+        isConverted: b.state === BuyerState.CONVERTED,
       });
       setAiAnalysis(result);
     } catch (err) {
@@ -826,19 +832,29 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
           </div>
         </div>
 
-        {/* COLUMNA DERECHA (35%): Tarjeta de "Diagnóstico Comercial / BI" */}
+        {/* COLUMNA DERECHA (35%): Tarjeta del Agente Inteligente de Marketing & BI */}
         <div className="lg:col-span-4 space-y-5">
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 p-5 shadow-2xs space-y-5">
-            {/* Cabecera del Diagnóstico */}
+            {/* Cabecera del Agente de Marketing */}
             <div className="flex items-start justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-4">
-              <div>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  Inteligencia de Admisión
-                </span>
-                <h2 className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Activity className="h-4 w-4 text-[#0f766e]" strokeWidth={1.75} />
-                  <span>Diagnóstico Comercial / BI</span>
-                </h2>
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950/60 text-[#0f766e] dark:text-teal-400 border border-teal-200/60 dark:border-teal-800/60 shadow-2xs">
+                  <Bot className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#0f766e] dark:text-teal-400">
+                      Agente de Marketing (IA)
+                    </span>
+                    <span className="rounded bg-teal-50 dark:bg-teal-950/60 px-1.5 py-0.2 font-mono text-[9px] font-semibold text-teal-700 dark:text-teal-300 border border-teal-200/50">
+                      BUYER · BI
+                    </span>
+                  </div>
+                  <h2 className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Activity className="h-3.5 w-3.5 text-[#0f766e]" strokeWidth={2} />
+                    <span>Inteligencia de Admisión</span>
+                  </h2>
+                </div>
               </div>
 
               <button
@@ -846,10 +862,10 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
                 onClick={() => runAiAnalysis(buyer)}
                 disabled={isAiLoading}
                 className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 disabled:opacity-50 cursor-pointer"
-                title="Recalcular diagnóstico comercial"
+                title="Recalcular análisis con IA"
               >
                 <RefreshCw className={`h-3 w-3 ${isAiLoading ? 'animate-spin' : ''}`} />
-                <span>{isAiLoading ? 'Calculando' : 'Actualizar'}</span>
+                <span>{isAiLoading ? 'Evaluando' : 'Actualizar'}</span>
               </button>
             </div>
 
@@ -875,58 +891,100 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
               </div>
 
               <div className="flex items-center justify-between pt-1 text-[11px]">
-                <span className="text-slate-500 dark:text-slate-400">Nivel de intención:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {aiAnalysis?.intentEvaluation?.intentLevel === 'ALTA'
-                    ? 'Intención Alta · Prioritario'
-                    : aiAnalysis?.intentEvaluation?.intentLevel === 'AMBIGUA'
-                    ? 'Intención en Validación'
-                    : 'Intención Media · Calificado'}
+                <span className="text-slate-500 dark:text-slate-400">Evaluación de Intención:</span>
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-semibold text-[11px] border ${
+                    aiAnalysis?.intentEvaluation?.intentLevel === 'ALTA'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-800/60'
+                      : aiAnalysis?.intentEvaluation?.intentLevel === 'MEDIA'
+                      ? 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200/60 dark:border-sky-800/60'
+                      : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-800/60'
+                  }`}
+                >
+                  {aiAnalysis?.intentEvaluation?.intentLevel === 'ALTA' ? (
+                    <>
+                      <Flame className="h-3 w-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>Intención Alta · Calificado</span>
+                    </>
+                  ) : aiAnalysis?.intentEvaluation?.intentLevel === 'MEDIA' ? (
+                    <>
+                      <Zap className="h-3 w-3 text-sky-600 dark:text-sky-400 shrink-0" />
+                      <span>Intención Media · En Maduración</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="h-3 w-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>Intención Ambigua · Requiere Filtro</span>
+                    </>
+                  )}
                 </span>
               </div>
             </div>
 
-            {/* Resumen de las 4 Dimensiones Comerciales con acento lateral de 2px */}
+            {/* Las 4 Actividades Clave de Business Intelligence */}
             <div className="space-y-2.5">
+              {/* Actividad 1: Validación y Calidad de Datos */}
               <div className="border-l-2 border-[#0f766e] bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    Calidad y Unicidad de Registro
+                    1. Validación y Calidad de Datos
                   </span>
-                  <span className="font-mono text-[10px] font-medium text-[#0f766e] dark:text-teal-400">
+                  <span
+                    className={`font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                      aiAnalysis?.dataQuality.status === 'Valido'
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                        : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
+                    }`}
+                  >
                     {aiAnalysis?.dataQuality.status || 'Válido'}
                   </span>
                 </div>
                 <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   {aiAnalysis?.dataQuality.explanation ||
-                    'Teléfono móvil de 9 dígitos y autorización regulatoria verificados.'}
+                    'Teléfono móvil de 9 dígitos y consentimiento de Ley N° 29733 verificados.'}
                 </p>
               </div>
 
+              {/* Actividad 2: Perfil y Clasificación de Preferencias Clínicas */}
+              <div className="border-l-2 border-teal-500 bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    2. Clasificación de Preferencias
+                  </span>
+                  <span className="font-mono text-[10px] text-teal-700 dark:text-teal-300 font-medium truncate max-w-[140px]">
+                    {aiAnalysis?.preferencesProfile.category || 'Odontología General'}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  {buyer.serviceOfInterest || 'Evaluación Odontológica'} · {buyer.pref_sede_preferida || 'Sede San Isidro'} · {HORARIO_LABELS[buyer.pref_id_horario || ''] || 'Horario Flexible'}
+                </p>
+              </div>
+
+              {/* Actividad 3: Origen y Atribución de Captación */}
               <div className="border-l-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    Atribución de Canal
+                    3. Origen y Atribución
                   </span>
                   <span className="font-mono text-[10px] text-slate-500">
                     {buyer.channel || 'Portal Web'}
                   </span>
                 </div>
                 <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                  Fuente: {buyer.attractionSource || 'Captación Directa'} ·{' '}
-                  {buyer.pref_sede_preferida || 'Sede California'}
+                  Fuente: {buyer.attractionSource || 'Meta Ads'} · Trazabilidad de captación confirmada.
                 </p>
               </div>
 
+              {/* Actividad 4: Evaluación de Intención & Recomendación Comercial */}
               <div className="border-l-2 border-[#0f766e] bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    Sugerencia de Abordaje Clínico
+                    4. Recomendación de Abordaje
                   </span>
                 </div>
                 <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
                   {aiAnalysis?.intentEvaluation?.marketingRecommendation ||
-                    'Contactar en los primeros 15 minutos ofreciendo evaluación diagnóstica en la sede seleccionada.'}
+                    'Contactar de inmediato ofreciendo opciones de horario para consulta de evaluación diagnóstica.'}
                 </p>
               </div>
             </div>

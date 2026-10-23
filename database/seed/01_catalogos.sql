@@ -516,7 +516,7 @@ BEGIN
   SET @p = @p + 1;
 END
 
-PRINT 'Total Pagos generados: 124 (VALIDATED: 110, PENDING: 8, REJECTED: 6 | Total: S/ 21,600.00)';
+PRINT 'Total Pagos generados: 124 (VALIDADO: 110, PENDIENTE: 8, RECHAZADO: 6 | Total: S/ 21,600.00)';
 
 -- =========================================================================
 -- FASE 4: CUSTOMERs (219 Citas de Atención Clínica)

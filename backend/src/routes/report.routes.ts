@@ -552,7 +552,13 @@ async function getPayerMatrix(measure: string = 'pago_registrado', range: Period
     SELECT 
       ISNULL(p.TipoMedio, 'Bancarizado / Digital') AS categoria,
       ISNULL(p.MetodoPago, 'Canal General') AS item,
-      ISNULL(c.EstadoPago, 'VALIDATED') AS columna,
+      CASE 
+        WHEN UPPER(TRIM(c.EstadoPago)) IN ('VALIDATED', 'VALIDADO') THEN 'VALIDADO'
+        WHEN UPPER(TRIM(c.EstadoPago)) IN ('PENDING', 'PENDIENTE') THEN 'PENDIENTE'
+        WHEN UPPER(TRIM(c.EstadoPago)) IN ('REJECTED', 'RECHAZADO') THEN 'RECHAZADO'
+        WHEN UPPER(TRIM(c.EstadoPago)) IN ('IN_REVIEW', 'EN_REVISION') THEN 'EN_REVISION'
+        ELSE ISNULL(c.EstadoPago, 'VALIDADO')
+      END AS columna,
       ${measureSQL} AS valor
     FROM Fact_GestionPayer f
     LEFT JOIN Dim_Pasarela p ON p.KeyPasarela = f.KeyPasarela
@@ -573,7 +579,7 @@ async function getPayerMatrix(measure: string = 'pago_registrado', range: Period
     grandTotalLabel: 'Total general',
     isCurrency,
     sourceMart: 'NexoSalud_Mart.fact_gestion_payer',
-    preferredColumnsOrder: ['VALIDATED', 'PENDING', 'REJECTED'],
+    preferredColumnsOrder: ['VALIDADO', 'PENDIENTE', 'RECHAZADO'],
   });
 }
 

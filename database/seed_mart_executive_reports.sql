@@ -175,7 +175,7 @@ VALUES
 -- Estados de Cobro
 INSERT INTO Dim_Cobro (KeyCobro, EstadoPago, ComprobanteAdjunto)
 VALUES 
-    (1, 'VALIDATED', 'Sí'),
+    (1, 'VALIDADO', 'Sí'),
     (2, 'PENDING', 'Pendiente'),
     (3, 'REJECTED', 'No');
 

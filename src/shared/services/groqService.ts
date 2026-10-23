@@ -61,6 +61,7 @@ export interface AiCollectionResult {
 const STATE_LABELS: Record<string, string> = {
   PENDING: 'Pendiente de pago (No ha registrado abono)',
   IN_REVIEW: 'Comprobante enviado (En revisión administrativa)',
+  VALIDADO: 'Pago validado y aprobado',
   VALIDATED: 'Pago validado y aprobado',
   REJECTED: 'Pago rechazado por inconsistencia',
   REVERTED: 'Pago revertido manualmente',
@@ -87,7 +88,7 @@ export function calculatePayerRisk(ctx: PayerContext): RiskAnalysis {
   let score = 20; // Base risk
   const factors: string[] = [];
 
-  if (ctx.state === 'VALIDATED') {
+  if (ctx.state === 'VALIDADO' || ctx.state === 'VALIDATED') {
     return {
       score: 0,
       level: 'BAJO',
@@ -269,7 +270,7 @@ Debes responder ÚNICAMENTE con un objeto JSON válido con la siguiente estructu
 
 function buildUserPrompt(ctx: PayerContext, risk: RiskAnalysis): string {
   const stateLabel = STATE_LABELS[ctx.state] || ctx.state;
-  const isValidated = ctx.state === 'VALIDATED';
+  const isValidated = ctx.state === 'VALIDADO' || ctx.state === 'VALIDATED';
 
   return `Analiza y genera comunicaciones para el siguiente paciente:
 - Paciente: ${ctx.patientName}
@@ -293,7 +294,7 @@ export async function callGroqAssistant(ctx: PayerContext): Promise<AiCollection
   const apiKey = import.meta.env.VITE_GROQ_API_KEY;
 
   let defaultRecommendation = '';
-  if (ctx.state === 'VALIDATED') {
+  if (ctx.state === 'VALIDADO' || ctx.state === 'VALIDATED') {
     defaultRecommendation = `El pago de S/ ${ctx.amountToPay.toFixed(2)} fue validado exitosamente. Paciente listo para transferir a CUSTOMER.`;
   } else if (risk.score === 0) {
     defaultRecommendation = `La cita se encuentra cancelada por vencimiento del plazo límite (00:00 hrs). El sillón fue liberado en la agenda clínica. No aplica cobranza ni recordatorio de pago.`;
@@ -400,6 +401,8 @@ export interface BuyerMarketingContext {
   concreteRequest?: string;
   contactAuthorization?: boolean;
   qualityStatus?: string;
+  state?: string;
+  isConverted?: boolean;
 }
 
 export interface BuyerMarketingAnalysis {
@@ -438,42 +441,58 @@ export async function analyzeBuyerMarketingAgent(ctx: BuyerMarketingContext): Pr
   const cleanPhone = (ctx.phone || '').replace(/\D/g, '');
   const isValidPhone = cleanPhone.length === 9;
   const hasConsent = !!ctx.contactAuthorization;
+  const isAlreadyConverted = ctx.isConverted || ctx.state === 'CONVERTED';
   
   // 1. Actividad 1: Validación y Calidad de Datos
   let qualityStatus: 'Valido' | 'Incompleto' | 'Duplicado' = 'Valido';
-  let qualityDetails = 'Registro con teléfono de 9 dígitos y consentimiento de Ley N° 29733 verificado.';
+  let qualityDetails = 'Registro con teléfono móvil verificado y consentimiento de Ley N° 29733 registrado.';
   
-  if (ctx.qualityStatus === 'Duplicado') {
+  if (ctx.qualityStatus === 'Duplicado' || ctx.state === 'DUPLICATED') {
     qualityStatus = 'Duplicado';
-    qualityDetails = 'Contacto ya registrado previamente en la base de datos clínica.';
-  } else if (!isValidPhone || !ctx.fullName || !hasConsent) {
+    qualityDetails = 'Contacto ya registrado previamente en la base de datos clínica (posible duplicidad detectada).';
+  } else if (!isValidPhone && !cleanPhone) {
     qualityStatus = 'Incompleto';
-    qualityDetails = 'Faltan campos obligatorios o el teléfono no cuenta con 9 dígitos.';
+    qualityDetails = 'Falta número telefónico de 9 dígitos para contacto directo por WhatsApp.';
+  } else if (!isValidPhone) {
+    qualityStatus = 'Incompleto';
+    qualityDetails = `El teléfono proporcionado (${cleanPhone.length} dígitos) no cumple el formato peruano de 9 dígitos.`;
+  } else if (!ctx.fullName) {
+    qualityStatus = 'Incompleto';
+    qualityDetails = 'Faltan nombres o apellidos completos del prospecto.';
+  } else if (!hasConsent) {
+    qualityStatus = 'Incompleto';
+    qualityDetails = 'Pendiente de registrar el consentimiento de Protección de Datos (Ley N° 29733).';
   }
 
-  // 2. Actividad 2: Clasificación de Preferencias
+  // 2. Actividad 2: Clasificación de Preferencias Clínicas
   const service = ctx.serviceOfInterest || 'Consulta Odontológica General';
   const branch = ctx.preferredBranch || 'Sede San Isidro (Principal)';
   const timeSlot = ctx.preferredTimeSlot || 'Franja Flexible';
   
   let category = 'Odontología General';
   const sLower = service.toLowerCase();
-  if (sLower.includes('orto') || sLower.includes('bracket')) category = 'Ortodoncia & Alineadores';
-  else if (sLower.includes('blanquea') || sLower.includes('diseño') || sLower.includes('estét')) category = 'Estética & Cosmética Dental';
-  else if (sLower.includes('implante') || sLower.includes('cirug')) category = 'Implantología & Cirugía Oral';
+  if (sLower.includes('orto') || sLower.includes('bracket') || sLower.includes('alinead')) category = 'Ortodoncia & Alineadores';
+  else if (sLower.includes('blanquea') || sLower.includes('diseño') || sLower.includes('estét') || sLower.includes('carilla')) category = 'Estética & Cosmética Dental';
+  else if (sLower.includes('implante') || sLower.includes('cirug') || sLower.includes('extracc') || sLower.includes('tercer')) category = 'Implantología & Cirugía Oral';
   else if (sLower.includes('niño') || sLower.includes('pediat')) category = 'Odontopediatría';
+  else if (sLower.includes('endo') || sLower.includes('conducto')) category = 'Endodoncia & Salvamento Dental';
+  else if (sLower.includes('perio') || sLower.includes('encía') || sLower.includes('limpieza')) category = 'Periodoncia & Profilaxis';
 
-  // 3. Actividad 3: Origen de Captación
+  // 3. Actividad 3: Origen y Atribución de Captación
   const channel = ctx.channel || 'Portal Web';
   const source = ctx.attractionSource || 'Meta Ads (Instagram / FB)';
-  const campaign = 'Campaña Preventiva 2026';
-  const insight = `Prospecto captado a través de ${channel} atribuido a ${source}. Tráfico digital con alta intención de conversión.`;
+  const campaign = 'Campaña Dental NexoSalud 2026';
+  const insight = `Prospecto captado a través de ${channel} atribuido a ${source}. Tráfico digital con trazabilidad comercial verificada.`;
 
-  // 4. Actividad 4: Evaluación de Intención Comercial (Heurística + Groq AI)
+  // 4. Actividad 4: Evaluación de Intención Comercial & Conversión a LEAD
+  const effectiveRequest = (ctx.concreteRequest && ctx.concreteRequest.trim().length > 0)
+    ? ctx.concreteRequest.trim()
+    : (ctx.serviceOfInterest ? `Interés en evaluación para ${ctx.serviceOfInterest}` : '');
+  const reqLower = effectiveRequest.toLowerCase();
+
   const cLower = channel.toLowerCase();
-  const isHighFrictionChannel = cLower.includes('presencial') || cLower.includes('telef') || cLower.includes('llamada') || cLower.includes('sede');
-  const reqLower = (ctx.concreteRequest || '').toLowerCase();
-  const commercialKeywords = ['precio', 'costo', 'cuanto', 'cuánto', 'cita', 'agendar', 'horario', 'disponib', 'doctor', 'especialista', 'sede', 'turno', 'cotiz', 'evalua', 'consulta', 'sábado', 'mañana', 'urgencia', 'dolor', 'muela', 'sensib', 'sangr'];
+  const isHighFrictionChannel = cLower.includes('presencial') || cLower.includes('telef') || cLower.includes('llamada') || cLower.includes('sede') || cLower.includes('whatsapp');
+  const commercialKeywords = ['precio', 'costo', 'cuanto', 'cuánto', 'cita', 'agendar', 'horario', 'disponib', 'doctor', 'especialista', 'sede', 'turno', 'cotiz', 'evalua', 'consulta', 'sábado', 'mañana', 'urgencia', 'dolor', 'muela', 'sensib', 'sangr', 'ortodoncia', 'implante', 'brackets'];
   const matchedKeywords = commercialKeywords.filter(k => reqLower.includes(k));
 
   let hasConcreteIntent = true;
@@ -482,36 +501,59 @@ export async function analyzeBuyerMarketingAgent(ctx: BuyerMarketingContext): Pr
   let suggestedAction: 'CONVERT_TO_LEAD' | 'KEEP_IN_BUYER' = 'CONVERT_TO_LEAD';
   let marketingRecommendation = '';
 
-  if (isHighFrictionChannel) {
+  if (isAlreadyConverted) {
+    // Si ya está convertido a LEAD
     intentLevel = 'ALTA';
     hasConcreteIntent = true;
-    intentReason = `Contacto por canal de alta fricción (${channel}). Paciente con máxima prioridad de atención y decisión inmediata.`;
+    intentReason = 'Prospecto validado y transferido exitosamente a etapa LEAD. Intención comercial confirmada para negociación clínica.';
     suggestedAction = 'CONVERT_TO_LEAD';
-    marketingRecommendation = 'Asignar asesor comercial o recepcionista de inmediato para atención presencial / telefónica.';
-  } else if (reqLower.length < 5 || reqLower === 'info' || reqLower === 'hola' || reqLower === 'prueba' || !ctx.phone || ctx.phone.length < 9) {
+    marketingRecommendation = 'Dar seguimiento en Mesa de Negociación (módulo LEAD) y coordinar cita diagnóstica con el especialista.';
+  } else if (isHighFrictionChannel) {
+    // Canal presencial, telefónico o WhatsApp directo
+    intentLevel = 'ALTA';
+    hasConcreteIntent = true;
+    intentReason = `Contacto directo por canal prioritario (${channel}). Paciente con alta disposición de atención y decisión rápida.`;
+    suggestedAction = 'CONVERT_TO_LEAD';
+    marketingRecommendation = 'Asignar asesor comercial o recepcionista de inmediato para atención prioritaria.';
+  } else if (
+    reqLower === 'info' ||
+    reqLower === 'hola' ||
+    reqLower === 'prueba' ||
+    reqLower === 'test' ||
+    reqLower === 'asdf' ||
+    (!isValidPhone && !ctx.serviceOfInterest && reqLower.length < 5)
+  ) {
+    // Consulta verdaderamente ambigua
     intentLevel = 'AMBIGUA';
     hasConcreteIntent = false;
-    intentReason = 'Consulta exploratoria vaga sin especificación de urgencia, tratamiento ni disponibilidad.';
+    intentReason = 'Consulta exploratoria inicial sin especificación de tratamiento ni disponibilidad horaria.';
     suggestedAction = 'KEEP_IN_BUYER';
-    marketingRecommendation = 'Mantener en BUYER y enviar mensaje automático de WhatsApp con brochure y preguntas clave.';
-  } else if (matchedKeywords.length >= 2 || reqLower.includes('cita') || reqLower.includes('agendar') || reqLower.includes('precio') || reqLower.includes('dolor')) {
+    marketingRecommendation = 'Mantener en BUYER y enviar mensaje automático de WhatsApp con catálogo de servicios y preguntas orientadoras.';
+  } else if (matchedKeywords.length >= 2 || reqLower.includes('cita') || reqLower.includes('agendar') || reqLower.includes('precio') || reqLower.includes('dolor') || reqLower.includes('urgencia')) {
     intentLevel = 'ALTA';
     hasConcreteIntent = true;
-    intentReason = `Intención comercial explícita (${matchedKeywords.join(', ')}). Paciente con requerimiento claro de cita o presupuesto.`;
+    intentReason = `Intención comercial explícita (${matchedKeywords.slice(0, 3).join(', ')}). Paciente con requerimiento claro de consulta o presupuesto.`;
     suggestedAction = 'CONVERT_TO_LEAD';
-    marketingRecommendation = 'Prospecto calificado para LEAD. Contactar en menos de 15 min vía WhatsApp con propuesta de horario.';
+    marketingRecommendation = 'Prospecto calificado para LEAD. Contactar en menos de 15 min vía WhatsApp con propuesta de horario en sede.';
+  } else if (ctx.preferredBranch && ctx.preferredTimeSlot && ctx.serviceOfInterest) {
+    // El paciente seleccionó tratamiento, sede y horario concreto
+    intentLevel = 'ALTA';
+    hasConcreteIntent = true;
+    intentReason = `Perfil completo con tratamiento (${service}), sede preferida (${branch}) y franja horaria definida. Alta probabilidad de agendamiento.`;
+    suggestedAction = 'CONVERT_TO_LEAD';
+    marketingRecommendation = 'Contactar para confirmar turno en la franja horaria solicitada.';
   } else {
-    // Interés moderado / exploratorio (Canal Web o Redes)
+    // Interés moderado / exploratorio (Canal Web o Redes con tratamiento definido)
     intentLevel = 'MEDIA';
     hasConcreteIntent = true;
-    intentReason = `Interés general expresado vía ${channel}. Solicita información sin urgencia médica declarada.`;
+    intentReason = `Interés en ${service} vía ${channel}. Solicita orientación clínica sin urgencia crítica declarada.`;
     suggestedAction = 'CONVERT_TO_LEAD';
-    marketingRecommendation = 'Enviar catálogo de tarifas y agendar llamada de orientación odontológica.';
+    marketingRecommendation = 'Enviar catálogo del tratamiento y agendar llamada de orientación odontológica.';
   }
 
-  // Si hay API Key de Groq, enriquecer el análisis
+  // Si hay API Key de Groq y la consulta tiene texto descriptivo adicional, enriquecer el análisis
   const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-  if (apiKey && apiKey !== 'tu_groq_api_key_aqui' && ctx.concreteRequest) {
+  if (apiKey && apiKey !== 'tu_groq_api_key_aqui' && ctx.concreteRequest && ctx.concreteRequest.trim().length > 6 && !isAlreadyConverted) {
     try {
       const prompt = `Analiza la intención comercial del siguiente prospecto odontológico:
 - Paciente: ${ctx.fullName}

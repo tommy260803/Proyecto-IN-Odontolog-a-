@@ -178,7 +178,7 @@ GO
 -- 10. Poblar Dim_Cobro
 MERGE [NexoSalud_Mart].dbo.[Dim_Cobro] AS dim
 USING (
-    SELECT 'VALIDATED' AS EstadoPago, 'Sí' AS ComprobanteAdjunto
+    SELECT 'VALIDADO' AS EstadoPago, 'Sí' AS ComprobanteAdjunto
     UNION ALL SELECT 'PENDING', 'No'
     UNION ALL SELECT 'REJECTED', 'No'
     UNION ALL SELECT 'Confirmado', 'Sí'
@@ -324,7 +324,7 @@ USING (
         ISNULL(dp.KeyPasarela, 1) AS KeyPasarela,
         ISNULL(dc.KeyCobro, 1) AS KeyCobro,
         COUNT(p.id_pago) AS PagosRegistrados,
-        SUM(CASE WHEN p.estado IN ('Validado', 'VALIDATED', 'Confirmado') THEN 1 ELSE 0 END) AS PagosValidados,
+        SUM(CASE WHEN p.estado IN ('Validado', 'VALIDADO', 'Confirmado', 'VALIDATED') THEN 1 ELSE 0 END) AS PagosValidados,
         SUM(CASE WHEN p.estado IN ('Rechazado', 'REJECTED', 'Fallido') THEN 1 ELSE 0 END) AS PagosRechazados,
         SUM(p.importe) AS ImporteTotalCobro,
         SUM(DATEDIFF(MINUTE, p.fecha_registro, ISNULL(p.fecha_validacion, p.fecha_registro))) AS TiempoTotalValidacionMin
@@ -332,7 +332,7 @@ USING (
     LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Pasarela] dp ON dp.MetodoPago = p.canal_pago
     LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Cobro] dc ON dc.EstadoPago = (
         CASE 
-            WHEN p.estado IN ('Confirmado', 'Validado', 'VALIDATED') THEN 'VALIDATED'
+            WHEN p.estado IN ('Confirmado', 'Validado', 'VALIDATED', 'VALIDADO') THEN 'VALIDADO'
             WHEN p.estado IN ('Pendiente', 'PENDING') THEN 'PENDING'
             WHEN p.estado IN ('Fallido', 'Rechazado', 'REJECTED') THEN 'REJECTED'
             ELSE p.estado

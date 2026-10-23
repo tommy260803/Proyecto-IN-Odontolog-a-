@@ -20,11 +20,23 @@ const statusDictionary: Record<string, { label: string; defaultVariant: StatusVa
   LOST: { label: 'Descartado', defaultVariant: 'error' },
 
   // ── 3. PAYER (Cobro y Validación) ───────────────────────
+  PENDIENTE: { label: 'Pendiente de Pago', defaultVariant: 'warning' },
+  EN_REVISION: { label: 'En Revisión', defaultVariant: 'primary' },
+  VALIDADO: { label: 'Validado', defaultVariant: 'success' },
+  RECHAZADO: { label: 'Rechazado', defaultVariant: 'error' },
+  REVERTIDO: { label: 'Revertido', defaultVariant: 'error' },
+  // Compatibilidad adicional
   PENDING: { label: 'Pendiente de Pago', defaultVariant: 'warning' },
   IN_REVIEW: { label: 'En Revisión', defaultVariant: 'primary' },
   VALIDATED: { label: 'Validado', defaultVariant: 'success' },
   REJECTED: { label: 'Rechazado', defaultVariant: 'error' },
   REVERTED: { label: 'Revertido', defaultVariant: 'error' },
+  'Pendiente': { label: 'Pendiente de Pago', defaultVariant: 'warning' },
+  'En Revisión': { label: 'En Revisión', defaultVariant: 'primary' },
+  'En revisión': { label: 'En Revisión', defaultVariant: 'primary' },
+  'Validado': { label: 'Validado', defaultVariant: 'success' },
+  'Rechazado': { label: 'Rechazado', defaultVariant: 'error' },
+  'Revertido': { label: 'Revertido', defaultVariant: 'error' },
 
   // ── 4. CUSTOMER (Atención Odontológica) ─────────────────
   SCHEDULED: { label: 'Programado', defaultVariant: 'warning' },

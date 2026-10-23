@@ -60,7 +60,9 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
         attractionSource: b.attractionSource,
         concreteRequest: b.concreteRequest,
         contactAuthorization: b.contactAuthorization,
-        qualityStatus: b.state === BuyerState.CONVERTED ? 'Valido' : undefined
+        qualityStatus: b.state === BuyerState.CONVERTED ? 'Valido' : undefined,
+        state: b.state,
+        isConverted: b.state === BuyerState.CONVERTED,
       });
       setAiAnalysis(result);
     } catch (err) {

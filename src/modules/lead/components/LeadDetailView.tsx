@@ -26,6 +26,23 @@ import {
   ExternalLink,
   CheckCircle2,
   Sparkles,
+  HeartPulse,
+  GraduationCap,
+  Briefcase,
+  Target,
+  CreditCard,
+  ShieldAlert,
+  Layers,
+  AlertTriangle,
+  Flame,
+  Zap,
+  Building2,
+  User,
+  SlidersHorizontal,
+  ChevronRight,
+  Eye,
+  BadgePercent,
+  DollarSign,
 } from 'lucide-react';
 import { leadService } from '../services/lead.service';
 import { configService } from '@/modules/config/services/config.service';
@@ -40,6 +57,7 @@ import {
   type LeadNegotiationStrategy,
 } from '@/shared/services/groqService';
 import { renderLeadStatusBadge } from './LeadListView';
+import { LeadProfileEditModal } from './LeadProfileEditModal';
 
 interface LeadDetailViewProps {
   leadId: string;
@@ -138,6 +156,21 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   const [canvaResult, setCanvaResult] = useState<any>(null);
   const [aiStrategy, setAiStrategy] = useState<LeadNegotiationStrategy | null>(null);
   const [loadingStrategy, setLoadingStrategy] = useState(false);
+
+  // Estados para Organización del Perfil de Negociación
+  const [profileTab, setProfileTab] = useState<'VARIABLES' | 'CLINICA' | 'CONVENIOS' | 'CONTACTO'>('VARIABLES');
+  const [profileViewMode, setProfileViewMode] = useState<'TABS' | 'ALL'>('TABS');
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+
+  const handleProfileUpdated = (updatedLead: any) => {
+    if (updatedLead) {
+      setLead(updatedLead);
+      runNegotiationStrategy(updatedLead);
+    } else {
+      fetchLeadData();
+    }
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
+  };
 
   const fetchLeadData = () => {
     setLoading(true);
@@ -459,9 +492,102 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   const fullName =
     `${lead.nombres || ''} ${lead.apellidos || ''}`.trim() || 'Paciente en Negociación';
   const pref = lead.Preferencias?.[0];
+  const salud = lead.SaludOdontologica?.[0] || lead.saludOdontologica || {};
+  const academico = lead.DatosAcademicos?.[0] || lead.datosAcademicos || {};
+  const laboral = lead.DatosLaborales?.[0] || lead.datosLaborales || {};
   const ultimaSolicitud = lead.Solicitudes?.[lead.Solicitudes.length - 1];
   const opciones: any[] = ultimaSolicitud?.Opciones || [];
   const selectedOptData = opciones.find((o: any) => o.id_opcion === selectedOpcion);
+
+  const hasUrgentPain =
+    salud.nivel_dolor === 'Moderado' ||
+    salud.nivel_dolor === 'Severo' ||
+    aiStrategy?.urgencyLevel === 'CRÍTICA_DOLOR';
+
+  const isStudent = Boolean(
+    academico.estudianteAplica ||
+    academico.universidad ||
+    academico.carrera
+  );
+
+  const isWorker = Boolean(
+    laboral.laboralAplica ||
+    laboral.ocupacion ||
+    laboral.empresa
+  );
+
+  const convenioTexto = isStudent
+    ? `Convenio Estudiantil (${academico.universidad || 'Universidad'}) · 15% OFF`
+    : isWorker && laboral.empresa
+    ? `Convenio Corporativo (${laboral.empresa})`
+    : 'Tarifa Particular Regular';
+
+  // Matching Comercial & Estrategia Recomendada (Figura 15 del Informe NexoSalud)
+  const matchingData = (() => {
+    // 1. Sede Sugerida (Matching territorial y disponibilidad en Trujillo)
+    let suggestedSedeName = 'Sede California';
+    let suggestedSedeReason = '';
+    const zona = lead?.zona ? String(lead.zona).trim() : '';
+    const prefSede = pref?.sede_preferida ? String(pref.sede_preferida).trim() : '';
+
+    if (prefSede) {
+      suggestedSedeName = prefSede;
+      suggestedSedeReason = `Recomendada según preferencia declarada por el paciente en la prospección.`;
+    } else if (zona) {
+      const z = zona.toLowerCase();
+      if (z.includes('huanchaco') || z.includes('centro') || z.includes('moche') || z.includes('esperanza') || z.includes('florencia')) {
+        suggestedSedeName = 'Sede Centro Historico';
+        suggestedSedeReason = `Sede Centro Histórico recomendada por proximidad geográfica a ${zona}.`;
+      } else if (z.includes('golf')) {
+        suggestedSedeName = 'Sede El Golf';
+        suggestedSedeReason = `Sede El Golf recomendada por cercanía a zona residencial (${zona}).`;
+      } else {
+        suggestedSedeName = 'Sede California';
+        suggestedSedeReason = `Sede California recomendada por accesibilidad desde ${zona}.`;
+      }
+    } else {
+      suggestedSedeName = 'Sede California';
+      suggestedSedeReason = `Sede California recomendada por alta disponibilidad de especialistas de guardia.`;
+    }
+
+    // 2. Tratamiento Solicitado (Matching Clínico)
+    const serviceName = ultimaSolicitud?.Servicio?.nombre || 'Odontología preventiva o diagnóstica';
+    let treatmentDetail = '';
+    if (salud?.nivel_dolor && salud.nivel_dolor !== 'Ninguno') {
+      treatmentDetail = `Dolor ${salud.nivel_dolor}. Priorizar turno cercano para alivio inmediato (Alta urgencia clínica).`;
+    } else if (salud?.motivo_consulta) {
+      treatmentDetail = `${salud.motivo_consulta}. Alta probabilidad de cierre ágil.`;
+    } else {
+      treatmentDetail = `Odontología preventiva o diagnóstica. Alta probabilidad de cierre ágil.`;
+    }
+
+    // 3. Margen de Cierre (LEAD) (SLA de dos semanas y gatillador económico)
+    let closingTarget = 'Meta de conversión a PAYER en ≤ 14 días';
+    let closingRationale = 'Tarifa promocional activa con seguimiento omnicanal oportuno.';
+
+    if (hasUrgentPain) {
+      closingTarget = 'Meta de conversión urgente en ≤ 48 horas';
+      closingRationale = 'Turno de alivio prioritario para asegurar la atención médica antes de abandono.';
+    } else if (isStudent) {
+      closingTarget = 'Meta de conversión a PAYER en ≤ 14 días';
+      closingRationale = `Convenio Estudiantil (${academico.universidad ? String(academico.universidad).split(' ')[0] : 'Universidad'} -15% OFF) activo como gatillador clave.`;
+    } else if (isWorker && laboral.empresa) {
+      closingTarget = 'Meta de conversión a PAYER en ≤ 14 días';
+      closingRationale = `Convenio Corporativo (${laboral.empresa}) disponible para cierre preferencial.`;
+    } else if (aiStrategy?.leadScore && aiStrategy.leadScore >= 80) {
+      closingTarget = `Meta de conversión alta (${aiStrategy.leadScore}%)`;
+      closingRationale = 'Lead con alto score de intención; aplicar propuesta flash.';
+    }
+
+    return {
+      sede: suggestedSedeName,
+      sedeReason: suggestedSedeReason,
+      treatmentName: serviceName,
+      treatmentDetail: treatmentDetail,
+      closingTarget: closingTarget,
+      closingRationale: closingRationale,
+    };
+  })();
 
   const generateWhatsAppMessage = () => {
     const patientFirstName = lead?.nombres || 'Paciente';
@@ -590,9 +716,9 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   const closeProbability = aiStrategy?.leadScore ?? (opciones.length > 0 ? 84 : 68);
 
   return (
-    <div className="w-full max-w-none space-y-6">
+    <div className="w-full max-w-none space-y-6 overflow-x-hidden">
       {/* Cabecera Fija de la Mesa de Negociación */}
-      <div className="sticky top-0 z-20 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-3.5 sm:py-4 bg-[#f8fafc]/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800">
+      <div className="sticky top-0 z-20 py-3.5 sm:py-4 bg-[#f8fafc]/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <Link
@@ -662,105 +788,559 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
         {/* COLUMNA IZQUIERDA (65%): Description List + Mesa de Negociación */}
         <div className="lg:col-span-8 space-y-6">
-          {/* Bloque 1: Contexto del Paciente en Description List Limpia */}
+          {/* Bloque 1: Perfil de Negociación Comercial & Expediente Integral del LEAD */}
           <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs overflow-hidden">
-            <div className="border-b border-slate-200/80 dark:border-slate-800 px-6 py-4">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
-                Expediente de Solicitud y Contexto del Paciente
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Información consolidada desde la etapa BUYER para estructurar la oferta comercial.
-              </p>
-            </div>
-
-            <div className="divide-y divide-slate-200/70 dark:divide-slate-800">
-              <div className="px-6 py-4">
-                <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4 text-xs">
-                  <div>
-                    <dt className="font-medium text-slate-500 dark:text-slate-400">Paciente</dt>
-                    <dd className="mt-1 font-medium text-slate-900 dark:text-white">
-                      {fullName}
-                    </dd>
+            {/* Cabecera del Perfil con Selector de Vista */}
+            <div className="flex flex-col gap-3 border-b border-slate-200/80 dark:border-slate-800 px-6 py-4 sm:flex-row sm:items-center sm:justify-between bg-slate-50/50 dark:bg-slate-950/40">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950/60 text-[#0f766e] dark:text-teal-400 border border-teal-200/60 dark:border-teal-800/60 shadow-2xs">
+                  <Target className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+                      Perfil de Negociación Comercial & Expediente
+                    </h2>
+                    <span className="rounded bg-teal-50 dark:bg-teal-950/60 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-teal-700 dark:text-teal-300 border border-teal-200/50">
+                      LEAD · CIERRE
+                    </span>
                   </div>
-
-                  <div>
-                    <dt className="font-medium text-slate-500 dark:text-slate-400">
-                      Teléfono / WhatsApp
-                    </dt>
-                    <dd className="mt-1 font-mono font-medium text-slate-900 dark:text-white tabular-nums flex items-center gap-1.5">
-                      <Phone className="h-3.5 w-3.5 text-slate-400" strokeWidth={1.75} />
-                      <span>{lead.numero ? `+51 ${lead.numero}` : 'No registrado'}</span>
-                    </dd>
-                  </div>
-
-                  <div>
-                    <dt className="font-medium text-slate-500 dark:text-slate-400">
-                      Correo Electrónico
-                    </dt>
-                    <dd className="mt-1 text-slate-900 dark:text-white truncate">
-                      {lead.email || 'No registrado'}
-                    </dd>
-                  </div>
-
-                  <div>
-                    <dt className="font-medium text-slate-500 dark:text-slate-400">
-                      Canal de Captación
-                    </dt>
-                    <dd className="mt-1 font-medium text-slate-900 dark:text-white">
-                      {lead.Interacciones?.[0]?.Canal?.nombre || 'Portal Web'}
-                    </dd>
-                  </div>
-                </dl>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Variables clave de decisión, gatilladores clínicos y convenios institucionales para cerrar el trato.
+                  </p>
+                </div>
               </div>
 
-              <div className="px-6 py-4">
-                <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3 text-xs">
-                  <div>
-                    <dt className="font-medium text-slate-500 dark:text-slate-400">
-                      Tratamiento Solicitado
-                    </dt>
-                    <dd className="mt-1 font-medium text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <Stethoscope className="h-3.5 w-3.5 text-[#0f766e]" strokeWidth={1.75} />
-                      <span>
-                        {ultimaSolicitud?.Servicio?.nombre || 'Evaluación Odontológica'}
-                      </span>
-                    </dd>
+              {/* Acciones de Cabecera: Completar Perfil Asesor & Selector de Modo */}
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <button
+                  type="button"
+                  onClick={() => setIsEditProfileModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 dark:hover:bg-teal-900/80 text-[#0f766e] dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/80 px-3 py-1.5 text-xs font-semibold shadow-2xs transition-all cursor-pointer hover:shadow-xs"
+                >
+                  <Edit3 className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>Completar / Editar Perfil</span>
+                </button>
+
+                <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-0.5 text-xs font-medium self-start sm:self-auto shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setProfileViewMode('TABS')}
+                    className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
+                      profileViewMode === 'TABS'
+                        ? 'bg-[#0f766e] text-white font-semibold'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                    }`}
+                  >
+                    <SlidersHorizontal className="h-3 w-3" />
+                    <span>Pestañas</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProfileViewMode('ALL')}
+                    className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
+                      profileViewMode === 'ALL'
+                        ? 'bg-[#0f766e] text-white font-semibold'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                    }`}
+                  >
+                    <Eye className="h-3 w-3" />
+                    <span>Ver Todo</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Cinta Superior de Métricas Clave de Negociación (KPIs de Cierre) */}
+            <div className="grid grid-cols-2 gap-3 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:grid-cols-4 text-xs">
+              <div className="border-l-2 border-[#0f766e] pl-3 py-0.5">
+                <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
+                  Lead Score & Cierre
+                </span>
+                <div className="mt-0.5 flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
+                  <Flame className="h-3.5 w-3.5 text-amber-500" />
+                  <span>{closeProbability}% · {aiStrategy?.scoreLevel || 'HOT'}</span>
+                </div>
+              </div>
+
+              <div className={`border-l-2 pl-3 py-0.5 ${hasUrgentPain ? 'border-rose-500' : 'border-emerald-500'}`}>
+                <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
+                  Gatillador Clínico
+                </span>
+                <div className="mt-0.5 flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white truncate">
+                  <HeartPulse className={`h-3.5 w-3.5 ${hasUrgentPain ? 'text-rose-500' : 'text-emerald-500'}`} />
+                  <span className="truncate">{salud.nivel_dolor ? `Dolor: ${salud.nivel_dolor}` : (hasUrgentPain ? 'Dolor Urgente' : 'Evaluación Electiva')}</span>
+                </div>
+              </div>
+
+              <div className="border-l-2 border-teal-500 pl-3 py-0.5">
+                <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
+                  Sensibilidad al Precio
+                </span>
+                <div className="mt-0.5 flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
+                  <BadgePercent className="h-3.5 w-3.5 text-teal-600" />
+                  <span>{aiStrategy?.priceSensitivity || 'MODERADA'}</span>
+                </div>
+              </div>
+
+              <div className={`border-l-2 pl-3 py-0.5 ${isStudent ? 'border-sky-500' : 'border-slate-300 dark:border-slate-700'}`}>
+                <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
+                  Convenio / Tarifa
+                </span>
+                <div className="mt-0.5 flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white truncate">
+                  <GraduationCap className={`h-3.5 w-3.5 ${isStudent ? 'text-sky-600' : 'text-slate-400'}`} />
+                  <span className="truncate">{isStudent ? 'Convenio Estudiantil' : (isWorker && laboral.empresa ? 'Corporativo' : 'Particular')}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Pestañas de Navegación Segmentada (Segmented Control Responsive sin Scroll Horizontal) */}
+            {profileViewMode === 'TABS' && (
+              <div className="border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 p-2 sm:p-2.5">
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                  {[
+                    { id: 'VARIABLES', label: 'Variables de Cierre', sub: 'IA & Scoring', icon: Target },
+                    { id: 'CLINICA', label: 'Salud Odontológica', sub: 'Gatilladores', icon: HeartPulse },
+                    { id: 'CONVENIOS', label: 'Ocupación & Convenio', sub: 'Estudio / Trabajo', icon: GraduationCap },
+                    { id: 'CONTACTO', label: 'Datos de Contacto', sub: 'Canal & Registro', icon: User },
+                  ].map((tab) => {
+                    const Icon = tab.icon;
+                    const active = profileTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setProfileTab(tab.id as any)}
+                        className={`flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 py-2 text-xs transition-all cursor-pointer ${
+                          active
+                            ? 'bg-white dark:bg-slate-900 text-[#0f766e] dark:text-teal-400 font-semibold shadow-xs ring-1 ring-slate-200/80 dark:ring-slate-700/80'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-900/50'
+                        }`}
+                      >
+                        <Icon className={`h-3.5 w-3.5 shrink-0 ${active ? 'text-[#0f766e] dark:text-teal-400' : 'text-slate-400'}`} />
+                        <span className="truncate">{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Contenido Modular de las Secciones */}
+            <div className="divide-y divide-slate-200/70 dark:divide-slate-800">
+              {/* SECCIÓN A: Variables de Negociación Comercial & Factores de Cierre */}
+              {(profileViewMode === 'ALL' || profileTab === 'VARIABLES') && (
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <Target className="h-3.5 w-3.5 text-[#0f766e]" />
+                      <span>Factores Determinantes para la Negociación Comercial</span>
+                    </h3>
+                    <span className="font-mono text-[10px] text-teal-700 dark:text-teal-300 font-semibold bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 rounded border border-teal-200/50">
+                      Inferencia Analítica NexoSalud
+                    </span>
                   </div>
 
-                  <div>
-                    <dt className="font-medium text-slate-500 dark:text-slate-400">
-                      Sede Preferida
-                    </dt>
-                    <dd className="mt-1 font-medium text-slate-900 dark:text-slate-400 flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-slate-400" strokeWidth={1.75} />
-                      <span className="text-slate-900 dark:text-white">
-                        {pref?.sede_preferida || 'Sede California'}
-                      </span>
-                    </dd>
-                  </div>
-
-                  <div>
-                    <dt className="font-medium text-slate-500 dark:text-slate-400">
-                      Frecuencia de Consulta
-                    </dt>
-                    <dd className="mt-1 font-mono text-slate-900 dark:text-white tabular-nums">
-                      {(lead.Solicitudes?.length || 1) > 1
-                        ? `${lead.Solicitudes.length} consultas registradas`
-                        : '1ª solicitud activa'}
-                    </dd>
-                  </div>
-
-                  {ultimaSolicitud?.motivo && (
-                    <div className="sm:col-span-3">
-                      <dt className="font-medium text-slate-500 dark:text-slate-400">
-                        Motivo Concreto Declarado
+                  <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 text-xs">
+                    <div className="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3">
+                      <dt className="font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <BadgePercent className="h-3.5 w-3.5 text-teal-600" />
+                        <span>Sensibilidad al Precio</span>
                       </dt>
-                      <dd className="mt-1.5 border-l-2 border-[#0f766e] bg-slate-50/70 dark:bg-slate-800/50 pl-3 py-2 text-xs text-slate-800 dark:text-slate-200">
-                        {ultimaSolicitud.motivo}
+                      <dd className="mt-1.5">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
+                          aiStrategy?.priceSensitivity === 'ALTA'
+                            ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300'
+                            : aiStrategy?.priceSensitivity === 'MODERADA'
+                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
+                            : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                        }`}>
+                          {aiStrategy?.priceSensitivity || 'MODERADA'}
+                        </span>
+                        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                          {aiStrategy?.priceSensitivity === 'ALTA'
+                            ? 'Altamente sensible. Prioriza promociones de campaña (-15% a -20%) y facilidades de pago.'
+                            : aiStrategy?.priceSensitivity === 'MODERADA'
+                            ? 'Sensibilidad media. Receptivo a tarifa promocional con vigencia activa o cuotas.'
+                            : 'Sensibilidad baja. Valora principalmente prestigio, garantía y rapidez de atención.'}
+                        </p>
                       </dd>
                     </div>
+
+                    <div className="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3">
+                      <dt className="font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <CreditCard className="h-3.5 w-3.5 text-amber-600" />
+                        <span>Modalidad de Pago Idónea</span>
+                      </dt>
+                      <dd className="mt-1.5 font-medium text-slate-900 dark:text-white">
+                        {aiStrategy?.paymentPreference || 'Pago al contado (Yape/Efectivo) con descuento sugerido'}
+                      </dd>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3">
+                      <dt className="font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <Target className="h-3.5 w-3.5 text-indigo-600" />
+                        <span>Factor Clave de Decisión (Driver)</span>
+                      </dt>
+                      <dd className="mt-1.5 font-medium text-slate-900 dark:text-white">
+                        {aiStrategy?.decisionDriver || 'Calidad médica, alivio del dolor y precio transparente'}
+                      </dd>
+                    </div>
+
+                    <div className="rounded-lg border border-rose-200/70 dark:border-rose-900/60 bg-rose-50/30 dark:bg-rose-950/20 p-3">
+                      <dt className="font-medium text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
+                        <ShieldAlert className="h-3.5 w-3.5 text-rose-500" />
+                        <span>Freno / Objeción Principal Prevista</span>
+                      </dt>
+                      <dd className="mt-1.5 text-slate-700 dark:text-slate-300">
+                        {aiStrategy?.primaryBarrier || 'Comparación de presupuestos y dudas sobre tiempo total de tratamiento'}
+                      </dd>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3">
+                      <dt className="font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <Layers className="h-3.5 w-3.5 text-teal-600" />
+                        <span>Disposición a Venta Cruzada (Cross-Selling)</span>
+                      </dt>
+                      <dd className="mt-1.5 text-slate-700 dark:text-slate-300">
+                        {aiStrategy?.crossSellingOpenness || 'Receptivo a profilaxis previa o radiografía panorámica de diagnóstico'}
+                      </dd>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3">
+                      <dt className="font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5 text-slate-500" />
+                        <span>Flexibilidad de Agenda</span>
+                      </dt>
+                      <dd className="mt-1.5 text-slate-700 dark:text-slate-300">
+                        {aiStrategy?.agendaFlexibility || (pref?.Horario ? `Turno asignado: ${pref.Horario.hora_inicio || 'Vespertino'}` : 'Horario flexible a convenir')}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              )}
+
+              {/* SECCIÓN B: Gatilladores Clínicos (Salud Odontológica) */}
+              {(profileViewMode === 'ALL' || profileTab === 'CLINICA') && (
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <HeartPulse className="h-3.5 w-3.5 text-rose-500" />
+                      <span>Salud Odontológica & Gatilladores de Cierre Clínico</span>
+                    </h3>
+                    {hasUrgentPain && (
+                      <span className="flex items-center gap-1 font-mono text-[10px] text-rose-700 dark:text-rose-300 font-bold bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded border border-rose-200/60">
+                        <AlertTriangle className="h-3 w-3" />
+                        <span>Atención Prioritaria por Dolor</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4 text-xs">
+                    <div>
+                      <dt className="font-medium text-slate-500 dark:text-slate-400">Nivel de Dolor Reportado</dt>
+                      <dd className="mt-1">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          salud.nivel_dolor === 'Severo'
+                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'
+                            : salud.nivel_dolor === 'Moderado'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
+                            : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                        }`}>
+                          {salud.nivel_dolor || 'Ninguno / Sin dolor declarado'}
+                        </span>
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt className="font-medium text-slate-500 dark:text-slate-400">Sensibilidad Dental</dt>
+                      <dd className="mt-1 font-medium text-slate-900 dark:text-white">
+                        {salud.presenta_sensibilidad || 'No reportada'}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt className="font-medium text-slate-500 dark:text-slate-400">Sangrado / Inflamación</dt>
+                      <dd className="mt-1 font-medium text-slate-900 dark:text-white">
+                        {salud.sangrado_o_inflamacion || 'No reportado'}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt className="font-medium text-slate-500 dark:text-slate-400">Última Visita Odontológica</dt>
+                      <dd className="mt-1 font-medium text-slate-900 dark:text-white">
+                        {salud.ultima_visita_odontologica || 'No registrada'}
+                      </dd>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <dt className="font-medium text-slate-500 dark:text-slate-400">Condición Especial de Atención</dt>
+                      <dd className="mt-1 text-slate-900 dark:text-white">
+                        {salud.condicion_atencion_especial ? (
+                          <span className="inline-flex items-center gap-1 font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded border border-purple-200/60">
+                            {salud.condicion_atencion_especial}
+                          </span>
+                        ) : (
+                          'Ninguna (Atención clínica convencional sin fobia reportada)'
+                        )}
+                      </dd>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <dt className="font-medium text-slate-500 dark:text-slate-400">Uso de Aparatos o Prótesis</dt>
+                      <dd className="mt-1 text-slate-900 dark:text-white">
+                        {salud.usa_aparato_o_protesis || 'No usa prótesis ni aparatos actualmente'}
+                      </dd>
+                    </div>
+
+                    {ultimaSolicitud?.motivo && (
+                      <div className="sm:col-span-4 border-l-2 border-[#0f766e] bg-slate-50/70 dark:bg-slate-800/50 pl-3.5 pr-4 py-2.5 rounded-r-lg">
+                        <dt className="text-[10px] font-semibold uppercase text-[#0f766e] dark:text-teal-400 tracking-wider">
+                          Motivo Concreto Declarado por el Paciente
+                        </dt>
+                        <dd className="mt-1 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+                          "${ultimaSolicitud.motivo}"
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+              )}
+
+              {/* SECCIÓN C: Perfil Ocupacional, Agenda & Convenios Institucionales */}
+              {(profileViewMode === 'ALL' || profileTab === 'CONVENIOS') && (
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <GraduationCap className="h-3.5 w-3.5 text-sky-600" />
+                      <span>Contexto Ocupacional, Flexibilidad & Convenios Institucionales</span>
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    {/* Tarjeta Perfil Académico & Convenio */}
+                    <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <GraduationCap className="h-4 w-4 text-sky-600" />
+                          <span>Perfil Académico (Estudiante)</span>
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                          isStudent
+                            ? 'bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-200'
+                            : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
+                        }`}>
+                          {isStudent ? 'Aplica Convenio' : 'No Estudiante'}
+                        </span>
+                      </div>
+
+                      <dl className="space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <dt className="text-slate-500">Universidad / Instituto:</dt>
+                          <dd className="font-semibold text-slate-900 dark:text-white">
+                            {academico.universidad || 'No registrada'}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between">
+                          <dt className="text-slate-500">Carrera & Ciclo:</dt>
+                          <dd className="font-medium text-slate-800 dark:text-slate-200">
+                            {academico.carrera ? `${academico.carrera} (${academico.ciclo || 'Ciclo N/E'})` : '—'}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      {isStudent && (
+                        <div className="mt-2 rounded-lg border border-sky-200/80 bg-sky-50 dark:border-sky-900/60 dark:bg-sky-950/30 p-2.5 text-[11px] text-sky-900 dark:text-sky-200">
+                          ✨ <strong>Convenio Universitario Activo:</strong> Paciente califica para <strong>15% OFF</strong> en evaluación y tratamientos de ortodoncia/profilaxis.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tarjeta Perfil Laboral & Disponibilidad de Agenda */}
+                    <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <Briefcase className="h-4 w-4 text-slate-600" />
+                          <span>Perfil Laboral & Flexibilidad</span>
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-500 font-mono">
+                          {laboral.modalidadLaboral || 'Modalidad N/E'}
+                        </span>
+                      </div>
+
+                      <dl className="space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <dt className="text-slate-500">Ocupación:</dt>
+                          <dd className="font-semibold text-slate-900 dark:text-white">
+                            {laboral.ocupacion || 'No registrada'}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between">
+                          <dt className="text-slate-500">Empresa / Centro:</dt>
+                          <dd className="font-medium text-slate-800 dark:text-slate-200">
+                            {laboral.empresa || 'Particular'}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between">
+                          <dt className="text-slate-500">Disponibilidad de Horario:</dt>
+                          <dd className="font-medium text-slate-800 dark:text-slate-200">
+                            {laboral.disponibilidadLaboral || (pref?.Horario ? 'Horario vespertino coordinado' : 'Flexible previa coordinación')}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SECCIÓN D: Datos de Contacto & Solicitud de Captación */}
+              {(profileViewMode === 'ALL' || profileTab === 'CONTACTO') && (
+                <div className="p-6 space-y-4">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-slate-500" />
+                    <span>Datos de Contacto & Trazabilidad de Captación</span>
+                  </h3>
+
+                  <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4 text-xs">
+                    <div>
+                      <dt className="font-medium text-slate-500 dark:text-slate-400">Paciente</dt>
+                      <dd className="mt-1 font-semibold text-slate-900 dark:text-white">
+                        {fullName}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt className="font-medium text-slate-500 dark:text-slate-400">Documento / DNI</dt>
+                      <dd className="mt-1 font-mono font-medium text-slate-900 dark:text-white tabular-nums">
+                        {lead.dni || 'No registrado'}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt className="font-medium text-slate-500 dark:text-slate-400">Teléfono / WhatsApp</dt>
+                      <dd className="mt-1 font-mono font-medium text-slate-900 dark:text-white tabular-nums flex items-center gap-1.5">
+                        <Phone className="h-3.5 w-3.5 text-slate-400" strokeWidth={1.75} />
+                        <span>{lead.numero ? `+51 ${lead.numero}` : 'No registrado'}</span>
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt className="font-medium text-slate-500 dark:text-slate-400">Correo Electrónico</dt>
+                      <dd className="mt-1 text-slate-900 dark:text-white truncate">
+                        {lead.email || 'No registrado'}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt className="font-medium text-slate-500 dark:text-slate-400">Canal de Captación</dt>
+                      <dd className="mt-1 font-medium text-slate-900 dark:text-white">
+                        {lead.Interacciones?.[0]?.Canal?.nombre || lead.CanalOrigen?.nombre || 'Portal Web'}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt className="font-medium text-slate-500 dark:text-slate-400">Tratamiento Solicitado</dt>
+                      <dd className="mt-1 font-medium text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <Stethoscope className="h-3.5 w-3.5 text-[#0f766e]" strokeWidth={1.75} />
+                        <span>{ultimaSolicitud?.Servicio?.nombre || 'Evaluación Odontológica'}</span>
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt className="font-medium text-slate-500 dark:text-slate-400">Sede Preferida</dt>
+                      <dd className="mt-1 font-medium text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-slate-400" strokeWidth={1.75} />
+                        <span>{pref?.sede_preferida || 'Sede California'}</span>
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt className="font-medium text-slate-500 dark:text-slate-400">Frecuencia de Consulta</dt>
+                      <dd className="mt-1 font-mono text-slate-900 dark:text-white tabular-nums">
+                        {(lead.Solicitudes?.length || 1) > 1
+                          ? `${lead.Solicitudes.length} consultas registradas`
+                          : '1ª solicitud activa'}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bloque 1.5: Estrategia Comercial Recomendada & Matching (Figura 15 del Informe NexoSalud) */}
+          <div className="rounded-xl border border-teal-200/90 dark:border-teal-800/80 bg-gradient-to-br from-teal-50/70 via-white to-slate-50 dark:from-teal-950/30 dark:via-slate-900 dark:to-slate-950 p-4 shadow-2xs space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-100 dark:border-teal-900/60 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300 border border-teal-200 dark:border-teal-400/30 shadow-2xs">
+                  <Zap className="h-4 w-4 text-teal-600 dark:text-teal-300" />
+                </span>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-teal-950 dark:text-teal-200">
+                  Estrategia Comercial Recomendada & Matching
+                </h3>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide bg-teal-100/80 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-300/60 dark:border-teal-800/80 shadow-2xs select-none">
+                <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-300" />
+                <span>Inteligencia BUYER → LEAD</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              {/* Tratamiento Solicitado */}
+              <div className="rounded-xl border border-slate-200/90 dark:border-teal-800/50 bg-white/95 dark:bg-slate-900/95 p-3.5 space-y-1 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-teal-800 dark:text-teal-300 font-bold text-xs">
+                  <Stethoscope className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                  <span>Tratamiento Solicitado</span>
+                </div>
+                <div className="font-semibold text-slate-900 dark:text-white text-xs pt-0.5 truncate">
+                  {matchingData.treatmentName}
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
+                  {matchingData.treatmentDetail}
+                </p>
+              </div>
+
+              {/* Sede Sugerida */}
+              <div className="rounded-xl border border-slate-200/90 dark:border-teal-800/50 bg-white/95 dark:bg-slate-900/95 p-3.5 space-y-1 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-teal-800 dark:text-teal-300 font-bold text-xs">
+                    <MapPin className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                    <span>Sede Sugerida</span>
+                  </div>
+                  {options.sedes?.some((s: any) => s.nombre.toLowerCase().includes(matchingData.sede.toLowerCase())) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const found = options.sedes.find((s: any) => s.nombre.toLowerCase().includes(matchingData.sede.toLowerCase()));
+                        if (found) setSelectedSedeId(String(found.id_sede));
+                      }}
+                      className="text-[10px] text-teal-700 dark:text-teal-400 hover:underline font-semibold cursor-pointer"
+                      title="Aplicar esta sede a la propuesta"
+                    >
+                      Aplicar Sede
+                    </button>
                   )}
-                </dl>
+                </div>
+                <div className="font-semibold text-slate-900 dark:text-white text-xs pt-0.5 truncate">
+                  {matchingData.sede}
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
+                  {matchingData.sedeReason}
+                </p>
+              </div>
+
+              {/* Margen de Cierre (LEAD) */}
+              <div className="rounded-xl border border-slate-200/90 dark:border-teal-800/50 bg-white/95 dark:bg-slate-900/95 p-3.5 space-y-1 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-teal-800 dark:text-teal-300 font-bold text-xs">
+                  <Clock className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                  <span>Margen de Cierre (LEAD)</span>
+                </div>
+                <div className="font-semibold text-slate-900 dark:text-white text-xs pt-0.5 truncate">
+                  {matchingData.closingTarget}
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
+                  {matchingData.closingRationale}
+                </p>
               </div>
             </div>
           </div>
@@ -1370,78 +1950,180 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                 </p>
               </div>
 
-              {/* Manejo de Objeciones por Categoría */}
-              <div className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200">
-                    Protocolo de Objeciones
-                  </span>
-                  <div className="inline-flex rounded-md border border-slate-200 dark:border-slate-700 p-0.5 bg-slate-50 dark:bg-slate-800">
-                    {(['PRECIO', 'HORARIO', 'SEDE'] as const).map((cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setObjectionCategory(cat)}
-                        className={`rounded px-2 py-0.5 text-[10px] font-semibold transition-colors cursor-pointer ${
-                          objectionCategory === cat
-                            ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
-                            : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
+              {/* Copiloto de Apoyo ante Objeciones (Figura 19 del Informe NexoSalud - Asistente en Vivo) */}
+              <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3.5 shadow-2xs">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0f766e] text-white text-[10px] font-bold">
+                      4
+                    </span>
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                      Copiloto ante Objeciones
+                    </h3>
                   </div>
+                  <span className="text-[10px] font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/80 px-2 py-0.5 rounded-full border border-teal-200/80 dark:border-teal-800/80">
+                    Asistente en Vivo
+                  </span>
                 </div>
 
+                {/* Selector de Objeciones (Pills Responsivas) */}
+                <div className="grid grid-cols-3 gap-1 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[11px] font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setObjectionCategory('PRECIO')}
+                    className={`rounded-md py-1 px-1.5 text-center transition-all cursor-pointer truncate ${
+                      objectionCategory === 'PRECIO'
+                        ? 'bg-[#0f766e] text-white shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    }`}
+                  >
+                    "Está caro"
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setObjectionCategory('HORARIO')}
+                    className={`rounded-md py-1 px-1.5 text-center transition-all cursor-pointer truncate ${
+                      objectionCategory === 'HORARIO'
+                        ? 'bg-[#0f766e] text-white shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    }`}
+                  >
+                    "Mala hora"
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setObjectionCategory('SEDE')}
+                    className={`rounded-md py-1 px-1.5 text-center transition-all cursor-pointer truncate ${
+                      objectionCategory === 'SEDE'
+                        ? 'bg-[#0f766e] text-white shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    }`}
+                  >
+                    "Queda lejos"
+                  </button>
+                </div>
+
+                {/* Objeción: PRECIO (Dinámica según perfil real del paciente) */}
                 {objectionCategory === 'PRECIO' && (
-                  <div className="space-y-2 text-[11px] text-slate-600 dark:text-slate-300">
-                    <p>
-                      Si el paciente manifiesta restricción presupuestaria, aplica el descuento de campaña (-20%) con vigencia de 24 horas.
+                  <div className="p-3 bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 rounded-lg space-y-2 text-xs">
+                    <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 text-[11px]">
+                      <Sparkles className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                      <span>Solución Comercial Dinámica</span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
+                      Sensibilidad al precio: <strong className="text-teal-700 dark:text-teal-300">{aiStrategy?.priceSensitivity || 'MODERADA'}</strong>. 
+                      {aiStrategy?.persuasiveSalesPitch
+                        ? ` Argumento sugerido: "${aiStrategy.persuasiveSalesPitch.substring(0, 110)}..."`
+                        : ' Argumenta la esterilización instrumental y especialista colegiado de NexoSalud.'}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        applyQuickDiscount(20, 'CAMPANA');
-                        setSelectedVigencia('24h');
-                      }}
-                      className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-[#0f766e] hover:bg-teal-50/50 cursor-pointer"
-                    >
-                      Aplicar -20% Flash (24h)
-                    </button>
+
+                    <div className="space-y-1.5 pt-1">
+                      {isStudent && (
+                        <button
+                          type="button"
+                          onClick={() => applyQuickDiscount(15, 'CAMPANA')}
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-semibold py-1.5 px-2 flex items-center justify-between shadow-2xs transition-all cursor-pointer"
+                        >
+                          <span className="flex items-center gap-1">
+                            <GraduationCap className="w-3.5 h-3.5" />
+                            <span>Convenio Estudiantil (-15%)</span>
+                          </span>
+                          <span className="text-[10px] opacity-80 truncate max-w-[100px]">
+                            {academico.universidad ? String(academico.universidad).split(' ')[0] : 'Universidad'}
+                          </span>
+                        </button>
+                      )}
+
+                      {isWorker && laboral.empresa && (
+                        <button
+                          type="button"
+                          onClick={() => applyQuickDiscount(15, 'CAMPANA')}
+                          className="w-full bg-sky-600 hover:bg-sky-700 text-white rounded-md text-[11px] font-semibold py-1.5 px-2 flex items-center justify-between shadow-2xs transition-all cursor-pointer"
+                        >
+                          <span className="flex items-center gap-1">
+                            <Briefcase className="w-3.5 h-3.5" />
+                            <span>Convenio Corporativo (-15%)</span>
+                          </span>
+                          <span className="text-[10px] opacity-80 truncate max-w-[100px]">
+                            {String(laboral.empresa).split(' ')[0]}
+                          </span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          applyQuickDiscount(20, 'CAMPANA');
+                          setSelectedVigencia('24h');
+                        }}
+                        className="w-full bg-amber-600 hover:bg-amber-700 text-white rounded-md text-[11px] font-semibold py-1.5 px-2 flex items-center justify-between shadow-2xs transition-all cursor-pointer"
+                      >
+                        <span className="flex items-center gap-1">
+                          <Zap className="w-3.5 h-3.5" />
+                          <span>Tarifa Flash de Campaña (-20%)</span>
+                        </span>
+                        <span className="text-[10px] opacity-90 font-mono">
+                          24 horas
+                        </span>
+                      </button>
+                    </div>
+
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 italic pt-0.5">
+                      Recuerda pulsar "Añadir Propuesta" para reflejar el valor en la mesa.
+                    </p>
                   </div>
                 )}
 
+                {/* Objeción: HORARIO (Basada en disponibilidad y turno del lead) */}
                 {objectionCategory === 'HORARIO' && (
-                  <div className="space-y-2 text-[11px] text-slate-600 dark:text-slate-300">
-                    <p>
-                      Habilita flexibilidad de turno para que el paciente confirme la hora exacta al validar su reserva.
+                  <div className="p-3 bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 rounded-lg space-y-2 text-xs">
+                    <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 text-[11px]">
+                      <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>Flexibilidad Horaria Dinámica</span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
+                      {laboral.disponibilidad
+                        ? `Disponibilidad declarada por el paciente: "${laboral.disponibilidad}".`
+                        : 'El paciente no cuenta con franja horaria fija. Habilita turno flexible.'}
                     </p>
+
                     <button
                       type="button"
                       onClick={() =>
                         setSelectedFranja(
-                          'Horario Flexible (A elección del paciente al confirmar)'
+                          'Horario Flexible (A elección del paciente al validar en PAYER)'
                         )
                       }
-                      className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-[#0f766e] hover:bg-teal-50/50 cursor-pointer"
+                      className="w-full bg-amber-600 hover:bg-amber-700 text-white rounded-md text-[11px] font-semibold py-1.5 px-2 flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                     >
-                      Asignar Horario Flexible
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Pactar Horario Flexible sin Penalidad</span>
                     </button>
                   </div>
                 )}
 
+                {/* Objeción: SEDE (Basada en zona geográfica de Trujillo) */}
                 {objectionCategory === 'SEDE' && (
-                  <div className="space-y-2 text-[11px] text-slate-600 dark:text-slate-300">
-                    <p>
-                      Permite que la tarifa promocional sea válida en cualquiera de las 3 sedes clínicas de Trujillo.
+                  <div className="p-3 bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 rounded-lg space-y-2 text-xs">
+                    <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 text-[11px]">
+                      <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                      <span>Red de Sedes en Trujillo</span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
+                      Zona del paciente: <strong className="text-indigo-700 dark:text-indigo-300">{lead.zona || 'Trujillo'}</strong>. 
+                      Permite que la tarifa sea transferible entre California, El Golf y Centro Histórico.
                     </p>
+
                     <button
                       type="button"
                       onClick={() => setSelectedSedeId('ALL_SEDES')}
-                      className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-[#0f766e] hover:bg-teal-50/50 cursor-pointer"
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[11px] font-semibold py-1.5 px-2 flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                     >
-                      Habilitar Multisede
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span>Habilitar Multisede Trujillo</span>
                     </button>
                   </div>
                 )}
@@ -1480,6 +2162,16 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         confirmText="Eliminar Propuesta"
         cancelText="Cancelar"
         variant="destructive"
+      />
+
+      {/* Modal para que el Asesor Comercial complete / edite el Perfil de Negociación */}
+      <LeadProfileEditModal
+        isOpen={isEditProfileModalOpen}
+        onClose={() => setIsEditProfileModalOpen(false)}
+        lead={lead}
+        leadId={leadId}
+        options={options}
+        onProfileUpdated={handleProfileUpdated}
       />
     </div>
   );

@@ -9,7 +9,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/card';
 import { Input } from '@/shared/components/ui/input';
 import { useToast } from '@/shared/hooks/use-toast';
-import { PayerState } from '@/domain/enums';
+import { PayerState, normalizePayerState } from '@/domain/enums';
 import { 
   usePayer, 
   useRegisterPayment, 
@@ -55,7 +55,7 @@ export default function PayerDetailPage() {
     const status = searchParams.get('status');
     const paymentId = searchParams.get('payment_id');
 
-    if (status === 'approved' && payer && payer.state !== PayerState.VALIDATED) {
+    if (status === 'approved' && payer && normalizePayerState(payer.state) !== PayerState.VALIDADO) {
       validatePayment.mutate(payer.id, {
         onSuccess: () => {
           toast({
@@ -124,22 +124,24 @@ export default function PayerDetailPage() {
     let message = '';
     const alerts = [];
     
-    if (p.state === PayerState.PENDING) {
+    const state = normalizePayerState(p.state);
+    
+    if (state === PayerState.PENDIENTE) {
       message = 'Esperando carga de comprobante o registro de pago. Por favor contacte al Lead si han pasado más de 24 horas.';
       alerts.push('Pago pendiente de registro');
-    } else if (p.state === PayerState.IN_REVIEW) {
+    } else if (state === PayerState.EN_REVISION) {
       message = 'El paciente ha enviado un pago. Debe revisar el comprobante y validarlo o rechazarlo si hay problemas.';
       if (!p.payment?.receiptMetadata) {
         alerts.push('Comprobante sin validar (no se adjuntó archivo)');
       } else {
         alerts.push(`Archivo adjunto: ${p.payment.receiptMetadata.name}`);
       }
-    } else if (p.state === PayerState.VALIDATED) {
+    } else if (state === PayerState.VALIDADO) {
       message = 'El pago está validado. Ya puede convertir a este Payer en Customer para su atención.';
-    } else if (p.state === PayerState.REJECTED) {
+    } else if (state === PayerState.RECHAZADO) {
       message = 'El pago fue rechazado. Debe comunicarse con el paciente para corregir la incidencia.';
       alerts.push('Pago rechazado - Incidencia Abierta');
-    } else if (p.state === PayerState.REVERTED) {
+    } else if (state === PayerState.REVERTIDO) {
       message = 'El pago validado ha sido revertido manualmente debido a una incidencia.';
       alerts.push('Reversión manual registrada');
     }
@@ -166,6 +168,8 @@ export default function PayerDetailPage() {
     );
   };
 
+  const payerState = normalizePayerState(payer?.state);
+
   return (
     <div className="flex flex-col gap-6 max-w-5xl mx-auto w-full">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2">
@@ -180,7 +184,7 @@ export default function PayerDetailPage() {
             <FileText className="w-4 h-4 text-teal-600 dark:text-teal-400" />
             Ver Comprobante Oficial
           </Button>
-          {payer.state === PayerState.VALIDATED && (
+          {payerState === PayerState.VALIDADO && (
             <Button onClick={() => setIsConvertOpen(true)} className="gap-2 text-xs font-semibold rounded-xl h-9">
               Pasar a CUSTOMER <ArrowRight className="w-4 h-4" />
             </Button>
@@ -242,7 +246,7 @@ export default function PayerDetailPage() {
         </div>
 
         <div className="lg:col-span-2 space-y-6">
-          {(payer.state === PayerState.PENDING || payer.state === PayerState.REJECTED || payer.state === PayerState.IN_REVIEW) && (
+          {(payerState === PayerState.PENDIENTE || payerState === PayerState.RECHAZADO || payerState === PayerState.EN_REVISION) && (
             <YapePaymentButton
               payerId={payer.id}
               personName={`${payer.person.firstName} ${payer.person.lastName}`}
@@ -252,7 +256,7 @@ export default function PayerDetailPage() {
             />
           )}
 
-          {payer.state === PayerState.PENDING || payer.state === PayerState.REJECTED ? (
+          {payerState === PayerState.PENDIENTE || payerState === PayerState.RECHAZADO ? (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Registrar Pago Manual (Voucher / Foto)</CardTitle>
@@ -306,7 +310,7 @@ export default function PayerDetailPage() {
                   )}
                 </div>
 
-                {payer.state === PayerState.IN_REVIEW && (
+                {payerState === PayerState.EN_REVISION && (
                   <div className="flex gap-4">
                     <Button 
                       className="flex-1 bg-green-600 hover:bg-green-700 text-white"
@@ -325,7 +329,7 @@ export default function PayerDetailPage() {
                   </div>
                 )}
 
-                {payer.state === PayerState.VALIDATED && (
+                {payerState === PayerState.VALIDADO && (
                   <div className="flex justify-end">
                     <Button 
                       type="button"
