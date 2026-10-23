@@ -1,4 +1,4 @@
-- ====================================================================
+-- ====================================================================
 -- NEXOSALUD — DATA MART DIMENSIONAL (MODELO ESTRELLA CONFORMADO)
 -- Esquema: NexoSalud_Mart
 -- Motor: Microsoft SQL Server 2019 / 2022
@@ -294,4 +294,3 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactSeguimientoTurned_
     CREATE UNIQUE NONCLUSTERED INDEX UQ_FactSeguimientoTurned_Grain 
     ON Fact_SeguimientoTurned (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyCanal);
 GO
-``

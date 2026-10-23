@@ -1,4 +1,4 @@
-- ====================================================================
+-- ====================================================================
 -- NEXOSALUD — DATA MART DIMENSIONAL (NexoSalud_Mart)
 -- POBLAMIENTO INICIAL, MIEMBROS CANÓNICOS (KEY=0) Y HOMOLOGACIÓN SCD TIPO 1
 -- Motor: Microsoft SQL Server 2019 / 2022
@@ -381,4 +381,3 @@ WHERE NOT EXISTS (
     SELECT 1 FROM dbo.Dim_EstadoAtencion dim WHERE dim.EstadoFinal = src.EstadoFinal
 );
 GO
-``
