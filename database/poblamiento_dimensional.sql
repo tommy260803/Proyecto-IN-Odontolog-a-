@@ -1,6 +1,6 @@
 -- ====================================================================
 -- NEXOSALUD — DATA MART DIMENSIONAL (CLÍNICA LUXEDENT, TRUJILLO)
--- PROCESO ETL ROBUSTO, IDEMPOTENTE, NO DESTRUCTIVO Y CERTIFICADO
+-- POBLAMIENTO DIMENSIONAL: dimensiones y hechos desde NexoSaludDB
 -- Motor: Microsoft SQL Server 2019 / 2022
 -- Esquemas: [NexoSaludDB] (OLTP) -> [NexoSalud_Mart] (Data Mart)
 -- ====================================================================
@@ -16,30 +16,9 @@ SET XACT_ABORT ON;
 GO
 
 -- ====================================================================
--- 0. GARANTIA DE COMPATIBILIDAD DE ESQUEMA EN [NexoSaludDB]
--- Asegurar columnas clinicas en Atenciones si la tabla fue creada previamente
+-- 0. Requiere los esquemas existentes de init_oltp.sql e init_mart.sql.
+-- La base transaccional y el Data Mart deben estar en la misma instancia.
 -- ====================================================================
-IF COL_LENGTH('[NexoSaludDB].dbo.[Atenciones]', 'fecha_inicio') IS NULL
-    ALTER TABLE [NexoSaludDB].dbo.[Atenciones] ADD [fecha_inicio] DATETIME2 NULL;
-GO
-IF COL_LENGTH('[NexoSaludDB].dbo.[Atenciones]', 'fecha_fin') IS NULL
-    ALTER TABLE [NexoSaludDB].dbo.[Atenciones] ADD [fecha_fin] DATETIME2 NULL;
-GO
-IF COL_LENGTH('[NexoSaludDB].dbo.[Atenciones]', 'motivo_consulta') IS NULL
-    ALTER TABLE [NexoSaludDB].dbo.[Atenciones] ADD [motivo_consulta] VARCHAR(300) NULL;
-GO
-IF COL_LENGTH('[NexoSaludDB].dbo.[Atenciones]', 'antecedentes') IS NULL
-    ALTER TABLE [NexoSaludDB].dbo.[Atenciones] ADD [antecedentes] VARCHAR(500) NULL;
-GO
-IF COL_LENGTH('[NexoSaludDB].dbo.[Atenciones]', 'alergias') IS NULL
-    ALTER TABLE [NexoSaludDB].dbo.[Atenciones] ADD [alergias] VARCHAR(300) NULL;
-GO
-IF COL_LENGTH('[NexoSaludDB].dbo.[Atenciones]', 'evaluacion') IS NULL
-    ALTER TABLE [NexoSaludDB].dbo.[Atenciones] ADD [evaluacion] VARCHAR(500) NULL;
-GO
-IF COL_LENGTH('[NexoSaludDB].dbo.[Atenciones]', 'procedimiento') IS NULL
-    ALTER TABLE [NexoSaludDB].dbo.[Atenciones] ADD [procedimiento] VARCHAR(500) NULL;
-GO
 
 
 -- ====================================================================
@@ -288,6 +267,7 @@ USING (
     UNION ALL SELECT 2, 'Incompletos', 'NO'
     UNION ALL SELECT 3, 'Duplicados', 'NO'
     UNION ALL SELECT 4, 'Rechazados', 'NO'
+    UNION ALL SELECT 5, 'Válidos', 'NO'
 ) AS src
 ON dim.KeyEstadoRegistro = src.KeyEstadoRegistro
 WHEN MATCHED THEN
@@ -385,6 +365,12 @@ GO
 -- 4. ÍNDICES DE UNICIDAD FÍSICA PARA GARANTÍA DE IDEMPOTENCIA
 -- Incluyen todas las dimensiones que componen el grano analítico real
 -- ====================================================================
+IF NOT EXISTS (SELECT 1 FROM dbo.Dim_EstadoRegistro WHERE KeyEstadoRegistro = 1 AND AutorizacionContacto = 'SI')
+   OR NOT EXISTS (SELECT 1 FROM dbo.Dim_EstadoRegistro WHERE KeyEstadoRegistro = 5 AND AutorizacionContacto = 'NO')
+   OR NOT EXISTS (SELECT 1 FROM dbo.Dim_Cobro WHERE KeyCobro = 1 AND EstadoPago = 'Validado')
+   OR NOT EXISTS (SELECT 1 FROM dbo.Dim_EstadoAtencion WHERE KeyEstadoAtencion = 1)
+    THROW 50012, 'Las claves de dimensiones canonicas no coinciden; revisar el Data Mart antes de cargar hechos.', 1;
+
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactCaptacionBuyer_Grain' AND object_id = OBJECT_ID('Fact_CaptacionBuyer'))
     CREATE UNIQUE NONCLUSTERED INDEX UQ_FactCaptacionBuyer_Grain 
     ON Fact_CaptacionBuyer (KeyTiempo, KeySede, KeyCanal, KeyFuente, KeyEstadoRegistro);
@@ -415,7 +401,12 @@ GO
 -- obsoletos mediante Scoped MERGE (WHEN NOT MATCHED BY SOURCE THEN DELETE).
 -- ====================================================================
 
--- 5.0 Adquisición de Candado de Aplicación para Concurrencia
+-- 5.0 Validar etapas del origen y adquirir candado de concurrencia
+DECLARE @IdLead INT = (SELECT id_etapa FROM [NexoSaludDB].dbo.Etapas WHERE nombre = 'LEAD');
+DECLARE @IdPayer INT = (SELECT id_etapa FROM [NexoSaludDB].dbo.Etapas WHERE nombre = 'PAYER');
+IF @IdLead IS NULL OR @IdPayer IS NULL
+    THROW 50011, 'Faltan las etapas LEAD o PAYER en NexoSaludDB.', 1;
+
 DECLARE @AppLockResult INT;
 EXEC @AppLockResult = sp_getapplock 
     @Resource = 'ETL_NexoSalud_Lock', 
@@ -445,10 +436,10 @@ BEGIN TRY
     -- Deduplicación de etapas para evitar producto cartesiano (fan-out).
     -- Reconciliación de agregados obsoletos por ámbito de fecha.
     -- ----------------------------------------------------------------
-    ;WITH EventosEtapa2Unico AS (
-        SELECT id_persona, MIN(fecha_hora) AS fecha_hora_etapa2
+    ;WITH EventosLeadUnico AS (
+        SELECT id_persona, MIN(fecha_hora) AS fecha_hora_lead
         FROM [NexoSaludDB].dbo.[EventosEtapa]
-        WHERE etapa_destino = 2
+        WHERE etapa_destino = @IdLead
         GROUP BY id_persona
     ),
     BuyerSource AS (
@@ -459,31 +450,31 @@ BEGIN TRY
             ISNULL(df.KeyFuente, 0) AS KeyFuente,
             ISNULL(der.KeyEstadoRegistro, 0) AS KeyEstadoRegistro,
             COUNT(p.id_persona) AS ContactosRegistrados,
-            SUM(CASE WHEN p.estado_calidad LIKE '%Valid%' THEN 1 ELSE 0 END) AS ContactosUtilizables,
-            SUM(CASE WHEN p.id_etapa_actual >= 2 THEN 1 ELSE 0 END) AS ConversionesALead, 
+            SUM(CASE WHEN p.estado_calidad LIKE '%Valid%' AND p.autoriza_contacto = 1 THEN 1 ELSE 0 END) AS ContactosUtilizables,
+            SUM(CASE WHEN ev.fecha_hora_lead IS NOT NULL THEN 1 ELSE 0 END) AS ConversionesALead,
             AVG(CASE 
-                WHEN ev.fecha_hora_etapa2 >= p.fecha_registro 
-                THEN DATEDIFF(DAY, p.fecha_registro, ev.fecha_hora_etapa2) 
+                WHEN ev.fecha_hora_lead >= p.fecha_registro
+                THEN DATEDIFF(DAY, p.fecha_registro, ev.fecha_hora_lead)
                 ELSE 0 
             END) AS TiempoConversionDias
         FROM [NexoSaludDB].dbo.[Personas] p
-        LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Sede] ds ON (
-            ds.id_sede = CASE 
-                WHEN p.zona IN ('Centro Histórico', 'Centro Historico', 'El Recreo', 'Florencia de Mora', 'La Esperanza', 'Moche', 'San Andrés', 'San Andres') THEN 1
-                WHEN p.zona IN ('California', 'Víctor Larco Herrera', 'Victor Larco Herrera', 'Huanchaco') THEN 2
-                WHEN p.zona IN ('El Golf') THEN 3
-                ELSE 0
-            END
-        )
+        OUTER APPLY (
+            SELECT TOP (1) sede.KeySede
+            FROM [NexoSalud_Mart].dbo.[Dim_Sede] sede
+            WHERE sede.id_sede > 0 AND p.zona IS NOT NULL
+              AND (sede.Zona = p.zona OR sede.Sede LIKE '%' + p.zona + '%')
+            ORDER BY CASE WHEN sede.Zona = p.zona THEN 0 ELSE 1 END, sede.KeySede
+        ) ds
         LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Canal] dc ON p.id_canal_origen = dc.id_canal
         LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Fuente] df ON p.id_campana_origen = df.id_campana
         LEFT JOIN [NexoSalud_Mart].dbo.[Dim_EstadoRegistro] der ON (
-            (p.estado_calidad LIKE '%Valid%' AND der.KeyEstadoRegistro = 1) OR
+            (p.estado_calidad LIKE '%Valid%' AND p.autoriza_contacto = 1 AND der.KeyEstadoRegistro = 1) OR
+            (p.estado_calidad LIKE '%Valid%' AND p.autoriza_contacto = 0 AND der.KeyEstadoRegistro = 5) OR
             (p.estado_calidad LIKE '%Incomplet%' AND der.KeyEstadoRegistro = 2) OR
             (p.estado_calidad LIKE '%Duplicad%' AND der.KeyEstadoRegistro = 3) OR
             (p.estado_calidad LIKE '%Rechazad%' AND der.KeyEstadoRegistro = 4)
         )
-        LEFT JOIN EventosEtapa2Unico ev ON p.id_persona = ev.id_persona
+        LEFT JOIN EventosLeadUnico ev ON p.id_persona = ev.id_persona
         GROUP BY 
             CAST(FORMAT(p.fecha_registro, 'yyyyMMdd') AS INT),
             ISNULL(ds.KeySede, 0),
@@ -527,7 +518,7 @@ BEGIN TRY
             ev.fecha_hora,
             ROW_NUMBER() OVER (PARTITION BY ev.id_persona ORDER BY ev.fecha_hora ASC) AS rn
         FROM [NexoSaludDB].dbo.[EventosEtapa] ev
-        WHERE ev.etapa_destino = 2
+        WHERE ev.etapa_destino = @IdLead
     ),
     LeadSource AS (
         SELECT 
@@ -537,9 +528,9 @@ BEGIN TRY
             ISNULL(dp.KeyProfesional, 0) AS KeyProfesional,
             ISNULL(dn.KeyNegociador, 0) AS KeyNegociador,
             COUNT(DISTINCT ev.id_persona) AS LeadsCohorteEvaluable,
-            SUM(CASE WHEN p.id_etapa_actual >= 3 THEN 1 ELSE 0 END) AS LeadsConvertidosPayer14Dias,
-            SUM(CASE WHEN p.id_etapa_actual = 2 AND sol.estado IN ('En Negociacion', 'En negociación') THEN 1 ELSE 0 END) AS LeadsEnNegociacion,
-            SUM(CASE WHEN sol.estado = 'Abandonada' OR p.id_etapa_actual < 2 THEN 1 ELSE 0 END) AS LeadsAbandonados,
+            SUM(CASE WHEN payer.fecha_payer <= DATEADD(DAY, 14, ev.fecha_hora) THEN 1 ELSE 0 END) AS LeadsConvertidosPayer14Dias,
+            SUM(CASE WHEN p.id_etapa_actual = @IdLead AND sol.estado IN ('Abierta', 'En Negociacion', 'En negociación') THEN 1 ELSE 0 END) AS LeadsEnNegociacion,
+            SUM(CASE WHEN sol.estado = 'Abandonada' THEN 1 ELSE 0 END) AS LeadsAbandonados,
             COUNT(DISTINCT ev.id_persona) AS LeadsRequierenRespuesta,
             SUM(CASE 
                 WHEN sol.fecha_primera_respuesta IS NOT NULL 
@@ -547,7 +538,7 @@ BEGIN TRY
                      AND DATEDIFF(MINUTE, sol.fecha_solicitud, sol.fecha_primera_respuesta) <= 15 
                 THEN 1 ELSE 0 
             END) AS LeadsRespuestaUtil15Min,
-            SUM(CASE WHEN p.id_etapa_actual >= 3 OR sol.estado = 'Abandonada' THEN 1 ELSE 0 END) AS LeadsResultadoFinal
+            SUM(CASE WHEN payer.fecha_payer IS NOT NULL OR sol.estado = 'Abandonada' THEN 1 ELSE 0 END) AS LeadsResultadoFinal
         FROM LeadEvents ev
         JOIN [NexoSaludDB].dbo.[Personas] p ON ev.id_persona = p.id_persona AND ev.rn = 1
         OUTER APPLY (
@@ -563,18 +554,25 @@ BEGIN TRY
             WHERE o.id_solicitud = sol.id_solicitud
             ORDER BY o.seleccionada DESC, o.id_opcion ASC
         ) disp
+        OUTER APPLY (
+            SELECT MIN(e2.fecha_hora) AS fecha_payer
+            FROM [NexoSaludDB].dbo.[EventosEtapa] e2
+            WHERE e2.id_persona = ev.id_persona
+              AND e2.etapa_destino = @IdPayer
+              AND e2.fecha_hora >= ev.fecha_hora
+        ) payer
         LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Negociador] dn ON dn.id_usuario = ev.id_usuario
         LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Servicio] dserv ON dserv.id_servicio = sol.id_servicio
         LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Profesional] dp ON dp.id_profesional = disp.id_profesional
-        LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Sede] ds ON ds.id_sede = COALESCE(
-            disp.id_sede,
-            CASE 
-                WHEN p.zona IN ('Centro Histórico', 'Centro Historico', 'El Recreo', 'Florencia de Mora', 'La Esperanza', 'Moche', 'San Andrés', 'San Andres') THEN 1
-                WHEN p.zona IN ('California', 'Víctor Larco Herrera', 'Victor Larco Herrera', 'Huanchaco') THEN 2
-                WHEN p.zona IN ('El Golf') THEN 3
-                ELSE 0
-            END
-        )
+        OUTER APPLY (
+            SELECT TOP (1) sede.id_sede
+            FROM [NexoSalud_Mart].dbo.[Dim_Sede] sede
+            WHERE sede.id_sede > 0 AND p.zona IS NOT NULL
+              AND (sede.Zona = p.zona OR sede.Sede LIKE '%' + p.zona + '%')
+            ORDER BY CASE WHEN sede.Zona = p.zona THEN 0 ELSE 1 END, sede.KeySede
+        ) zona
+        LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Sede] ds
+          ON ds.id_sede = COALESCE(disp.id_sede, zona.id_sede)
         GROUP BY 
             CAST(FORMAT(ev.fecha_hora, 'yyyyMMdd') AS INT), 
             ISNULL(ds.KeySede, 0),
@@ -691,14 +689,14 @@ BEGIN TRY
             ISNULL(dserv.KeyServicio, 0) AS KeyServicio,
             ISNULL(dp.KeyProfesional, 0) AS KeyProfesional,
             CASE 
-                WHEN a.asistencia LIKE '%Asisti%' AND a.asistencia NOT LIKE '%No%' THEN 1
-                WHEN a.asistencia LIKE '%No%asisti%' THEN 2
-                WHEN a.asistencia LIKE '%Cancelad%' THEN 3
+                WHEN a.asistencia IN ('Asiste', 'Asistió', 'Asistio') THEN 1
+                WHEN a.asistencia IN ('No asiste', 'No asistió', 'No asistio') THEN 2
+                WHEN a.asistencia IN ('Cancelado', 'Cancelada') OR a.estado_servicio = 'Cancelado' THEN 3
                 ELSE 0
             END AS KeyEstadoAtencion,
             COUNT(a.id_atencion) AS CitasEvaluables,
-            SUM(CASE WHEN a.asistencia LIKE '%Asisti%' AND a.asistencia NOT LIKE '%No%' THEN 1 ELSE 0 END) AS AtencionesRealizadas,
-            SUM(CASE WHEN a.asistencia LIKE '%No%asisti%' THEN 1 ELSE 0 END) AS CitasConInasistencia,
+            SUM(CASE WHEN a.asistencia IN ('Asiste', 'Asistió', 'Asistio') THEN 1 ELSE 0 END) AS AtencionesRealizadas,
+            SUM(CASE WHEN a.asistencia IN ('No asiste', 'No asistió', 'No asistio') THEN 1 ELSE 0 END) AS CitasConInasistencia,
             SUM(CASE 
                 WHEN a.fecha_fin IS NOT NULL AND a.fecha_inicio IS NOT NULL AND a.fecha_fin >= a.fecha_inicio
                 THEN DATEDIFF(MINUTE, a.fecha_inicio, a.fecha_fin)
@@ -706,7 +704,9 @@ BEGIN TRY
                 THEN 30
                 ELSE 0
             END) AS TiempoEnSillonDentalMin,
-            SUM(CASE WHEN NULLIF(LTRIM(RTRIM(a.procedimiento_realizado)), '') IS NOT NULL 
+            SUM(CASE WHEN a.estado_servicio = 'Finalizado'
+                           AND (NULLIF(LTRIM(RTRIM(a.procedimiento_realizado)), '') IS NOT NULL
+                                OR NULLIF(LTRIM(RTRIM(a.procedimiento)), '') IS NOT NULL)
                           AND NULLIF(LTRIM(RTRIM(a.indicaciones_finales)), '') IS NOT NULL 
                      THEN 1 ELSE 0 END) AS AtencionesFinalizadasConformes
         FROM [NexoSaludDB].dbo.[Atenciones] a
@@ -719,9 +719,9 @@ BEGIN TRY
             ISNULL(dserv.KeyServicio, 0),
             ISNULL(dp.KeyProfesional, 0),
             CASE 
-                WHEN a.asistencia LIKE '%Asisti%' AND a.asistencia NOT LIKE '%No%' THEN 1
-                WHEN a.asistencia LIKE '%No%asisti%' THEN 2
-                WHEN a.asistencia LIKE '%Cancelad%' THEN 3
+                WHEN a.asistencia IN ('Asiste', 'Asistió', 'Asistio') THEN 1
+                WHEN a.asistencia IN ('No asiste', 'No asistió', 'No asistio') THEN 2
+                WHEN a.asistencia IN ('Cancelado', 'Cancelada') OR a.estado_servicio = 'Cancelado' THEN 3
                 ELSE 0
             END
     ),
@@ -798,7 +798,7 @@ BEGIN TRY
             WHERE a2.id_persona = s.id_persona 
               AND a2.fecha_atencion > s.fecha_hora 
               AND a2.fecha_atencion <= DATEADD(DAY, 90, s.fecha_hora)
-              AND a2.asistencia LIKE '%Asisti%' AND a2.asistencia NOT LIKE '%No%'
+               AND a2.asistencia IN ('Asiste', 'Asistió', 'Asistio')
         ) ret90
         GROUP BY 
             CAST(FORMAT(s.fecha_hora, 'yyyyMMdd') AS INT),

@@ -28,7 +28,7 @@ async function main() {
 
   const oltp = await getOltpPool();
   const mart = await getMartPool();
-  const etlPath = path.resolve(__dirname, '../../../database/etl_populate_mart.sql');
+  const etlPath = path.resolve(__dirname, '../../../database/poblamiento_dimensional.sql');
   const results: TestResult[] = [];
 
   // PRUEBA A: Doble Ejecución sin Cambios (Idempotencia Matemática Estricta)

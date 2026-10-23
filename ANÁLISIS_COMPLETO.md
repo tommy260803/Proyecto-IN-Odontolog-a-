@@ -270,10 +270,8 @@ CREATE INDEX idx_personas_numero_ultimo ON Personas(numero(9));
 CREATE INDEX idx_solicitudes_estado_fecha ON Solicitudes(estado, fecha_solicitud DESC);
 ```
 
-**Datos semilla faltantes** (ver `database/seed/`):
-- Añadir datos de campañas de marketing reales
-- Datos de gastos de campaña por fuente/canal
-- Historial de interacciones iniciales
+**Datos de demostración** (ver `database/poblamiento_transaccional.sql` y `database/poblamiento_dimensional.sql`):
+El script transaccional genera campañas, gastos e interacciones sintéticas. El dimensional transforma los datos transaccionales en dimensiones y hechos. Para datos reales, la carga debe proceder de la aplicación o de una integración autorizada.
 
 ## 5. Roadmap de Implementación
 

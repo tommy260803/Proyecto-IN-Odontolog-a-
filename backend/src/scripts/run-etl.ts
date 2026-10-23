@@ -4,11 +4,10 @@ import { getMartPool } from '../db/mart';
 
 async function run() {
   const pool = await getMartPool();
-  const useInsert = process.argv.includes('--strategy=insert');
-  const fileName = useInsert ? 'etl_populate_mart_insert.sql' : 'etl_populate_mart.sql';
+  const fileName = 'poblamiento_dimensional.sql';
   const filePath = path.resolve(__dirname, `../../../database/${fileName}`);
   
-  console.log(`🚀 Iniciando ETL de NexoSalud [Estrategia: ${useInsert ? 'UPDATE + INSERT (WHERE NOT EXISTS)' : 'MERGE (Oficial)'}]`);
+  console.log('Iniciando poblamiento dimensional de NexoSalud');
   console.log(`📄 Script: ${fileName}`);
 
   const sqlContent = fs.readFileSync(filePath, 'utf8');
@@ -23,7 +22,7 @@ async function run() {
       i++;
     }
   }
-  console.log(`✅ Proceso ETL completado con éxito! [${fileName}]`);
+  console.log(`Proceso ETL completado: ${fileName}`);
   process.exit(0);
 }
 

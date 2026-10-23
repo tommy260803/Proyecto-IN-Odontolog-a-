@@ -4,13 +4,15 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 let sql: typeof sqlDefault;
-try {
-  // Permite autenticación de Windows en entornos locales con ODBC
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  sql = require('mssql/msnodesqlv8');
-} catch {
-  // Fallback seguro a mssql estándar en entornos Linux / Render
-  sql = sqlDefault;
+sql = sqlDefault;
+if (process.platform === 'win32') {
+  try {
+    // Permite autenticación de Windows en entornos locales con ODBC.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    sql = require('mssql/msnodesqlv8');
+  } catch {
+    // La dependencia nativa es opcional; mssql estándar sigue disponible.
+  }
 }
 
 const connectionString =

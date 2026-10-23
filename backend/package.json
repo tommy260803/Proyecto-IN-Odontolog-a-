@@ -20,9 +20,11 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jspdf": "^4.2.1",
-    "msnodesqlv8": "^5.6.0",
     "mssql": "^12.7.2",
     "nodemailer": "^10.0.10"
+  },
+  "optionalDependencies": {
+    "msnodesqlv8": "^5.6.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
@@ -34,8 +36,5 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   }
 }
