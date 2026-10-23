@@ -1,6 +1,10 @@
-CREATE DATABASE NexoSaludDB;
-go
-use NexoSaludDB;
+IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = 'NexoSaludDB')
+BEGIN
+    CREATE DATABASE NexoSaludDB;
+END;
+GO
+USE NexoSaludDB;
+GO
 
 CREATE TABLE Etapas (
     id_etapa        INT IDENTITY(1,1) PRIMARY KEY,

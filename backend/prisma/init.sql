@@ -463,12 +463,19 @@ CREATE TABLE Atenciones (
     id_sede              INT NOT NULL,
 
     fecha_atencion       DATETIME2 NOT NULL,
+    fecha_inicio         DATETIME2 NULL,
+    fecha_fin            DATETIME2 NULL,
 
     asistencia           VARCHAR(20) NOT NULL DEFAULT 'Pendiente',
 
     estado_servicio      VARCHAR(30) NOT NULL DEFAULT 'Programado',
 
+    motivo_consulta      VARCHAR(300) NULL,
+    antecedentes         VARCHAR(500) NULL,
+    alergias             VARCHAR(300) NULL,
+    evaluacion           VARCHAR(500) NULL,
     diagnostico_basico   VARCHAR(200) NULL,
+    procedimiento        VARCHAR(500) NULL,
     procedimiento_realizado VARCHAR(200) NULL,
     observaciones        VARCHAR(500) NULL,
 
