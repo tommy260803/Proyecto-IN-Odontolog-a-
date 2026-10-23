@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import confetti from 'canvas-confetti';
 import {
   AlertCircle,
@@ -268,6 +268,7 @@ export function HeroIntakeWidget({
   const [selectedPriority, setSelectedPriority] = useState<'sin_dolor' | 'horarios' | 'presupuesto'>('sin_dolor');
   const [leadOccupation, setLeadOccupation] = useState<'estudiante' | 'trabajador' | 'independiente' | 'flexible' | ''>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
 
   const availableSedes: Array<{ name: string; subtitle: string }> =
     catalogs.sedes && catalogs.sedes.length > 0
@@ -584,71 +585,109 @@ export function HeroIntakeWidget({
           )}
         </div>
 
-        {/* Stepper dinámico con círculos conectados y pulso activo */}
+        {/* Stepper dinámico con SVG Path Length Animation y resortes elásticos */}
         {portalMode === 'new' && (
-          <div className="mt-3.5 grid grid-cols-4 gap-1 pt-1 border-t border-slate-100">
-            {[
-              { num: 1, label: 'Objetivo', icon: Sparkles },
-              { num: 2, label: 'Prioridad', icon: HeartPulse },
-              { num: 3, label: 'Sede', icon: MapPin },
-              { num: 4, label: 'Contacto', icon: CheckCircle2 },
-            ].map((s) => {
-              const isPast = step > s.num;
-              const isCurrent = step === s.num;
-              const IconComponent = s.icon;
-              return (
-                <div key={s.num} className="flex flex-col items-center">
-                  <div className="flex items-center w-full">
-                    <div
-                      className={`flex-1 h-[2px] ${
-                        s.num === 1 ? 'invisible' : isPast || isCurrent ? 'bg-[#0F766E]' : 'bg-slate-200'
-                      } transition-colors duration-300`}
-                    />
+          <div className="relative mt-3.5 pt-1 border-t border-slate-100">
+            {/* Línea animada SVG entre los nodos del Stepper */}
+            <svg
+              className="pointer-events-none absolute left-0 right-0 top-[17px] h-2 w-full overflow-visible"
+              aria-hidden
+            >
+              <line
+                x1="12.5%"
+                y1="50%"
+                x2="87.5%"
+                y2="50%"
+                stroke="#E2E8F0"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <motion.line
+                x1="12.5%"
+                y1="50%"
+                x2="87.5%"
+                y2="50%"
+                stroke="#0F766E"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: shouldReduceMotion ? 1 : Math.max(0, Math.min(1, (step - 1) / 3)) }}
+                transition={{ type: 'spring', damping: 22, stiffness: 140 }}
+              />
+            </svg>
+
+            <div className="relative z-10 grid grid-cols-4 gap-1">
+              {[
+                { num: 1, label: 'Objetivo', icon: Sparkles },
+                { num: 2, label: 'Prioridad', icon: HeartPulse },
+                { num: 3, label: 'Sede', icon: MapPin },
+                { num: 4, label: 'Contacto', icon: CheckCircle2 },
+              ].map((s) => {
+                const isPast = step > s.num;
+                const isCurrent = step === s.num;
+                const IconComponent = s.icon;
+                return (
+                  <div key={s.num} className="flex flex-col items-center">
                     <motion.div
-                      animate={isCurrent ? { scale: [1, 1.1, 1] } : {}}
+                      animate={isCurrent && !shouldReduceMotion ? { scale: [1, 1.12, 1] } : {}}
                       transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
                       className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-all ${
                         isPast
                           ? 'bg-[#0F766E] text-white shadow-xs'
                           : isCurrent
-                            ? 'bg-[#0F766E] text-white ring-4 ring-teal-500/20 shadow-xs'
-                            : 'bg-slate-100 text-slate-400'
+                            ? 'bg-[#0F766E] text-white ring-4 ring-teal-500/25 shadow-xs'
+                            : 'bg-white border border-slate-200 text-slate-400'
                       }`}
                     >
                       {isPast ? <Check className="h-3 w-3 stroke-[3]" /> : <IconComponent className="h-3 w-3" />}
                     </motion.div>
-                    <div
-                      className={`flex-1 h-[2px] ${
-                        s.num === 4 ? 'invisible' : isPast ? 'bg-[#0F766E]' : 'bg-slate-200'
-                      } transition-colors duration-300`}
-                    />
+                    <span
+                      className={`mt-1 text-[10px] font-medium tracking-tight truncate ${
+                        isCurrent ? 'text-[#0F766E] font-semibold' : isPast ? 'text-slate-700' : 'text-slate-400'
+                      }`}
+                    >
+                      {s.label}
+                    </span>
                   </div>
-                  <span
-                    className={`mt-1 text-[10px] font-medium tracking-tight truncate ${
-                      isCurrent ? 'text-[#0F766E] font-semibold' : isPast ? 'text-slate-700' : 'text-slate-400'
-                    }`}
-                  >
-                    {s.label}
-                  </span>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
 
-        <h2 className="mt-3 text-base sm:text-lg font-semibold tracking-tight text-slate-900">
-          {portalMode === 'new'
-            ? step === 1
-              ? '¿Qué deseas mejorar en tu sonrisa?'
-              : step === 2
-                ? '¿Cuál es tu mayor prioridad?'
-                : step === 3
-                  ? '¿En qué sede prefieres atenderte?'
-                  : 'Propuesta lista · Turno por WhatsApp'
-            : patientSession
-              ? `Hola, ${patientSession.nombres}`
-              : 'Ingresa a tu expediente clínico'}
-        </h2>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-1.5">
+          <h2 className="text-base sm:text-lg font-semibold tracking-tight text-slate-900">
+            {portalMode === 'new'
+              ? step === 1
+                ? '¿Qué deseas mejorar en tu sonrisa?'
+                : step === 2
+                  ? '¿Cuál es tu mayor prioridad?'
+                  : step === 3
+                    ? '¿En qué sede prefieres atenderte?'
+                    : 'Propuesta lista · Turno por WhatsApp'
+              : patientSession
+                ? `Hola, ${patientSession.nombres}`
+                : 'Ingresa a tu expediente clínico'}
+          </h2>
+
+          {/* Badge interactivo con LayoutId (Layout Morphing de la selección activa) */}
+          <AnimatePresence>
+            {portalMode === 'new' && step > 1 && (
+              <motion.div
+                layoutId="active-selection-badge"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ type: 'spring', damping: 20, stiffness: 220 }}
+                className="inline-flex items-center gap-1 rounded-full bg-[#ECFDF5] px-2 py-0.5 text-[10px] font-medium text-[#065F46] border border-teal-200/70"
+              >
+                <Sparkles className="h-2.5 w-2.5 text-[#0F766E]" />
+                <span className="font-semibold truncate max-w-[140px]">{selectedGoalObj.title}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         <p className="mt-0.5 text-xs text-slate-500">
           {portalMode === 'new'
             ? step === 1
@@ -664,8 +703,8 @@ export function HeroIntakeWidget({
         </p>
       </div>
 
-      {/* Cuerpo del Evaluador Interactivo */}
-      <div className="px-5 py-5 sm:px-6">
+      {/* Cuerpo del Evaluador Interactivo con altura mínima reservada (CLS = 0) */}
+      <div className="px-5 py-5 sm:px-6 min-h-[350px] sm:min-h-[330px]">
         {/* INTERMEDIO: Animación de Diagnóstico (1.1s) */}
         {isAnalyzing ? (
           <div className="py-8 flex flex-col items-center justify-center text-center space-y-4">
@@ -705,8 +744,9 @@ export function HeroIntakeWidget({
                       return (
                         <motion.button
                           key={goal.id}
+                          layoutId={`goal-option-${goal.id}`}
                           type="button"
-                          whileHover={{ y: -2, scale: 1.015 }}
+                          whileHover={shouldReduceMotion ? {} : { y: -3, scale: 1.015 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => handleSelectGoal(goal.id)}
                           className={`group flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition-all cursor-pointer ${
@@ -716,15 +756,17 @@ export function HeroIntakeWidget({
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <span
-                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105 ${
+                            <motion.span
+                              whileHover={shouldReduceMotion ? {} : { rotate: [0, -8, 8, 0], scale: 1.15 }}
+                              transition={{ duration: 0.35, ease: 'easeInOut' }}
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
                                 isSelected
                                   ? 'bg-[#0F766E] text-white shadow-xs'
                                   : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/90'
                               }`}
                             >
                               <IconComponent className="h-4 w-4" />
-                            </span>
+                            </motion.span>
                             <div className="min-w-0">
                               <h3 className="text-xs font-semibold text-slate-900 leading-snug">
                                 {goal.title}
@@ -768,8 +810,9 @@ export function HeroIntakeWidget({
                       return (
                         <motion.button
                           key={item.id}
+                          layoutId={`priority-option-${item.id}`}
                           type="button"
-                          whileHover={{ y: -2, scale: 1.015 }}
+                          whileHover={shouldReduceMotion ? {} : { y: -2, scale: 1.015 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => handleSelectPriority(item.id)}
                           className={`group w-full flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition-all cursor-pointer ${
@@ -779,15 +822,17 @@ export function HeroIntakeWidget({
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <span
-                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105 ${
+                            <motion.span
+                              whileHover={shouldReduceMotion ? {} : { rotate: [0, -8, 8, 0], scale: 1.15 }}
+                              transition={{ duration: 0.35, ease: 'easeInOut' }}
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
                                 isSelected
                                   ? 'bg-[#0F766E] text-white shadow-xs'
                                   : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/90'
                               }`}
                             >
                               <IconComponent className="h-4 w-4" />
-                            </span>
+                            </motion.span>
                             <div className="min-w-0">
                               <h3 className="text-xs font-semibold text-slate-900 leading-snug">
                                 {item.title}
@@ -824,8 +869,9 @@ export function HeroIntakeWidget({
                       return (
                         <motion.button
                           key={branch.name}
+                          layoutId={`sede-option-${branch.name}`}
                           type="button"
-                          whileHover={{ y: -2, scale: 1.015 }}
+                          whileHover={shouldReduceMotion ? {} : { y: -2, scale: 1.015 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => handleSelectSede(branch.name)}
                           className={`group w-full flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition-all cursor-pointer ${
@@ -835,15 +881,17 @@ export function HeroIntakeWidget({
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <span
-                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105 ${
+                            <motion.span
+                              whileHover={shouldReduceMotion ? {} : { scale: 1.18, y: -1 }}
+                              transition={{ duration: 0.35, ease: 'easeInOut' }}
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
                                 isSelected
                                   ? 'bg-[#0F766E] text-white shadow-xs'
                                   : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/90'
                               }`}
                             >
                               <MapPin className="h-4 w-4" />
-                            </span>
+                            </motion.span>
                             <div className="min-w-0">
                               <h3 className="text-xs font-semibold text-slate-900 leading-snug">
                                 {branch.name}
@@ -1139,11 +1187,12 @@ export function HeroIntakeWidget({
 
                   {/* Botón Principal de Envío con Shimmer Beam y Spring Hover */}
                   <motion.button
-                    whileHover={{ scale: 1.015 }}
+                    whileHover={shouldReduceMotion ? {} : { scale: 1.018, y: -1 }}
                     whileTap={{ scale: 0.98 }}
+                    transition={{ type: 'spring', damping: 15, stiffness: 200 }}
                     type="submit"
                     disabled={loading || resolvingIdentity}
-                    className="relative overflow-hidden flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0F766E] via-[#0D9488] to-[#115E59] px-5 text-xs sm:text-sm font-bold text-white shadow-md transition-all hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-600/20 disabled:opacity-60 cursor-pointer group"
+                    className="relative overflow-hidden flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0F766E] via-[#0D9488] to-[#115E59] px-5 text-xs sm:text-sm font-bold text-white shadow-md transition-all hover:shadow-lg hover:shadow-teal-900/20 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-600/20 disabled:opacity-60 cursor-pointer group"
                   >
                     {/* Shimmer light bar */}
                     <div className="pointer-events-none absolute inset-0 -translate-x-full animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />

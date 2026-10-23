@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useMotionValue } from 'motion/react';
 import {
   AlertCircle,
   ArrowRight,
@@ -36,6 +36,9 @@ import { patientAuthApi, type PatientSession } from '@/shared/services/patientAu
 import { staffAuthService, type StaffSession } from '@/shared/services/staffAuthService';
 import { buyerService } from '../services/buyer.service';
 import { HeroIntakeWidget } from '../components/landing/HeroIntakeWidget';
+import { HeroSpotlight } from '../components/landing/HeroSpotlight';
+import { InteractiveScannerCard } from '../components/landing/InteractiveScannerCard';
+import { HeroBenefitCard } from '../components/landing/HeroBenefitCard';
 import { LandingNavbar } from '../components/landing/LandingNavbar';
 import { LocationsAndFooter } from '../components/landing/LocationsAndFooter';
 import { SocialProofSection } from '../components/landing/SocialProofSection';
@@ -82,6 +85,19 @@ export default function BuyerRequestInfoPage() {
 
   const [liveNoticeIndex, setLiveNoticeIndex] = useState(0);
   const [showStickyBar, setShowStickyBar] = useState(false);
+
+  // Física de cursor para Spotlight reactivo en el Hero
+  const heroMouseX = useMotionValue(500);
+  const heroMouseY = useMotionValue(300);
+
+  const handleHeroMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLElement>) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      heroMouseX.set(e.clientX - rect.left);
+      heroMouseY.set(e.clientY - rect.top);
+    },
+    [heroMouseX, heroMouseY]
+  );
 
   useEffect(() => {
     const noticeInterval = setInterval(() => {
@@ -617,8 +633,14 @@ export default function BuyerRequestInfoPage() {
         staffSession={staffSession}
       />
 
-      {/* 2. Hero Section Luminosa y Empática con Formulario Progresivo en 2 Fases */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-white via-white to-[#F8FAFC] pt-8 pb-16 sm:pt-12 sm:pb-24">
+      {/* 2. Hero Section Luminosa y Empática con Spotlight Reactivo al Cursor */}
+      <section
+        onMouseMove={handleHeroMouseMove}
+        className="relative overflow-hidden bg-gradient-to-b from-white via-white to-[#F8FAFC] pt-8 pb-16 sm:pt-12 sm:pb-24"
+      >
+        {/* Spotlight dinámico que sigue suavemente el cursor */}
+        <HeroSpotlight mouseX={heroMouseX} mouseY={heroMouseY} />
+
         {/* Luz ambiental clínica muy sutil */}
         <div
           className="pointer-events-none absolute -top-24 right-1/4 h-96 w-96 rounded-full bg-[#ECFDF5]/80 blur-3xl"
@@ -633,7 +655,7 @@ export default function BuyerRequestInfoPage() {
           variants={HERO_CONTAINER_VARIANTS}
           initial="hidden"
           animate="visible"
-          className="relative mx-auto grid max-w-7xl grid-cols-1 items-start gap-10 px-4 sm:px-6 lg:grid-cols-12 lg:gap-12 lg:px-8"
+          className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 items-start gap-10 px-4 sm:px-6 lg:grid-cols-12 lg:gap-12 lg:px-8"
         >
           {/* Columna Izquierda: Copywriting médico empático y con autoridad */}
           <div className="lg:col-span-7 lg:pt-2 space-y-5">
@@ -652,68 +674,20 @@ export default function BuyerRequestInfoPage() {
               </p>
             </motion.div>
 
-            {/* Showcase Visual con Fotografía y Badge de Garantía */}
+            {/* Showcase Visual: Escáner 3D Interactivo con Tilt Card y Luz Holográfica */}
             <motion.div variants={HERO_ITEM_VARIANTS} className="relative max-w-xl">
-              <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-900 shadow-md">
-                <img
-                  src="/Fondo_NexoSalud_2.jpg"
-                  alt="Instalaciones clínicas de alta tecnología NexoSalud Trujillo"
-                  className="h-48 sm:h-56 w-full object-cover object-center"
-                  loading="eager"
-                />
-
-                <div
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/10 to-transparent"
-                  aria-hidden
-                />
-
-                {/* Badge Limpio de Garantía y Sedes */}
-                <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between rounded-xl bg-slate-950/80 px-3 py-2 text-white/95 backdrop-blur-md border border-white/10 shadow-lg">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-500/20 text-teal-300">
-                      <ScanLine className="h-3.5 w-3.5" />
-                    </span>
-                    <span className="text-xs font-semibold">Tecnología 3D sin pastas ni dolor</span>
-                  </div>
-                  <span className="text-[10px] font-mono font-medium text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
-                    3 sedes activas
-                  </span>
-                </div>
-              </div>
+              <InteractiveScannerCard />
             </motion.div>
 
-            {/* 4 Pilares clínicos concisos y limpios */}
+            {/* 4 Pilares clínicos con Border Beam reactivo al hover */}
             <motion.div
               variants={HERO_ITEM_VARIANTS}
               className="grid grid-cols-2 gap-2.5 max-w-xl"
             >
-              <div className="flex items-center gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#ECFDF5] text-[#0F766E]">
-                  <ScanLine className="h-3.5 w-3.5" />
-                </span>
-                <span className="text-xs font-semibold text-slate-800">Diagnóstico 3D en pantalla</span>
-              </div>
-
-              <div className="flex items-center gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#ECFDF5] text-[#0F766E]">
-                  <HeartPulse className="h-3.5 w-3.5" />
-                </span>
-                <span className="text-xs font-semibold text-slate-800">Protocolo 100% sin dolor</span>
-              </div>
-
-              <div className="flex items-center gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#ECFDF5] text-[#0F766E]">
-                  <MapPin className="h-3.5 w-3.5" />
-                </span>
-                <span className="text-xs font-semibold text-slate-800">3 sedes en Trujillo</span>
-              </div>
-
-              <div className="flex items-center gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#ECFDF5] text-[#0F766E]">
-                  <Clock className="h-3.5 w-3.5" />
-                </span>
-                <span className="text-xs font-semibold text-slate-800">Confirmación en &lt; 15 min</span>
-              </div>
+              <HeroBenefitCard icon={ScanLine} title="Diagnóstico 3D en pantalla" />
+              <HeroBenefitCard icon={HeartPulse} title="Protocolo 100% sin dolor" />
+              <HeroBenefitCard icon={MapPin} title="3 sedes en Trujillo" />
+              <HeroBenefitCard icon={Clock} title="Confirmación en < 15 min" />
             </motion.div>
 
             {/* Respaldo médico */}

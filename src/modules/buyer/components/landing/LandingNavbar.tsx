@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, Calendar, Lock, Menu, PhoneCall, ShieldCheck, X } from 'lucide-react';
 import type { StaffSession } from '@/shared/services/staffAuthService';
+import { MagneticButton } from './MagneticButton';
 
 interface LandingNavbarProps {
   onScrollToSection: (sectionId: string) => void;
@@ -96,6 +97,7 @@ export function LandingNavbar({
             title="Atención inmediata de urgencias odontológicas"
           >
             <span className="relative flex h-2 w-2" aria-hidden>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600" />
             </span>
             <PhoneCall className="h-3.5 w-3.5 text-[#0F766E]" aria-hidden />
@@ -103,16 +105,13 @@ export function LandingNavbar({
             <span className="font-mono font-semibold">(044) 612-840</span>
           </a>
 
-          <motion.button
-            type="button"
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.98 }}
+          <MagneticButton
             onClick={handleBook}
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#0F766E] px-4 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[#115E59] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/30 cursor-pointer"
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#0F766E] px-4 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[#115E59] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/30"
           >
             <Calendar className="h-3.5 w-3.5" aria-hidden />
             <span>Agendar Cita</span>
-          </motion.button>
+          </MagneticButton>
 
           {staffSession ? (
             <motion.button
