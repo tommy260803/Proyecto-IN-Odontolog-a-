@@ -16,6 +16,33 @@ SET XACT_ABORT ON;
 GO
 
 -- ====================================================================
+-- 0. GARANTIA DE COMPATIBILIDAD DE ESQUEMA EN [NexoSaludDB]
+-- Asegurar columnas clinicas en Atenciones si la tabla fue creada previamente
+-- ====================================================================
+IF COL_LENGTH('[NexoSaludDB].dbo.[Atenciones]', 'fecha_inicio') IS NULL
+    ALTER TABLE [NexoSaludDB].dbo.[Atenciones] ADD [fecha_inicio] DATETIME2 NULL;
+GO
+IF COL_LENGTH('[NexoSaludDB].dbo.[Atenciones]', 'fecha_fin') IS NULL
+    ALTER TABLE [NexoSaludDB].dbo.[Atenciones] ADD [fecha_fin] DATETIME2 NULL;
+GO
+IF COL_LENGTH('[NexoSaludDB].dbo.[Atenciones]', 'motivo_consulta') IS NULL
+    ALTER TABLE [NexoSaludDB].dbo.[Atenciones] ADD [motivo_consulta] VARCHAR(300) NULL;
+GO
+IF COL_LENGTH('[NexoSaludDB].dbo.[Atenciones]', 'antecedentes') IS NULL
+    ALTER TABLE [NexoSaludDB].dbo.[Atenciones] ADD [antecedentes] VARCHAR(500) NULL;
+GO
+IF COL_LENGTH('[NexoSaludDB].dbo.[Atenciones]', 'alergias') IS NULL
+    ALTER TABLE [NexoSaludDB].dbo.[Atenciones] ADD [alergias] VARCHAR(300) NULL;
+GO
+IF COL_LENGTH('[NexoSaludDB].dbo.[Atenciones]', 'evaluacion') IS NULL
+    ALTER TABLE [NexoSaludDB].dbo.[Atenciones] ADD [evaluacion] VARCHAR(500) NULL;
+GO
+IF COL_LENGTH('[NexoSaludDB].dbo.[Atenciones]', 'procedimiento') IS NULL
+    ALTER TABLE [NexoSaludDB].dbo.[Atenciones] ADD [procedimiento] VARCHAR(500) NULL;
+GO
+
+
+-- ====================================================================
 -- 1. INFRAESTRUCTURA DE AUDITORÍA Y CONTROL DE EJECUCIÓN
 -- ====================================================================
 IF OBJECT_ID('dbo.Log_Ejecucion_ETL', 'U') IS NULL
