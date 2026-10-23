@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Check,
   Clock,
+  HeartPulse,
   Loader2,
   MapPin,
   Phone,
@@ -41,7 +42,6 @@ import { SocialProofSection } from '../components/landing/SocialProofSection';
 import { SpecialtiesTechSection } from '../components/landing/SpecialtiesTechSection';
 import { StaffLoginModal } from '../components/landing/StaffLoginModal';
 import { InteractiveJourneyFlowSection } from '../components/landing/InteractiveJourneyFlowSection';
-import { InteractiveSmileSimulator } from '../components/landing/InteractiveSmileSimulator';
 import {
   REASON_CHIPS,
   TIME_SLOT_CHIPS,
@@ -673,25 +673,75 @@ export default function BuyerRequestInfoPage() {
               </p>
             </motion.div>
 
-            {/* Simulador Interactivo de Sonrisa 3D (Antes vs Después con control táctil) */}
-            <motion.div variants={HERO_ITEM_VARIANTS}>
-              <InteractiveSmileSimulator onSelectTreatment={handleSelectTreatmentAndBook} />
+            {/* Visual Showcase Dinámico con Fotografía Real y Badges Flotantes en Órbita */}
+            <motion.div variants={HERO_ITEM_VARIANTS} className="relative max-w-xl">
+              <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-900 shadow-[0_20px_50px_-20px_rgba(15,23,42,0.18)]">
+                {/* Imagen clínica auténtica */}
+                <img
+                  src="/Fondo_NexoSalud_2.jpg"
+                  alt="Instalaciones clínicas de alta tecnología NexoSalud Trujillo"
+                  className="h-52 sm:h-60 w-full object-cover object-center transition-transform duration-700 hover:scale-105"
+                  loading="eager"
+                />
+
+                {/* Gradiente de profundidad */}
+                <div
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/20 to-transparent"
+                  aria-hidden
+                />
+
+                {/* Badge 1 (Superior Derecho): Escáner 3D Digital con animación de flotación */}
+                <motion.div
+                  animate={{ y: [0, -6, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                  className="absolute top-3.5 right-3.5 z-10 flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 shadow-lg backdrop-blur-md border border-slate-100"
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-[#0F766E]">
+                    <ScanLine className="h-4 w-4 animate-pulse" />
+                  </span>
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-900 leading-none">Escáner Intraoral 3D</p>
+                    <p className="text-[10px] text-teal-700 font-medium">Diagnóstico sin pastas</p>
+                  </div>
+                </motion.div>
+
+                {/* Badge 2 (Inferior Izquierdo): Protocolo Sin Dolor */}
+                <motion.div
+                  animate={{ y: [0, 6, 0] }}
+                  transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+                  className="absolute bottom-3.5 left-3.5 z-10 flex items-center gap-2.5 rounded-xl bg-white/95 px-3 py-2 shadow-lg backdrop-blur-md border border-slate-100"
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                    <HeartPulse className="h-4 w-4 animate-bounce" style={{ animationDuration: '2s' }} />
+                  </span>
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-900 leading-none">Protocolo Sin Dolor</p>
+                    <p className="text-[10px] text-emerald-700 font-medium">Anestesia suave computarizada</p>
+                  </div>
+                </motion.div>
+
+                {/* Badge 3 (Inferior Derecho): Indicador en vivo de sedes activas */}
+                <div className="absolute bottom-3.5 right-3.5 z-10 rounded-lg bg-slate-950/80 px-2.5 py-1 text-[10px] font-mono font-medium text-white/95 backdrop-blur-xs border border-white/10 flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                  <span>3 sedes en Trujillo activas</span>
+                </div>
+              </div>
             </motion.div>
 
-            {/* Pilares clínicos de empatía y certidumbre */}
+            {/* Pilares clínicos de empatía y certidumbre con animación hover viva */}
             <motion.div
               variants={HERO_ITEM_VARIANTS}
               className="grid grid-cols-1 gap-3 sm:grid-cols-2 max-w-xl"
             >
               <motion.div
-                whileHover={{ y: -2 }}
-                className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs transition-colors hover:border-[#0F766E]/30"
+                whileHover={{ y: -4, scale: 1.015 }}
+                className="group flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs transition-all hover:border-[#0F766E]/40 hover:shadow-md cursor-default"
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#ECFDF5] text-[#0F766E]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#ECFDF5] text-[#0F766E] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-2xs">
                   <ScanLine className="h-4 w-4" aria-hidden />
                 </span>
                 <div>
-                  <h2 className="text-xs font-semibold text-slate-900">
+                  <h2 className="text-xs font-semibold text-slate-900 group-hover:text-[#0F766E] transition-colors">
                     Diagnóstico visual en pantalla
                   </h2>
                   <p className="mt-0.5 text-[11.5px] leading-snug text-slate-500">
@@ -701,14 +751,14 @@ export default function BuyerRequestInfoPage() {
               </motion.div>
 
               <motion.div
-                whileHover={{ y: -2 }}
-                className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs transition-colors hover:border-[#0F766E]/30"
+                whileHover={{ y: -4, scale: 1.015 }}
+                className="group flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs transition-all hover:border-[#0F766E]/40 hover:shadow-md cursor-default"
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#ECFDF5] text-[#0F766E]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#ECFDF5] text-[#0F766E] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-2xs">
                   <Stethoscope className="h-4 w-4" aria-hidden />
                 </span>
                 <div>
-                  <h2 className="text-xs font-semibold text-slate-900">
+                  <h2 className="text-xs font-semibold text-slate-900 group-hover:text-[#0F766E] transition-colors">
                     Protocolos sin dolor ni prisa
                   </h2>
                   <p className="mt-0.5 text-[11.5px] leading-snug text-slate-500">
@@ -718,14 +768,14 @@ export default function BuyerRequestInfoPage() {
               </motion.div>
 
               <motion.div
-                whileHover={{ y: -2 }}
-                className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs transition-colors hover:border-[#0F766E]/30"
+                whileHover={{ y: -4, scale: 1.015 }}
+                className="group flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs transition-all hover:border-[#0F766E]/40 hover:shadow-md cursor-default"
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#ECFDF5] text-[#0F766E]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#ECFDF5] text-[#0F766E] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-2xs">
                   <MapPin className="h-4 w-4" aria-hidden />
                 </span>
                 <div>
-                  <h2 className="text-xs font-semibold text-slate-900">
+                  <h2 className="text-xs font-semibold text-slate-900 group-hover:text-[#0F766E] transition-colors">
                     3 sedes interconectadas
                   </h2>
                   <p className="mt-0.5 text-[11.5px] leading-snug text-slate-500">
@@ -735,14 +785,14 @@ export default function BuyerRequestInfoPage() {
               </motion.div>
 
               <motion.div
-                whileHover={{ y: -2 }}
-                className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs transition-colors hover:border-[#0F766E]/30"
+                whileHover={{ y: -4, scale: 1.015 }}
+                className="group flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs transition-all hover:border-[#0F766E]/40 hover:shadow-md cursor-default"
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#ECFDF5] text-[#0F766E]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#ECFDF5] text-[#0F766E] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-2xs">
                   <Clock className="h-4 w-4" aria-hidden />
                 </span>
                 <div>
-                  <h2 className="text-xs font-semibold text-slate-900">
+                  <h2 className="text-xs font-semibold text-slate-900 group-hover:text-[#0F766E] transition-colors">
                     Confirmación en &lt; 15 minutos
                   </h2>
                   <p className="mt-0.5 text-[11.5px] leading-snug text-slate-500">

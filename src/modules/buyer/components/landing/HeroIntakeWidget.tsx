@@ -495,9 +495,9 @@ export function HeroIntakeWidget({
       initial={highlightTrigger > 0 ? { scale: 0.985 } : false}
       animate={{ scale: 1 }}
       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      className={`w-full overflow-hidden rounded-2xl border bg-white shadow-[0_20px_50px_-20px_rgba(15,23,42,0.08)] transition-all duration-300 ${
+      className={`w-full overflow-hidden rounded-2xl border bg-white shadow-[0_25px_60px_-15px_rgba(15,118,110,0.16)] ring-1 ring-teal-600/10 transition-all duration-300 ${
         preselectionNotice
-          ? 'border-[#0F766E] ring-4 ring-teal-600/15'
+          ? 'border-[#0F766E] ring-4 ring-teal-600/20'
           : 'border-slate-200/90'
       }`}
     >
@@ -612,6 +612,58 @@ export function HeroIntakeWidget({
           )}
         </div>
 
+        {/* Stepper dinámico con círculos conectados y pulso activo */}
+        {portalMode === 'new' && (
+          <div className="mt-4 grid grid-cols-4 gap-1 pt-1 border-t border-slate-100">
+            {[
+              { num: 1, label: 'Objetivo', icon: Sparkles },
+              { num: 2, label: 'Prioridad', icon: HeartPulse },
+              { num: 3, label: 'Sede', icon: MapPin },
+              { num: 4, label: 'Resultado', icon: CheckCircle2 },
+            ].map((s) => {
+              const isPast = step > s.num;
+              const isCurrent = step === s.num;
+              const IconComponent = s.icon;
+              return (
+                <div key={s.num} className="flex flex-col items-center">
+                  <div className="flex items-center w-full">
+                    <div
+                      className={`flex-1 h-[2px] ${
+                        s.num === 1 ? 'invisible' : isPast || isCurrent ? 'bg-[#0F766E]' : 'bg-slate-200'
+                      } transition-colors duration-300`}
+                    />
+                    <motion.div
+                      animate={isCurrent ? { scale: [1, 1.12, 1] } : {}}
+                      transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
+                      className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-all ${
+                        isPast
+                          ? 'bg-[#0F766E] text-white shadow-xs'
+                          : isCurrent
+                            ? 'bg-[#0F766E] text-white ring-4 ring-teal-500/25 shadow-xs'
+                            : 'bg-slate-100 text-slate-400'
+                      }`}
+                    >
+                      {isPast ? <Check className="h-3 w-3 stroke-[3]" /> : <IconComponent className="h-3 w-3" />}
+                    </motion.div>
+                    <div
+                      className={`flex-1 h-[2px] ${
+                        s.num === 4 ? 'invisible' : isPast ? 'bg-[#0F766E]' : 'bg-slate-200'
+                      } transition-colors duration-300`}
+                    />
+                  </div>
+                  <span
+                    className={`mt-1 text-[10px] font-medium tracking-tight truncate ${
+                      isCurrent ? 'text-[#0F766E] font-bold' : isPast ? 'text-slate-700' : 'text-slate-400'
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <h2 className="mt-3 text-lg sm:text-xl font-semibold tracking-tight text-slate-900">
           {portalMode === 'new'
             ? step === 1
@@ -698,21 +750,23 @@ export function HeroIntakeWidget({
                       const IconComponent = goal.icon;
                       const isSelected = selectedReasonChip === goal.id;
                       return (
-                        <button
+                        <motion.button
                           key={goal.id}
                           type="button"
+                          whileHover={{ y: -3, scale: 1.02 }}
+                          whileTap={{ scale: 0.97 }}
                           onClick={() => handleSelectGoal(goal.id)}
-                          className={`group flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all active:scale-[0.98] cursor-pointer ${
+                          className={`group flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all cursor-pointer ${
                             isSelected
-                              ? 'border-[#0F766E] bg-[#ECFDF5]/60 ring-2 ring-teal-600/15'
-                              : 'border-slate-200/90 bg-white hover:border-[#0F766E]/50 hover:bg-slate-50/70'
+                              ? 'border-[#0F766E] bg-[#ECFDF5]/80 ring-2 ring-teal-600/20 shadow-xs'
+                              : 'border-slate-200/90 bg-white hover:border-[#0F766E]/60 hover:bg-slate-50/80 hover:shadow-xs'
                           }`}
                         >
                           <span
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-110 ${
                               isSelected
-                                ? 'bg-[#0F766E] text-white'
-                                : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/80'
+                                ? 'bg-[#0F766E] text-white shadow-xs'
+                                : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/90'
                             }`}
                           >
                             <IconComponent className="h-4 w-4" />
@@ -722,7 +776,7 @@ export function HeroIntakeWidget({
                               <span className="text-[10px] font-semibold uppercase tracking-wider text-[#0F766E]">
                                 {goal.tag}
                               </span>
-                              <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-[#0F766E] transition-colors" />
+                              <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-[#0F766E] group-hover:translate-x-0.5 transition-all" />
                             </div>
                             <h3 className="mt-0.5 text-xs font-semibold text-slate-900 leading-snug">
                               {goal.title}
@@ -734,7 +788,7 @@ export function HeroIntakeWidget({
                               {goal.proofMetric}
                             </span>
                           </div>
-                        </button>
+                        </motion.button>
                       );
                     })}
                   </div>
@@ -777,22 +831,24 @@ export function HeroIntakeWidget({
                       const IconComponent = item.icon;
                       const isSelected = selectedPriority === item.id;
                       return (
-                        <button
+                        <motion.button
                           key={item.id}
                           type="button"
+                          whileHover={{ y: -2, scale: 1.015 }}
+                          whileTap={{ scale: 0.97 }}
                           onClick={() => handleSelectPriority(item.id)}
-                          className={`group w-full flex items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-all active:scale-[0.98] cursor-pointer ${
+                          className={`group w-full flex items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-all cursor-pointer ${
                             isSelected
-                              ? 'border-[#0F766E] bg-[#ECFDF5]/60 ring-2 ring-teal-600/15'
-                              : 'border-slate-200/90 bg-white hover:border-[#0F766E]/50 hover:bg-slate-50/70'
+                              ? 'border-[#0F766E] bg-[#ECFDF5]/80 ring-2 ring-teal-600/20 shadow-xs'
+                              : 'border-slate-200/90 bg-white hover:border-[#0F766E]/60 hover:bg-slate-50/80 hover:shadow-xs'
                           }`}
                         >
                           <div className="flex items-start gap-3 min-w-0">
                             <span
-                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-110 ${
                                 isSelected
-                                  ? 'bg-[#0F766E] text-white'
-                                  : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/80'
+                                  ? 'bg-[#0F766E] text-white shadow-xs'
+                                  : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/90'
                               }`}
                             >
                               <IconComponent className="h-4 w-4" />
@@ -812,8 +868,8 @@ export function HeroIntakeWidget({
                               </span>
                             </div>
                           </div>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-[#0F766E] transition-colors" />
-                        </button>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-[#0F766E] group-hover:translate-x-0.5 transition-all" />
+                        </motion.button>
                       );
                     })}
                   </div>
@@ -853,22 +909,24 @@ export function HeroIntakeWidget({
                       const isSelected =
                         normalizeBranchKey(sede) === normalizeBranchKey(branch.name);
                       return (
-                        <button
+                        <motion.button
                           key={branch.name}
                           type="button"
+                          whileHover={{ y: -2, scale: 1.015 }}
+                          whileTap={{ scale: 0.97 }}
                           onClick={() => handleSelectSede(branch.name)}
-                          className={`group w-full flex items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-all active:scale-[0.98] cursor-pointer ${
+                          className={`group w-full flex items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-all cursor-pointer ${
                             isSelected
-                              ? 'border-[#0F766E] bg-[#ECFDF5]/60 ring-2 ring-teal-600/15'
-                              : 'border-slate-200/90 bg-white hover:border-[#0F766E]/50 hover:bg-slate-50/70'
+                              ? 'border-[#0F766E] bg-[#ECFDF5]/80 ring-2 ring-teal-600/20 shadow-xs'
+                              : 'border-slate-200/90 bg-white hover:border-[#0F766E]/60 hover:bg-slate-50/80 hover:shadow-xs'
                           }`}
                         >
                           <div className="flex items-start gap-3 min-w-0">
                             <span
-                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-110 ${
                                 isSelected
-                                  ? 'bg-[#0F766E] text-white'
-                                  : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/80'
+                                  ? 'bg-[#0F766E] text-white shadow-xs'
+                                  : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/90'
                               }`}
                             >
                               <MapPin className="h-4 w-4" />
@@ -890,8 +948,8 @@ export function HeroIntakeWidget({
                               </p>
                             </div>
                           </div>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-[#0F766E] transition-colors" />
-                        </button>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-[#0F766E] group-hover:translate-x-0.5 transition-all" />
+                        </motion.button>
                       );
                     })}
                   </div>
@@ -1208,12 +1266,16 @@ export function HeroIntakeWidget({
                     </div>
                   )}
 
-                  {/* Botón Principal de Envío */}
-                  <button
+                  {/* Botón Principal de Envío con Shimmer Beam y Spring Hover */}
+                  <motion.button
+                    whileHover={{ scale: 1.015 }}
+                    whileTap={{ scale: 0.98 }}
                     type="submit"
                     disabled={loading || resolvingIdentity}
-                    className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0F766E] px-5 text-xs sm:text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#115E59] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-600/20 active:scale-[0.98] disabled:opacity-60 cursor-pointer"
+                    className="relative overflow-hidden flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0F766E] via-[#0D9488] to-[#115E59] px-5 text-xs sm:text-sm font-bold text-white shadow-md transition-all hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-600/20 disabled:opacity-60 cursor-pointer group"
                   >
+                    {/* Shimmer light bar */}
+                    <div className="pointer-events-none absolute inset-0 -translate-x-full animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                     {resolvingIdentity ? (
                       <>
                         <ShieldCheck className="h-4 w-4 animate-pulse" />
@@ -1227,10 +1289,10 @@ export function HeroIntakeWidget({
                     ) : (
                       <>
                         <span>Ver mi propuesta y turnos en WhatsApp</span>
-                        <ArrowRight className="h-4 w-4" />
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                       </>
                     )}
-                  </button>
+                  </motion.button>
 
                   <p className="flex items-center justify-center gap-1.5 text-center text-[10.5px] text-slate-400">
                     <ShieldCheck className="h-3.5 w-3.5 text-[#0F766E]" />
