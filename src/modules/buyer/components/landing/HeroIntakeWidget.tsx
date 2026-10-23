@@ -131,66 +131,52 @@ const SLIDE_VARIANTS = {
   }),
 };
 
-// Opciones enriquecidas del Evaluador de Sonrisa (Paso 1)
+// Opciones concisas del Evaluador de Sonrisa (Paso 1)
 const SMILE_GOALS = [
   {
     id: 'ortodoncia' as const,
-    title: 'Alinear mis dientes y mordida',
-    desc: 'Alineadores invisibles o brackets estéticos de baja fricción.',
-    tag: 'Ortodoncia Digital',
-    proofMetric: '99.2% confort',
+    title: 'Alinear mis dientes',
+    desc: 'Alineadores invisibles o brackets estéticos',
     icon: Sparkles,
   },
   {
     id: 'estetica' as const,
-    title: 'Diseño de sonrisa & blanqueamiento',
-    desc: 'Carillas cerámicas ultradelgadas o aclaramiento dental LED.',
-    tag: 'Alta Estética',
-    proofMetric: 'Hasta 4 tonos más blanco',
+    title: 'Diseño y blanqueamiento',
+    desc: 'Carillas cerámicas o aclaramiento LED',
     icon: Zap,
   },
   {
     id: 'implante' as const,
-    title: 'Recuperar pieza o molar perdido',
-    desc: 'Implantes de titanio guiados por tomografía 3D o coronas fijas.',
-    tag: 'Rehabilitación 3D',
-    proofMetric: 'Cirugía guiada 0 cortes',
+    title: 'Recuperar un diente',
+    desc: 'Implantes 3D o coronas fijas',
     icon: ShieldCheck,
   },
   {
     id: 'limpieza_dolor' as const,
-    title: 'Chequeo preventivo o molestia',
-    desc: 'Escaneo 3D con cámara HD, profilaxis o alivio rápido de dolor.',
-    tag: 'Prevención & Alivio',
-    proofMetric: 'Cero dolor reportado',
+    title: 'Limpieza o dolor dental',
+    desc: 'Chequeo preventivo o alivio de molestia',
     icon: Stethoscope,
   },
 ];
 
-// Opciones de Prioridad / Inquietud (Paso 2)
+// Opciones de Prioridad (Paso 2)
 const PRIORITIES = [
   {
     id: 'sin_dolor' as const,
-    title: 'Atención 100% sin dolor ni estrés',
-    desc: 'Protocolo de anestesia computarizada suave y acompañamiento empático.',
-    badge: 'Confort Clínico',
-    activatedNote: 'Protocolo sin dolor y kit relajante activados.',
+    title: 'Atención 100% sin dolor',
+    desc: 'Anestesia suave computarizada y cero estrés',
     icon: HeartPulse,
   },
   {
     id: 'horarios' as const,
-    title: 'Horarios flexibles por trabajo o estudio',
-    desc: 'Turnos extendidos tarde/noche y sábados continuos sin tiempos muertos.',
-    badge: 'Puntualidad 0 esperas',
-    activatedNote: 'Filtrando turnos de 6 a 9 PM y sábados.',
+    title: 'Horarios flexibles',
+    desc: 'Turnos extendidos tarde/noche y sábados',
     icon: Clock,
   },
   {
     id: 'presupuesto' as const,
-    title: 'Presupuesto transparente y facilidades',
-    desc: 'Diagnóstico en pantalla, cuotas sin intereses y convenios educativos.',
-    badge: 'Financiamiento directo',
-    activatedNote: 'Acceso a cuotas sin intereses y convenios.',
+    title: 'Presupuesto y cuotas',
+    desc: 'Planes claros sin intereses y convenios',
     icon: Briefcase,
   },
 ];
@@ -199,21 +185,15 @@ const PRIORITIES = [
 const SEDE_CARDS = [
   {
     name: 'Sede California',
-    reference: 'Av. Larco / California',
-    benefit: 'Estacionamiento privado · Atención integral',
-    tag: '2 cupos hoy',
+    reference: 'Av. Larco · Estacionamiento privado',
   },
   {
     name: 'Sede El Golf',
-    reference: 'Av. El Golf',
-    benefit: 'Ambiente médico exclusivo · Tomografía 3D',
-    tag: 'Tomógrafo CBCT in-house',
+    reference: 'Av. El Golf · Tomografía 3D in-house',
   },
   {
     name: 'Sede Centro Histórico',
-    reference: 'Jr. Pizarro / Cerca a Plaza Mayor',
-    benefit: 'Acceso céntrico rápido · Historia en red',
-    tag: 'Acceso céntrico',
+    reference: 'Jr. Pizarro · A 2 cuadras de Plaza de Armas',
   },
 ];
 
@@ -552,18 +532,10 @@ export function HeroIntakeWidget({
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ECFDF5] px-2.5 py-0.5 text-[11px] font-semibold text-[#065F46]">
               <span className="h-1.5 w-1.5 rounded-full bg-[#0F766E]" aria-hidden />
               {portalMode === 'new'
-                ? `Paso ${step} de 4 · ${
-                    step === 1
-                      ? 'Objetivo de sonrisa'
-                      : step === 2
-                        ? 'Tu mayor prioridad'
-                        : step === 3
-                          ? 'Sede en Trujillo'
-                          : 'Diagnóstico preliminar'
-                  }`
+                ? 'Evaluación Odontológica'
                 : patientSession
                   ? 'Expediente verificado'
-                  : 'Acceso rápido de pacientes'}
+                  : 'Portal de Pacientes'}
             </span>
           </div>
 
@@ -593,7 +565,7 @@ export function HeroIntakeWidget({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Evaluación 3D
+                Evaluación
               </button>
               <button
                 type="button"
@@ -614,12 +586,12 @@ export function HeroIntakeWidget({
 
         {/* Stepper dinámico con círculos conectados y pulso activo */}
         {portalMode === 'new' && (
-          <div className="mt-4 grid grid-cols-4 gap-1 pt-1 border-t border-slate-100">
+          <div className="mt-3.5 grid grid-cols-4 gap-1 pt-1 border-t border-slate-100">
             {[
               { num: 1, label: 'Objetivo', icon: Sparkles },
               { num: 2, label: 'Prioridad', icon: HeartPulse },
               { num: 3, label: 'Sede', icon: MapPin },
-              { num: 4, label: 'Resultado', icon: CheckCircle2 },
+              { num: 4, label: 'Contacto', icon: CheckCircle2 },
             ].map((s) => {
               const isPast = step > s.num;
               const isCurrent = step === s.num;
@@ -633,13 +605,13 @@ export function HeroIntakeWidget({
                       } transition-colors duration-300`}
                     />
                     <motion.div
-                      animate={isCurrent ? { scale: [1, 1.12, 1] } : {}}
+                      animate={isCurrent ? { scale: [1, 1.1, 1] } : {}}
                       transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
                       className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-all ${
                         isPast
                           ? 'bg-[#0F766E] text-white shadow-xs'
                           : isCurrent
-                            ? 'bg-[#0F766E] text-white ring-4 ring-teal-500/25 shadow-xs'
+                            ? 'bg-[#0F766E] text-white ring-4 ring-teal-500/20 shadow-xs'
                             : 'bg-slate-100 text-slate-400'
                       }`}
                     >
@@ -653,7 +625,7 @@ export function HeroIntakeWidget({
                   </div>
                   <span
                     className={`mt-1 text-[10px] font-medium tracking-tight truncate ${
-                      isCurrent ? 'text-[#0F766E] font-bold' : isPast ? 'text-slate-700' : 'text-slate-400'
+                      isCurrent ? 'text-[#0F766E] font-semibold' : isPast ? 'text-slate-700' : 'text-slate-400'
                     }`}
                   >
                     {s.label}
@@ -664,72 +636,57 @@ export function HeroIntakeWidget({
           </div>
         )}
 
-        <h2 className="mt-3 text-lg sm:text-xl font-semibold tracking-tight text-slate-900">
+        <h2 className="mt-3 text-base sm:text-lg font-semibold tracking-tight text-slate-900">
           {portalMode === 'new'
             ? step === 1
-              ? 'Evaluador de Sonrisa Interactivo'
+              ? '¿Qué deseas mejorar en tu sonrisa?'
               : step === 2
                 ? '¿Cuál es tu mayor prioridad?'
                 : step === 3
-                  ? '¿En qué sede de Trujillo te gustaría atenderte?'
-                  : '¡Tu propuesta diagnóstica está lista!'
+                  ? '¿En qué sede prefieres atenderte?'
+                  : 'Propuesta lista · Turno por WhatsApp'
             : patientSession
               ? `Hola, ${patientSession.nombres}`
               : 'Ingresa a tu expediente clínico'}
         </h2>
-        <p className="mt-0.5 text-xs sm:text-[13px] text-slate-500">
+        <p className="mt-0.5 text-xs text-slate-500">
           {portalMode === 'new'
             ? step === 1
-              ? 'Responde 3 preguntas en 40 segundos para asignarte la tecnología y especialista ideal.'
+              ? 'Elige una opción para orientar tu diagnóstico.'
               : step === 2
-                ? 'Personalizamos el protocolo clínico para garantizar tu comodidad total.'
+                ? 'Adaptamos la atención a tu comodidad.'
                 : step === 3
-                  ? 'Nuestras 3 sedes cuentan con tecnología 3D e historia clínica unificada.'
-                  : '¿A qué WhatsApp te enviamos los turnos disponibles y el diagnóstico preliminar?'
+                  ? 'Todas nuestras sedes cuentan con tecnología 3D.'
+                  : 'Te compartimos turnos disponibles y propuesta personalizada.'
             : patientSession
-              ? 'Reserva tu control o consulta prioritaria en un solo clic.'
-              : 'Accede con tu DNI y contraseña o recibe un código rápido de 4 dígitos por WhatsApp.'}
+              ? 'Reserva tu control en un solo clic.'
+              : 'Accede con tu DNI para revisar tus citas.'}
         </p>
       </div>
 
       {/* Cuerpo del Evaluador Interactivo */}
       <div className="px-5 py-5 sm:px-6">
-        {/* INTERMEDIO: Animación de Diagnóstico y Asignación Clínica (1.1s) */}
+        {/* INTERMEDIO: Animación de Diagnóstico (1.1s) */}
         {isAnalyzing ? (
           <div className="py-8 flex flex-col items-center justify-center text-center space-y-4">
-            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-50 border border-teal-200">
-              <ScanLine className="h-8 w-8 text-[#0F766E] animate-pulse" />
+            <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50 border border-teal-200">
+              <ScanLine className="h-7 w-7 text-[#0F766E] animate-pulse" />
               <div className="absolute -inset-1 rounded-2xl border border-teal-400/40 animate-ping" />
             </div>
 
-            <div className="space-y-1.5 max-w-xs">
-              <h3 className="text-sm font-bold text-slate-900">
-                Calculando propuesta clínica personalizada…
+            <div className="space-y-1 max-w-xs">
+              <h3 className="text-sm font-semibold text-slate-900">
+                Preparando tu evaluación personalizada…
               </h3>
               <p className="text-xs text-slate-500">
-                Asignando especialista con RNE y escaneo 3D en <strong className="text-slate-800">{sede}</strong>.
+                Asignando especialista y agenda en <strong className="text-slate-800">{sede}</strong>.
               </p>
-            </div>
-
-            <div className="w-full max-w-xs space-y-1.5 text-left text-[11px] text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
-                <Check className="h-3 w-3 stroke-[3]" />
-                <span>Objetivo: {selectedGoalObj.tag}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
-                <Check className="h-3 w-3 stroke-[3]" />
-                <span>Prioridad: {selectedPriorityObj.badge}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
-                <Check className="h-3 w-3 stroke-[3]" />
-                <span>Cortesía Web Activa: Escaneo 3D sin costo (S/ 0)</span>
-              </div>
             </div>
           </div>
         ) : portalMode === 'new' ? (
           <form onSubmit={handleFormSubmit} noValidate>
             <AnimatePresence mode="wait" custom={direction}>
-              {/* PASO 1: Objetivo de Sonrisa (Lúdico y de bajo compromiso) */}
+              {/* PASO 1: Objetivo de Sonrisa */}
               {step === 1 && (
                 <motion.div
                   key="quiz-step-1"
@@ -739,13 +696,9 @@ export function HeroIntakeWidget({
                   animate="center"
                   exit="exit"
                   transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                  className="space-y-3"
+                  className="space-y-2.5"
                 >
-                  <p className="text-xs font-semibold text-slate-700">
-                    Selecciona lo que deseas mejorar para personalizar tu atención:
-                  </p>
-
-                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {SMILE_GOALS.map((goal) => {
                       const IconComponent = goal.icon;
                       const isSelected = selectedReasonChip === goal.id;
@@ -753,41 +706,35 @@ export function HeroIntakeWidget({
                         <motion.button
                           key={goal.id}
                           type="button"
-                          whileHover={{ y: -3, scale: 1.02 }}
-                          whileTap={{ scale: 0.97 }}
+                          whileHover={{ y: -2, scale: 1.015 }}
+                          whileTap={{ scale: 0.98 }}
                           onClick={() => handleSelectGoal(goal.id)}
-                          className={`group flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all cursor-pointer ${
+                          className={`group flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition-all cursor-pointer ${
                             isSelected
                               ? 'border-[#0F766E] bg-[#ECFDF5]/80 ring-2 ring-teal-600/20 shadow-xs'
                               : 'border-slate-200/90 bg-white hover:border-[#0F766E]/60 hover:bg-slate-50/80 hover:shadow-xs'
                           }`}
                         >
-                          <span
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-110 ${
-                              isSelected
-                                ? 'bg-[#0F766E] text-white shadow-xs'
-                                : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/90'
-                            }`}
-                          >
-                            <IconComponent className="h-4 w-4" />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#0F766E]">
-                                {goal.tag}
-                              </span>
-                              <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-[#0F766E] group-hover:translate-x-0.5 transition-all" />
-                            </div>
-                            <h3 className="mt-0.5 text-xs font-semibold text-slate-900 leading-snug">
-                              {goal.title}
-                            </h3>
-                            <p className="mt-1 text-[11px] text-slate-500 leading-relaxed">
-                              {goal.desc}
-                            </p>
-                            <span className="mt-1.5 inline-block text-[10px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
-                              {goal.proofMetric}
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105 ${
+                                isSelected
+                                  ? 'bg-[#0F766E] text-white shadow-xs'
+                                  : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/90'
+                              }`}
+                            >
+                              <IconComponent className="h-4 w-4" />
                             </span>
+                            <div className="min-w-0">
+                              <h3 className="text-xs font-semibold text-slate-900 leading-snug">
+                                {goal.title}
+                              </h3>
+                              <p className="text-[11px] text-slate-500 truncate">
+                                {goal.desc}
+                              </p>
+                            </div>
                           </div>
+                          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-[#0F766E] group-hover:translate-x-0.5 transition-all" />
                         </motion.button>
                       );
                     })}
@@ -799,18 +746,10 @@ export function HeroIntakeWidget({
                       <span>{errors.reason}</span>
                     </p>
                   )}
-
-                  <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>Paso 1 de 4</span>
-                    <span className="flex items-center gap-1 text-[#0F766E] font-medium">
-                      <span>Haz clic en tu opción para avanzar</span>
-                      <ArrowRight className="h-3 w-3" />
-                    </span>
-                  </div>
                 </motion.div>
               )}
 
-              {/* PASO 2: Mayor Prioridad / Inquietud (Desactiva objeciones) */}
+              {/* PASO 2: Mayor Prioridad */}
               {step === 2 && (
                 <motion.div
                   key="quiz-step-2"
@@ -820,12 +759,8 @@ export function HeroIntakeWidget({
                   animate="center"
                   exit="exit"
                   transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                  className="space-y-3"
+                  className="space-y-2.5"
                 >
-                  <p className="text-xs font-semibold text-slate-700">
-                    ¿Cuál de estos puntos es el más importante para ti?
-                  </p>
-
                   <div className="space-y-2">
                     {PRIORITIES.map((item) => {
                       const IconComponent = item.icon;
@@ -835,17 +770,17 @@ export function HeroIntakeWidget({
                           key={item.id}
                           type="button"
                           whileHover={{ y: -2, scale: 1.015 }}
-                          whileTap={{ scale: 0.97 }}
+                          whileTap={{ scale: 0.98 }}
                           onClick={() => handleSelectPriority(item.id)}
-                          className={`group w-full flex items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-all cursor-pointer ${
+                          className={`group w-full flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition-all cursor-pointer ${
                             isSelected
                               ? 'border-[#0F766E] bg-[#ECFDF5]/80 ring-2 ring-teal-600/20 shadow-xs'
                               : 'border-slate-200/90 bg-white hover:border-[#0F766E]/60 hover:bg-slate-50/80 hover:shadow-xs'
                           }`}
                         >
-                          <div className="flex items-start gap-3 min-w-0">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <span
-                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-110 ${
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105 ${
                                 isSelected
                                   ? 'bg-[#0F766E] text-white shadow-xs'
                                   : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/90'
@@ -854,36 +789,18 @@ export function HeroIntakeWidget({
                               <IconComponent className="h-4 w-4" />
                             </span>
                             <div className="min-w-0">
-                              <span className="inline-block text-[10px] font-semibold text-[#0F766E]">
-                                {item.badge}
-                              </span>
                               <h3 className="text-xs font-semibold text-slate-900 leading-snug">
                                 {item.title}
                               </h3>
-                              <p className="mt-0.5 text-[11px] text-slate-500 leading-relaxed">
+                              <p className="text-[11px] text-slate-500 truncate">
                                 {item.desc}
                               </p>
-                              <span className="mt-1 inline-block text-[10px] text-emerald-800 font-medium">
-                                {item.activatedNote}
-                              </span>
                             </div>
                           </div>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-[#0F766E] group-hover:translate-x-0.5 transition-all" />
+                          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-[#0F766E] group-hover:translate-x-0.5 transition-all" />
                         </motion.button>
                       );
                     })}
-                  </div>
-
-                  <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400">
-                    <button
-                      type="button"
-                      onClick={handleGoBack}
-                      className="text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
-                    >
-                      <ArrowLeft className="h-3 w-3" />
-                      <span>Volver al paso anterior</span>
-                    </button>
-                    <span className="text-[#0F766E] font-medium">Selecciona tu prioridad</span>
                   </div>
                 </motion.div>
               )}
@@ -898,12 +815,8 @@ export function HeroIntakeWidget({
                   animate="center"
                   exit="exit"
                   transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                  className="space-y-3"
+                  className="space-y-2.5"
                 >
-                  <p className="text-xs font-semibold text-slate-700">
-                    Elige la sede que te resulte más accesible en Trujillo:
-                  </p>
-
                   <div className="space-y-2">
                     {SEDE_CARDS.map((branch) => {
                       const isSelected =
@@ -913,17 +826,17 @@ export function HeroIntakeWidget({
                           key={branch.name}
                           type="button"
                           whileHover={{ y: -2, scale: 1.015 }}
-                          whileTap={{ scale: 0.97 }}
+                          whileTap={{ scale: 0.98 }}
                           onClick={() => handleSelectSede(branch.name)}
-                          className={`group w-full flex items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-all cursor-pointer ${
+                          className={`group w-full flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition-all cursor-pointer ${
                             isSelected
                               ? 'border-[#0F766E] bg-[#ECFDF5]/80 ring-2 ring-teal-600/20 shadow-xs'
                               : 'border-slate-200/90 bg-white hover:border-[#0F766E]/60 hover:bg-slate-50/80 hover:shadow-xs'
                           }`}
                         >
-                          <div className="flex items-start gap-3 min-w-0">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <span
-                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-110 ${
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105 ${
                                 isSelected
                                   ? 'bg-[#0F766E] text-white shadow-xs'
                                   : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/90'
@@ -932,23 +845,15 @@ export function HeroIntakeWidget({
                               <MapPin className="h-4 w-4" />
                             </span>
                             <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <h3 className="text-xs font-semibold text-slate-900">
-                                  {branch.name}
-                                </h3>
-                                <span className="text-[10px] font-semibold text-teal-800 bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200/50">
-                                  {branch.tag}
-                                </span>
-                              </div>
-                              <p className="mt-0.5 text-[11px] text-slate-600 font-medium">
+                              <h3 className="text-xs font-semibold text-slate-900 leading-snug">
+                                {branch.name}
+                              </h3>
+                              <p className="text-[11px] text-slate-500 truncate">
                                 {branch.reference}
-                              </p>
-                              <p className="mt-0.5 text-[10.5px] text-slate-400">
-                                {branch.benefit}
                               </p>
                             </div>
                           </div>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-[#0F766E] group-hover:translate-x-0.5 transition-all" />
+                          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-[#0F766E] group-hover:translate-x-0.5 transition-all" />
                         </motion.button>
                       );
                     })}
@@ -960,18 +865,6 @@ export function HeroIntakeWidget({
                       <span>{errors.sede}</span>
                     </p>
                   )}
-
-                  <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400">
-                    <button
-                      type="button"
-                      onClick={handleGoBack}
-                      className="text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
-                    >
-                      <ArrowLeft className="h-3 w-3" />
-                      <span>Volver al paso anterior</span>
-                    </button>
-                    <span className="text-[#0F766E] font-medium">Calculando propuesta a continuación</span>
-                  </div>
                 </motion.div>
               )}
 
@@ -985,46 +878,24 @@ export function HeroIntakeWidget({
                   animate="center"
                   exit="exit"
                   transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                  className="space-y-4"
+                  className="space-y-3.5"
                 >
-                  {/* Tarjeta VIP de Diagnóstico Preliminar Personalizado */}
-                  <div className="rounded-xl border border-teal-200/90 bg-gradient-to-br from-teal-50/90 via-emerald-50/40 to-teal-50/80 p-3.5 text-left shadow-xs">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-teal-100/90 px-2.5 py-0.5 text-[10px] font-bold text-teal-900 border border-teal-200">
-                        <Sparkles className="h-3 w-3 text-teal-700" />
-                        Diagnóstico 3D Configurado
-                      </span>
-                      <span className="text-[10px] font-mono text-teal-800 font-semibold bg-white/80 px-2 py-0.5 rounded border border-teal-200/60">
-                        {sede || 'Sede Trujillo'}
-                      </span>
-                    </div>
-
-                    <div className="flex items-baseline justify-between gap-2">
-                      <h3 className="text-xs font-bold text-slate-900">
-                        {selectedGoalObj.title}
-                      </h3>
-                      {/* Price stacking persuasivo */}
-                      <div className="text-right shrink-0">
-                        <span className="text-[10px] text-slate-400 line-through mr-1 font-mono">
-                          S/ 120
-                        </span>
-                        <span className="text-xs font-bold text-emerald-700 font-mono">
-                          S/ 0 (Web)
-                        </span>
+                  {/* Resumen conciso */}
+                  <div className="rounded-xl border border-teal-200/80 bg-teal-50/50 p-3 text-left">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Sparkles className="h-3.5 w-3.5 text-[#0F766E] shrink-0" />
+                        <h3 className="text-xs font-semibold text-slate-900 truncate">
+                          {selectedGoalObj.title}
+                        </h3>
                       </div>
-                    </div>
-
-                    <p className="mt-1 text-[11px] text-teal-900 leading-relaxed">
-                      Asignamos nuestro protocolo de <strong>{selectedPriorityObj.title.toLowerCase()}</strong> con escáner 3D y simulación en pantalla.
-                    </p>
-
-                    <div className="mt-2.5 flex items-center justify-between border-t border-teal-200/60 pt-2 text-[10.5px] text-teal-800">
-                      <span className="flex items-center gap-1">
-                        <ShieldCheck className="h-3.5 w-3.5 text-teal-700" />
-                        <span>Especialista con RNE asignado</span>
+                      <span className="shrink-0 text-[10.5px] font-medium text-teal-800 bg-white px-2 py-0.5 rounded border border-teal-200">
+                        {sede || 'Trujillo'}
                       </span>
-                      <span className="font-semibold text-emerald-800">Cupo activo</span>
                     </div>
+                    <p className="mt-1 text-[11px] text-slate-600">
+                      Prioridad: <strong className="text-slate-800">{selectedPriorityObj.title}</strong>
+                    </p>
                   </div>
 
                   {/* Input: Nombres y apellidos */}
