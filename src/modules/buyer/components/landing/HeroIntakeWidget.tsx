@@ -4,15 +4,18 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  Briefcase,
   CalendarCheck,
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   Clock,
   Eye,
   EyeOff,
+  GraduationCap,
+  HeartPulse,
   History,
-  KeyRound,
   Loader2,
   Lock,
   LogOut,
@@ -22,8 +25,7 @@ import {
   ShieldCheck,
   Sparkles,
   Stethoscope,
-  UserCheck,
-  UserPlus,
+  Zap,
 } from 'lucide-react';
 import type { PatientSession } from '@/shared/services/patientAuthService';
 import {
@@ -107,8 +109,8 @@ export interface HeroIntakeWidgetProps {
   onExpressSubmit: (e: React.FormEvent) => void;
 
   // Control externo de paso y feedback visual de preselección
-  step: 1 | 2;
-  setStep: (step: 1 | 2) => void;
+  step: number;
+  setStep: (step: number) => void;
   highlightTrigger?: number;
   preselectionNotice?: string | null;
 }
@@ -127,6 +129,82 @@ const SLIDE_VARIANTS = {
     opacity: 0,
   }),
 };
+
+// Opciones interactivas del Evaluador de Sonrisa (Paso 1)
+const SMILE_GOALS = [
+  {
+    id: 'ortodoncia' as const,
+    title: 'Alinear mis dientes y mordida',
+    desc: 'Alineadores invisibles o brackets estéticos sin dolor.',
+    tag: 'Ortodoncia Digital',
+    icon: Sparkles,
+  },
+  {
+    id: 'estetica' as const,
+    title: 'Diseño de sonrisa y blanqueamiento',
+    desc: 'Carillas cerámicas, estética mínimamente invasiva o aclaramiento LED.',
+    tag: 'Alta Estética',
+    icon: Zap,
+  },
+  {
+    id: 'implante' as const,
+    title: 'Recuperar pieza o molar perdido',
+    desc: 'Implantes de titanio guiados por tomografía 3D o coronas fijas.',
+    tag: 'Rehabilitación 3D',
+    icon: ShieldCheck,
+  },
+  {
+    id: 'limpieza_dolor' as const,
+    title: 'Chequeo preventivo o molestia',
+    desc: 'Escaneo 3D, profilaxis ultrasónica o alivio rápido de dolor.',
+    tag: 'Prevención y Alivio',
+    icon: Stethoscope,
+  },
+];
+
+// Opciones de Prioridad / Inquietud (Paso 2)
+const PRIORITIES = [
+  {
+    id: 'sin_dolor' as const,
+    title: 'Atención 100% sin dolor ni estrés',
+    desc: 'Protocolo con anestesia suave computarizada y acompañamiento empático.',
+    badge: 'Confort Clínico',
+    icon: HeartPulse,
+  },
+  {
+    id: 'horarios' as const,
+    title: 'Horarios flexibles por trabajo o estudio',
+    desc: 'Turnos extendidos tarde/noche y sábados continuos sin tiempos muertos.',
+    badge: 'Puntualidad 0 esperas',
+    icon: Clock,
+  },
+  {
+    id: 'presupuesto' as const,
+    title: 'Presupuesto transparente y facilidades',
+    desc: 'Diagnóstico en pantalla, cuotas sin intereses y convenios institucionales.',
+    badge: 'Financiamiento directo',
+    icon: Briefcase,
+  },
+];
+
+// Opciones de Sedes en Trujillo (Paso 3)
+const SEDE_CARDS = [
+  {
+    name: 'Sede California',
+    reference: 'Av. Larco / California',
+    benefit: 'Estacionamiento privado · Atención integral',
+  },
+  {
+    name: 'Sede El Golf',
+    reference: 'Av. El Golf',
+    benefit: 'Ambiente médico exclusivo · Tomografía 3D',
+  },
+  {
+    name: 'Sede Centro Histórico',
+    reference: 'Jr. Pizarro / Cerca a Plaza Mayor',
+    benefit: 'Acceso céntrico rápido · Historia en red',
+  },
+];
 
 export function HeroIntakeWidget({
   catalogs,
@@ -193,8 +271,14 @@ export function HeroIntakeWidget({
 }: HeroIntakeWidgetProps) {
   const [direction, setDirection] = useState<number>(1);
   const [showOptionalFields, setShowOptionalFields] = useState(false);
-  const [showAllServices, setShowAllServices] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+
+  // Estados interactivos para perfil lúdico de bajo compromiso
+  const [selectedPriority, setSelectedPriority] = useState<'sin_dolor' | 'horarios' | 'presupuesto'>('sin_dolor');
+  const [leadOccupation, setLeadOccupation] = useState<'estudiante' | 'trabajador' | 'independiente' | 'flexible' | ''>('');
+  const [leadUrgency, setLeadUrgency] = useState<'preventiva' | 'molestia' | 'estetica' | 'urgencia' | ''>('');
+  const [leadProfileSaved, setLeadProfileSaved] = useState(false);
+  const [isSavingLeadProfile, setIsSavingLeadProfile] = useState(false);
 
   const availableSedes: Array<{ name: string; subtitle: string }> =
     catalogs.sedes && catalogs.sedes.length > 0
@@ -207,121 +291,182 @@ export function HeroIntakeWidget({
           subtitle: loc.neighborhood.replace(' · Trujillo', ''),
         }));
 
+  const selectedGoalObj =
+    SMILE_GOALS.find((g) => g.id === selectedReasonChip) || SMILE_GOALS[0];
+
+  const selectedPriorityObj =
+    PRIORITIES.find((p) => p.id === selectedPriority) || PRIORITIES[0];
+
   const selectedServiceName =
     catalogs.servicios.find((s: any) => String(s.id_servicio) === String(serviceId))?.nombre ||
-    REASON_CHIPS.find((c) => c.id === selectedReasonChip)?.label ||
-    'Evaluación integral';
+    selectedGoalObj.title;
 
   const selectedTimeSlotObj = TIME_SLOT_CHIPS.find((t) => t.id === timeSlot);
 
-  const goToStep2 = () => {
-    const step1Errors: Record<string, string> = {};
-    if (!selectedReasonChip && !serviceId) {
-      step1Errors.reason = 'Selecciona un motivo de consulta para asignarte al especialista indicado.';
-    }
-    if (!sede) {
-      step1Errors.sede = 'Elige la sede más cercana para verificar disponibilidad.';
-    }
-    if (Object.keys(step1Errors).length > 0) {
-      setErrors((prev) => ({ ...prev, ...step1Errors }));
-      return;
-    }
+  // Navegación fluida entre micro-pasos
+  const handleSelectGoal = (goalId: ReasonChipOption['id']) => {
+    onSelectReasonChip(goalId);
+    if (errors.reason) setErrors((prev) => ({ ...prev, reason: '' }));
     setDirection(1);
     setStep(2);
   };
 
-  const goToStep1 = () => {
-    setDirection(-1);
-    setStep(1);
+  const handleSelectPriority = (priorityId: 'sin_dolor' | 'horarios' | 'presupuesto') => {
+    setSelectedPriority(priorityId);
+    setDirection(1);
+    setStep(3);
   };
 
+  const handleSelectSede = (sedeName: string) => {
+    setSede(sedeName);
+    if (errors.sede) setErrors((prev) => ({ ...prev, sede: '' }));
+    setDirection(1);
+    setStep(4);
+  };
+
+  const handleGoBack = () => {
+    if (step > 1) {
+      setDirection(-1);
+      setStep(step - 1);
+    }
+  };
+
+  // Guardar datos enriquecidos antes del submit
+  const handleFormSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
+    // Enriquecer la duda clínica si no se ha agregado el contexto de prioridad
+    const priorityText = `[Prioridad: ${selectedPriorityObj.title}]`;
+    const occupationText = leadOccupation ? `[Convenio: ${leadOccupation}]` : '';
+    let enrichedDuda = dudaEspecifica.trim();
+
+    if (!enrichedDuda.includes(priorityText)) {
+      enrichedDuda = `${priorityText} ${occupationText} ${enrichedDuda}`.trim();
+      setDudaEspecifica(enrichedDuda);
+    }
+
+    onSubmitNewPatient(e);
+  };
+
+  // ESTADO DE ÉXITO (POST-REGISTRO)
   if (submittedSuccess) {
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-[0_20px_50px_-20px_rgba(15,23,42,0.08)]"
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-7 shadow-[0_20px_50px_-20px_rgba(15,23,42,0.08)]"
       >
         <div className="flex flex-col items-center text-center">
-          <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-[#ECFDF5] text-[#065F46] ring-1 ring-emerald-600/20">
+          {/* Estado de Coordinación Médica */}
+          <div className="w-full mb-4 rounded-xl border border-teal-100 bg-teal-50/70 p-3.5 text-left">
+            <div className="flex items-center justify-between text-xs font-semibold text-teal-900 mb-1">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                Coordinación de Citas en Curso
+              </span>
+              <span className="text-[10.5px] font-mono text-teal-800 bg-white px-2 py-0.5 rounded border border-teal-200/70">
+                Sede {sede || 'Trujillo'}
+              </span>
+            </div>
+            <p className="text-[11.5px] text-teal-800 leading-relaxed">
+              Estamos revisando la agenda para enviarte los turnos exactos y el especialista indicado a tu WhatsApp.
+            </p>
+          </div>
+
+          <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[#ECFDF5] text-[#065F46] ring-1 ring-emerald-600/20">
             {isRecurringSubmitted ? (
-              <RotateCw className="h-6 w-6 text-[#0F766E]" />
+              <RotateCw className="h-5 w-5 text-[#0F766E]" />
             ) : (
-              <CheckCircle2 className="h-7 w-7 text-[#0F766E]" />
+              <CheckCircle2 className="h-6 w-6 text-[#0F766E]" />
             )}
           </div>
 
-          <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#ECFDF5] px-3 py-1 text-[11px] font-semibold text-[#065F46]">
+          <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#ECFDF5] px-3 py-0.5 text-[11px] font-semibold text-[#065F46]">
             {isRecurringSubmitted
               ? `Consulta anexada a tu historial (#${consultationCount})`
               : isNewSharedSubmitted
-                ? 'Nuevo expediente independiente creado'
-                : 'Solicitud clínica registrada'}
+                ? 'Nuevo expediente creado'
+                : 'Diagnóstico Preliminar Solicitado'}
           </span>
 
-          <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-900">
+          <h2 className="mt-2 text-lg sm:text-xl font-bold tracking-tight text-slate-900">
             {isRecurringSubmitted
               ? 'Actualizamos tu expediente odontológico'
-              : 'Recibimos tu solicitud de evaluación'}
+              : '¡Recibimos tu solicitud de evaluación!'}
           </h2>
 
-          <p className="mt-1.5 max-w-md text-xs sm:text-sm leading-relaxed text-slate-600">
-            Gracias, <strong className="font-semibold text-slate-900">{fullName}</strong>. Nuestra mesa de coordinación
-            clínica te contactará por WhatsApp en menos de 15 minutos para confirmar tu horario exacto.
+          <p className="mt-1 max-w-md text-xs leading-relaxed text-slate-600">
+            Gracias, <strong className="font-semibold text-slate-900">{fullName}</strong>. Te escribiremos a tu WhatsApp en menos de 15 minutos con las opciones de horario y tu protocolo personalizado.
           </p>
 
-          <dl className="mt-5 w-full rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 text-left text-xs space-y-2.5">
+          {/* Resumen de la Solicitud Inicial */}
+          <dl className="mt-4 w-full rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5 text-left text-xs space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <dt className="text-slate-500">WhatsApp de confirmación</dt>
+              <dt className="text-slate-500">WhatsApp de contacto</dt>
               <dd className="font-mono font-semibold text-slate-900">+51 {phone}</dd>
             </div>
             <div className="flex items-center justify-between gap-2 border-t border-slate-200/70 pt-2">
-              <dt className="text-slate-500">Especialidad / Motivo</dt>
-              <dd className="font-medium text-[#0F766E] text-right">{selectedServiceName}</dd>
+              <dt className="text-slate-500">Tratamiento de interés</dt>
+              <dd className="font-medium text-[#0F766E] text-right">{selectedGoalObj.title}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-2 border-t border-slate-200/70 pt-2">
+              <dt className="text-slate-500">Prioridad clínica</dt>
+              <dd className="font-medium text-slate-800 text-right">{selectedPriorityObj.title}</dd>
             </div>
             {sede && (
               <div className="flex items-center justify-between gap-2 border-t border-slate-200/70 pt-2">
-                <dt className="text-slate-500">Sede seleccionada</dt>
+                <dt className="text-slate-500">Sede</dt>
                 <dd className="font-medium text-slate-800">{sede}</dd>
-              </div>
-            )}
-            {selectedTimeSlotObj && (
-              <div className="flex items-center justify-between gap-2 border-t border-slate-200/70 pt-2">
-                <dt className="text-slate-500">Turno preferido</dt>
-                <dd className="font-medium text-slate-800">
-                  {selectedTimeSlotObj.label} ({selectedTimeSlotObj.hours})
-                </dd>
-              </div>
-            )}
-            {dudaEspecifica.trim() && (
-              <div className="border-t border-slate-200/70 pt-2">
-                <dt className="text-slate-500">Nota para el especialista</dt>
-                <dd className="mt-0.5 italic text-slate-700">“{dudaEspecifica.trim()}”</dd>
               </div>
             )}
           </dl>
 
-          <div className="mt-6 flex w-full flex-col gap-2.5 sm:flex-row">
-            <button
-              type="button"
-              onClick={onResetNewPatient}
-              className="flex-1 h-10 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-50 active:scale-[0.98] cursor-pointer"
-            >
-              Realizar otra consulta
-            </button>
+          {/* Acciones */}
+          <div className="mt-4 flex w-full flex-col gap-2">
+            <div className="flex w-full gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('tu-experiencia');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="flex-1 h-9 rounded-xl border border-teal-200 bg-teal-50/60 px-3 text-xs font-semibold text-teal-800 transition-all hover:bg-teal-100/70 active:scale-[0.98] cursor-pointer"
+              >
+                Cómo atendemos (Paso a paso)
+              </button>
+              <button
+                type="button"
+                onClick={onResetNewPatient}
+                className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-50 active:scale-[0.98] cursor-pointer"
+              >
+                Nueva consulta
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={onBackToDashboard}
-              className="flex-1 h-10 rounded-xl bg-[#0F766E] px-4 text-xs font-semibold text-white shadow-xs transition-all hover:bg-[#115E59] active:scale-[0.98] cursor-pointer"
+              className="mt-1 text-[11px] text-slate-400 hover:text-slate-600 transition-colors inline-flex items-center justify-center gap-1 cursor-pointer"
             >
-              Ir al Panel Clínico
+              <Lock className="h-3 w-3" />
+              <span>Acceso para Staff / Doctores</span>
             </button>
           </div>
         </div>
       </motion.div>
     );
   }
+
+  // CÁLCULO DE PROGRESO Y TEXTO DE CABECERA
+  const stepProgress = portalMode === 'new' ? (step / 4) * 100 : 100;
+
+  const stepSubtitles = [
+    '¿Qué te gustaría transformar o cuidar en tu sonrisa?',
+    '¿Cuál es tu mayor prioridad para tu atención?',
+    '¿En qué sede de Trujillo te queda más cómodo?',
+    'Tenemos opciones listas para ti en Trujillo',
+  ];
 
   return (
     <motion.div
@@ -335,19 +480,19 @@ export function HeroIntakeWidget({
           : 'border-slate-200/90'
       }`}
     >
-      {/* Barra de progreso delgada de 2px */}
-      <div className="h-[2px] w-full bg-slate-100 overflow-hidden" aria-hidden>
+      {/* Barra de progreso de micro-pasos */}
+      <div className="h-[3px] w-full bg-slate-100 overflow-hidden" aria-hidden>
         <motion.div
           className="h-full bg-[#0F766E]"
           initial={false}
           animate={{
-            width: portalMode === 'new' ? (step === 1 ? '50%' : '100%') : '100%',
+            width: `${stepProgress}%`,
           }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         />
       </div>
 
-      {/* Banner animado de confirmación cuando el usuario hace clic en "Agendar aquí" o en una especialidad */}
+      {/* Banner de preselección externa */}
       <AnimatePresence>
         {preselectionNotice && (
           <motion.div
@@ -362,23 +507,44 @@ export function HeroIntakeWidget({
               <span className="truncate font-semibold">{preselectionNotice}</span>
             </div>
             <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-[#0F766E]">
-              Listo para agendar
+              Evaluador listo
             </span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Cabecera limpia del formulario con selector Primera Visita vs Ya soy Paciente */}
+      {/* Cabecera del Evaluador */}
       <div className="border-b border-slate-100 px-5 pt-5 pb-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ECFDF5] px-2.5 py-0.5 text-[11px] font-semibold text-[#065F46]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#0F766E]" aria-hidden />
-            {portalMode === 'new'
-              ? `Paso ${step} de 2 · ${step === 1 ? 'Preferencias clínicas' : 'Datos de contacto'}`
-              : patientSession
-                ? 'Expediente verificado'
-                : 'Acceso rápido de pacientes'}
-          </span>
+          <div className="flex items-center gap-2">
+            {portalMode === 'new' && step > 1 && (
+              <button
+                type="button"
+                onClick={handleGoBack}
+                aria-label="Paso anterior"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+              </button>
+            )}
+
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ECFDF5] px-2.5 py-0.5 text-[11px] font-semibold text-[#065F46]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#0F766E]" aria-hidden />
+              {portalMode === 'new'
+                ? `Paso ${step} de 4 · ${
+                    step === 1
+                      ? 'Objetivo de sonrisa'
+                      : step === 2
+                        ? 'Tu mayor prioridad'
+                        : step === 3
+                          ? 'Sede en Trujillo'
+                          : 'Diagnóstico preliminar'
+                  }`
+                : patientSession
+                  ? 'Expediente verificado'
+                  : 'Acceso rápido de pacientes'}
+            </span>
+          </div>
 
           {patientSession ? (
             <button
@@ -406,7 +572,7 @@ export function HeroIntakeWidget({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Primera visita
+                Evaluación 3D
               </button>
               <button
                 type="button"
@@ -428,8 +594,12 @@ export function HeroIntakeWidget({
         <h2 className="mt-3 text-lg sm:text-xl font-semibold tracking-tight text-slate-900">
           {portalMode === 'new'
             ? step === 1
-              ? 'Agenda tu evaluación odontológica'
-              : '¿A dónde enviamos tu confirmación?'
+              ? 'Evaluador de Sonrisa Interactivo'
+              : step === 2
+                ? '¿Cuál es tu mayor prioridad?'
+                : step === 3
+                  ? '¿En qué sede de Trujillo te gustaría atenderte?'
+                  : '¡Tu propuesta diagnóstica está lista!'
             : patientSession
               ? `Hola, ${patientSession.nombres}`
               : 'Ingresa a tu expediente clínico'}
@@ -437,244 +607,256 @@ export function HeroIntakeWidget({
         <p className="mt-0.5 text-xs sm:text-[13px] text-slate-500">
           {portalMode === 'new'
             ? step === 1
-              ? 'Elige tu motivo de consulta y sede para asignarte con el especialista indicado.'
-              : 'Solo te pediremos tu nombre y WhatsApp para coordinar la hora exacta sin llamadas invasivas.'
+              ? 'Responde 3 preguntas en 40 segundos para asignarte la tecnología y especialista ideal.'
+              : step === 2
+                ? 'Personalizamos el protocolo clínico para garantizar tu comodidad total.'
+                : step === 3
+                  ? 'Nuestras 3 sedes cuentan con tecnología 3D e historia clínica unificada.'
+                  : '¿A qué WhatsApp te enviamos los turnos disponibles y el diagnóstico preliminar?'
             : patientSession
-              ? 'Reserva tu control o consulta prioritaria en un clic.'
-              : 'Accede con tu DNI y clave o recibe un código de 4 dígitos por WhatsApp.'}
+              ? 'Reserva tu control o consulta prioritaria en un solo clic.'
+              : 'Accede con tu DNI y contraseña o recibe un código rápido de 4 dígitos por WhatsApp.'}
         </p>
       </div>
 
-      {/* Cuerpo del Widget */}
+      {/* Cuerpo del Evaluador Interactivo */}
       <div className="px-5 py-5 sm:px-6">
         {portalMode === 'new' ? (
-          <form onSubmit={onSubmitNewPatient} noValidate>
+          <form onSubmit={handleFormSubmit} noValidate>
             <AnimatePresence mode="wait" custom={direction}>
-              {step === 1 ? (
+              {/* PASO 1: Objetivo de Sonrisa (Lúdico y de bajo compromiso) */}
+              {step === 1 && (
                 <motion.div
-                  key="step-1"
+                  key="quiz-step-1"
                   custom={direction}
                   variants={SLIDE_VARIANTS}
                   initial="enter"
                   animate="center"
                   exit="exit"
                   transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                  className="space-y-5"
+                  className="space-y-3"
                 >
-                  {/* 1. Motivo de consulta (Chips seleccionables) */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
-                        <Stethoscope className="h-3.5 w-3.5 text-[#0F766E]" aria-hidden />
-                        <span>1. ¿Cuál es tu motivo de consulta?</span>
-                      </label>
-                      {catalogs.servicios.length > 0 && (
+                  <p className="text-xs font-semibold text-slate-700">
+                    Selecciona lo que deseas mejorar para personalizar tu atención:
+                  </p>
+
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    {SMILE_GOALS.map((goal) => {
+                      const IconComponent = goal.icon;
+                      const isSelected = selectedReasonChip === goal.id;
+                      return (
                         <button
+                          key={goal.id}
                           type="button"
-                          onClick={() => setShowAllServices((v) => !v)}
-                          className="text-[11px] font-medium text-[#0F766E] hover:underline cursor-pointer"
+                          onClick={() => handleSelectGoal(goal.id)}
+                          className={`group flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all active:scale-[0.98] cursor-pointer ${
+                            isSelected
+                              ? 'border-[#0F766E] bg-[#ECFDF5]/60 ring-2 ring-teal-600/15'
+                              : 'border-slate-200/90 bg-white hover:border-[#0F766E]/50 hover:bg-slate-50/70'
+                          }`}
                         >
-                          {showAllServices ? 'Ver opciones principales' : 'Ver catálogo completo'}
-                        </button>
-                      )}
-                    </div>
-
-                    <div
-                      role="radiogroup"
-                      aria-label="Motivo de consulta"
-                      className="grid grid-cols-1 gap-2 sm:grid-cols-2"
-                    >
-                      {REASON_CHIPS.map((chip) => {
-                        const isSelected = selectedReasonChip === chip.id;
-                        return (
-                          <button
-                            key={chip.id}
-                            type="button"
-                            role="radio"
-                            aria-checked={isSelected}
-                            onClick={() => {
-                              onSelectReasonChip(chip.id);
-                              if (errors.reason) setErrors((prev) => ({ ...prev, reason: '' }));
-                            }}
-                            className={`group flex items-start justify-between gap-2 rounded-xl border p-3 text-left transition-all active:scale-[0.98] cursor-pointer ${
+                          <span
+                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
                               isSelected
-                                ? 'border-[#0F766E] bg-[#ECFDF5]/60 ring-2 ring-teal-600/15'
-                                : 'border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                                ? 'bg-[#0F766E] text-white'
+                                : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/80'
                             }`}
                           >
-                            <div className="min-w-0">
-                              <p
-                                className={`text-xs font-semibold ${
-                                  isSelected ? 'text-[#065F46]' : 'text-slate-900'
-                                }`}
-                              >
-                                {chip.label}
-                              </p>
-                              <p className="mt-0.5 truncate text-[11px] text-slate-500">
-                                {chip.subtitle}
-                              </p>
-                            </div>
-                            <span
-                              className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors ${
-                                isSelected
-                                  ? 'border-[#0F766E] bg-[#0F766E] text-white'
-                                  : 'border-slate-300 bg-white group-hover:border-slate-400'
-                              }`}
-                              aria-hidden
-                            >
-                              {isSelected && <Check className="h-2.5 w-2.5 stroke-[3]" />}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Selector de catálogo completo opcional */}
-                    {showAllServices && catalogs.servicios.length > 0 && (
-                      <div className="mt-2.5">
-                        <label htmlFor="catalog-service-select" className="sr-only">
-                          Tratamiento específico del catálogo
-                        </label>
-                        <select
-                          id="catalog-service-select"
-                          value={serviceId}
-                          onChange={(e) => {
-                            setServiceId(e.target.value);
-                            if (errors.reason) setErrors((prev) => ({ ...prev, reason: '' }));
-                          }}
-                          className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-xs font-medium text-slate-800 focus:border-[#0F766E] focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-600/20"
-                        >
-                          <option value="">Selecciona un tratamiento específico…</option>
-                          {catalogs.servicios.map((s: any) => (
-                            <option key={s.id_servicio} value={String(s.id_servicio)}>
-                              {s.nombre}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {errors.reason && (
-                      <p className="mt-1.5 text-[11px] font-medium text-rose-600 flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3 shrink-0" />
-                        <span>{errors.reason}</span>
-                      </p>
-                    )}
-                  </div>
-
-                  {/* 2. Selección de sede física */}
-                  <div>
-                    <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-800">
-                      <MapPin className="h-3.5 w-3.5 text-[#0F766E]" aria-hidden />
-                      <span>2. Elige tu sede en Trujillo</span>
-                    </label>
-
-                    <div
-                      role="radiogroup"
-                      aria-label="Sede física"
-                      className="grid grid-cols-1 gap-2 sm:grid-cols-3"
-                    >
-                      {availableSedes.map((branch) => {
-                        const isSelected = normalizeBranchKey(sede) === normalizeBranchKey(branch.name);
-                        return (
-                          <button
-                            key={branch.name}
-                            type="button"
-                            role="radio"
-                            aria-checked={isSelected}
-                            onClick={() => {
-                              setSede(branch.name);
-                              if (errors.sede) setErrors((prev) => ({ ...prev, sede: '' }));
-                            }}
-                            className={`flex flex-col justify-between rounded-xl border p-2.5 text-left transition-all active:scale-[0.98] cursor-pointer ${
-                              isSelected
-                                ? 'border-[#0F766E] bg-[#ECFDF5]/60 ring-2 ring-teal-600/15'
-                                : 'border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/60'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-1.5">
-                              <span
-                                className={`text-xs font-semibold truncate ${
-                                  isSelected ? 'text-[#065F46]' : 'text-slate-900'
-                                }`}
-                              >
-                                {branch.name.replace('Sede ', '')}
+                            <IconComponent className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#0F766E]">
+                                {goal.tag}
                               </span>
-                              {isSelected && (
-                                <Check className="h-3.5 w-3.5 shrink-0 text-[#0F766E]" aria-hidden />
-                              )}
+                              <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-[#0F766E] transition-colors" />
                             </div>
-                            <span className="mt-0.5 truncate text-[10.5px] text-slate-500">
-                              {branch.subtitle}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {errors.sede && (
-                      <p className="mt-1.5 text-[11px] font-medium text-rose-600 flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3 shrink-0" />
-                        <span>{errors.sede}</span>
-                      </p>
-                    )}
+                            <h3 className="mt-0.5 text-xs font-semibold text-slate-900 leading-snug">
+                              {goal.title}
+                            </h3>
+                            <p className="mt-1 text-[11px] text-slate-500 leading-relaxed">
+                              {goal.desc}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  {/* 3. Turno preferido (Chips horizontales accesibles) */}
-                  <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
-                        <Clock className="h-3.5 w-3.5 text-[#0F766E]" aria-hidden />
-                        <span>3. Preferencia de horario</span>
-                      </label>
-                      <span className="text-[11px] text-slate-400">Opcional</span>
-                    </div>
+                  {errors.reason && (
+                    <p className="text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3 shrink-0" />
+                      <span>{errors.reason}</span>
+                    </p>
+                  )}
 
-                    <div
-                      role="radiogroup"
-                      aria-label="Turno preferido"
-                      className="grid grid-cols-3 gap-2"
-                    >
-                      {TIME_SLOT_CHIPS.map((slot) => {
-                        const isSelected = timeSlot === slot.id;
-                        return (
-                          <button
-                            key={slot.id}
-                            type="button"
-                            role="radio"
-                            aria-checked={isSelected}
-                            onClick={() => setTimeSlot(isSelected ? '' : slot.id)}
-                            className={`flex flex-col items-center justify-center rounded-xl border py-2 px-2 text-center transition-all active:scale-[0.98] cursor-pointer ${
-                              isSelected
-                                ? 'border-[#0F766E] bg-[#ECFDF5]/70 text-[#065F46] ring-2 ring-teal-600/15'
-                                : 'border-slate-200/90 bg-slate-50/50 text-slate-700 hover:border-slate-300 hover:bg-white'
-                            }`}
-                          >
-                            <span className="text-xs font-semibold">{slot.label}</span>
-                            <span className="mt-0.5 font-mono text-[10px] text-slate-500">
-                              {slot.hours}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Acción Paso 1 -> Paso 2 */}
-                  <div className="pt-1">
-                    <button
-                      type="button"
-                      onClick={goToStep2}
-                      className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0F766E] px-5 text-xs sm:text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#115E59] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-600/20 active:scale-[0.98] cursor-pointer"
-                    >
-                      <span>Continuar con mis datos</span>
-                      <ArrowRight className="h-4 w-4" aria-hidden />
-                    </button>
+                  <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Paso 1 de 4</span>
+                    <span className="flex items-center gap-1 text-[#0F766E] font-medium">
+                      <span>Haz clic en tu opción para avanzar</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </span>
                   </div>
                 </motion.div>
-              ) : (
+              )}
+
+              {/* PASO 2: Mayor Prioridad / Inquietud (Desactiva objeciones) */}
+              {step === 2 && (
                 <motion.div
-                  key="step-2"
+                  key="quiz-step-2"
+                  custom={direction}
+                  variants={SLIDE_VARIANTS}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                  className="space-y-3"
+                >
+                  <p className="text-xs font-semibold text-slate-700">
+                    ¿Cuál de estos puntos es el más importante para ti?
+                  </p>
+
+                  <div className="space-y-2">
+                    {PRIORITIES.map((item) => {
+                      const IconComponent = item.icon;
+                      const isSelected = selectedPriority === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => handleSelectPriority(item.id)}
+                          className={`group w-full flex items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-all active:scale-[0.98] cursor-pointer ${
+                            isSelected
+                              ? 'border-[#0F766E] bg-[#ECFDF5]/60 ring-2 ring-teal-600/15'
+                              : 'border-slate-200/90 bg-white hover:border-[#0F766E]/50 hover:bg-slate-50/70'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3 min-w-0">
+                            <span
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                                isSelected
+                                  ? 'bg-[#0F766E] text-white'
+                                  : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/80'
+                              }`}
+                            >
+                              <IconComponent className="h-4 w-4" />
+                            </span>
+                            <div className="min-w-0">
+                              <span className="inline-block text-[10px] font-semibold text-[#0F766E]">
+                                {item.badge}
+                              </span>
+                              <h3 className="text-xs font-semibold text-slate-900 leading-snug">
+                                {item.title}
+                              </h3>
+                              <p className="mt-0.5 text-[11px] text-slate-500 leading-relaxed">
+                                {item.desc}
+                              </p>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-[#0F766E] transition-colors" />
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400">
+                    <button
+                      type="button"
+                      onClick={handleGoBack}
+                      className="text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
+                    >
+                      <ArrowLeft className="h-3 w-3" />
+                      <span>Volver al paso anterior</span>
+                    </button>
+                    <span className="text-[#0F766E] font-medium">Selecciona tu prioridad</span>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* PASO 3: Selección de Sede */}
+              {step === 3 && (
+                <motion.div
+                  key="quiz-step-3"
+                  custom={direction}
+                  variants={SLIDE_VARIANTS}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                  className="space-y-3"
+                >
+                  <p className="text-xs font-semibold text-slate-700">
+                    Elige la sede que te resulte más accesible en Trujillo:
+                  </p>
+
+                  <div className="space-y-2">
+                    {SEDE_CARDS.map((branch) => {
+                      const isSelected =
+                        normalizeBranchKey(sede) === normalizeBranchKey(branch.name);
+                      return (
+                        <button
+                          key={branch.name}
+                          type="button"
+                          onClick={() => handleSelectSede(branch.name)}
+                          className={`group w-full flex items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-all active:scale-[0.98] cursor-pointer ${
+                            isSelected
+                              ? 'border-[#0F766E] bg-[#ECFDF5]/60 ring-2 ring-teal-600/15'
+                              : 'border-slate-200/90 bg-white hover:border-[#0F766E]/50 hover:bg-slate-50/70'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3 min-w-0">
+                            <span
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                                isSelected
+                                  ? 'bg-[#0F766E] text-white'
+                                  : 'bg-[#ECFDF5] text-[#0F766E] group-hover:bg-teal-100/80'
+                              }`}
+                            >
+                              <MapPin className="h-4 w-4" />
+                            </span>
+                            <div className="min-w-0">
+                              <h3 className="text-xs font-semibold text-slate-900">
+                                {branch.name}
+                              </h3>
+                              <p className="mt-0.5 text-[11px] text-slate-600 font-medium">
+                                {branch.reference}
+                              </p>
+                              <p className="mt-0.5 text-[10.5px] text-slate-400">
+                                {branch.benefit}
+                              </p>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-[#0F766E] transition-colors" />
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {errors.sede && (
+                    <p className="text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3 shrink-0" />
+                      <span>{errors.sede}</span>
+                    </p>
+                  )}
+
+                  <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400">
+                    <button
+                      type="button"
+                      onClick={handleGoBack}
+                      className="text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
+                    >
+                      <ArrowLeft className="h-3 w-3" />
+                      <span>Volver al paso anterior</span>
+                    </button>
+                    <span className="text-[#0F766E] font-medium">Último paso a continuación</span>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* PASO 4: Resultado & Captación de WhatsApp Cero Fricción */}
+              {step === 4 && (
+                <motion.div
+                  key="quiz-step-4"
                   custom={direction}
                   variants={SLIDE_VARIANTS}
                   initial="enter"
@@ -683,27 +865,33 @@ export function HeroIntakeWidget({
                   transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                   className="space-y-4"
                 >
-                  {/* Resumen compacto del Paso 1 con botón volver */}
-                  <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-2.5 text-xs">
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-slate-800">
-                        {selectedServiceName} · <span className="text-[#0F766E]">{sede || 'Sede por definir'}</span>
-                      </p>
-                      <p className="truncate text-[11px] text-slate-500">
-                        {selectedTimeSlotObj ? `Turno ${selectedTimeSlotObj.label} (${selectedTimeSlotObj.hours})` : 'Horario flexible'}
-                      </p>
+                  {/* Tarjeta de Diagnóstico Preliminar Personalizado */}
+                  <div className="rounded-xl border border-teal-200/90 bg-teal-50/70 p-3.5 text-left">
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="inline-flex items-center gap-1 rounded bg-teal-100/90 px-2 py-0.5 text-[10px] font-bold text-teal-900">
+                        <Sparkles className="h-3 w-3 text-teal-700" />
+                        Propuesta Inicial Configurada
+                      </span>
+                      <span className="text-[10px] font-mono text-teal-800 font-semibold">
+                        {sede || 'Sede Trujillo'}
+                      </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={goToStep1}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 active:scale-[0.98] cursor-pointer"
-                    >
-                      <ArrowLeft className="h-3 w-3" aria-hidden />
-                      <span>Cambiar</span>
-                    </button>
+
+                    <div className="text-xs font-semibold text-slate-900">
+                      {selectedGoalObj.title}
+                    </div>
+
+                    <p className="mt-1 text-[11px] text-teal-900 leading-relaxed">
+                      Asignamos nuestro protocolo de <strong>{selectedPriorityObj.title.toLowerCase()}</strong> para tu cita inicial con escáner 3D.
+                    </p>
+
+                    <div className="mt-2.5 flex items-center gap-2 border-t border-teal-200/60 pt-2 text-[10.5px] text-teal-800">
+                      <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-teal-700" />
+                      <span>Más de 1,200 evaluaciones similares realizadas con 99.4% de satisfacción.</span>
+                    </div>
                   </div>
 
-                  {/* Input con Floating Label: Nombre y apellidos */}
+                  {/* Input: Nombres y apellidos */}
                   <div>
                     <div className="relative">
                       <input
@@ -717,7 +905,7 @@ export function HeroIntakeWidget({
                           if (errors.fullName) setErrors((prev) => ({ ...prev, fullName: '' }));
                         }}
                         aria-invalid={Boolean(errors.fullName)}
-                        className={`peer block h-12 w-full rounded-xl border bg-white px-3.5 pt-4 pb-1 text-sm text-slate-900 transition-all focus:outline-none focus:ring-4 ${
+                        className={`peer block h-11 w-full rounded-xl border bg-white px-3.5 pt-4 pb-1 text-xs text-slate-900 transition-all focus:outline-none focus:ring-4 ${
                           errors.fullName
                             ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/15'
                             : 'border-slate-200/90 focus:border-[#0F766E] focus:ring-teal-600/20'
@@ -725,9 +913,9 @@ export function HeroIntakeWidget({
                       />
                       <label
                         htmlFor="fullName"
-                        className="pointer-events-none absolute left-3.5 top-2 text-[10.5px] font-medium text-slate-500 transition-all peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-xs peer-placeholder-shown:text-slate-400 peer-focus:top-2 peer-focus:text-[10.5px] peer-focus:text-[#0F766E]"
+                        className="pointer-events-none absolute left-3.5 top-1.5 text-[10px] font-medium text-slate-500 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-xs peer-placeholder-shown:text-slate-400 peer-focus:top-1.5 peer-focus:text-[10px] peer-focus:text-[#0F766E]"
                       >
-                        Nombres y apellidos completos *
+                        Tus nombres y apellidos completos *
                       </label>
                     </div>
                     {errors.fullName && (
@@ -738,7 +926,7 @@ export function HeroIntakeWidget({
                     )}
                   </div>
 
-                  {/* Input con Floating Label: WhatsApp (+51) */}
+                  {/* Input: WhatsApp (+51) */}
                   <div>
                     <div className="relative flex items-center">
                       <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-600">
@@ -758,7 +946,7 @@ export function HeroIntakeWidget({
                           if (errors.phone) setErrors((prev) => ({ ...prev, phone: '' }));
                         }}
                         aria-invalid={Boolean(errors.phone)}
-                        className={`peer block h-12 w-full rounded-xl border bg-white pl-14 pr-3.5 pt-4 pb-1 font-mono text-sm text-slate-900 transition-all focus:outline-none focus:ring-4 ${
+                        className={`peer block h-11 w-full rounded-xl border bg-white pl-14 pr-3.5 pt-4 pb-1 font-mono text-xs text-slate-900 transition-all focus:outline-none focus:ring-4 ${
                           errors.phone
                             ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/15'
                             : 'border-slate-200/90 focus:border-[#0F766E] focus:ring-teal-600/20'
@@ -766,9 +954,9 @@ export function HeroIntakeWidget({
                       />
                       <label
                         htmlFor="phone"
-                        className="pointer-events-none absolute left-14 top-2 text-[10.5px] font-medium text-slate-500 transition-all peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-xs peer-placeholder-shown:text-slate-400 peer-focus:top-2 peer-focus:text-[10.5px] peer-focus:text-[#0F766E]"
+                        className="pointer-events-none absolute left-14 top-1.5 text-[10px] font-medium text-slate-500 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-xs peer-placeholder-shown:text-slate-400 peer-focus:top-1.5 peer-focus:text-[10px] peer-focus:text-[#0F766E]"
                       >
-                        Número de WhatsApp (9 dígitos) *
+                        Número de WhatsApp para coordinar tu cita *
                       </label>
                     </div>
                     {errors.phone ? (
@@ -777,13 +965,13 @@ export function HeroIntakeWidget({
                         <span>{errors.phone}</span>
                       </p>
                     ) : (
-                      <p className="mt-1 text-[11px] text-slate-400">
-                        Te enviaremos la disponibilidad de horarios directamente por WhatsApp.
+                      <p className="mt-1 text-[10.5px] text-slate-400">
+                        Te enviaremos los turnos exactos sin llamadas comerciales molestas.
                       </p>
                     )}
                   </div>
 
-                  {/* Campos opcionales contraídos elegantemente */}
+                  {/* Acordeón Opcional: Convenios, Horario y Correo */}
                   <div className="border-t border-slate-100 pt-2">
                     <button
                       type="button"
@@ -795,67 +983,100 @@ export function HeroIntakeWidget({
                         className={`h-3.5 w-3.5 transition-transform duration-200 ${
                           showOptionalFields ? 'rotate-180 text-[#0F766E]' : ''
                         }`}
-                        aria-hidden
                       />
-                      <span>Añadir correo electrónico o consulta específica (opcional)</span>
+                      <span>¿Convenio universitario o laboral? (Tarifas especiales · Opcional)</span>
                     </button>
 
                     {showOptionalFields && (
                       <div className="mt-3 space-y-3">
-                        {/* Correo opcional */}
-                        <div>
-                          <div className="relative">
-                            <input
-                              id="email"
-                              type="email"
-                              autoComplete="email"
-                              placeholder=" "
-                              value={email}
-                              onChange={(e) => {
-                                setEmail(e.target.value);
-                                if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
-                              }}
-                              className={`peer block h-11 w-full rounded-xl border bg-white px-3.5 pt-3.5 pb-1 text-xs text-slate-900 transition-all focus:outline-none focus:ring-4 ${
-                                errors.email
-                                  ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/15'
-                                  : 'border-slate-200/90 focus:border-[#0F766E] focus:ring-teal-600/20'
-                              }`}
-                            />
-                            <label
-                              htmlFor="email"
-                              className="pointer-events-none absolute left-3.5 top-1.5 text-[10px] font-medium text-slate-500 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-xs peer-placeholder-shown:text-slate-400 peer-focus:top-1.5 peer-focus:text-[10px] peer-focus:text-[#0F766E]"
-                            >
-                              Correo electrónico (opcional)
-                            </label>
+                        {/* Convenio / Ocupación */}
+                        <div className="space-y-1.5">
+                          <label className="text-[10.5px] font-semibold text-slate-700 flex items-center gap-1">
+                            <GraduationCap className="h-3 w-3 text-[#0F766E]" />
+                            <span>Aplicar descuento por convenio institucional</span>
+                          </label>
+                          <div className="grid grid-cols-2 gap-1.5 text-xs">
+                            {[
+                              { id: 'estudiante', label: 'Estudiante (UPAO/UNT/UPN)' },
+                              { id: 'trabajador', label: 'Trabajador Dependiente' },
+                              { id: 'independiente', label: 'Independiente / Empresa' },
+                              { id: 'flexible', label: 'Horario Libre' },
+                            ].map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() =>
+                                  setLeadOccupation(
+                                    leadOccupation === item.id ? '' : (item.id as any)
+                                  )
+                                }
+                                className={`p-1.5 text-[10.5px] rounded-lg border text-left transition-all cursor-pointer ${
+                                  leadOccupation === item.id
+                                    ? 'border-teal-700 bg-teal-700 text-white font-semibold'
+                                    : 'border-slate-200 bg-slate-50/70 text-slate-700 hover:border-teal-500'
+                                }`}
+                              >
+                                {item.label}
+                              </button>
+                            ))}
                           </div>
-                          {errors.email && (
-                            <p className="mt-1 text-[11px] font-medium text-rose-600">{errors.email}</p>
-                          )}
                         </div>
 
-                        {/* Duda o consulta específica */}
+                        {/* Turno Preferido */}
+                        <div className="space-y-1.5">
+                          <label className="text-[10.5px] font-semibold text-slate-700 flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-[#0F766E]" />
+                            <span>Franja horaria preferida</span>
+                          </label>
+                          <div className="grid grid-cols-3 gap-1.5 text-xs">
+                            {TIME_SLOT_CHIPS.map((slot) => {
+                              const isSelected = timeSlot === slot.id;
+                              return (
+                                <button
+                                  key={slot.id}
+                                  type="button"
+                                  onClick={() => setTimeSlot(isSelected ? '' : slot.id)}
+                                  className={`p-1.5 text-center rounded-lg border text-[10.5px] transition-all cursor-pointer ${
+                                    isSelected
+                                      ? 'border-[#0F766E] bg-[#ECFDF5] text-[#065F46] font-semibold'
+                                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <div>{slot.label}</div>
+                                  <div className="font-mono text-[9.5px] text-slate-400">
+                                    {slot.hours}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Correo Opcional */}
                         <div className="relative">
                           <input
-                            id="dudaEspecifica"
-                            type="text"
-                            maxLength={180}
+                            id="email"
+                            type="email"
                             placeholder=" "
-                            value={dudaEspecifica}
-                            onChange={(e) => setDudaEspecifica(e.target.value)}
-                            className="peer block h-11 w-full rounded-xl border border-slate-200/90 bg-white px-3.5 pt-3.5 pb-1 text-xs text-slate-900 transition-all focus:border-[#0F766E] focus:outline-none focus:ring-4 focus:ring-teal-600/20"
+                            value={email}
+                            onChange={(e) => {
+                              setEmail(e.target.value);
+                              if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
+                            }}
+                            className="peer block h-10 w-full rounded-xl border border-slate-200/90 bg-white px-3.5 pt-3.5 pb-1 text-xs text-slate-900 transition-all focus:border-[#0F766E] focus:outline-none focus:ring-4 focus:ring-teal-600/20"
                           />
                           <label
-                            htmlFor="dudaEspecifica"
-                            className="pointer-events-none absolute left-3.5 top-1.5 text-[10px] font-medium text-slate-500 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-xs peer-placeholder-shown:text-slate-400 peer-focus:top-1.5 peer-focus:text-[10px] peer-focus:text-[#0F766E]"
+                            htmlFor="email"
+                            className="pointer-events-none absolute left-3.5 top-1.5 text-[10px] font-medium text-slate-500 transition-all peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-xs peer-placeholder-shown:text-slate-400 peer-focus:top-1.5 peer-focus:text-[10px] peer-focus:text-[#0F766E]"
                           >
-                            ¿Tienes alguna molestia o pregunta para el doctor?
+                            Correo electrónico (opcional)
                           </label>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Consentimiento ágil */}
+                  {/* Consentimiento */}
                   <div>
                     <div
                       role="checkbox"
@@ -886,13 +1107,12 @@ export function HeroIntakeWidget({
                             ? 'border-[#0F766E] bg-[#0F766E] text-white'
                             : 'border-slate-300 bg-white'
                         }`}
-                        aria-hidden
                       >
                         {termsAccepted && <Check className="h-3 w-3 stroke-[3]" />}
                       </span>
-                      <span className="text-[11.5px] leading-snug text-slate-600">
+                      <span className="text-[11px] leading-snug text-slate-600">
                         Autorizo a <strong className="font-semibold text-slate-800">NexoSalud Dental</strong> a
-                        contactarme por WhatsApp o teléfono para coordinar mi cita conforme a la Ley N° 29733.
+                        enviarme mi diagnóstico preliminar y horarios por WhatsApp (Ley N° 29733).
                       </span>
                     </div>
                     {errors.terms && (
@@ -910,7 +1130,7 @@ export function HeroIntakeWidget({
                     </div>
                   )}
 
-                  {/* Botón principal de envío con feedback de presión */}
+                  {/* Botón Principal de Envío */}
                   <button
                     type="submit"
                     disabled={loading || resolvingIdentity}
@@ -919,24 +1139,24 @@ export function HeroIntakeWidget({
                     {resolvingIdentity ? (
                       <>
                         <ShieldCheck className="h-4 w-4 animate-pulse" />
-                        <span>Verificando expediente clínico…</span>
+                        <span>Verificando disponibilidad clínica…</span>
                       </>
                     ) : loading ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Registrando tu solicitud…</span>
+                        <span>Conectando con admisión de Trujillo…</span>
                       </>
                     ) : (
                       <>
-                        <span>Confirmar solicitud de cita</span>
-                        <ArrowRight className="h-4 w-4" aria-hidden />
+                        <span>Ver mi propuesta y turnos en WhatsApp</span>
+                        <ArrowRight className="h-4 w-4" />
                       </>
                     )}
                   </button>
 
-                  <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-slate-400">
-                    <ShieldCheck className="h-3.5 w-3.5 text-[#0F766E]" aria-hidden />
-                    <span>Sin pago adelantado en web · Respuesta humana en &lt; 15 min</span>
+                  <p className="flex items-center justify-center gap-1.5 text-center text-[10.5px] text-slate-400">
+                    <ShieldCheck className="h-3.5 w-3.5 text-[#0F766E]" />
+                    <span>Sin costo previo por web · Respuesta personalizada en &lt; 15 min</span>
                   </p>
                 </motion.div>
               )}
@@ -1121,15 +1341,16 @@ export function HeroIntakeWidget({
 
             <div>
               <label htmlFor="express-service" className="mb-1.5 block text-xs font-semibold text-slate-800">
-                Tratamiento o control requerido
+                Motivo de tu nueva cita
               </label>
               <select
                 id="express-service"
                 value={expressServiceId}
                 onChange={(e) => setExpressServiceId(e.target.value)}
-                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 focus:border-[#0F766E] focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                required
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:border-[#0F766E] focus:outline-none focus:ring-4 focus:ring-teal-600/20"
               >
-                <option value="">Control general / Evaluación de seguimiento</option>
+                <option value="">Selecciona el tratamiento o control…</option>
                 {catalogs.servicios.map((s: any) => (
                   <option key={s.id_servicio} value={String(s.id_servicio)}>
                     {s.nombre}
@@ -1138,84 +1359,71 @@ export function HeroIntakeWidget({
               </select>
             </div>
 
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-800">Sede preferida</label>
-              <div className="grid grid-cols-3 gap-2">
-                {availableSedes.map((b) => {
-                  const active = normalizeBranchKey(expressSede) === normalizeBranchKey(b.name);
-                  return (
-                    <button
-                      key={b.name}
-                      type="button"
-                      onClick={() => setExpressSede(b.name)}
-                      className={`rounded-xl border py-2 px-2 text-center text-xs font-medium transition-all active:scale-[0.98] cursor-pointer ${
-                        active
-                          ? 'border-[#0F766E] bg-[#ECFDF5]/70 text-[#065F46] font-semibold'
-                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                      }`}
-                    >
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label htmlFor="express-sede" className="mb-1.5 block text-xs font-semibold text-slate-800">
+                  Sede
+                </label>
+                <select
+                  id="express-sede"
+                  value={expressSede}
+                  onChange={(e) => setExpressSede(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:border-[#0F766E] focus:outline-none focus:ring-4 focus:ring-teal-600/20"
+                >
+                  {availableSedes.map((b) => (
+                    <option key={b.name} value={b.name}>
                       {b.name.replace('Sede ', '')}
-                    </button>
-                  );
-                })}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="express-slot" className="mb-1.5 block text-xs font-semibold text-slate-800">
+                  Turno
+                </label>
+                <select
+                  id="express-slot"
+                  value={expressTimeSlot}
+                  onChange={(e) => setExpressTimeSlot(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:border-[#0F766E] focus:outline-none focus:ring-4 focus:ring-teal-600/20"
+                >
+                  <option value="1">Mañana (08:00–13:00)</option>
+                  <option value="2">Tarde (13:00–18:00)</option>
+                  <option value="3">Noche (18:00–21:00)</option>
+                </select>
               </div>
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-800">Turno preferido</label>
-              <div className="grid grid-cols-3 gap-2">
-                {TIME_SLOT_CHIPS.map((slot) => {
-                  const active = expressTimeSlot === slot.id;
-                  return (
-                    <button
-                      key={slot.id}
-                      type="button"
-                      onClick={() => setExpressTimeSlot(slot.id)}
-                      className={`rounded-xl border py-2 px-2 text-center transition-all active:scale-[0.98] cursor-pointer ${
-                        active
-                          ? 'border-[#0F766E] bg-[#ECFDF5]/70 text-[#065F46]'
-                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                      }`}
-                    >
-                      <span className="block text-xs font-semibold">{slot.label}</span>
-                      <span className="block font-mono text-[10px] text-slate-500">{slot.hours}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="relative">
+              <label htmlFor="express-duda" className="mb-1.5 block text-xs font-semibold text-slate-800">
+                Observación o molestia (opcional)
+              </label>
               <input
-                id="expressDuda"
+                id="express-duda"
                 type="text"
-                placeholder=" "
+                maxLength={140}
+                placeholder="Ej. Control de ortodoncia, molestia en molar..."
                 value={expressDuda}
                 onChange={(e) => setExpressDuda(e.target.value)}
-                className="peer block h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 pt-3.5 pb-1 text-xs text-slate-900 focus:border-[#0F766E] focus:outline-none focus:ring-4 focus:ring-teal-600/20"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:border-[#0F766E] focus:outline-none focus:ring-4 focus:ring-teal-600/20"
               />
-              <label
-                htmlFor="expressDuda"
-                className="pointer-events-none absolute left-3.5 top-1.5 text-[10px] font-medium text-slate-500 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-xs peer-placeholder-shown:text-slate-400 peer-focus:top-1.5 peer-focus:text-[10px] peer-focus:text-[#0F766E]"
-              >
-                Comentario o síntoma para tu doctor (opcional)
-              </label>
             </div>
 
             <button
               type="submit"
-              disabled={expressSubmitting}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0F766E] px-5 text-xs sm:text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#115E59] active:scale-[0.98] disabled:opacity-60 cursor-pointer"
+              disabled={expressSubmitting || !expressServiceId}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0F766E] px-4 text-xs font-semibold text-white transition-all hover:bg-[#115E59] active:scale-[0.98] disabled:opacity-60 cursor-pointer"
             >
               {expressSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Agendando solicitud…</span>
+                  <span>Enviando requerimiento express…</span>
                 </>
               ) : (
                 <>
-                  <span>Solicitar cita prioritaria</span>
-                  <ArrowRight className="h-4 w-4" />
+                  <CalendarCheck className="h-4 w-4" />
+                  <span>Solicitar turno express</span>
                 </>
               )}
             </button>

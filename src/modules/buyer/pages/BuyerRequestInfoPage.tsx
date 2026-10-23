@@ -39,6 +39,7 @@ import { LocationsAndFooter } from '../components/landing/LocationsAndFooter';
 import { SocialProofSection } from '../components/landing/SocialProofSection';
 import { SpecialtiesTechSection } from '../components/landing/SpecialtiesTechSection';
 import { StaffLoginModal } from '../components/landing/StaffLoginModal';
+import { InteractiveJourneyFlowSection } from '../components/landing/InteractiveJourneyFlowSection';
 import {
   REASON_CHIPS,
   TIME_SLOT_CHIPS,
@@ -104,8 +105,8 @@ export default function BuyerRequestInfoPage() {
     aiReason?: string;
   } | null>(null);
 
-  // Estado del formulario progresivo (2 pasos)
-  const [step, setStep] = useState<1 | 2>(1);
+  // Estado del evaluador interactivo progresivo (Paso 1 a 4)
+  const [step, setStep] = useState<number>(1);
   const [selectedReasonChip, setSelectedReasonChip] = useState<ReasonChipOption['id'] | ''>('ortodoncia');
   const [serviceId, setServiceId] = useState('');
   const [sede, setSede] = useState('Sede California');
@@ -793,6 +794,9 @@ export default function BuyerRequestInfoPage() {
           </motion.div>
         </motion.div>
       </section>
+
+      {/* 2.5 Flujo Clínico Interactivo y Transparente: 4 Fases Orquestadas */}
+      <InteractiveJourneyFlowSection onSelectStageAction={() => scrollToSection('agendar-cita')} />
 
       {/* 3. Sección de Autoridad, Prueba Social y Testimonios */}
       <SocialProofSection />

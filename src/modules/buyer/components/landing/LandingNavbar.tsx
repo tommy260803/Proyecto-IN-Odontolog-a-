@@ -12,6 +12,7 @@ interface LandingNavbarProps {
 }
 
 const NAV_LINKS = [
+  { id: 'tu-experiencia', label: 'Cómo Atendemos' },
   { id: 'tratamientos', label: 'Tratamientos' },
   { id: 'tecnologia', label: 'Tecnología' },
   { id: 'sedes', label: 'Sedes' },

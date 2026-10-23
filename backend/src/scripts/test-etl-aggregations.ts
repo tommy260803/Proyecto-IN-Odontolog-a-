@@ -34,14 +34,14 @@ async function run() {
   const payer = await queryMart(`
     SELECT 
       'Recaudación General' AS categoria,
-      CONVERT(VARCHAR(7), t.Fecha, 120) AS item,
+      CONVERT(VARCHAR(7), t.id_fecha, 120) AS item,
       SUM(fp.PagosRegistrados) AS [Pagos Registrados],
       SUM(fp.PagosValidados) AS [Pagos Validados],
       SUM(fp.PagosRechazados) AS [Pagos Rechazados],
       SUM(fp.ImporteTotalCobro) AS [Importe Total (S/.)]
     FROM Fact_GestionPayer fp
     LEFT JOIN Dim_Tiempo t ON t.KeyTiempo = fp.KeyTiempo
-    GROUP BY CONVERT(VARCHAR(7), t.Fecha, 120)
+    GROUP BY CONVERT(VARCHAR(7), t.id_fecha, 120)
   `);
   console.log('Payer aggregated:', payer);
 
