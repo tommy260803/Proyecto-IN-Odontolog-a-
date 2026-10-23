@@ -389,23 +389,17 @@ UPDATE dim
 SET dim.EstadoPago = src.EstadoPago, dim.ComprobanteAdjunto = src.ComprobanteAdjunto
 FROM [NexoSalud_Mart].dbo.[Dim_Cobro] dim
 JOIN (
-    SELECT 1 AS KeyCobro, 'VALIDATED' AS EstadoPago, 'SI' AS ComprobanteAdjunto
-    UNION ALL SELECT 2, 'PENDING', 'NO'
-    UNION ALL SELECT 3, 'REJECTED', 'NO'
-    UNION ALL SELECT 4, 'Confirmado', 'SI'
-    UNION ALL SELECT 5, 'Pendiente', 'NO'
-    UNION ALL SELECT 6, 'Fallido', 'NO'
+    SELECT 1 AS KeyCobro, 'Validado' AS EstadoPago, 'SI' AS ComprobanteAdjunto
+    UNION ALL SELECT 2, 'Pendiente', 'NO'
+    UNION ALL SELECT 3, 'Rechazado', 'NO'
 ) src ON dim.KeyCobro = src.KeyCobro;
 
 INSERT INTO [NexoSalud_Mart].dbo.[Dim_Cobro] (EstadoPago, ComprobanteAdjunto)
 SELECT src.EstadoPago, src.ComprobanteAdjunto
 FROM (
-    SELECT 1 AS KeyCobro, 'VALIDATED' AS EstadoPago, 'SI' AS ComprobanteAdjunto
-    UNION ALL SELECT 2, 'PENDING', 'NO'
-    UNION ALL SELECT 3, 'REJECTED', 'NO'
-    UNION ALL SELECT 4, 'Confirmado', 'SI'
-    UNION ALL SELECT 5, 'Pendiente', 'NO'
-    UNION ALL SELECT 6, 'Fallido', 'NO'
+    SELECT 1 AS KeyCobro, 'Validado' AS EstadoPago, 'SI' AS ComprobanteAdjunto
+    UNION ALL SELECT 2, 'Pendiente', 'NO'
+    UNION ALL SELECT 3, 'Rechazado', 'NO'
 ) src
 WHERE NOT EXISTS (
     SELECT 1 FROM [NexoSalud_Mart].dbo.[Dim_Cobro] dim WHERE dim.EstadoPago = src.EstadoPago

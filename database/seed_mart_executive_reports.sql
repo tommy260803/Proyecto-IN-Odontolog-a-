@@ -176,16 +176,16 @@ VALUES
 INSERT INTO Dim_Cobro (KeyCobro, EstadoPago, ComprobanteAdjunto)
 VALUES 
     (1, 'VALIDADO', 'Sí'),
-    (2, 'PENDING', 'Pendiente'),
-    (3, 'REJECTED', 'No');
+    (2, 'Pendiente', 'Pendiente'),
+    (3, 'Rechazado', 'No');
 
 -- Fact_GestionPayer
 -- Billeteras Digitales:
--- Yape: VALIDATED 4,500.00 | PENDING 200.00 | REJECTED 150.00 | Total 4,850.00
--- Plin: VALIDATED 2,000.00 | PENDING 100.00 | REJECTED 100.00 | Total 2,200.00
+-- Yape: Validado 4,500.00 | Pendiente 200.00 | Rechazado 150.00 | Total 4,850.00
+-- Plin: Validado 2,000.00 | Pendiente 100.00 | Rechazado 100.00 | Total 2,200.00
 -- Bancarizado:
--- Transferencia: VALIDATED 8,100.00 | PENDING 1,500.00 | REJECTED 400.00 | Total 10,000.00
--- Tarjeta (Web): VALIDATED 4,500.00 | PENDING 0.00 | REJECTED 50.00 | Total 4,550.00
+-- Transferencia: Validado 8,100.00 | Pendiente 1,500.00 | Rechazado 400.00 | Total 10,000.00
+-- Tarjeta (Web): Validado 4,500.00 | Pendiente 0.00 | Rechazado 50.00 | Total 4,550.00
 INSERT INTO Fact_GestionPayer (KeyTiempo, KeyPasarela, KeyCobro, ImporteTotalCobro, PagosRegistrados, PagosValidados, PagosRechazados)
 VALUES 
     (20260915, 1, 1, 4500.00, 45, 45, 0),
