@@ -1,6 +1,6 @@
 -- ====================================================================
 -- NEXOSALUD — DATA MART DIMENSIONAL (CLÍNICA LUXEDENT, TRUJILLO)
--- PROCESO ETL ROBUSTO, IDEMPOTENTE Y NO DESTRUCTIVO
+-- PROCESO ETL ROBUSTO, IDEMPOTENTE, NO DESTRUCTIVO Y CERTIFICADO
 -- Motor: Microsoft SQL Server 2019 / 2022
 -- Esquemas: [NexoSaludDB] (OLTP) -> [NexoSalud_Mart] (Data Mart)
 -- ====================================================================
@@ -11,6 +11,8 @@ GO
 SET ANSI_NULLS ON;
 GO
 SET QUOTED_IDENTIFIER ON;
+GO
+SET XACT_ABORT ON;
 GO
 
 -- ====================================================================
@@ -357,6 +359,7 @@ GO
 
 -- ====================================================================
 -- 4. ÍNDICES DE UNICIDAD FÍSICA PARA GARANTÍA DE IDEMPOTENCIA
+-- Incluyen todas las dimensiones que componen el grano analítico real
 -- ====================================================================
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactCaptacionBuyer_Grain' AND object_id = OBJECT_ID('Fact_CaptacionBuyer'))
     CREATE UNIQUE NONCLUSTERED INDEX UQ_FactCaptacionBuyer_Grain 
@@ -366,9 +369,12 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactNegociacionLead_Gr
     CREATE UNIQUE NONCLUSTERED INDEX UQ_FactNegociacionLead_Grain 
     ON Fact_NegociacionLead (KeyTiempo, KeySede, KeyNegociador, KeyServicio, KeyProfesional);
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactGestionPayer_Grain' AND object_id = OBJECT_ID('Fact_GestionPayer'))
-    CREATE UNIQUE NONCLUSTERED INDEX UQ_FactGestionPayer_Grain 
-    ON Fact_GestionPayer (KeyTiempo, KeyPasarela, KeyCobro);
+-- Índice de Pago extendido a Sede y Servicio para evitar mezclar recaudación de distintas clínicas
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactGestionPayer_Grain' AND object_id = OBJECT_ID('Fact_GestionPayer'))
+    DROP INDEX UQ_FactGestionPayer_Grain ON Fact_GestionPayer;
+
+CREATE UNIQUE NONCLUSTERED INDEX UQ_FactGestionPayer_Grain 
+ON Fact_GestionPayer (KeyTiempo, KeyPasarela, KeyCobro, KeySede, KeyServicio);
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactAtencionCustomer_Grain' AND object_id = OBJECT_ID('Fact_AtencionCustomer'))
     CREATE UNIQUE NONCLUSTERED INDEX UQ_FactAtencionCustomer_Grain 
@@ -381,9 +387,23 @@ GO
 
 -- ====================================================================
 -- 5. CARGA INCREMENTAL E IDEMPOTENTE DE HECHOS (TRANSACCIÓN ATÓMICA)
--- Se eliminaron las sentencias destructivas DELETE FROM Fact_*.
--- Cada hecho se actualiza o inserta mediante MERGE sobre su grano único.
+-- Control de concurrencia con sp_getapplock y reconciliación de agregados
+-- obsoletos mediante Scoped MERGE (WHEN NOT MATCHED BY SOURCE THEN DELETE).
 -- ====================================================================
+
+-- 5.0 Adquisición de Candado de Aplicación para Concurrencia
+DECLARE @AppLockResult INT;
+EXEC @AppLockResult = sp_getapplock 
+    @Resource = 'ETL_NexoSalud_Lock', 
+    @LockMode = 'Exclusive', 
+    @LockOwner = 'Session', 
+    @LockTimeout = 5000;
+
+IF @AppLockResult < 0
+BEGIN
+    RAISERROR('Bloqueo de Concurrencia: El proceso ETL ya se encuentra en ejecución por otra sesión o proceso.', 16, 1);
+    RETURN;
+END;
 
 DECLARE @BatchId VARCHAR(50) = CONCAT('BATCH_', FORMAT(SYSDATETIME(), 'yyyyMMdd_HHmmss'));
 DECLARE @StartTime DATETIME2(7) = SYSDATETIME();
@@ -399,6 +419,7 @@ BEGIN TRY
     -- 5.1 Carga Idempotente: Fact_CaptacionBuyer
     -- Mapeo de sede: zona de residencia homologada a Sede (1=Centro, 2=California, 3=El Golf).
     -- Deduplicación de etapas para evitar producto cartesiano (fan-out).
+    -- Reconciliación de agregados obsoletos por ámbito de fecha.
     -- ----------------------------------------------------------------
     ;WITH EventosEtapa2Unico AS (
         SELECT id_persona, MIN(fecha_hora) AS fecha_hora_etapa2
@@ -445,8 +466,11 @@ BEGIN TRY
             ISNULL(dc.KeyCanal, 0),
             ISNULL(df.KeyFuente, 0),
             ISNULL(der.KeyEstadoRegistro, 0)
+    ),
+    BuyerScope AS (
+        SELECT * FROM [NexoSalud_Mart].dbo.[Fact_CaptacionBuyer]
     )
-    MERGE [NexoSalud_Mart].dbo.[Fact_CaptacionBuyer] AS fact
+    MERGE BuyerScope AS fact
     USING BuyerSource AS src
     ON fact.KeyTiempo = src.KeyTiempo 
        AND fact.KeySede = src.KeySede
@@ -459,15 +483,17 @@ BEGIN TRY
             fact.ContactosUtilizables = src.ContactosUtilizables,
             fact.ConversionesALead = src.ConversionesALead,
             fact.TiempoConversionDias = src.TiempoConversionDias
-    WHEN NOT MATCHED THEN
+    WHEN NOT MATCHED BY TARGET THEN
         INSERT (KeyTiempo, KeySede, KeyCanal, KeyFuente, KeyEstadoRegistro, ContactosRegistrados, ContactosUtilizables, ConversionesALead, TiempoConversionDias)
-        VALUES (src.KeyTiempo, src.KeySede, src.KeyCanal, src.KeyFuente, src.KeyEstadoRegistro, src.ContactosRegistrados, src.ContactosUtilizables, src.ConversionesALead, src.TiempoConversionDias);
+        VALUES (src.KeyTiempo, src.KeySede, src.KeyCanal, src.KeyFuente, src.KeyEstadoRegistro, src.ContactosRegistrados, src.ContactosUtilizables, src.ConversionesALead, src.TiempoConversionDias)
+    WHEN NOT MATCHED BY SOURCE THEN
+        DELETE;
 
     SET @RowsBuyer = @@ROWCOUNT;
 
     -- ----------------------------------------------------------------
     -- 5.2 Carga Idempotente: Fact_NegociacionLead
-    -- Resolución de profesional y sede por turno/solicitud (no hardcodeada).
+    -- Resolución de profesional y sede por turno/solicitud.
     -- Deduplicación de múltiples solicitudes por lead.
     -- ----------------------------------------------------------------
     ;WITH LeadEvents AS (
@@ -531,8 +557,11 @@ BEGIN TRY
             dserv.KeyServicio,
             dp.KeyProfesional,
             dn.KeyNegociador
+    ),
+    LeadScope AS (
+        SELECT * FROM [NexoSalud_Mart].dbo.[Fact_NegociacionLead]
     )
-    MERGE [NexoSalud_Mart].dbo.[Fact_NegociacionLead] AS fact
+    MERGE LeadScope AS fact
     USING LeadSource AS src
     ON fact.KeyTiempo = src.KeyTiempo 
        AND fact.KeySede = src.KeySede 
@@ -548,15 +577,18 @@ BEGIN TRY
             fact.LeadsRequierenRespuesta = src.LeadsRequierenRespuesta,
             fact.LeadsRespuestaUtil15Min = src.LeadsRespuestaUtil15Min,
             fact.LeadsResultadoFinal = src.LeadsResultadoFinal
-    WHEN NOT MATCHED THEN
+    WHEN NOT MATCHED BY TARGET THEN
         INSERT (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyNegociador, LeadsCohorteEvaluable, LeadsConvertidosPayer14Dias, LeadsEnNegociacion, LeadsAbandonados, LeadsRequierenRespuesta, LeadsRespuestaUtil15Min, LeadsResultadoFinal)
-        VALUES (src.KeyTiempo, src.KeySede, src.KeyServicio, src.KeyProfesional, src.KeyNegociador, src.LeadsCohorteEvaluable, src.LeadsConvertidosPayer14Dias, src.LeadsEnNegociacion, src.LeadsAbandonados, src.LeadsRequierenRespuesta, src.LeadsRespuestaUtil15Min, src.LeadsResultadoFinal);
+        VALUES (src.KeyTiempo, src.KeySede, src.KeyServicio, src.KeyProfesional, src.KeyNegociador, src.LeadsCohorteEvaluable, src.LeadsConvertidosPayer14Dias, src.LeadsEnNegociacion, src.LeadsAbandonados, src.LeadsRequierenRespuesta, src.LeadsRespuestaUtil15Min, src.LeadsResultadoFinal)
+    WHEN NOT MATCHED BY SOURCE THEN
+        DELETE;
 
     SET @RowsLead = @@ROWCOUNT;
 
     -- ----------------------------------------------------------------
     -- 5.3 Carga Idempotente: Fact_GestionPayer
-    -- Sanitización de tiempos (sin minutos negativos) y resolución canónica de KeyCobro.
+    -- Granularidad extendida a Sede y Servicio para no mezclar cobros.
+    -- Sanitización de tiempos y eliminación de fantasmas obsoletos.
     -- ----------------------------------------------------------------
     ;WITH PayerSource AS (
         SELECT 
@@ -568,6 +600,8 @@ BEGIN TRY
                 WHEN p.estado IN ('Fallido', 'Rechazado', 'REJECTED') THEN 3
                 ELSE 0
             END AS KeyCobro,
+            ISNULL(ds.KeySede, 0) AS KeySede,
+            ISNULL(dserv.KeyServicio, 0) AS KeyServicio,
             COUNT(p.id_pago) AS PagosRegistrados,
             SUM(CASE WHEN p.estado IN ('Validado', 'VALIDADO', 'Confirmado', 'VALIDATED') THEN 1 ELSE 0 END) AS PagosValidados,
             SUM(CASE WHEN p.estado IN ('Rechazado', 'REJECTED', 'Fallido') THEN 1 ELSE 0 END) AS PagosRechazados,
@@ -578,7 +612,13 @@ BEGIN TRY
                 ELSE 0 
             END) AS TiempoTotalValidacionMin
         FROM [NexoSaludDB].dbo.[Pagos] p
+        LEFT JOIN [NexoSaludDB].dbo.[Reservas] r ON p.id_reserva = r.id_reserva
+        LEFT JOIN [NexoSaludDB].dbo.[Opciones] o ON r.id_opcion = o.id_opcion
+        LEFT JOIN [NexoSaludDB].dbo.[Disponibilidad] d ON o.id_disponibilidad = d.id_disponibilidad
+        LEFT JOIN [NexoSaludDB].dbo.[Solicitudes] sol ON r.id_solicitud = sol.id_solicitud
         LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Pasarela] dp ON dp.MetodoPago = p.canal_pago
+        LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Sede] ds ON ds.id_sede = d.id_sede
+        LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Servicio] dserv ON dserv.id_servicio = sol.id_servicio
         GROUP BY 
             CAST(FORMAT(p.fecha_registro, 'yyyyMMdd') AS INT),
             ISNULL(dp.KeyPasarela, 0),
@@ -587,13 +627,20 @@ BEGIN TRY
                 WHEN p.estado IN ('Pendiente', 'PENDING') THEN 2
                 WHEN p.estado IN ('Fallido', 'Rechazado', 'REJECTED') THEN 3
                 ELSE 0
-            END
+            END,
+            ISNULL(ds.KeySede, 0),
+            ISNULL(dserv.KeyServicio, 0)
+    ),
+    PayerScope AS (
+        SELECT * FROM [NexoSalud_Mart].dbo.[Fact_GestionPayer]
     )
-    MERGE [NexoSalud_Mart].dbo.[Fact_GestionPayer] AS fact
+    MERGE PayerScope AS fact
     USING PayerSource AS src
     ON fact.KeyTiempo = src.KeyTiempo 
        AND fact.KeyPasarela = src.KeyPasarela 
        AND fact.KeyCobro = src.KeyCobro
+       AND fact.KeySede = src.KeySede
+       AND fact.KeyServicio = src.KeyServicio
     WHEN MATCHED THEN
         UPDATE SET 
             fact.PagosRegistrados = src.PagosRegistrados,
@@ -601,15 +648,17 @@ BEGIN TRY
             fact.PagosRechazados = src.PagosRechazados,
             fact.ImporteTotalCobro = src.ImporteTotalCobro,
             fact.TiempoTotalValidacionMin = src.TiempoTotalValidacionMin
-    WHEN NOT MATCHED THEN
-        INSERT (KeyTiempo, KeyPasarela, KeyCobro, PagosRegistrados, PagosValidados, PagosRechazados, ImporteTotalCobro, TiempoTotalValidacionMin)
-        VALUES (src.KeyTiempo, src.KeyPasarela, src.KeyCobro, src.PagosRegistrados, src.PagosValidados, src.PagosRechazados, src.ImporteTotalCobro, src.TiempoTotalValidacionMin);
+    WHEN NOT MATCHED BY TARGET THEN
+        INSERT (KeyTiempo, KeyPasarela, KeyCobro, KeySede, KeyServicio, PagosRegistrados, PagosValidados, PagosRechazados, ImporteTotalCobro, TiempoTotalValidacionMin)
+        VALUES (src.KeyTiempo, src.KeyPasarela, src.KeyCobro, src.KeySede, src.KeyServicio, src.PagosRegistrados, src.PagosValidados, src.PagosRechazados, src.ImporteTotalCobro, src.TiempoTotalValidacionMin)
+    WHEN NOT MATCHED BY SOURCE THEN
+        DELETE;
 
     SET @RowsPayer = @@ROWCOUNT;
 
     -- ----------------------------------------------------------------
     -- 5.4 Carga Idempotente: Fact_AtencionCustomer
-    -- Captura atenciones realizadas y no-shows con verificación temporal y de acentos.
+    -- Captura atenciones realizadas y no-shows con verificación temporal.
     -- ----------------------------------------------------------------
     ;WITH CustomerSource AS (
         SELECT 
@@ -651,8 +700,11 @@ BEGIN TRY
                 WHEN a.asistencia LIKE '%Cancelad%' THEN 3
                 ELSE 0
             END
+    ),
+    CustomerScope AS (
+        SELECT * FROM [NexoSalud_Mart].dbo.[Fact_AtencionCustomer]
     )
-    MERGE [NexoSalud_Mart].dbo.[Fact_AtencionCustomer] AS fact
+    MERGE CustomerScope AS fact
     USING CustomerSource AS src
     ON fact.KeyTiempo = src.KeyTiempo 
        AND fact.KeySede = src.KeySede 
@@ -666,16 +718,17 @@ BEGIN TRY
             fact.CitasConInasistencia = src.CitasConInasistencia,
             fact.TiempoEnSillonDentalMin = src.TiempoEnSillonDentalMin,
             fact.AtencionesFinalizadasConformes = src.AtencionesFinalizadasConformes
-    WHEN NOT MATCHED THEN
+    WHEN NOT MATCHED BY TARGET THEN
         INSERT (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyEstadoAtencion, CitasEvaluables, AtencionesRealizadas, CitasConInasistencia, TiempoEnSillonDentalMin, AtencionesFinalizadasConformes)
-        VALUES (src.KeyTiempo, src.KeySede, src.KeyServicio, src.KeyProfesional, src.KeyEstadoAtencion, src.CitasEvaluables, src.AtencionesRealizadas, src.CitasConInasistencia, src.TiempoEnSillonDentalMin, src.AtencionesFinalizadasConformes);
+        VALUES (src.KeyTiempo, src.KeySede, src.KeyServicio, src.KeyProfesional, src.KeyEstadoAtencion, src.CitasEvaluables, src.AtencionesRealizadas, src.CitasConInasistencia, src.TiempoEnSillonDentalMin, src.AtencionesFinalizadasConformes)
+    WHEN NOT MATCHED BY SOURCE THEN
+        DELETE;
 
     SET @RowsCustomer = @@ROWCOUNT;
 
     -- ----------------------------------------------------------------
     -- 5.5 Carga Idempotente: Fact_SeguimientoTurned
-    -- Sustitución de 's.id_seguimiento % 3 = 0' por verificación real de retorno clínico a 90 días.
-    -- Transformación de INSERT ciego a MERGE idempotente.
+    -- Retorno clínico real: solo atenciones asistidas en los 90 días posteriores.
     -- ----------------------------------------------------------------
     IF OBJECT_ID('dbo.Fact_SeguimientoTurned', 'U') IS NULL
     BEGIN
@@ -721,15 +774,19 @@ BEGIN TRY
             WHERE a2.id_persona = s.id_persona 
               AND a2.fecha_atencion > s.fecha_hora 
               AND a2.fecha_atencion <= DATEADD(DAY, 90, s.fecha_hora)
+              AND a2.asistencia LIKE '%Asisti%' AND a2.asistencia NOT LIKE '%No%'
         ) ret90
         GROUP BY 
             CAST(FORMAT(s.fecha_hora, 'yyyyMMdd') AS INT),
-            ISNULL(ds.KeySede, 0),
-            ISNULL(dserv.KeyServicio, 0),
-            ISNULL(dp.KeyProfesional, 0),
-            ISNULL(dc.KeyCanal, 0)
+            ds.KeySede,
+            dserv.KeyServicio,
+            dp.KeyProfesional,
+            dc.KeyCanal
+    ),
+    TurnedScope AS (
+        SELECT * FROM [NexoSalud_Mart].dbo.[Fact_SeguimientoTurned]
     )
-    MERGE [NexoSalud_Mart].dbo.[Fact_SeguimientoTurned] AS fact
+    MERGE TurnedScope AS fact
     USING TurnedSource AS src
     ON fact.KeyTiempo = src.KeyTiempo
        AND fact.KeySede = src.KeySede
@@ -744,9 +801,11 @@ BEGIN TRY
             fact.IncidenciasResueltas24h = src.IncidenciasResueltas24h,
             fact.RetornosCohorte90Dias = src.RetornosCohorte90Dias,
             fact.PacientesElegiblesRetorno = src.PacientesElegiblesRetorno
-    WHEN NOT MATCHED THEN
+    WHEN NOT MATCHED BY TARGET THEN
         INSERT (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyCanal, SeguimientosRegistrados, SeguimientosEfectivos, IncidenciasReportadas, IncidenciasResueltas24h, RetornosCohorte90Dias, PacientesElegiblesRetorno)
-        VALUES (src.KeyTiempo, src.KeySede, src.KeyServicio, src.KeyProfesional, src.KeyCanal, src.SeguimientosRegistrados, src.SeguimientosEfectivos, src.IncidenciasReportadas, src.IncidenciasResueltas24h, src.RetornosCohorte90Dias, src.PacientesElegiblesRetorno);
+        VALUES (src.KeyTiempo, src.KeySede, src.KeyServicio, src.KeyProfesional, src.KeyCanal, src.SeguimientosRegistrados, src.SeguimientosEfectivos, src.IncidenciasReportadas, src.IncidenciasResueltas24h, src.RetornosCohorte90Dias, src.PacientesElegiblesRetorno)
+    WHEN NOT MATCHED BY SOURCE THEN
+        DELETE;
 
     SET @RowsTurned = @@ROWCOUNT;
 
@@ -756,23 +815,29 @@ BEGIN TRY
     DECLARE @DurationSeconds DECIMAL(10,2) = DATEDIFF(MILLISECOND, @StartTime, @EndTime) / 1000.0;
     DECLARE @TotalRows INT = @RowsBuyer + @RowsLead + @RowsPayer + @RowsCustomer + @RowsTurned;
 
+    -- Liberar candado exclusivo de sesión
+    EXEC sp_releaseapplock @Resource = 'ETL_NexoSalud_Lock', @LockOwner = 'Session';
+
     INSERT INTO dbo.Log_Ejecucion_ETL (BatchId, Procedimiento, TipoEvento, Mensaje, FilasAfectadas, DuracionSegundos, FechaRegistro)
     VALUES (
         @BatchId, 
         'ETL_Hechos_NexoSalud', 
         'EXITO', 
-        CONCAT(N'Carga completada exitosamente. Buyer: ', @RowsBuyer, N', Lead: ', @RowsLead, N', Payer: ', @RowsPayer, N', Customer: ', @RowsCustomer, N', Turned: ', @RowsTurned),
+        CONCAT(N'Carga certificada completada exitosamente. Buyer: ', @RowsBuyer, N', Lead: ', @RowsLead, N', Payer: ', @RowsPayer, N', Customer: ', @RowsCustomer, N', Turned: ', @RowsTurned),
         @TotalRows, 
         @DurationSeconds, 
         @EndTime
     );
 
-    PRINT CONCAT('>> ETL ejecutado con éxito en ', @DurationSeconds, ' segundos. Filas afectadas: ', @TotalRows);
+    PRINT CONCAT('>> ETL ejecutado y certificado con éxito en ', @DurationSeconds, ' segundos. Filas afectadas: ', @TotalRows);
 
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0
         ROLLBACK TRANSACTION;
+
+    -- Liberar candado ante fallo
+    EXEC sp_releaseapplock @Resource = 'ETL_NexoSalud_Lock', @LockOwner = 'Session';
 
     DECLARE @ErrorMsg NVARCHAR(MAX) = ERROR_MESSAGE();
     DECLARE @ErrorLine INT = ERROR_LINE();

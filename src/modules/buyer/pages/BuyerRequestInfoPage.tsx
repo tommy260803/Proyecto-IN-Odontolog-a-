@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertCircle,
+  ArrowRight,
   Check,
   Clock,
   Loader2,
@@ -40,6 +41,7 @@ import { SocialProofSection } from '../components/landing/SocialProofSection';
 import { SpecialtiesTechSection } from '../components/landing/SpecialtiesTechSection';
 import { StaffLoginModal } from '../components/landing/StaffLoginModal';
 import { InteractiveJourneyFlowSection } from '../components/landing/InteractiveJourneyFlowSection';
+import { InteractiveSmileSimulator } from '../components/landing/InteractiveSmileSimulator';
 import {
   REASON_CHIPS,
   TIME_SLOT_CHIPS,
@@ -67,9 +69,35 @@ const HERO_ITEM_VARIANTS = {
   },
 };
 
+const LIVE_NOTICES = [
+  'Sede California: 2 cupos para hoy con escáner 3D sin costo adicional',
+  'Mariana R. de Trujillo completó su diagnóstico preliminar hace 12 min',
+  'Sede El Golf: Turnos extendidos de 6:00 PM a 9:00 PM disponibles',
+  '99.4% de satisfacción en procedimientos sin dolor en Trujillo en 2026',
+];
+
 export default function BuyerRequestInfoPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const [liveNoticeIndex, setLiveNoticeIndex] = useState(0);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+
+  useEffect(() => {
+    const noticeInterval = setInterval(() => {
+      setLiveNoticeIndex((prev) => (prev + 1) % LIVE_NOTICES.length);
+    }, 4500);
+
+    const handleScroll = () => {
+      setShowStickyBar(window.scrollY > 480);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      clearInterval(noticeInterval);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   const [catalogs, setCatalogs] = useState<{
     servicios: any[];
@@ -610,9 +638,28 @@ export default function BuyerRequestInfoPage() {
           {/* Columna Izquierda: Copywriting médico empático y con autoridad */}
           <div className="lg:col-span-7 lg:pt-2 space-y-6">
             <motion.div variants={HERO_ITEM_VARIANTS} className="space-y-4">
-              <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-emerald-700/15 bg-[#ECFDF5] px-3.5 py-1 text-xs font-medium text-[#065F46]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#0F766E] animate-pulse" aria-hidden />
-                <span>Odontología de Especialidades · Trujillo</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-700/15 bg-[#ECFDF5] px-3.5 py-1 text-xs font-medium text-[#065F46]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#0F766E] animate-pulse" aria-hidden />
+                  <span>Odontología de Especialidades · Trujillo</span>
+                </div>
+
+                {/* Ticker dinámico en vivo con presencia de actividad real */}
+                <div className="inline-flex items-center gap-2 rounded-full border border-teal-200/80 bg-white/90 px-3 py-1 text-xs text-slate-700 shadow-2xs backdrop-blur-xs">
+                  <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={liveNoticeIndex}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-[11px] font-medium text-slate-700 truncate max-w-[280px] sm:max-w-md"
+                    >
+                      {LIVE_NOTICES[liveNoticeIndex]}
+                    </motion.span>
+                  </AnimatePresence>
+                </div>
               </div>
 
               <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:text-[44px] lg:leading-[1.12]">
@@ -624,6 +671,11 @@ export default function BuyerRequestInfoPage() {
                 entiendas cada paso de tu tratamiento desde la primera evaluación, con presupuestos claros y
                 horarios que se respetan.
               </p>
+            </motion.div>
+
+            {/* Simulador Interactivo de Sonrisa 3D (Antes vs Después con control táctil) */}
+            <motion.div variants={HERO_ITEM_VARIANTS}>
+              <InteractiveSmileSimulator onSelectTreatment={handleSelectTreatmentAndBook} />
             </motion.div>
 
             {/* Pilares clínicos de empatía y certidumbre */}
@@ -1008,6 +1060,41 @@ export default function BuyerRequestInfoPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Barra Flotante Interactiva de Captación al hacer Scroll (Persuasiva y no invasiva) */}
+      <AnimatePresence>
+        {showStickyBar && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+            className="fixed bottom-4 inset-x-4 max-w-lg mx-auto z-40 rounded-2xl border border-teal-200/90 bg-white/95 p-3 shadow-[0_15px_35px_-10px_rgba(15,23,42,0.2)] backdrop-blur-md flex items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#ECFDF5] text-[#0F766E] border border-teal-100">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-900 truncate">
+                  Evaluador de Sonrisa 3D
+                </p>
+                <p className="text-[11px] text-slate-500 truncate">
+                  Diagnóstico preliminar en 40s · Escáner 3D inicial sin costo
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => scrollToSection('agendar-cita')}
+              className="shrink-0 h-9 px-3.5 rounded-xl bg-[#0F766E] text-xs font-semibold text-white hover:bg-[#115E59] active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <span>Evaluar</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Toaster />
     </div>

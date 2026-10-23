@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import confetti from 'canvas-confetti';
 import {
   AlertCircle,
   ArrowLeft,
@@ -22,6 +23,7 @@ import {
   MapPin,
   Phone,
   RotateCw,
+  ScanLine,
   ShieldCheck,
   Sparkles,
   Stethoscope,
@@ -30,7 +32,6 @@ import {
 import type { PatientSession } from '@/shared/services/patientAuthService';
 import {
   CLINIC_LOCATIONS,
-  REASON_CHIPS,
   TIME_SLOT_CHIPS,
   normalizeBranchKey,
   type ReasonChipOption,
@@ -117,7 +118,7 @@ export interface HeroIntakeWidgetProps {
 
 const SLIDE_VARIANTS = {
   enter: (direction: number) => ({
-    x: direction > 0 ? 28 : -28,
+    x: direction > 0 ? 32 : -32,
     opacity: 0,
   }),
   center: {
@@ -125,25 +126,27 @@ const SLIDE_VARIANTS = {
     opacity: 1,
   },
   exit: (direction: number) => ({
-    x: direction > 0 ? -28 : 28,
+    x: direction > 0 ? -32 : 32,
     opacity: 0,
   }),
 };
 
-// Opciones interactivas del Evaluador de Sonrisa (Paso 1)
+// Opciones enriquecidas del Evaluador de Sonrisa (Paso 1)
 const SMILE_GOALS = [
   {
     id: 'ortodoncia' as const,
     title: 'Alinear mis dientes y mordida',
-    desc: 'Alineadores invisibles o brackets estéticos sin dolor.',
+    desc: 'Alineadores invisibles o brackets estéticos de baja fricción.',
     tag: 'Ortodoncia Digital',
+    proofMetric: '99.2% confort',
     icon: Sparkles,
   },
   {
     id: 'estetica' as const,
-    title: 'Diseño de sonrisa y blanqueamiento',
-    desc: 'Carillas cerámicas, estética mínimamente invasiva o aclaramiento LED.',
+    title: 'Diseño de sonrisa & blanqueamiento',
+    desc: 'Carillas cerámicas ultradelgadas o aclaramiento dental LED.',
     tag: 'Alta Estética',
+    proofMetric: 'Hasta 4 tonos más blanco',
     icon: Zap,
   },
   {
@@ -151,13 +154,15 @@ const SMILE_GOALS = [
     title: 'Recuperar pieza o molar perdido',
     desc: 'Implantes de titanio guiados por tomografía 3D o coronas fijas.',
     tag: 'Rehabilitación 3D',
+    proofMetric: 'Cirugía guiada 0 cortes',
     icon: ShieldCheck,
   },
   {
     id: 'limpieza_dolor' as const,
     title: 'Chequeo preventivo o molestia',
-    desc: 'Escaneo 3D, profilaxis ultrasónica o alivio rápido de dolor.',
-    tag: 'Prevención y Alivio',
+    desc: 'Escaneo 3D con cámara HD, profilaxis o alivio rápido de dolor.',
+    tag: 'Prevención & Alivio',
+    proofMetric: 'Cero dolor reportado',
     icon: Stethoscope,
   },
 ];
@@ -167,8 +172,9 @@ const PRIORITIES = [
   {
     id: 'sin_dolor' as const,
     title: 'Atención 100% sin dolor ni estrés',
-    desc: 'Protocolo con anestesia suave computarizada y acompañamiento empático.',
+    desc: 'Protocolo de anestesia computarizada suave y acompañamiento empático.',
     badge: 'Confort Clínico',
+    activatedNote: 'Protocolo sin dolor y kit relajante activados.',
     icon: HeartPulse,
   },
   {
@@ -176,13 +182,15 @@ const PRIORITIES = [
     title: 'Horarios flexibles por trabajo o estudio',
     desc: 'Turnos extendidos tarde/noche y sábados continuos sin tiempos muertos.',
     badge: 'Puntualidad 0 esperas',
+    activatedNote: 'Filtrando turnos de 6 a 9 PM y sábados.',
     icon: Clock,
   },
   {
     id: 'presupuesto' as const,
     title: 'Presupuesto transparente y facilidades',
-    desc: 'Diagnóstico en pantalla, cuotas sin intereses y convenios institucionales.',
+    desc: 'Diagnóstico en pantalla, cuotas sin intereses y convenios educativos.',
     badge: 'Financiamiento directo',
+    activatedNote: 'Acceso a cuotas sin intereses y convenios.',
     icon: Briefcase,
   },
 ];
@@ -193,16 +201,19 @@ const SEDE_CARDS = [
     name: 'Sede California',
     reference: 'Av. Larco / California',
     benefit: 'Estacionamiento privado · Atención integral',
+    tag: '2 cupos hoy',
   },
   {
     name: 'Sede El Golf',
     reference: 'Av. El Golf',
     benefit: 'Ambiente médico exclusivo · Tomografía 3D',
+    tag: 'Tomógrafo CBCT in-house',
   },
   {
     name: 'Sede Centro Histórico',
     reference: 'Jr. Pizarro / Cerca a Plaza Mayor',
     benefit: 'Acceso céntrico rápido · Historia en red',
+    tag: 'Acceso céntrico',
   },
 ];
 
@@ -276,9 +287,7 @@ export function HeroIntakeWidget({
   // Estados interactivos para perfil lúdico de bajo compromiso
   const [selectedPriority, setSelectedPriority] = useState<'sin_dolor' | 'horarios' | 'presupuesto'>('sin_dolor');
   const [leadOccupation, setLeadOccupation] = useState<'estudiante' | 'trabajador' | 'independiente' | 'flexible' | ''>('');
-  const [leadUrgency, setLeadUrgency] = useState<'preventiva' | 'molestia' | 'estetica' | 'urgencia' | ''>('');
-  const [leadProfileSaved, setLeadProfileSaved] = useState(false);
-  const [isSavingLeadProfile, setIsSavingLeadProfile] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const availableSedes: Array<{ name: string; subtitle: string }> =
     catalogs.sedes && catalogs.sedes.length > 0
@@ -320,8 +329,27 @@ export function HeroIntakeWidget({
   const handleSelectSede = (sedeName: string) => {
     setSede(sedeName);
     if (errors.sede) setErrors((prev) => ({ ...prev, sede: '' }));
-    setDirection(1);
-    setStep(4);
+
+    // Simulación diagnóstica ultra persuasiva de 1.1s
+    setIsAnalyzing(true);
+    setTimeout(() => {
+      setIsAnalyzing(false);
+      setDirection(1);
+      setStep(4);
+
+      // Disparo de celebración sutil con confetti
+      try {
+        confetti({
+          particleCount: 40,
+          spread: 60,
+          origin: { y: 0.65 },
+          colors: ['#0F766E', '#065F46', '#2DD4BF', '#F59E0B'],
+          disableForReducedMotion: true,
+        });
+      } catch (err) {
+        // Safe fallback
+      }
+    }, 1100);
   };
 
   const handleGoBack = () => {
@@ -461,13 +489,6 @@ export function HeroIntakeWidget({
   // CÁLCULO DE PROGRESO Y TEXTO DE CABECERA
   const stepProgress = portalMode === 'new' ? (step / 4) * 100 : 100;
 
-  const stepSubtitles = [
-    '¿Qué te gustaría transformar o cuidar en tu sonrisa?',
-    '¿Cuál es tu mayor prioridad para tu atención?',
-    '¿En qué sede de Trujillo te queda más cómodo?',
-    'Tenemos opciones listas para ti en Trujillo',
-  ];
-
   return (
     <motion.div
       key={`widget-highlight-${highlightTrigger}`}
@@ -517,7 +538,7 @@ export function HeroIntakeWidget({
       <div className="border-b border-slate-100 px-5 pt-5 pb-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            {portalMode === 'new' && step > 1 && (
+            {portalMode === 'new' && step > 1 && !isAnalyzing && (
               <button
                 type="button"
                 onClick={handleGoBack}
@@ -621,7 +642,39 @@ export function HeroIntakeWidget({
 
       {/* Cuerpo del Evaluador Interactivo */}
       <div className="px-5 py-5 sm:px-6">
-        {portalMode === 'new' ? (
+        {/* INTERMEDIO: Animación de Diagnóstico y Asignación Clínica (1.1s) */}
+        {isAnalyzing ? (
+          <div className="py-8 flex flex-col items-center justify-center text-center space-y-4">
+            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-50 border border-teal-200">
+              <ScanLine className="h-8 w-8 text-[#0F766E] animate-pulse" />
+              <div className="absolute -inset-1 rounded-2xl border border-teal-400/40 animate-ping" />
+            </div>
+
+            <div className="space-y-1.5 max-w-xs">
+              <h3 className="text-sm font-bold text-slate-900">
+                Calculando propuesta clínica personalizada…
+              </h3>
+              <p className="text-xs text-slate-500">
+                Asignando especialista con RNE y escaneo 3D en <strong className="text-slate-800">{sede}</strong>.
+              </p>
+            </div>
+
+            <div className="w-full max-w-xs space-y-1.5 text-left text-[11px] text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
+                <Check className="h-3 w-3 stroke-[3]" />
+                <span>Objetivo: {selectedGoalObj.tag}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
+                <Check className="h-3 w-3 stroke-[3]" />
+                <span>Prioridad: {selectedPriorityObj.badge}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
+                <Check className="h-3 w-3 stroke-[3]" />
+                <span>Cortesía Web Activa: Escaneo 3D sin costo (S/ 0)</span>
+              </div>
+            </div>
+          </div>
+        ) : portalMode === 'new' ? (
           <form onSubmit={handleFormSubmit} noValidate>
             <AnimatePresence mode="wait" custom={direction}>
               {/* PASO 1: Objetivo de Sonrisa (Lúdico y de bajo compromiso) */}
@@ -677,6 +730,9 @@ export function HeroIntakeWidget({
                             <p className="mt-1 text-[11px] text-slate-500 leading-relaxed">
                               {goal.desc}
                             </p>
+                            <span className="mt-1.5 inline-block text-[10px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                              {goal.proofMetric}
+                            </span>
                           </div>
                         </button>
                       );
@@ -751,6 +807,9 @@ export function HeroIntakeWidget({
                               <p className="mt-0.5 text-[11px] text-slate-500 leading-relaxed">
                                 {item.desc}
                               </p>
+                              <span className="mt-1 inline-block text-[10px] text-emerald-800 font-medium">
+                                {item.activatedNote}
+                              </span>
                             </div>
                           </div>
                           <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-[#0F766E] transition-colors" />
@@ -815,9 +874,14 @@ export function HeroIntakeWidget({
                               <MapPin className="h-4 w-4" />
                             </span>
                             <div className="min-w-0">
-                              <h3 className="text-xs font-semibold text-slate-900">
-                                {branch.name}
-                              </h3>
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-xs font-semibold text-slate-900">
+                                  {branch.name}
+                                </h3>
+                                <span className="text-[10px] font-semibold text-teal-800 bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200/50">
+                                  {branch.tag}
+                                </span>
+                              </div>
                               <p className="mt-0.5 text-[11px] text-slate-600 font-medium">
                                 {branch.reference}
                               </p>
@@ -848,7 +912,7 @@ export function HeroIntakeWidget({
                       <ArrowLeft className="h-3 w-3" />
                       <span>Volver al paso anterior</span>
                     </button>
-                    <span className="text-[#0F766E] font-medium">Último paso a continuación</span>
+                    <span className="text-[#0F766E] font-medium">Calculando propuesta a continuación</span>
                   </div>
                 </motion.div>
               )}
@@ -865,29 +929,43 @@ export function HeroIntakeWidget({
                   transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                   className="space-y-4"
                 >
-                  {/* Tarjeta de Diagnóstico Preliminar Personalizado */}
-                  <div className="rounded-xl border border-teal-200/90 bg-teal-50/70 p-3.5 text-left">
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className="inline-flex items-center gap-1 rounded bg-teal-100/90 px-2 py-0.5 text-[10px] font-bold text-teal-900">
+                  {/* Tarjeta VIP de Diagnóstico Preliminar Personalizado */}
+                  <div className="rounded-xl border border-teal-200/90 bg-gradient-to-br from-teal-50/90 via-emerald-50/40 to-teal-50/80 p-3.5 text-left shadow-xs">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-teal-100/90 px-2.5 py-0.5 text-[10px] font-bold text-teal-900 border border-teal-200">
                         <Sparkles className="h-3 w-3 text-teal-700" />
-                        Propuesta Inicial Configurada
+                        Diagnóstico 3D Configurado
                       </span>
-                      <span className="text-[10px] font-mono text-teal-800 font-semibold">
+                      <span className="text-[10px] font-mono text-teal-800 font-semibold bg-white/80 px-2 py-0.5 rounded border border-teal-200/60">
                         {sede || 'Sede Trujillo'}
                       </span>
                     </div>
 
-                    <div className="text-xs font-semibold text-slate-900">
-                      {selectedGoalObj.title}
+                    <div className="flex items-baseline justify-between gap-2">
+                      <h3 className="text-xs font-bold text-slate-900">
+                        {selectedGoalObj.title}
+                      </h3>
+                      {/* Price stacking persuasivo */}
+                      <div className="text-right shrink-0">
+                        <span className="text-[10px] text-slate-400 line-through mr-1 font-mono">
+                          S/ 120
+                        </span>
+                        <span className="text-xs font-bold text-emerald-700 font-mono">
+                          S/ 0 (Web)
+                        </span>
+                      </div>
                     </div>
 
                     <p className="mt-1 text-[11px] text-teal-900 leading-relaxed">
-                      Asignamos nuestro protocolo de <strong>{selectedPriorityObj.title.toLowerCase()}</strong> para tu cita inicial con escáner 3D.
+                      Asignamos nuestro protocolo de <strong>{selectedPriorityObj.title.toLowerCase()}</strong> con escáner 3D y simulación en pantalla.
                     </p>
 
-                    <div className="mt-2.5 flex items-center gap-2 border-t border-teal-200/60 pt-2 text-[10.5px] text-teal-800">
-                      <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-teal-700" />
-                      <span>Más de 1,200 evaluaciones similares realizadas con 99.4% de satisfacción.</span>
+                    <div className="mt-2.5 flex items-center justify-between border-t border-teal-200/60 pt-2 text-[10.5px] text-teal-800">
+                      <span className="flex items-center gap-1">
+                        <ShieldCheck className="h-3.5 w-3.5 text-teal-700" />
+                        <span>Especialista con RNE asignado</span>
+                      </span>
+                      <span className="font-semibold text-emerald-800">Cupo activo</span>
                     </div>
                   </div>
 
