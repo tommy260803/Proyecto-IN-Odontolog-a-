@@ -94,10 +94,8 @@ async function withComparison(
   measure: string | undefined,
   period: { current: PeriodRange; previous: PeriodRange | null }
 ): Promise<ExecutiveReportData> {
-  const [current, previous] = await Promise.all([
-    builder(measure, period.current),
-    period.previous ? builder(measure, period.previous) : Promise.resolve(null),
-  ]);
+  const current = await builder(measure, period.current);
+  const previous = period.previous ? await builder(measure, period.previous) : null;
   return {
     ...current,
     comparison:
@@ -347,38 +345,347 @@ router.get('/periods', async (_req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/reports/buyer/kpis ──────────────────────────────────────────────
+// KPIs oficiales de la fase BUYER: B1 (Conversión 14d), B2 (% Utilizables), B3 (CPL)
+export async function getBuyerKpisData(periodQuery?: unknown) {
+  const period = resolvePeriod(periodQuery);
+  const currentRange = period.current;
+  const previousRange = period.previous;
+
+  const currentWhere = currentRange.from !== undefined && currentRange.to !== undefined
+    ? `WHERE f.KeyTiempoCaptacion BETWEEN ${currentRange.from} AND ${currentRange.to}`
+    : '';
+
+  const prevWhere = previousRange && previousRange.from !== undefined && previousRange.to !== undefined
+    ? `WHERE f.KeyTiempoCaptacion BETWEEN ${previousRange.from} AND ${previousRange.to}`
+    : '';
+
+  // 1. Métricas agregadas período actual
+  const [currTotals] = await queryMart<{
+    total_registrados: number;
+    total_utilizables: number;
+    conv_utilizables_14d: number;
+    total_conversiones: number;
+    total_costo: number;
+    avg_tiempo_dias: number;
+  }>(`
+    SELECT 
+      ISNULL(SUM(f.contacto_registrado), 0) AS total_registrados,
+      ISNULL(SUM(f.contacto_utilizable), 0) AS total_utilizables,
+      ISNULL(SUM(CASE WHEN f.contacto_utilizable = 1 AND f.conversion_lead = 1 AND f.tiempo_conversion_dia <= 14 THEN 1 ELSE 0 END), 0) AS conv_utilizables_14d,
+      ISNULL(SUM(f.conversion_lead), 0) AS total_conversiones,
+      ISNULL(SUM(f.costo_atribuido_captacion), 0) AS total_costo,
+      ISNULL(ROUND(AVG(CAST(CASE WHEN f.conversion_lead = 1 THEN f.tiempo_conversion_dia END AS FLOAT)), 1), 0) AS avg_tiempo_dias
+    FROM Fact_OportunidadCaptacion f
+    ${currentWhere}
+  `);
+
+  // 2. Métricas período anterior
+  let prevTotals: typeof currTotals | null = null;
+  if (prevWhere) {
+    const [prev] = await queryMart<typeof currTotals>(`
+      SELECT 
+        ISNULL(SUM(f.contacto_registrado), 0) AS total_registrados,
+        ISNULL(SUM(f.contacto_utilizable), 0) AS total_utilizables,
+        ISNULL(SUM(CASE WHEN f.contacto_utilizable = 1 AND f.conversion_lead = 1 AND f.tiempo_conversion_dia <= 14 THEN 1 ELSE 0 END), 0) AS conv_utilizables_14d,
+        ISNULL(SUM(f.conversion_lead), 0) AS total_conversiones,
+        ISNULL(SUM(f.costo_atribuido_captacion), 0) AS total_costo,
+        ISNULL(ROUND(AVG(CAST(CASE WHEN f.conversion_lead = 1 THEN f.tiempo_conversion_dia END AS FLOAT)), 1), 0) AS avg_tiempo_dias
+      FROM Fact_OportunidadCaptacion f
+      ${prevWhere}
+    `);
+    prevTotals = prev;
+  }
+
+  // 3. Desgloses analíticos
+  const byChannel = await queryMart<{
+    name: string;
+    total: number;
+    utilizables: number;
+    conversiones: number;
+    conv_14d: number;
+    cost: number;
+  }>(`
+    SELECT 
+      ISNULL(c.NombreCanal, 'Canal Desconocido') AS name,
+      SUM(f.contacto_registrado) AS total,
+      SUM(f.contacto_utilizable) AS utilizables,
+      SUM(f.conversion_lead) AS conversiones,
+      SUM(CASE WHEN f.contacto_utilizable = 1 AND f.conversion_lead = 1 AND f.tiempo_conversion_dia <= 14 THEN 1 ELSE 0 END) AS conv_14d,
+      SUM(f.costo_atribuido_captacion) AS cost
+    FROM Fact_OportunidadCaptacion f
+    LEFT JOIN Dim_Canal c ON f.KeyCanal = c.KeyCanal
+    ${currentWhere}
+    GROUP BY c.NombreCanal
+    ORDER BY total DESC
+  `);
+
+  const bySource = await queryMart<{
+    name: string;
+    total: number;
+    utilizables: number;
+    conversiones: number;
+    conv_14d: number;
+    cost: number;
+  }>(`
+    SELECT 
+      ISNULL(fu.Campana, ISNULL(fu.TipoOrigen, 'Fuente Desconocida')) AS name,
+      SUM(f.contacto_registrado) AS total,
+      SUM(f.contacto_utilizable) AS utilizables,
+      SUM(f.conversion_lead) AS conversiones,
+      SUM(CASE WHEN f.contacto_utilizable = 1 AND f.conversion_lead = 1 AND f.tiempo_conversion_dia <= 14 THEN 1 ELSE 0 END) AS conv_14d,
+      SUM(f.costo_atribuido_captacion) AS cost
+    FROM Fact_OportunidadCaptacion f
+    LEFT JOIN Dim_Fuente fu ON f.KeyFuente = fu.KeyFuente
+    ${currentWhere}
+    GROUP BY fu.Campana, fu.TipoOrigen
+    ORDER BY total DESC
+  `);
+
+  const bySede = await queryMart<{
+    name: string;
+    total: number;
+    utilizables: number;
+    conversiones: number;
+    conv_14d: number;
+    cost: number;
+  }>(`
+    SELECT 
+      ISNULL(s.Sede, 'Sede Principal') AS name,
+      SUM(f.contacto_registrado) AS total,
+      SUM(f.contacto_utilizable) AS utilizables,
+      SUM(f.conversion_lead) AS conversiones,
+      SUM(CASE WHEN f.contacto_utilizable = 1 AND f.conversion_lead = 1 AND f.tiempo_conversion_dia <= 14 THEN 1 ELSE 0 END) AS conv_14d,
+      SUM(f.costo_atribuido_captacion) AS cost
+    FROM Fact_OportunidadCaptacion f
+    LEFT JOIN Dim_Sede s ON f.KeySede = s.KeySede
+    ${currentWhere}
+    GROUP BY s.Sede
+    ORDER BY total DESC
+  `);
+
+  // Cálculos de KPI B1, B2, B3
+  const b1Current = currTotals.total_utilizables > 0
+    ? Math.round((currTotals.conv_utilizables_14d / currTotals.total_utilizables) * 10000) / 100
+    : 0;
+  const b1Prev = prevTotals && prevTotals.total_utilizables > 0
+    ? Math.round((prevTotals.conv_utilizables_14d / prevTotals.total_utilizables) * 10000) / 100
+    : null;
+  const b1Delta = b1Prev !== null ? Math.round((b1Current - b1Prev) * 100) / 100 : null;
+  const b1Status: 'optimo' | 'alerta' | 'critico' = b1Current >= 30 ? 'optimo' : (b1Current >= 20 ? 'alerta' : 'critico');
+
+  const b2Current = currTotals.total_registrados > 0
+    ? Math.round((currTotals.total_utilizables / currTotals.total_registrados) * 10000) / 100
+    : 0;
+  const b2Prev = prevTotals && prevTotals.total_registrados > 0
+    ? Math.round((prevTotals.total_utilizables / prevTotals.total_registrados) * 10000) / 100
+    : null;
+  const b2Delta = b2Prev !== null ? Math.round((b2Current - b2Prev) * 100) / 100 : null;
+  const b2Status: 'optimo' | 'alerta' | 'critico' = b2Current >= 85 ? 'optimo' : (b2Current >= 70 ? 'alerta' : 'critico');
+
+  const b3Current = currTotals.total_conversiones > 0
+    ? Math.round((Number(currTotals.total_costo) / currTotals.total_conversiones) * 100) / 100
+    : 0;
+  const b3Prev = prevTotals && prevTotals.total_conversiones > 0
+    ? Math.round((Number(prevTotals.total_costo) / prevTotals.total_conversiones) * 100) / 100
+    : null;
+  const b3Delta = b3Prev !== null ? Math.round((b3Current - b3Prev) * 100) / 100 : null;
+  const b3Status: 'optimo' | 'alerta' | 'critico' = b3Current <= 45 ? 'optimo' : (b3Current <= 65 ? 'alerta' : 'critico');
+
+  return {
+    period: currentRange.label,
+    periodKey: currentRange.key,
+    generatedAt: new Date().toISOString(),
+    sourceMart: 'NexoSalud_Mart.Fact_OportunidadCaptacion',
+    summary: {
+      totalRegistrados: Number(currTotals.total_registrados),
+      totalUtilizables: Number(currTotals.total_utilizables),
+      totalConversiones: Number(currTotals.total_conversiones),
+      totalCostoAtribuido: Number(currTotals.total_costo),
+      promedioTiempoConversionDias: Number(currTotals.avg_tiempo_dias),
+    },
+    kpis: {
+      b1: {
+        code: 'B1',
+        name: 'Tasa de Conversión a LEAD en ≤ 14 días',
+        currentValue: b1Current,
+        formattedValue: `${b1Current.toFixed(1)}%`,
+        target: 30.0,
+        targetLabel: '≥ 30.0%',
+        status: b1Status,
+        unit: '%',
+        formula: 'Contactos utilizables convertidos a LEAD en ≤ 14 días / Total de contactos utilizables × 100',
+        description: 'Mide la eficiencia de la captación en transformar oportunidades utilizables en prospectos reales con intención asistencial dentro de la ventana de oportunidad.',
+        numerator: Number(currTotals.conv_utilizables_14d),
+        numeratorLabel: 'Conversiones a LEAD en ≤ 14 días',
+        denominator: Number(currTotals.total_utilizables),
+        denominatorLabel: 'Contactos Utilizables',
+        trend: b1Delta === null ? null : (b1Delta > 0 ? 'up' : (b1Delta < 0 ? 'down' : 'stable')),
+        delta: b1Delta,
+        previousValue: b1Prev,
+        breakdown: {
+          byChannel: byChannel.map(c => ({
+            name: c.name,
+            total: Number(c.total),
+            utilizables: Number(c.utilizables),
+            conversiones: Number(c.conversiones),
+            rate: Number(c.utilizables) > 0 ? Math.round((Number(c.conv_14d) / Number(c.utilizables)) * 1000) / 10 : 0,
+            cost: Number(c.cost)
+          })),
+          bySource: bySource.map(s => ({
+            name: s.name,
+            total: Number(s.total),
+            utilizables: Number(s.utilizables),
+            conversiones: Number(s.conversiones),
+            rate: Number(s.utilizables) > 0 ? Math.round((Number(s.conv_14d) / Number(s.utilizables)) * 1000) / 10 : 0,
+            cost: Number(s.cost)
+          })),
+          bySede: bySede.map(sd => ({
+            name: sd.name,
+            total: Number(sd.total),
+            utilizables: Number(sd.utilizables),
+            conversiones: Number(sd.conversiones),
+            rate: Number(sd.utilizables) > 0 ? Math.round((Number(sd.conv_14d) / Number(sd.utilizables)) * 1000) / 10 : 0,
+            cost: Number(sd.cost)
+          }))
+        }
+      },
+      b2: {
+        code: 'B2',
+        name: 'Porcentaje de Contactos Utilizables',
+        currentValue: b2Current,
+        formattedValue: `${b2Current.toFixed(1)}%`,
+        target: 85.0,
+        targetLabel: '≥ 85.0%',
+        status: b2Status,
+        unit: '%',
+        formula: 'Contactos utilizables (calidad válida + consentimiento Ley 29733 + teléfono ≥ 9 dígitos) / Total de contactos registrados × 100',
+        description: 'Mide la calidad de la captación y el cumplimiento normativo legal de protección de datos personales antes de derivar al embudo de ventas.',
+        numerator: Number(currTotals.total_utilizables),
+        numeratorLabel: 'Contactos Utilizables',
+        denominator: Number(currTotals.total_registrados),
+        denominatorLabel: 'Contactos Registrados',
+        trend: b2Delta === null ? null : (b2Delta > 0 ? 'up' : (b2Delta < 0 ? 'down' : 'stable')),
+        delta: b2Delta,
+        previousValue: b2Prev,
+        breakdown: {
+          byChannel: byChannel.map(c => ({
+            name: c.name,
+            total: Number(c.total),
+            utilizables: Number(c.utilizables),
+            conversiones: Number(c.conversiones),
+            rate: Number(c.total) > 0 ? Math.round((Number(c.utilizables) / Number(c.total)) * 1000) / 10 : 0,
+            cost: Number(c.cost)
+          })),
+          bySource: bySource.map(s => ({
+            name: s.name,
+            total: Number(s.total),
+            utilizables: Number(s.utilizables),
+            conversiones: Number(s.conversiones),
+            rate: Number(s.total) > 0 ? Math.round((Number(s.utilizables) / Number(s.total)) * 1000) / 10 : 0,
+            cost: Number(s.cost)
+          })),
+          bySede: bySede.map(sd => ({
+            name: sd.name,
+            total: Number(sd.total),
+            utilizables: Number(sd.utilizables),
+            conversiones: Number(sd.conversiones),
+            rate: Number(sd.total) > 0 ? Math.round((Number(sd.utilizables) / Number(sd.total)) * 1000) / 10 : 0,
+            cost: Number(sd.cost)
+          }))
+        }
+      },
+      b3: {
+        code: 'B3',
+        name: 'Costo por LEAD Atribuible (CPL)',
+        currentValue: b3Current,
+        formattedValue: `S/. ${b3Current.toFixed(2)}`,
+        target: 45.0,
+        targetLabel: '≤ S/. 45.00',
+        status: b3Status,
+        unit: 'PEN',
+        formula: 'Gasto total de captación atribuido a la cohorte / Conversiones totales a LEAD',
+        description: 'Mide la rentabilidad del marketing de captación, prorrateando el gasto publicitario de campañas entre los leads efectivamente transferidos a negociación.',
+        numerator: Number(currTotals.total_costo),
+        numeratorLabel: 'Gasto de Captación Atribuido (S/.)',
+        denominator: Number(currTotals.total_conversiones),
+        denominatorLabel: 'LEADs Convertidos',
+        trend: b3Delta === null ? null : (b3Delta < 0 ? 'up' : (b3Delta > 0 ? 'down' : 'stable')),
+        delta: b3Delta,
+        previousValue: b3Prev,
+        breakdown: {
+          byChannel: byChannel.map(c => ({
+            name: c.name,
+            total: Number(c.total),
+            utilizables: Number(c.utilizables),
+            conversiones: Number(c.conversiones),
+            rate: Number(c.conversiones) > 0 ? Math.round((Number(c.cost) / Number(c.conversiones)) * 100) / 100 : 0,
+            cost: Number(c.cost)
+          })),
+          bySource: bySource.map(s => ({
+            name: s.name,
+            total: Number(s.total),
+            utilizables: Number(s.utilizables),
+            conversiones: Number(s.conversiones),
+            rate: Number(s.conversiones) > 0 ? Math.round((Number(s.cost) / Number(s.conversiones)) * 100) / 100 : 0,
+            cost: Number(s.cost)
+          })),
+          bySede: bySede.map(sd => ({
+            name: sd.name,
+            total: Number(sd.total),
+            utilizables: Number(sd.utilizables),
+            conversiones: Number(sd.conversiones),
+            rate: Number(sd.conversiones) > 0 ? Math.round((Number(sd.cost) / Number(sd.conversiones)) * 100) / 100 : 0,
+            cost: Number(sd.cost)
+          }))
+        }
+      }
+    }
+  };
+}
+
+router.get('/buyer/kpis', async (req: Request, res: Response) => {
+  try {
+    const data = await getBuyerKpisData(req.query.period);
+    res.json(data);
+  } catch (error: any) {
+    console.error('Error en /api/reports/buyer/kpis:', error);
+    res.status(500).json({ error: 'Error al calcular KPIs oficiales de BUYER', details: error.message });
+  }
+});
+
 // ── BUILDER: BUYER MATRIX (DINÁMICO) ─────────────────────────────────────────
 async function getBuyerMatrix(measure: string = 'contacto_registrado', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
-  let measureSQL = 'SUM(fc.ContactosRegistrados)';
+  let measureSQL = 'SUM(fc.contacto_registrado)';
   let isCurrency = false;
   let metricTitle = 'contacto_registrado';
 
   switch (measure) {
     case 'contacto_utilizable':
     case 'contactos_utilizables':
-      measureSQL = 'SUM(fc.ContactosUtilizables)';
+      measureSQL = 'SUM(fc.contacto_utilizable)';
       metricTitle = 'contacto_utilizable';
       break;
     case 'conversion_lead':
     case 'conversiones_lead':
-      measureSQL = 'SUM(fc.ConversionesALead)';
+      measureSQL = 'SUM(fc.conversion_lead)';
       metricTitle = 'conversion_lead';
       break;
     case 'tiempo_conversion_dia':
     case 'tiempo_conversion':
-      measureSQL = 'ROUND(AVG(CAST(fc.TiempoConversionDias AS FLOAT)), 1)';
+      measureSQL = 'ROUND(AVG(CAST(fc.tiempo_conversion_dia AS FLOAT)), 1)';
       metricTitle = 'tiempo_conversion_dia';
       break;
     case 'costo_atribuido_captacion':
     case 'costo_atribuido':
-      measureSQL = 'SUM(fc.CostoAtribuidoCaptacion)';
+      measureSQL = 'SUM(fc.costo_atribuido_captacion)';
       metricTitle = 'costo_atribuido_captacion';
       isCurrency = true;
       break;
     case 'contacto_registrado':
     case 'contactos_registrados':
     default:
-      measureSQL = 'SUM(fc.ContactosRegistrados)';
+      measureSQL = 'SUM(fc.contacto_registrado)';
       metricTitle = 'contacto_registrado';
       break;
   }
@@ -421,39 +728,39 @@ async function getBuyerMatrix(measure: string = 'contacto_registrado', range: Pe
 
 // ── BUILDER: LEAD MATRIX (DINÁMICO) ──────────────────────────────────────────
 async function getLeadMatrix(measure: string = 'cohorte_evaluable', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
-  let measureSQL = 'SUM(f.LeadsCohorteEvaluable)';
+  let measureSQL = 'SUM(f.cohorte_evaluable)';
   let metricTitle = 'cohorte_evaluable';
 
   switch (measure) {
     case 'conversion_payer_14_dia':
     case 'leads_convertidos_14d':
-      measureSQL = 'SUM(f.LeadsConvertidosPayer14Dias)';
+      measureSQL = 'SUM(f.conversion_payer_14_dia)';
       metricTitle = 'conversion_payer_14_dia';
       break;
     case 'solicitud_requiere_respuesta':
     case 'leads_requieren_resp':
-      measureSQL = 'SUM(f.LeadsRequierenRespuesta)';
+      measureSQL = 'SUM(f.solicitud_requiere_respuesta)';
       metricTitle = 'solicitud_requiere_respuesta';
       break;
     case 'respuesta_util_15_min':
     case 'leads_resp_15m':
-      measureSQL = 'SUM(f.LeadsRespuestaUtil15Min)';
+      measureSQL = 'SUM(f.respuesta_util_15_min)';
       metricTitle = 'respuesta_util_15_min';
       break;
     case 'negociacion_finalizada':
     case 'leads_resultado_final':
-      measureSQL = 'SUM(f.LeadsResultadoFinal)';
+      measureSQL = 'SUM(f.negociacion_finalizada)';
       metricTitle = 'negociacion_finalizada';
       break;
     case 'negociacion_abandonada':
     case 'leads_abandonados':
-      measureSQL = 'SUM(f.LeadsAbandonados)';
+      measureSQL = 'SUM(f.negociacion_abandonada)';
       metricTitle = 'negociacion_abandonada';
       break;
     case 'cohorte_evaluable':
     case 'leads_cohorte':
     default:
-      measureSQL = 'SUM(f.LeadsCohorteEvaluable)';
+      measureSQL = 'SUM(f.cohorte_evaluable)';
       metricTitle = 'cohorte_evaluable';
       break;
   }
@@ -497,47 +804,47 @@ async function getLeadMatrix(measure: string = 'cohorte_evaluable', range: Perio
 
 // ── BUILDER: PAYER MATRIX (DINÁMICO) ─────────────────────────────────────────
 async function getPayerMatrix(measure: string = 'pago_registrado', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
-  let measureSQL = 'SUM(f.PagosRegistrados)';
+  let measureSQL = 'SUM(f.pago_registrado)';
   let metricTitle = 'pago_registrado';
   let isCurrency = false;
 
   switch (measure) {
     case 'pago_validado':
     case 'pagos_validados':
-      measureSQL = 'SUM(f.PagosValidados)';
+      measureSQL = 'SUM(f.pago_validado)';
       metricTitle = 'pago_validado';
       break;
     case 'pago_rechazado':
     case 'pagos_rechazados':
-      measureSQL = 'SUM(f.PagosRechazados)';
+      measureSQL = 'SUM(f.pago_rechazado)';
       metricTitle = 'pago_rechazado';
       break;
     case 'conversion_customer':
     case 'conversiones_customer':
-      measureSQL = 'SUM(f.ConversionesACustomer)';
+      measureSQL = 'SUM(f.conversion_customer)';
       metricTitle = 'conversion_customer';
       break;
     case 'costo_transaccion':
     case 'costo_transacciones':
-      measureSQL = 'SUM(f.CostoTotalTransacciones)';
+      measureSQL = 'SUM(f.costo_transaccion)';
       metricTitle = 'costo_transaccion';
       isCurrency = true;
       break;
     case 'tiempo_validacion_minuto':
     case 'tiempo_validacion':
-      measureSQL = 'ROUND(AVG(CAST(f.TiempoTotalValidacionMin AS FLOAT)), 1)';
+      measureSQL = 'ROUND(AVG(CAST(f.tiempo_validacion_minuto AS FLOAT)), 1)';
       metricTitle = 'tiempo_validacion_minuto';
       break;
     case 'importe_total_cobro':
     case 'importe_total':
-      measureSQL = 'SUM(f.ImporteTotalCobro)';
+      measureSQL = 'SUM(f.importe_total_cobro)';
       metricTitle = 'importe_total_cobro';
       isCurrency = true;
       break;
     case 'pago_registrado':
     case 'pagos_registrados':
     default:
-      measureSQL = 'SUM(f.PagosRegistrados)';
+      measureSQL = 'SUM(f.pago_registrado)';
       metricTitle = 'pago_registrado';
       break;
   }
@@ -585,34 +892,34 @@ async function getPayerMatrix(measure: string = 'pago_registrado', range: Period
 
 // ── BUILDER: CUSTOMER MATRIX (DINÁMICO) ──────────────────────────────────────
 async function getCustomerMatrix(measure: string = 'cita_evaluable', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
-  let measureSQL = 'SUM(fa.CitasEvaluables)';
+  let measureSQL = 'SUM(fa.cita_evaluable)';
   let metricTitle = 'cita_evaluable';
 
   switch (measure) {
     case 'atencion_realizada':
     case 'atenciones_realizadas':
-      measureSQL = 'SUM(fa.AtencionesRealizadas)';
+      measureSQL = 'SUM(fa.atencion_realizada)';
       metricTitle = 'atencion_realizada';
       break;
     case 'cita_inasistencia':
     case 'citas_inasistencia':
-      measureSQL = 'SUM(fa.CitasConInasistencia)';
+      measureSQL = 'SUM(fa.cita_inasistencia)';
       metricTitle = 'cita_inasistencia';
       break;
     case 'tiempo_sillon_dental_minuto':
     case 'tiempo_sillon':
-      measureSQL = 'ROUND(AVG(CAST(fa.TiempoEnSillonDentalMin AS FLOAT)), 1)';
+      measureSQL = 'ROUND(AVG(CAST(fa.tiempo_sillon_dental_minuto AS FLOAT)), 1)';
       metricTitle = 'tiempo_sillon_dental_minuto';
       break;
     case 'atencion_finalizada_conforme':
     case 'atenciones_conformes':
-      measureSQL = 'SUM(fa.AtencionesFinalizadasConformes)';
+      measureSQL = 'SUM(fa.atencion_finalizada_conforme)';
       metricTitle = 'atencion_finalizada_conforme';
       break;
     case 'cita_evaluable':
     case 'citas_evaluables':
     default:
-      measureSQL = 'SUM(fa.CitasEvaluables)';
+      measureSQL = 'SUM(fa.cita_evaluable)';
       metricTitle = 'cita_evaluable';
       break;
   }
@@ -655,40 +962,40 @@ async function getCustomerMatrix(measure: string = 'cita_evaluable', range: Peri
 
 // ── BUILDER: TURNED MATRIX (DINÁMICO) ─────────────────────────────────────────
 async function getTurnedMatrix(measure: string = 'seguimiento_registrado', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
-  let measureSQL = 'SUM(ft.SeguimientosRegistrados)';
+  let measureSQL = 'SUM(ft.seguimiento_registrado)';
   let metricTitle = 'seguimiento_registrado';
 
   switch (measure) {
     case 'seguimiento_efectivo':
     case 'seguimientos_efectivos':
-      measureSQL = 'SUM(ft.SeguimientosEfectivos)';
+      measureSQL = 'SUM(ft.seguimiento_efectivo)';
       metricTitle = 'seguimiento_efectivo';
       break;
     case 'incidencia_reportada':
     case 'incidencias_reportadas':
-      measureSQL = 'SUM(ft.IncidenciasReportadas)';
+      measureSQL = 'SUM(ft.incidencia_reportada)';
       metricTitle = 'incidencia_reportada';
       break;
     case 'incidencia_resuelta_24_hora':
     case 'incidencias_resueltas':
-      measureSQL = 'SUM(ft.IncidenciasResueltas24h)';
+      measureSQL = 'SUM(ft.incidencia_resuelta_24_hora)';
       metricTitle = 'incidencia_resuelta_24_hora';
       break;
     case 'retorno_cohorte_90_dia':
     case 'retornos_cohorte':
     case 'retornos_90dias':
-      measureSQL = 'SUM(ft.RetornosCohorte90Dias)';
+      measureSQL = 'SUM(ft.retorno_cohorte_90_dia)';
       metricTitle = 'retorno_cohorte_90_dia';
       break;
     case 'paciente_elegible_retorno':
     case 'pacientes_elegibles':
-      measureSQL = 'SUM(ft.PacientesElegiblesRetorno)';
+      measureSQL = 'SUM(ft.paciente_elegible_retorno)';
       metricTitle = 'paciente_elegible_retorno';
       break;
     case 'seguimiento_registrado':
     case 'seguimientos_registrados':
     default:
-      measureSQL = 'SUM(ft.SeguimientosRegistrados)';
+      measureSQL = 'SUM(ft.seguimiento_registrado)';
       metricTitle = 'seguimiento_registrado';
       break;
   }
@@ -763,13 +1070,11 @@ router.get('/all-executive', async (req: Request, res: Response) => {
     const turnedMeasure = req.query.turnedMeasure ? String(req.query.turnedMeasure) : undefined;
     const period = resolvePeriod(req.query.period);
 
-    const [buyer, lead, payer, customer, turned] = await Promise.all([
-      withComparison(getBuyerMatrix, buyerMeasure, period),
-      withComparison(getLeadMatrix, leadMeasure, period),
-      withComparison(getPayerMatrix, payerMeasure, period),
-      withComparison(getCustomerMatrix, customerMeasure, period),
-      withComparison(getTurnedMatrix, turnedMeasure, period),
-    ]);
+    const buyer = await withComparison(getBuyerMatrix, buyerMeasure, period);
+    const lead = await withComparison(getLeadMatrix, leadMeasure, period);
+    const payer = await withComparison(getPayerMatrix, payerMeasure, period);
+    const customer = await withComparison(getCustomerMatrix, customerMeasure, period);
+    const turned = await withComparison(getTurnedMatrix, turnedMeasure, period);
 
     res.json({
       buyer,

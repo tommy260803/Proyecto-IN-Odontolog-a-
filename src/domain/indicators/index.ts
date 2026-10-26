@@ -36,21 +36,22 @@ export interface IndicatorResult {
 export const CONVERSION_WINDOW_DAYS = 14;
 
 /**
- * Determina si un BUYER es utilizable (Reglas para B2)
+ * Determina si un BUYER es utilizable (Reglas para B2 conforme a Ley N° 29733 y calidad)
  */
 export function isUsableBuyer(buyer: Buyer): boolean {
   const firstName = (buyer.person as any)?.firstName?.trim() || '';
   const lastName = (buyer.person as any)?.lastName?.trim() || '';
   const hasValidName = firstName.length > 0 && lastName.length > 0;
-  const hasValidContact = Boolean((buyer.person as any)?.phone || (buyer.person as any)?.email);
-  const hasAuth = buyer.contactAuthorization === true;
+  const rawPhone = ((buyer.person as any)?.phone || (buyer.person as any)?.numero || '').replace(/\D/g, '');
+  const hasValidContact = rawPhone.length >= 9 || Boolean((buyer.person as any)?.email);
+  const hasAuth = buyer.contactAuthorization === true || (buyer.person as any)?.consentimiento_atencion === true || (buyer.person as any)?.autoriza_contacto === true;
   const notDuplicate = buyer.qualityStatus !== 'Duplicado';
-  const notRejected = buyer.state !== BuyerState.DISCARDED && buyer.qualityStatus !== 'Rechazado';
+  const notRejected = buyer.state !== BuyerState.DISCARDED && (buyer.state as any) !== 'DESCARTADO' && buyer.qualityStatus !== 'Rechazado';
 
   return hasValidName && hasValidContact && hasAuth && notDuplicate && notRejected;
 }
 
-// B1: Conversión a LEAD en 14 días
+// B1: Conversión a LEAD en 14 días (Meta: >= 30%)
 export function calculateB1(buyers: Buyer[], journeys?: CustomerJourney[]): IndicatorResult {
   const now = new Date();
   let evaluableCount = 0;
@@ -101,10 +102,10 @@ export function calculateB1(buyers: Buyer[], journeys?: CustomerJourney[]): Indi
 
   const value = (convertedIn14DaysCount / evaluableCount) * 100;
 
-  // Semáforo: Verde >= 20%, Ámbar >= 10% y < 20%, Rojo < 10%
+  // Semáforo Oficial: Verde >= 30%, Ámbar >= 20% y < 30%, Rojo < 20%
   let status: IndicatorStatus = 'red';
-  if (value >= 20) status = 'green';
-  else if (value >= 10) status = 'amber';
+  if (value >= 30) status = 'green';
+  else if (value >= 20) status = 'amber';
 
   return {
     id: 'B1',
@@ -124,7 +125,7 @@ export function calculateB1(buyers: Buyer[], journeys?: CustomerJourney[]): Indi
   };
 }
 
-// B2: Contactos utilizables
+// B2: Contactos utilizables (Meta: >= 85%)
 export function calculateB2(buyers: Buyer[]): IndicatorResult {
   const totalCaptured = buyers.length;
 
@@ -151,10 +152,10 @@ export function calculateB2(buyers: Buyer[]): IndicatorResult {
   const usableCount = buyers.filter(isUsableBuyer).length;
   const value = (usableCount / totalCaptured) * 100;
 
-  // Semáforo: Verde >= 80%, Ámbar >= 60%, Rojo < 60%
+  // Semáforo Oficial: Verde >= 85%, Ámbar >= 70%, Rojo < 70%
   let status: IndicatorStatus = 'red';
-  if (value >= 80) status = 'green';
-  else if (value >= 60) status = 'amber';
+  if (value >= 85) status = 'green';
+  else if (value >= 70) status = 'amber';
 
   return {
     id: 'B2',
@@ -187,7 +188,7 @@ const DEFAULT_SOURCE_COSTS: Record<string, number> = {
   'Convenio Interinstitucional': 0
 };
 
-// B3: Costo por LEAD atribuible
+// B3: Costo por LEAD atribuible (Meta: <= S/. 45.00)
 export function calculateB3(buyers: Buyer[], leads?: Lead[]): IndicatorResult {
   // Denominador: Conversiones BUYER -> LEAD atribuibles
   const convertedBuyers = buyers.filter(b => b.state === BuyerState.CONVERTED || Boolean(b.convertedAt));
@@ -230,10 +231,10 @@ export function calculateB3(buyers: Buyer[], leads?: Lead[]): IndicatorResult {
 
   const value = attributableCost / attributableLeadsCount;
 
-  // Semáforo: Verde <= S/ 50, Ámbar > S/ 50 y <= S/ 100, Rojo > S/ 100
+  // Semáforo Oficial: Verde <= S/ 45, Ámbar > S/ 45 y <= S/ 65, Rojo > S/ 65
   let status: IndicatorStatus = 'red';
-  if (value <= 50) status = 'green';
-  else if (value <= 100) status = 'amber';
+  if (value <= 45) status = 'green';
+  else if (value <= 65) status = 'amber';
 
   const formattedCost = attributableCost.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 

@@ -3,6 +3,7 @@ import { prisma } from '../db';
 import { BuyerService } from '../services/buyerService';
 import { MarketingAgentService } from '../services/ai/MarketingAgentService';
 import { AlertService } from '../services/alertService';
+import { getBuyerKpisData } from './report.routes';
 
 const router = Router();
 
@@ -68,6 +69,17 @@ async function getValidModalidadId(tx: any, id: any): Promise<number | null> {
     return null;
   }
 }
+
+// Obtener KPIs oficiales de BUYER (B1, B2, B3) calculados desde el Data Mart
+router.get('/kpis', async (req, res) => {
+  try {
+    const data = await getBuyerKpisData(req.query.period);
+    res.json({ success: true, data });
+  } catch (error: any) {
+    console.error('Error in GET /api/buyer/kpis:', error);
+    res.status(500).json({ error: error.message || 'Error al obtener KPIs de BUYER' });
+  }
+});
 
 // Obtener catálogos para el formulario
 router.get('/catalogs', async (req, res) => {
