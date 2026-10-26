@@ -121,7 +121,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
               id_reserva: r.id_reserva,
               tipo: 'AUTO_CANCELACION',
               descripcion: `ETAPA_3_CANCELACION: Plazo límite de abono expirado (00:00 hrs del ${reservationDateStr}). Sillón liberado automáticamente.`,
-              estado: 'CLOSED'
+              estado: 'Cerrada'
             }
           });
         } catch (e) {
@@ -210,7 +210,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
             id_reserva: r.id_reserva,
             tipo: 'DUNNING_URGENCY',
             descripcion: `NOTIFICACION_ETAPA_2_URGENCIA: Alerta de vencimiento a medianoche enviada a ${patientEmail}.`,
-            estado: 'OPEN'
+            estado: 'Abierta'
           }
         });
 
@@ -267,7 +267,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
             id_reserva: r.id_reserva,
             tipo: 'DUNNING_REMINDER',
             descripcion: `NOTIFICACION_ETAPA_1_PREVENTIVA: Recordatorio cordial enviado a ${patientEmail}.`,
-            estado: 'OPEN'
+            estado: 'Abierta'
           }
         });
 

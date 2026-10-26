@@ -1,3 +1,6 @@
+USE NexoSaludDB;
+GO
+
 -- Validaciones posteriores al poblamiento de NexoSaludDB.
 -- Ejecutar despues de 01_catalogos.sql y del importador Python.
 
@@ -22,7 +25,7 @@ UNION ALL SELECT 'Pagos', COUNT(*) FROM Pagos;
 -- Estas consultas deben devolver cero filas.
 SELECT 'Canal fuera del catalogo permitido' AS validacion, id_canal, nombre
 FROM Canales
-WHERE nombre NOT IN ('WhatsApp', 'Instagram', 'Facebook', 'Página Web');
+WHERE nombre NOT IN ('WhatsApp', 'Instagram', 'Facebook', 'Página Web', 'Formulario Web', 'Llamada', 'Correo Electrónico', 'WhatsApp (Link en Google Maps)');
 
 SELECT 'Personas sin etapa' AS validacion, p.id_persona
 FROM Personas p

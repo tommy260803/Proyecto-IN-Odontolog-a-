@@ -52,7 +52,7 @@ async function main() {
 
   console.log('\n--- ETAPA BUYER (Captación por Fuente y Canal) ---');
   const buyer = await queryMart(`
-    SELECT f.TipoOrigen, c.NombreCanal, er.EstadoCalidad, SUM(fc.ContactosRegistrados) as Total
+    SELECT f.TipoOrigen, c.NombreCanal, er.EstadoCalidad, SUM(fc.contacto_registrado) as Total
     FROM Fact_CaptacionBuyer fc
     JOIN Dim_Fuente f ON f.KeyFuente = fc.KeyFuente
     JOIN Dim_Canal c ON c.KeyCanal = fc.KeyCanal
@@ -65,10 +65,10 @@ async function main() {
   console.log('\n--- ETAPA LEAD (Negociación por Sede y Operador) ---');
   const lead = await queryMart(`
     SELECT s.Sede, n.NombreNegociador, 
-           SUM(fl.LeadsConvertidosPayer14Dias) as [Convertidos Payer],
-           SUM(fl.LeadsEnNegociacion) as [En Negociacion],
-           SUM(fl.LeadsAbandonados) as [Abandonados],
-           SUM(fl.LeadsCohorteEvaluable) as [Total Leads]
+           SUM(fl.conversion_payer_14_dia) as [Convertidos Payer],
+           SUM(fl.leads_en_negociacion) as [En Negociacion],
+           SUM(fl.negociacion_abandonada) as [Abandonados],
+           SUM(fl.cohorte_evaluable) as [Total Leads]
     FROM Fact_NegociacionLead fl
     JOIN Dim_Sede s ON s.KeySede = fl.KeySede
     JOIN Dim_Negociador n ON n.KeyNegociador = fl.KeyNegociador
@@ -79,7 +79,7 @@ async function main() {
 
   console.log('\n--- ETAPA PAYER (Recaudación por Modalidad y Canal) ---');
   const payer = await queryMart(`
-    SELECT p.TipoMedio, p.MetodoPago, c.EstadoPago, SUM(fp.ImporteTotalCobro) as TotalSoles, COUNT(*) as Registros
+    SELECT p.TipoMedio, p.MetodoPago, c.EstadoPago, SUM(fp.importe_total_cobro) as TotalSoles, COUNT(*) as Registros
     FROM Fact_GestionPayer fp
     JOIN Dim_Pasarela p ON p.KeyPasarela = fp.KeyPasarela
     JOIN Dim_Cobro c ON c.KeyCobro = fp.KeyCobro
@@ -90,7 +90,7 @@ async function main() {
 
   console.log('\n--- ETAPA CUSTOMER (Prestación Clínica por Servicio) ---');
   const customer = await queryMart(`
-    SELECT serv.Categoria, serv.ServicioOdontologico, dea.EstadoFinal, SUM(fa.CitasEvaluables) as Citas
+    SELECT serv.Categoria, serv.ServicioOdontologico, dea.EstadoFinal, SUM(fa.cita_evaluable) as Citas
     FROM Fact_AtencionCustomer fa
     JOIN Dim_Servicio serv ON serv.KeyServicio = fa.KeyServicio
     JOIN Dim_EstadoAtencion dea ON dea.KeyEstadoAtencion = fa.KeyEstadoAtencion

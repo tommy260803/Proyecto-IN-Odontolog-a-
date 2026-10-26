@@ -7,7 +7,7 @@ async function test() {
       f.TipoOrigen AS categoria,
       c.NombreCanal AS item,
       e.EstadoCalidad AS columna,
-      SUM(fc.ContactosRegistrados) AS valor
+      SUM(fc.contacto_registrado) AS valor
     FROM Fact_CaptacionBuyer fc
     JOIN Dim_Fuente f ON f.KeyFuente = fc.KeyFuente
     JOIN Dim_Canal c ON c.KeyCanal = fc.KeyCanal
@@ -21,10 +21,10 @@ async function test() {
     SELECT 
       s.Sede AS categoria,
       n.NombreNegociador AS item,
-      SUM(f.LeadsConvertidosPayer14Dias) AS convertidosPayer,
-      SUM(f.LeadsEnNegociacion) AS enNegociacion,
-      SUM(f.LeadsAbandonados) AS abandonados,
-      SUM(f.LeadsCohorteEvaluable) AS totalLeads
+      SUM(f.conversion_payer_14_dia) AS convertidosPayer,
+      SUM(f.leads_en_negociacion) AS enNegociacion,
+      SUM(f.negociacion_abandonada) AS abandonados,
+      SUM(f.cohorte_evaluable) AS totalLeads
     FROM Fact_NegociacionLead f
     JOIN Dim_Sede s ON s.KeySede = f.KeySede
     JOIN Dim_Negociador n ON n.KeyNegociador = f.KeyNegociador
@@ -38,7 +38,7 @@ async function test() {
       p.TipoMedio AS categoria,
       p.MetodoPago AS item,
       c.EstadoPago AS columna,
-      SUM(f.ImporteTotalCobro) AS valor
+      SUM(f.importe_total_cobro) AS valor
     FROM Fact_GestionPayer f
     JOIN Dim_Pasarela p ON p.KeyPasarela = f.KeyPasarela
     JOIN Dim_Cobro c ON c.KeyCobro = f.KeyCobro
@@ -52,7 +52,7 @@ async function test() {
       s.Categoria AS categoria,
       s.ServicioOdontologico AS item,
       e.EstadoFinal AS columna,
-      SUM(f.CitasEvaluables) AS valor
+      SUM(f.cita_evaluable) AS valor
     FROM Fact_AtencionCustomer f
     JOIN Dim_Servicio s ON s.KeyServicio = f.KeyServicio
     JOIN Dim_EstadoAtencion e ON e.KeyEstadoAtencion = f.KeyEstadoAtencion

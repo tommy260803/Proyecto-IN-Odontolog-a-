@@ -350,6 +350,21 @@ END
 
 PRINT 'Total Personas creadas en BUYER: ' + CAST(@totalPersonas AS VARCHAR);
 
+-- Población clínica básica de salud odontológica para personas creadas
+INSERT INTO PersonaSaludOdontologica (id_persona, ultima_visita_odontologica, motivo_consulta, tratamiento_previo, nivel_dolor, presenta_sensibilidad, sangrado_o_inflamacion, usa_aparato_o_protesis, condicion_atencion_especial)
+SELECT 
+    p.id_persona,
+    'Menos de 6 meses',
+    'Evaluación preventiva',
+    'Limpieza dental',
+    'Ninguno',
+    'No',
+    'Ninguno',
+    'Ninguno',
+    'Ninguna'
+FROM Personas p
+WHERE NOT EXISTS (SELECT 1 FROM PersonaSaludOdontologica s WHERE s.id_persona = p.id_persona);
+
 -- =========================================================================
 -- FASE 2: LEADs (310 Negociaciones distribuidas por Operador y Sede)
 -- =========================================================================

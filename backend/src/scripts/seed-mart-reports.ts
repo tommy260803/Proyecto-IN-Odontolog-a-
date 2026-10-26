@@ -10,15 +10,15 @@ async function seedMartReports() {
       IF NOT EXISTS (
         SELECT * FROM sys.columns 
         WHERE object_id = OBJECT_ID('Fact_NegociacionLead') 
-          AND name = 'LeadsEnNegociacion'
+          AND name = 'leads_en_negociacion'
       )
       BEGIN
-        ALTER TABLE Fact_NegociacionLead ADD LeadsEnNegociacion INT DEFAULT 0;
+        ALTER TABLE Fact_NegociacionLead ADD leads_en_negociacion INT DEFAULT 0;
       END
     `);
-    console.log('✅ Columna LeadsEnNegociacion verificada/agregada.');
+    console.log('✅ Columna leads_en_negociacion verificada/agregada.');
   } catch (err: any) {
-    console.log('Info LeadsEnNegociacion:', err.message);
+    console.log('Info leads_en_negociacion:', err.message);
   }
 
   // 2. Limpiar hechos
@@ -154,7 +154,7 @@ async function seedMartReports() {
 
   // FACT BUYER (Período: Septiembre 2026 => KeyTiempo 20260915)
   await pool.request().batch(`
-    INSERT INTO Fact_CaptacionBuyer (KeyTiempo, KeyFuente, KeyCanal, KeyEstadoRegistro, ContactosRegistrados, ContactosUtilizables, ConversionesALead)
+    INSERT INTO Fact_CaptacionBuyer (KeyTiempo, KeyFuente, KeyCanal, KeyEstadoRegistro, contacto_registrado, contacto_utilizable, conversion_lead)
     VALUES 
       -- Redes Sociales (Pauta / Meta Ads) (KeyFuente=1)
       -- WhatsApp (KeyCanal=1): 250, 25, 15, 10
@@ -194,8 +194,8 @@ async function seedMartReports() {
   await pool.request().batch(`
     INSERT INTO Fact_NegociacionLead (
       KeyTiempo, KeySede, KeyNegociador, 
-      LeadsCohorteEvaluable, LeadsConvertidosPayer14Dias, LeadsEnNegociacion, LeadsAbandonados,
-      LeadsRequierenRespuesta, LeadsRespuestaUtil15Min, LeadsResultadoFinal
+      cohorte_evaluable, conversion_payer_14_dia, leads_en_negociacion, negociacion_abandonada,
+      solicitud_requiere_respuesta, respuesta_util_15_min, negociacion_finalizada
     )
     VALUES 
       -- Sede Centro (KeySede=1)
@@ -214,7 +214,7 @@ async function seedMartReports() {
 
   // FACT PAYER
   await pool.request().batch(`
-    INSERT INTO Fact_GestionPayer (KeyTiempo, KeyPasarela, KeyCobro, ImporteTotalCobro, PagosRegistrados, PagosValidados, PagosRechazados)
+    INSERT INTO Fact_GestionPayer (KeyTiempo, KeyPasarela, KeyCobro, importe_total_cobro, pago_registrado, pago_validado, pago_rechazado)
     VALUES 
       -- Billeteras Digitales
       -- Yape (KeyPasarela=1)
@@ -242,7 +242,7 @@ async function seedMartReports() {
 
   // FACT CUSTOMER
   await pool.request().batch(`
-    INSERT INTO Fact_AtencionCustomer (KeyTiempo, KeyServicio, KeyEstadoAtencion, CitasEvaluables, AtencionesRealizadas, CitasConInasistencia)
+    INSERT INTO Fact_AtencionCustomer (KeyTiempo, KeyServicio, KeyEstadoAtencion, cita_evaluable, atencion_realizada, cita_inasistencia)
     VALUES 
       -- Odontología Preventiva
       -- Evaluación General (KeyServicio=10)

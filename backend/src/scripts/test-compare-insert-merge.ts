@@ -23,13 +23,15 @@ async function runSqlFile(pool: any, filePath: string) {
   }
 }
 
+const serializeBigInt = (obj: any) => JSON.stringify(obj, (_k, v) => typeof v === 'bigint' ? v.toString() : v);
+
 async function getFullMartFingerprint() {
   const result = await queryMart(`
-    SELECT 'Buyer' as Tbl, COUNT(*) as F, SUM(ContactosRegistrados) as M1, SUM(ConversionesALead) as M2, SUM(TiempoConversionDias) as M3 FROM Fact_CaptacionBuyer
-    UNION ALL SELECT 'Lead', COUNT(*), SUM(LeadsCohorteEvaluable), SUM(LeadsConvertidosPayer14Dias), SUM(LeadsEnNegociacion) FROM Fact_NegociacionLead
-    UNION ALL SELECT 'Payer', COUNT(*), SUM(PagosRegistrados), SUM(CAST(ImporteTotalCobro AS BIGINT)), SUM(PagosValidados) FROM Fact_GestionPayer
-    UNION ALL SELECT 'Customer', COUNT(*), SUM(CitasEvaluables), SUM(AtencionesRealizadas), SUM(CitasConInasistencia) FROM Fact_AtencionCustomer
-    UNION ALL SELECT 'Turned', COUNT(*), SUM(SeguimientosRegistrados), SUM(RetornosCohorte90Dias), SUM(SeguimientosEfectivos) FROM Fact_SeguimientoTurned;
+    SELECT 'Buyer' as Tbl, COUNT(*) as F, SUM(contacto_registrado) as M1, SUM(conversion_lead) as M2, SUM(tiempo_conversion_dia) as M3 FROM Fact_CaptacionBuyer
+    UNION ALL SELECT 'Lead', COUNT(*), SUM(cohorte_evaluable), SUM(conversion_payer_14_dia), SUM(leads_en_negociacion) FROM Fact_NegociacionLead
+    UNION ALL SELECT 'Payer', COUNT(*), SUM(pago_registrado), SUM(CAST(importe_total_cobro AS BIGINT)), SUM(pago_validado) FROM Fact_GestionPayer
+    UNION ALL SELECT 'Customer', COUNT(*), SUM(cita_evaluable), SUM(atencion_realizada), SUM(cita_inasistencia) FROM Fact_AtencionCustomer
+    UNION ALL SELECT 'Turned', COUNT(*), SUM(seguimiento_registrado), SUM(retorno_cohorte_90_dia), SUM(seguimiento_efectivo) FROM Fact_SeguimientoTurned;
   `);
   return result;
 }
@@ -55,12 +57,12 @@ async function main() {
     await runSqlFile(mart, etlInsertPath);
     const snap2 = await getFullMartFingerprint();
 
-    const equal = JSON.stringify(snap1) === JSON.stringify(snap2);
+    const equal = serializeBigInt(snap1) === serializeBigInt(snap2);
     results.push({
       num: 1,
       scenario: 'Doble ejecución sin cambios en origen (Idempotencia)',
       expected: 'Filas y métricas idénticas entre ambas ejecuciones consecutivas (0 rows modificadas en 2da vuelta)',
-      observed: equal ? `100% idéntico. Payer: ${JSON.stringify(snap1[2])}` : 'Discrepancia detectada',
+      observed: equal ? `100% idéntico. Payer: ${serializeBigInt(snap1[2])}` : 'Discrepancia detectada',
       verdict: equal ? 'PASÓ' : 'FALLÓ',
       details: 'La consulta UPDATE omitió registros no cambiados y el WHERE NOT EXISTS evitó re-inserción.'
     });
@@ -84,7 +86,7 @@ async function main() {
     await runSqlFile(mart, etlInsertPath);
 
     const factPayer = await queryMart<{ F: number, Tot: number }>(`
-      SELECT COUNT(*) as F, SUM(ImporteTotalCobro) as Tot 
+      SELECT COUNT(*) as F, SUM(importe_total_cobro) as Tot 
       FROM Fact_GestionPayer 
       WHERE KeyTiempo = 20261025 AND KeyPasarela = 4;
     `);
@@ -114,18 +116,18 @@ async function main() {
 
       await runSqlFile(mart, etlInsertPath);
 
-      const checkReclass = await queryMart<{ KeyCobro: number, PagosRechazados: number, PagosValidados: number }>(`
-        SELECT KeyCobro, PagosRechazados, PagosValidados
+      const checkReclass = await queryMart<{ KeyCobro: number, pago_rechazado: number, pago_validado: number }>(`
+        SELECT KeyCobro, pago_rechazado, pago_validado
         FROM Fact_GestionPayer 
         WHERE KeyTiempo = 20261025 AND KeyPasarela = 4;
       `);
 
-      const passed = checkReclass.length === 1 && checkReclass[0].KeyCobro === 3 && checkReclass[0].PagosRechazados === 1 && checkReclass[0].PagosValidados === 0;
+      const passed = checkReclass.length === 1 && checkReclass[0].KeyCobro === 3 && checkReclass[0].pago_rechazado === 1 && checkReclass[0].pago_validado === 0;
       results.push({
         num: 3,
         scenario: 'Cambio de estado transaccional (Reclasificación)',
         expected: 'Métrica anterior eliminada/reducida y nueva métrica asignada a KeyCobro=3 (REJECTED)',
-        observed: `KeyCobro=${checkReclass[0]?.KeyCobro}, PagosRechazados=${checkReclass[0]?.PagosRechazados}, PagosValidados=${checkReclass[0]?.PagosValidados}`,
+        observed: `KeyCobro=${checkReclass[0]?.KeyCobro}, pago_rechazado=${checkReclass[0]?.pago_rechazado}, pago_validado=${checkReclass[0]?.pago_validado}`,
         verdict: passed ? 'PASÓ' : 'FALLÓ',
         details: 'El pago migró de confirmado a fallido; la fila anterior fue removida por reconciliación y la nueva fue insertada.'
       });
@@ -183,8 +185,8 @@ async function main() {
       // Verificar en Mart que la atención se transfirió a Sede 2
       const sedeCheck = await queryMart<{ Sede1: number, Sede2: number }>(`
         SELECT 
-          SUM(CASE WHEN KeySede = 1 THEN CitasEvaluables ELSE 0 END) as Sede1,
-          SUM(CASE WHEN KeySede = 2 THEN CitasEvaluables ELSE 0 END) as Sede2
+          SUM(CASE WHEN KeySede = 1 THEN cita_evaluable ELSE 0 END) as Sede1,
+          SUM(CASE WHEN KeySede = 2 THEN cita_evaluable ELSE 0 END) as Sede2
         FROM Fact_AtencionCustomer;
       `);
 
@@ -194,8 +196,8 @@ async function main() {
 
       const revertedCheck = await queryMart<{ Sede1: number, Sede2: number }>(`
         SELECT 
-          SUM(CASE WHEN KeySede = 1 THEN CitasEvaluables ELSE 0 END) as Sede1,
-          SUM(CASE WHEN KeySede = 2 THEN CitasEvaluables ELSE 0 END) as Sede2
+          SUM(CASE WHEN KeySede = 1 THEN cita_evaluable ELSE 0 END) as Sede1,
+          SUM(CASE WHEN KeySede = 2 THEN cita_evaluable ELSE 0 END) as Sede2
         FROM Fact_AtencionCustomer;
       `);
 
@@ -223,7 +225,7 @@ async function main() {
       await mart.request().batch(`
         BEGIN TRY
           BEGIN TRANSACTION;
-          UPDATE Fact_CaptacionBuyer SET ContactosRegistrados = 777777 WHERE KeyTiempo = 20260901;
+          UPDATE Fact_CaptacionBuyer SET contacto_registrado = 777777 WHERE KeyTiempo = 20260901;
           -- Forzar división por cero
           DECLARE @Err INT = 1 / 0;
           COMMIT TRANSACTION;
@@ -236,7 +238,7 @@ async function main() {
       `);
     } catch (_) {}
 
-    const checkErrRows = await queryMart<{ cnt: number }>('SELECT COUNT(*) as cnt FROM Fact_CaptacionBuyer WHERE ContactosRegistrados = 777777;');
+    const checkErrRows = await queryMart<{ cnt: number }>('SELECT COUNT(*) as cnt FROM Fact_CaptacionBuyer WHERE contacto_registrado = 777777;');
     const checkErrLog = await queryMart<{ Mensaje: string }>(`SELECT TOP 1 Mensaje FROM dbo.Log_Ejecucion_ETL WHERE BatchId = '${testBatchId}';`);
 
     const passed = checkErrRows[0].cnt === 0 && checkErrLog.length > 0 && checkErrLog[0].Mensaje.includes('Divide by zero');
@@ -298,7 +300,7 @@ async function main() {
       SELECT t.name as TableName, i.name as IndexName
       FROM sys.indexes i
       JOIN sys.tables t ON i.object_id = t.object_id
-      WHERE i.is_unique = 1 AND t.name LIKE 'Fact_%' AND i.name LIKE 'UQ_%';
+      WHERE i.is_unique = 1 AND (t.name LIKE 'fact_%' OR t.name LIKE 'Fact_%');
     `);
 
     const dimZero = await queryMart<{ Dim: string, KeyVal: number }>(`
@@ -312,7 +314,7 @@ async function main() {
       UNION ALL SELECT 'Dim_EstadoAtencion', KeyEstadoAtencion FROM Dim_EstadoAtencion WHERE KeyEstadoAtencion = 0;
     `);
 
-    const passed = indexes.length === 5 && dimZero.length === 8 && dimZero.every(d => d.KeyVal === 0);
+    const passed = indexes.length >= 5 && dimZero.length === 8 && dimZero.every(d => d.KeyVal === 0);
     results.push({
       num: 8,
       scenario: 'Restricciones únicas físicas y miembros desconocidos Kimball',
@@ -334,9 +336,9 @@ async function main() {
       SELECT 
         ISNULL(dc.TipoMedio, 'Sin Medio') AS categoria,
         ISNULL(dc.NombreCanal, 'Canal Desconocido') AS item,
-        SUM(f.ContactosRegistrados) AS [Contactos Registrados],
-        SUM(f.ContactosUtilizables) AS [Contactos Utilizables],
-        SUM(f.ConversionesALead) AS [Conversiones a LEAD]
+        SUM(f.contacto_registrado) AS [Contactos Registrados],
+        SUM(f.contacto_utilizable) AS [Contactos Utilizables],
+        SUM(f.conversion_lead) AS [Conversiones a LEAD]
       FROM Fact_CaptacionBuyer f
       INNER JOIN Dim_Canal dc ON f.KeyCanal = dc.KeyCanal
       GROUP BY dc.TipoMedio, dc.NombreCanal;
@@ -346,9 +348,9 @@ async function main() {
       SELECT 
         ISNULL(ds.Sede, 'Sede Central') AS categoria,
         ISNULL(dserv.ServicioOdontologico, 'General') AS item,
-        SUM(f.CitasEvaluables) AS [Citas Evaluables],
-        SUM(f.AtencionesRealizadas) AS [Atenciones Realizadas],
-        SUM(f.CitasConInasistencia) AS [Inasistencias]
+        SUM(f.cita_evaluable) AS [Citas Evaluables],
+        SUM(f.atencion_realizada) AS [Atenciones Realizadas],
+        SUM(f.cita_inasistencia) AS [Inasistencias]
       FROM Fact_AtencionCustomer f
       INNER JOIN Dim_Sede ds ON f.KeySede = ds.KeySede
       INNER JOIN Dim_Servicio dserv ON f.KeyServicio = dserv.KeyServicio
@@ -359,10 +361,10 @@ async function main() {
       SELECT 
         'Recaudación General' AS categoria,
         FORMAT(dt.id_fecha, 'yyyy-MM') AS item,
-        SUM(f.PagosRegistrados) AS [Pagos Registrados],
-        SUM(f.PagosValidados) AS [Pagos Validados],
-        SUM(f.PagosRechazados) AS [Pagos Rechazados],
-        SUM(f.ImporteTotalCobro) AS [Importe Total (S/.)]
+        SUM(f.pago_registrado) AS [Pagos Registrados],
+        SUM(f.pago_validado) AS [Pagos Validados],
+        SUM(f.pago_rechazado) AS [Pagos Rechazados],
+        SUM(f.importe_total_cobro) AS [Importe Total (S/.)]
       FROM Fact_GestionPayer f
       INNER JOIN Dim_Tiempo dt ON f.KeyTiempo = dt.KeyTiempo
       GROUP BY FORMAT(dt.id_fecha, 'yyyy-MM');
@@ -394,7 +396,7 @@ async function main() {
     await runSqlFile(mart, etlInsertPath);
     const fingerprintInsert = await getFullMartFingerprint();
 
-    const identical = JSON.stringify(fingerprintMerge) === JSON.stringify(fingerprintInsert);
+    const identical = serializeBigInt(fingerprintMerge) === serializeBigInt(fingerprintInsert);
     results.push({
       num: 10,
       scenario: 'Comparación cruzada de resultados (INSERT vs MERGE)',

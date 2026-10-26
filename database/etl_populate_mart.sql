@@ -69,10 +69,8 @@ GO
 -- 2.1 Dim_Tiempo (KeyTiempo = 0)
 IF NOT EXISTS (SELECT 1 FROM dbo.Dim_Tiempo WHERE KeyTiempo = 0)
 BEGIN
-    SET IDENTITY_INSERT dbo.Dim_Tiempo ON;
     INSERT INTO dbo.Dim_Tiempo (KeyTiempo, id_fecha, Anio, Trimestre, Mes, Dia)
     VALUES (0, '1900-01-01', 1900, 1, 1, 1);
-    SET IDENTITY_INSERT dbo.Dim_Tiempo OFF;
 END;
 GO
 
@@ -181,33 +179,30 @@ GO
 -- ====================================================================
 
 -- 3.1 Poblar Dim_Tiempo (Rango 2024 a 2030)
-IF (SELECT COUNT(*) FROM [NexoSalud_Mart].dbo.[Dim_Tiempo] WHERE KeyTiempo > 0) = 0
-BEGIN
-    SET IDENTITY_INSERT [NexoSalud_Mart].dbo.[Dim_Tiempo] ON;
+DECLARE @StartDate DATE = '2024-01-01';
+DECLARE @EndDate DATE = '2030-12-31';
 
-    DECLARE @StartDate DATE = '2024-01-01';
-    DECLARE @EndDate DATE = '2030-12-31';
-
-    WITH Fechas AS (
-        SELECT @StartDate AS Fecha
-        UNION ALL
-        SELECT DATEADD(DAY, 1, Fecha)
-        FROM Fechas
-        WHERE DATEADD(DAY, 1, Fecha) <= @EndDate
-    )
-    INSERT INTO [NexoSalud_Mart].dbo.[Dim_Tiempo] (KeyTiempo, id_fecha, Anio, Trimestre, Mes, Dia)
-    SELECT 
-        CAST(FORMAT(Fecha, 'yyyyMMdd') AS INT) AS KeyTiempo,
-        Fecha AS id_fecha,
-        YEAR(Fecha) AS Anio,
-        DATEPART(QUARTER, Fecha) AS Trimestre,
-        MONTH(Fecha) AS Mes,
-        DAY(Fecha) AS Dia
+WITH Fechas AS (
+    SELECT @StartDate AS Fecha
+    UNION ALL
+    SELECT DATEADD(DAY, 1, Fecha)
     FROM Fechas
-    OPTION (MAXRECURSION 0);
-
-    SET IDENTITY_INSERT [NexoSalud_Mart].dbo.[Dim_Tiempo] OFF;
-END;
+    WHERE DATEADD(DAY, 1, Fecha) <= @EndDate
+)
+INSERT INTO [NexoSalud_Mart].dbo.[Dim_Tiempo] (KeyTiempo, id_fecha, Anio, Trimestre, Mes, Dia)
+SELECT 
+    YEAR(Fecha) * 10000 + MONTH(Fecha) * 100 + DAY(Fecha) AS KeyTiempo,
+    Fecha AS id_fecha,
+    YEAR(Fecha) AS Anio,
+    DATEPART(QUARTER, Fecha) AS Trimestre,
+    MONTH(Fecha) AS Mes,
+    DAY(Fecha) AS Dia
+FROM Fechas f
+WHERE NOT EXISTS (
+    SELECT 1 FROM [NexoSalud_Mart].dbo.[Dim_Tiempo] dt 
+    WHERE dt.KeyTiempo = YEAR(f.Fecha) * 10000 + MONTH(f.Fecha) * 100 + DAY(f.Fecha)
+)
+OPTION (MAXRECURSION 0);
 GO
 
 -- 3.2 Poblar Dim_Sede
@@ -385,28 +380,32 @@ GO
 -- 4. ÍNDICES DE UNICIDAD FÍSICA PARA GARANTÍA DE IDEMPOTENCIA
 -- Incluyen todas las dimensiones que componen el grano analítico real
 -- ====================================================================
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactCaptacionBuyer_Grain' AND object_id = OBJECT_ID('Fact_CaptacionBuyer'))
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactCaptacionBuyer_Grain' AND object_id = OBJECT_ID('fact_captacion_buyer'))
+   AND NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE parent_object_id = OBJECT_ID('fact_captacion_buyer') AND type = 'PK')
     CREATE UNIQUE NONCLUSTERED INDEX UQ_FactCaptacionBuyer_Grain 
-    ON Fact_CaptacionBuyer (KeyTiempo, KeySede, KeyCanal, KeyFuente, KeyEstadoRegistro);
+    ON fact_captacion_buyer (KeyTiempo, KeySede, KeyCanal, KeyFuente, KeyEstadoRegistro);
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactNegociacionLead_Grain' AND object_id = OBJECT_ID('Fact_NegociacionLead'))
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactNegociacionLead_Grain' AND object_id = OBJECT_ID('fact_negociacion_lead'))
+   AND NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE parent_object_id = OBJECT_ID('fact_negociacion_lead') AND type = 'PK')
     CREATE UNIQUE NONCLUSTERED INDEX UQ_FactNegociacionLead_Grain 
-    ON Fact_NegociacionLead (KeyTiempo, KeySede, KeyNegociador, KeyServicio, KeyProfesional);
+    ON fact_negociacion_lead (KeyTiempo, KeySede, KeyNegociador, KeyServicio, KeyProfesional);
 
--- Índice de Pago extendido a Sede y Servicio para evitar mezclar recaudación de distintas clínicas
-IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactGestionPayer_Grain' AND object_id = OBJECT_ID('Fact_GestionPayer'))
-    DROP INDEX UQ_FactGestionPayer_Grain ON Fact_GestionPayer;
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactGestionPayer_Grain' AND object_id = OBJECT_ID('fact_gestion_payer'))
+    DROP INDEX UQ_FactGestionPayer_Grain ON fact_gestion_payer;
 
-CREATE UNIQUE NONCLUSTERED INDEX UQ_FactGestionPayer_Grain 
-ON Fact_GestionPayer (KeyTiempo, KeyPasarela, KeyCobro, KeySede, KeyServicio);
+IF NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE parent_object_id = OBJECT_ID('fact_gestion_payer') AND type = 'PK')
+    CREATE UNIQUE NONCLUSTERED INDEX UQ_FactGestionPayer_Grain 
+    ON fact_gestion_payer (KeyTiempo, KeyPasarela, KeyCobro, KeySede, KeyServicio);
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactAtencionCustomer_Grain' AND object_id = OBJECT_ID('Fact_AtencionCustomer'))
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactAtencionCustomer_Grain' AND object_id = OBJECT_ID('fact_atencion_customer'))
+   AND NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE parent_object_id = OBJECT_ID('fact_atencion_customer') AND type = 'PK')
     CREATE UNIQUE NONCLUSTERED INDEX UQ_FactAtencionCustomer_Grain 
-    ON Fact_AtencionCustomer (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyEstadoAtencion);
+    ON fact_atencion_customer (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyEstadoAtencion);
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactSeguimientoTurned_Grain' AND object_id = OBJECT_ID('Fact_SeguimientoTurned'))
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_FactSeguimientoTurned_Grain' AND object_id = OBJECT_ID('fact_seguimiento_turned'))
+   AND NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE parent_object_id = OBJECT_ID('fact_seguimiento_turned') AND type = 'PK')
     CREATE UNIQUE NONCLUSTERED INDEX UQ_FactSeguimientoTurned_Grain 
-    ON Fact_SeguimientoTurned (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyCanal);
+    ON fact_seguimiento_turned (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyCanal);
 GO
 
 -- ====================================================================
@@ -440,62 +439,169 @@ BEGIN TRY
     BEGIN TRANSACTION;
 
     -- ----------------------------------------------------------------
-    -- 5.1 Carga Idempotente: Fact_CaptacionBuyer
-    -- Mapeo de sede: zona de residencia homologada a Sede (1=Centro, 2=California, 3=El Golf).
-    -- Deduplicación de etapas para evitar producto cartesiano (fan-out).
-    -- Reconciliación de agregados obsoletos por ámbito de fecha.
+    -- 5.1 Carga Idempotente: Fact_OportunidadCaptacion & Fact_CaptacionBuyer
+    -- Extracción desde OportunidadesCaptacion vinculada con Personas.
+    -- Prorrateo financiero exacto desde GastosCampana por mes/campaña.
+    -- Resolución unívoca de dimensiones conformadas (Canal, Fuente, Sede, Servicio, Calidad).
+    -- Reglas estrictas de Contacto Utilizable (Consentimiento + Calidad + Teléfono).
+    -- Rendimiento optimizado con staging intermedio y operaciones nativas en C++.
     -- ----------------------------------------------------------------
-    ;WITH EventosEtapa2Unico AS (
-        SELECT id_persona, MIN(fecha_hora) AS fecha_hora_etapa2
-        FROM [NexoSaludDB].dbo.[EventosEtapa]
-        WHERE etapa_destino = 2
-        GROUP BY id_persona
-    ),
-    BuyerSource AS (
+
+    IF OBJECT_ID('tempdb..#OportunidadesTransformadas') IS NOT NULL DROP TABLE #OportunidadesTransformadas;
+    IF OBJECT_ID('tempdb..#BuyerAgregado') IS NOT NULL DROP TABLE #BuyerAgregado;
+
+    -- A. Prorrateo mensual de Gastos de Campaña y Transformación Atómica
+    ;WITH GastosProrrateados AS (
         SELECT 
-            CAST(FORMAT(p.fecha_registro, 'yyyyMMdd') AS INT) AS KeyTiempo,
-            ISNULL(ds.KeySede, 0) AS KeySede,
-            ISNULL(dc.KeyCanal, 0) AS KeyCanal,
-            ISNULL(df.KeyFuente, 0) AS KeyFuente,
-            ISNULL(der.KeyEstadoRegistro, 0) AS KeyEstadoRegistro,
-            COUNT(p.id_persona) AS ContactosRegistrados,
-            SUM(CASE WHEN p.estado_calidad LIKE '%Valid%' THEN 1 ELSE 0 END) AS ContactosUtilizables,
-            SUM(CASE WHEN p.id_etapa_actual >= 2 THEN 1 ELSE 0 END) AS ConversionesALead, 
-            AVG(CASE 
-                WHEN ev.fecha_hora_etapa2 >= p.fecha_registro 
-                THEN DATEDIFF(DAY, p.fecha_registro, ev.fecha_hora_etapa2) 
-                ELSE 0 
-            END) AS TiempoConversionDias
-        FROM [NexoSaludDB].dbo.[Personas] p
-        LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Sede] ds ON (
-            ds.id_sede = CASE 
+            g.id_campana,
+            YEAR(g.fecha) * 100 + MONTH(g.fecha) AS AnioMes,
+            SUM(g.importe) AS TotalGastoMes
+        FROM [NexoSaludDB].dbo.[GastosCampana] g
+        GROUP BY g.id_campana, YEAR(g.fecha) * 100 + MONTH(g.fecha)
+    ),
+    ConteoContactosCampana AS (
+        SELECT 
+            op.id_campana,
+            YEAR(op.fecha_registro) * 100 + MONTH(op.fecha_registro) AS AnioMes,
+            COUNT(*) AS CantidadContactosMes
+        FROM [NexoSaludDB].dbo.[OportunidadesCaptacion] op
+        WHERE op.id_campana IS NOT NULL
+        GROUP BY op.id_campana, YEAR(op.fecha_registro) * 100 + MONTH(op.fecha_registro)
+    ),
+    CostosUnitarios AS (
+        SELECT 
+            g.id_campana,
+            g.AnioMes,
+            CAST(ROUND(g.TotalGastoMes / NULLIF(c.CantidadContactosMes, 0), 2) AS DECIMAL(10,2)) AS CostoPorContacto
+        FROM GastosProrrateados g
+        INNER JOIN ConteoContactosCampana c ON g.id_campana = c.id_campana AND g.AnioMes = c.AnioMes
+    )
+    SELECT 
+        op.id_oportunidad,
+        YEAR(op.fecha_registro) * 10000 + MONTH(op.fecha_registro) * 100 + DAY(op.fecha_registro) AS KeyTiempoCaptacion,
+        CASE 
+            WHEN op.fecha_conversion IS NOT NULL 
+            THEN YEAR(op.fecha_conversion) * 10000 + MONTH(op.fecha_conversion) * 100 + DAY(op.fecha_conversion)
+            ELSE NULL 
+        END AS KeyTiempoConversion,
+        ISNULL(ds.KeySede, 0) AS KeySede,
+        ISNULL(dc.KeyCanal, 0) AS KeyCanal,
+        COALESCE(df_camp.KeyFuente, df_fuen.KeyFuente, 0) AS KeyFuente,
+        ISNULL(dserv.KeyServicio, 0) AS KeyServicio,
+        ISNULL(dtp.KeyTipoPersona, 0) AS KeyTipoPersona,
+        CASE 
+            WHEN p.estado_calidad = 'Valido' THEN 4
+            WHEN p.estado_calidad = 'Duplicado' THEN 2
+            WHEN p.estado_calidad = 'Rechazado' THEN 3
+            WHEN p.estado_calidad = 'Incompleto' THEN 1
+            ELSE 0
+        END AS KeyEstadoRegistro,
+        1 AS contacto_registrado,
+        CASE 
+            WHEN (p.consentimiento_atencion = 1 OR p.autoriza_contacto = 1)
+                 AND p.estado_calidad = 'Valido'
+                 AND LEN(RTRIM(LTRIM(ISNULL(p.telefono_normalizado, p.numero)))) >= 9
+                 AND op.estado_oportunidad NOT IN ('INCOMPLETO', 'DESCARTADO')
+            THEN 1
+            ELSE 0
+        END AS contacto_utilizable,
+        CASE 
+            WHEN op.estado_oportunidad = 'CONVERTIDO_LEAD' 
+                 OR op.id_solicitud IS NOT NULL 
+                 OR p.id_etapa_actual >= 2
+            THEN 1 
+            ELSE 0 
+        END AS conversion_lead,
+        CASE 
+            WHEN op.fecha_conversion IS NOT NULL AND op.fecha_conversion >= op.fecha_registro 
+            THEN DATEDIFF(DAY, op.fecha_registro, op.fecha_conversion)
+            ELSE 0 
+        END AS tiempo_conversion_dia,
+        ISNULL(cu.CostoPorContacto, 0.00) AS costo_atribuido_captacion
+    INTO #OportunidadesTransformadas
+    FROM [NexoSaludDB].dbo.[OportunidadesCaptacion] op
+    INNER JOIN [NexoSaludDB].dbo.[Personas] p ON op.id_persona = p.id_persona
+    LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Sede] ds ON (
+        ds.id_sede = ISNULL(op.id_sede_preferida, 
+            CASE 
                 WHEN p.zona IN ('Centro Histórico', 'Centro Historico', 'El Recreo', 'Florencia de Mora', 'La Esperanza', 'Moche', 'San Andrés', 'San Andres') THEN 1
                 WHEN p.zona IN ('California', 'Víctor Larco Herrera', 'Victor Larco Herrera', 'Huanchaco') THEN 2
                 WHEN p.zona IN ('El Golf') THEN 3
                 ELSE 0
-            END
-        )
-        LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Canal] dc ON p.id_canal_origen = dc.id_canal
-        LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Fuente] df ON p.id_campana_origen = df.id_campana
-        LEFT JOIN [NexoSalud_Mart].dbo.[Dim_EstadoRegistro] der ON (
-            (p.estado_calidad LIKE '%Valid%' AND der.KeyEstadoRegistro = 1) OR
-            (p.estado_calidad LIKE '%Incomplet%' AND der.KeyEstadoRegistro = 2) OR
-            (p.estado_calidad LIKE '%Duplicad%' AND der.KeyEstadoRegistro = 3) OR
-            (p.estado_calidad LIKE '%Rechazad%' AND der.KeyEstadoRegistro = 4)
-        )
-        LEFT JOIN EventosEtapa2Unico ev ON p.id_persona = ev.id_persona
-        GROUP BY 
-            CAST(FORMAT(p.fecha_registro, 'yyyyMMdd') AS INT),
-            ISNULL(ds.KeySede, 0),
-            ISNULL(dc.KeyCanal, 0),
-            ISNULL(df.KeyFuente, 0),
-            ISNULL(der.KeyEstadoRegistro, 0)
-    ),
-    BuyerScope AS (
-        SELECT * FROM [NexoSalud_Mart].dbo.[Fact_CaptacionBuyer]
+            END)
     )
-    MERGE BuyerScope AS fact
-    USING BuyerSource AS src
+    LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Canal] dc ON op.id_canal = dc.id_canal
+    LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Fuente] df_camp ON op.id_campana = df_camp.id_campana
+    LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Fuente] df_fuen ON op.id_campana IS NULL AND op.id_fuente = df_fuen.id_fuente AND df_fuen.KeyFuente = (
+        SELECT MIN(df_sub.KeyFuente) FROM [NexoSalud_Mart].dbo.[Dim_Fuente] df_sub WHERE df_sub.id_fuente = op.id_fuente
+    )
+    LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Servicio] dserv ON op.id_servicio_interes = dserv.id_servicio
+    LEFT JOIN [NexoSalud_Mart].dbo.[Dim_TipoPersona] dtp ON p.id_persona = dtp.id_persona
+    LEFT JOIN CostosUnitarios cu ON op.id_campana = cu.id_campana AND (YEAR(op.fecha_registro) * 100 + MONTH(op.fecha_registro)) = cu.AnioMes;
+
+    CREATE UNIQUE CLUSTERED INDEX IX_Temp_Op ON #OportunidadesTransformadas(id_oportunidad);
+
+    -- B. Carga Atómica a Fact_OportunidadCaptacion
+    MERGE [NexoSalud_Mart].dbo.[Fact_OportunidadCaptacion] AS factAtom
+    USING #OportunidadesTransformadas AS srcAtom
+    ON factAtom.id_oportunidad = srcAtom.id_oportunidad
+    WHEN MATCHED THEN
+        UPDATE SET 
+            factAtom.KeyTiempoCaptacion        = srcAtom.KeyTiempoCaptacion,
+            factAtom.KeyTiempoConversion       = srcAtom.KeyTiempoConversion,
+            factAtom.KeySede                   = srcAtom.KeySede,
+            factAtom.KeyCanal                  = srcAtom.KeyCanal,
+            factAtom.KeyFuente                 = srcAtom.KeyFuente,
+            factAtom.KeyServicio               = srcAtom.KeyServicio,
+            factAtom.KeyTipoPersona            = srcAtom.KeyTipoPersona,
+            factAtom.KeyEstadoRegistro         = srcAtom.KeyEstadoRegistro,
+            factAtom.contacto_registrado       = srcAtom.contacto_registrado,
+            factAtom.contacto_utilizable       = srcAtom.contacto_utilizable,
+            factAtom.conversion_lead           = srcAtom.conversion_lead,
+            factAtom.tiempo_conversion_dia     = srcAtom.tiempo_conversion_dia,
+            factAtom.costo_atribuido_captacion = srcAtom.costo_atribuido_captacion,
+            factAtom.FechaCargaETL             = SYSDATETIME()
+    WHEN NOT MATCHED BY TARGET THEN
+        INSERT (
+            id_oportunidad, KeyTiempoCaptacion, KeyTiempoConversion, KeySede, KeyCanal, 
+            KeyFuente, KeyServicio, KeyTipoPersona, KeyEstadoRegistro, contacto_registrado, 
+            contacto_utilizable, conversion_lead, tiempo_conversion_dia, costo_atribuido_captacion, FechaCargaETL
+        )
+        VALUES (
+            srcAtom.id_oportunidad, srcAtom.KeyTiempoCaptacion, srcAtom.KeyTiempoConversion, srcAtom.KeySede, srcAtom.KeyCanal,
+            srcAtom.KeyFuente, srcAtom.KeyServicio, srcAtom.KeyTipoPersona, srcAtom.KeyEstadoRegistro, srcAtom.contacto_registrado,
+            srcAtom.contacto_utilizable, srcAtom.conversion_lead, srcAtom.tiempo_conversion_dia, srcAtom.costo_atribuido_captacion, SYSDATETIME()
+        )
+    WHEN NOT MATCHED BY SOURCE THEN
+        DELETE;
+
+    -- C. Carga Agregada a Fact_CaptacionBuyer (Compatibilidad Total con Modelos Históricos)
+    SELECT 
+        KeyTiempoCaptacion AS KeyTiempo,
+        KeySede,
+        KeyCanal,
+        KeyFuente,
+        KeyEstadoRegistro,
+        MIN(KeyServicio) AS KeyServicio,
+        MIN(KeyTipoPersona) AS KeyTipoPersona,
+        COUNT(*) AS contacto_registrado,
+        SUM(contacto_utilizable) AS contacto_utilizable,
+        SUM(conversion_lead) AS conversion_lead,
+        ISNULL(ROUND(AVG(CAST(tiempo_conversion_dia AS FLOAT)), 0), 0) AS tiempo_conversion_dia,
+        SUM(costo_atribuido_captacion) AS costo_atribuido_captacion
+    INTO #BuyerAgregado
+    FROM #OportunidadesTransformadas
+    GROUP BY 
+        KeyTiempoCaptacion,
+        KeySede,
+        KeyCanal,
+        KeyFuente,
+        KeyEstadoRegistro;
+
+    CREATE UNIQUE CLUSTERED INDEX IX_Temp_Aggr ON #BuyerAgregado(KeyTiempo, KeySede, KeyCanal, KeyFuente, KeyEstadoRegistro);
+
+    MERGE [NexoSalud_Mart].dbo.[Fact_CaptacionBuyer] AS fact
+    USING #BuyerAgregado AS src
     ON fact.KeyTiempo = src.KeyTiempo 
        AND fact.KeySede = src.KeySede
        AND fact.KeyCanal = src.KeyCanal 
@@ -503,15 +609,21 @@ BEGIN TRY
        AND fact.KeyEstadoRegistro = src.KeyEstadoRegistro
     WHEN MATCHED THEN
         UPDATE SET 
-            fact.ContactosRegistrados = src.ContactosRegistrados,
-            fact.ContactosUtilizables = src.ContactosUtilizables,
-            fact.ConversionesALead = src.ConversionesALead,
-            fact.TiempoConversionDias = src.TiempoConversionDias
+            fact.KeyServicio = src.KeyServicio,
+            fact.KeyTipoPersona = src.KeyTipoPersona,
+            fact.contacto_registrado = src.contacto_registrado,
+            fact.contacto_utilizable = src.contacto_utilizable,
+            fact.conversion_lead = src.conversion_lead,
+            fact.tiempo_conversion_dia = src.tiempo_conversion_dia,
+            fact.costo_atribuido_captacion = src.costo_atribuido_captacion
     WHEN NOT MATCHED BY TARGET THEN
-        INSERT (KeyTiempo, KeySede, KeyCanal, KeyFuente, KeyEstadoRegistro, ContactosRegistrados, ContactosUtilizables, ConversionesALead, TiempoConversionDias)
-        VALUES (src.KeyTiempo, src.KeySede, src.KeyCanal, src.KeyFuente, src.KeyEstadoRegistro, src.ContactosRegistrados, src.ContactosUtilizables, src.ConversionesALead, src.TiempoConversionDias)
+        INSERT (KeyTiempo, KeySede, KeyServicio, KeyCanal, KeyFuente, KeyTipoPersona, KeyEstadoRegistro, contacto_registrado, contacto_utilizable, conversion_lead, tiempo_conversion_dia, costo_atribuido_captacion)
+        VALUES (src.KeyTiempo, src.KeySede, src.KeyServicio, src.KeyCanal, src.KeyFuente, src.KeyTipoPersona, src.KeyEstadoRegistro, src.contacto_registrado, src.contacto_utilizable, src.conversion_lead, src.tiempo_conversion_dia, src.costo_atribuido_captacion)
     WHEN NOT MATCHED BY SOURCE THEN
         DELETE;
+
+    DROP TABLE #OportunidadesTransformadas;
+    DROP TABLE #BuyerAgregado;
 
     SET @RowsBuyer = @@ROWCOUNT;
 
@@ -536,18 +648,18 @@ BEGIN TRY
             ISNULL(dserv.KeyServicio, 0) AS KeyServicio,
             ISNULL(dp.KeyProfesional, 0) AS KeyProfesional,
             ISNULL(dn.KeyNegociador, 0) AS KeyNegociador,
-            COUNT(DISTINCT ev.id_persona) AS LeadsCohorteEvaluable,
-            SUM(CASE WHEN p.id_etapa_actual >= 3 THEN 1 ELSE 0 END) AS LeadsConvertidosPayer14Dias,
-            SUM(CASE WHEN p.id_etapa_actual = 2 AND sol.estado IN ('En Negociacion', 'En negociación') THEN 1 ELSE 0 END) AS LeadsEnNegociacion,
-            SUM(CASE WHEN sol.estado = 'Abandonada' OR p.id_etapa_actual < 2 THEN 1 ELSE 0 END) AS LeadsAbandonados,
-            COUNT(DISTINCT ev.id_persona) AS LeadsRequierenRespuesta,
+            COUNT(DISTINCT ev.id_persona) AS cohorte_evaluable,
+            SUM(CASE WHEN p.id_etapa_actual >= 3 THEN 1 ELSE 0 END) AS conversion_payer_14_dia,
+            SUM(CASE WHEN p.id_etapa_actual = 2 AND sol.estado IN ('En Negociacion', 'En negociación') THEN 1 ELSE 0 END) AS leads_en_negociacion,
+            SUM(CASE WHEN sol.estado = 'Abandonada' OR p.id_etapa_actual < 2 THEN 1 ELSE 0 END) AS negociacion_abandonada,
+            COUNT(DISTINCT ev.id_persona) AS solicitud_requiere_respuesta,
             SUM(CASE 
                 WHEN sol.fecha_primera_respuesta IS NOT NULL 
                      AND sol.fecha_primera_respuesta >= sol.fecha_solicitud
                      AND DATEDIFF(MINUTE, sol.fecha_solicitud, sol.fecha_primera_respuesta) <= 15 
                 THEN 1 ELSE 0 
-            END) AS LeadsRespuestaUtil15Min,
-            SUM(CASE WHEN p.id_etapa_actual >= 3 OR sol.estado = 'Abandonada' THEN 1 ELSE 0 END) AS LeadsResultadoFinal
+            END) AS respuesta_util_15_min,
+            SUM(CASE WHEN p.id_etapa_actual >= 3 OR sol.estado = 'Abandonada' THEN 1 ELSE 0 END) AS negociacion_finalizada
         FROM LeadEvents ev
         JOIN [NexoSaludDB].dbo.[Personas] p ON ev.id_persona = p.id_persona AND ev.rn = 1
         OUTER APPLY (
@@ -594,16 +706,16 @@ BEGIN TRY
        AND fact.KeyProfesional = src.KeyProfesional
     WHEN MATCHED THEN
         UPDATE SET 
-            fact.LeadsCohorteEvaluable = src.LeadsCohorteEvaluable,
-            fact.LeadsConvertidosPayer14Dias = src.LeadsConvertidosPayer14Dias,
-            fact.LeadsEnNegociacion = src.LeadsEnNegociacion,
-            fact.LeadsAbandonados = src.LeadsAbandonados,
-            fact.LeadsRequierenRespuesta = src.LeadsRequierenRespuesta,
-            fact.LeadsRespuestaUtil15Min = src.LeadsRespuestaUtil15Min,
-            fact.LeadsResultadoFinal = src.LeadsResultadoFinal
+            fact.cohorte_evaluable = src.cohorte_evaluable,
+            fact.conversion_payer_14_dia = src.conversion_payer_14_dia,
+            fact.leads_en_negociacion = src.leads_en_negociacion,
+            fact.negociacion_abandonada = src.negociacion_abandonada,
+            fact.solicitud_requiere_respuesta = src.solicitud_requiere_respuesta,
+            fact.respuesta_util_15_min = src.respuesta_util_15_min,
+            fact.negociacion_finalizada = src.negociacion_finalizada
     WHEN NOT MATCHED BY TARGET THEN
-        INSERT (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyNegociador, LeadsCohorteEvaluable, LeadsConvertidosPayer14Dias, LeadsEnNegociacion, LeadsAbandonados, LeadsRequierenRespuesta, LeadsRespuestaUtil15Min, LeadsResultadoFinal)
-        VALUES (src.KeyTiempo, src.KeySede, src.KeyServicio, src.KeyProfesional, src.KeyNegociador, src.LeadsCohorteEvaluable, src.LeadsConvertidosPayer14Dias, src.LeadsEnNegociacion, src.LeadsAbandonados, src.LeadsRequierenRespuesta, src.LeadsRespuestaUtil15Min, src.LeadsResultadoFinal)
+        INSERT (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyNegociador, cohorte_evaluable, conversion_payer_14_dia, leads_en_negociacion, negociacion_abandonada, solicitud_requiere_respuesta, respuesta_util_15_min, negociacion_finalizada)
+        VALUES (src.KeyTiempo, src.KeySede, src.KeyServicio, src.KeyProfesional, src.KeyNegociador, src.cohorte_evaluable, src.conversion_payer_14_dia, src.leads_en_negociacion, src.negociacion_abandonada, src.solicitud_requiere_respuesta, src.respuesta_util_15_min, src.negociacion_finalizada)
     WHEN NOT MATCHED BY SOURCE THEN
         DELETE;
 
@@ -626,15 +738,17 @@ BEGIN TRY
             END AS KeyCobro,
             ISNULL(ds.KeySede, 0) AS KeySede,
             ISNULL(dserv.KeyServicio, 0) AS KeyServicio,
-            COUNT(p.id_pago) AS PagosRegistrados,
-            SUM(CASE WHEN p.estado IN ('Validado', 'VALIDADO', 'Confirmado', 'Validado') THEN 1 ELSE 0 END) AS PagosValidados,
-            SUM(CASE WHEN p.estado IN ('Rechazado', 'Rechazado', 'Fallido') THEN 1 ELSE 0 END) AS PagosRechazados,
-            SUM(p.importe) AS ImporteTotalCobro,
+            COUNT(p.id_pago) AS pago_registrado,
+            SUM(CASE WHEN p.estado IN ('Validado', 'VALIDADO', 'Confirmado', 'Validado') THEN 1 ELSE 0 END) AS pago_validado,
+            SUM(CASE WHEN p.estado IN ('Rechazado', 'Rechazado', 'Fallido') THEN 1 ELSE 0 END) AS pago_rechazado,
+            SUM(CASE WHEN p.estado IN ('Validado', 'VALIDADO', 'Confirmado') THEN 1 ELSE 0 END) AS conversion_customer,
+            SUM(p.importe) AS importe_total_cobro,
+            SUM(CAST(p.importe * 0.035 AS DECIMAL(10,2))) AS costo_transaccion,
             SUM(CASE 
                 WHEN p.fecha_validacion IS NOT NULL AND p.fecha_validacion >= p.fecha_registro 
                 THEN DATEDIFF(MINUTE, p.fecha_registro, p.fecha_validacion)
                 ELSE 0 
-            END) AS TiempoTotalValidacionMin
+            END) AS tiempo_validacion_minuto
         FROM [NexoSaludDB].dbo.[Pagos] p
         LEFT JOIN [NexoSaludDB].dbo.[Reservas] r ON p.id_reserva = r.id_reserva
         LEFT JOIN [NexoSaludDB].dbo.[Opciones] o ON r.id_opcion = o.id_opcion
@@ -667,14 +781,16 @@ BEGIN TRY
        AND fact.KeyServicio = src.KeyServicio
     WHEN MATCHED THEN
         UPDATE SET 
-            fact.PagosRegistrados = src.PagosRegistrados,
-            fact.PagosValidados = src.PagosValidados,
-            fact.PagosRechazados = src.PagosRechazados,
-            fact.ImporteTotalCobro = src.ImporteTotalCobro,
-            fact.TiempoTotalValidacionMin = src.TiempoTotalValidacionMin
+            fact.pago_registrado = src.pago_registrado,
+            fact.pago_validado = src.pago_validado,
+            fact.pago_rechazado = src.pago_rechazado,
+            fact.conversion_customer = src.conversion_customer,
+            fact.importe_total_cobro = src.importe_total_cobro,
+            fact.costo_transaccion = src.costo_transaccion,
+            fact.tiempo_validacion_minuto = src.tiempo_validacion_minuto
     WHEN NOT MATCHED BY TARGET THEN
-        INSERT (KeyTiempo, KeyPasarela, KeyCobro, KeySede, KeyServicio, PagosRegistrados, PagosValidados, PagosRechazados, ImporteTotalCobro, TiempoTotalValidacionMin)
-        VALUES (src.KeyTiempo, src.KeyPasarela, src.KeyCobro, src.KeySede, src.KeyServicio, src.PagosRegistrados, src.PagosValidados, src.PagosRechazados, src.ImporteTotalCobro, src.TiempoTotalValidacionMin)
+        INSERT (KeyTiempo, KeyPasarela, KeyCobro, KeySede, KeyServicio, pago_registrado, pago_validado, pago_rechazado, conversion_customer, importe_total_cobro, costo_transaccion, tiempo_validacion_minuto)
+        VALUES (src.KeyTiempo, src.KeyPasarela, src.KeyCobro, src.KeySede, src.KeyServicio, src.pago_registrado, src.pago_validado, src.pago_rechazado, src.conversion_customer, src.importe_total_cobro, src.costo_transaccion, src.tiempo_validacion_minuto)
     WHEN NOT MATCHED BY SOURCE THEN
         DELETE;
 
@@ -696,19 +812,19 @@ BEGIN TRY
                 WHEN a.asistencia LIKE '%Cancelad%' THEN 3
                 ELSE 0
             END AS KeyEstadoAtencion,
-            COUNT(a.id_atencion) AS CitasEvaluables,
-            SUM(CASE WHEN a.asistencia LIKE '%Asisti%' AND a.asistencia NOT LIKE '%No%' THEN 1 ELSE 0 END) AS AtencionesRealizadas,
-            SUM(CASE WHEN a.asistencia LIKE '%No%asisti%' THEN 1 ELSE 0 END) AS CitasConInasistencia,
+            COUNT(a.id_atencion) AS cita_evaluable,
+            SUM(CASE WHEN a.asistencia LIKE '%Asisti%' AND a.asistencia NOT LIKE '%No%' THEN 1 ELSE 0 END) AS atencion_realizada,
+            SUM(CASE WHEN a.asistencia LIKE '%No%asisti%' THEN 1 ELSE 0 END) AS cita_inasistencia,
             SUM(CASE 
                 WHEN a.fecha_fin IS NOT NULL AND a.fecha_inicio IS NOT NULL AND a.fecha_fin >= a.fecha_inicio
                 THEN DATEDIFF(MINUTE, a.fecha_inicio, a.fecha_fin)
                 WHEN a.fecha_inicio IS NOT NULL
                 THEN 30
                 ELSE 0
-            END) AS TiempoEnSillonDentalMin,
+            END) AS tiempo_sillon_dental_minuto,
             SUM(CASE WHEN NULLIF(LTRIM(RTRIM(a.procedimiento_realizado)), '') IS NOT NULL 
                           AND NULLIF(LTRIM(RTRIM(a.indicaciones_finales)), '') IS NOT NULL 
-                     THEN 1 ELSE 0 END) AS AtencionesFinalizadasConformes
+                     THEN 1 ELSE 0 END) AS atencion_finalizada_conforme
         FROM [NexoSaludDB].dbo.[Atenciones] a
         LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Sede] ds ON a.id_sede = ds.id_sede
         LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Servicio] dserv ON a.id_servicio = dserv.id_servicio
@@ -737,14 +853,14 @@ BEGIN TRY
        AND fact.KeyEstadoAtencion = src.KeyEstadoAtencion
     WHEN MATCHED THEN
         UPDATE SET 
-            fact.CitasEvaluables = src.CitasEvaluables,
-            fact.AtencionesRealizadas = src.AtencionesRealizadas,
-            fact.CitasConInasistencia = src.CitasConInasistencia,
-            fact.TiempoEnSillonDentalMin = src.TiempoEnSillonDentalMin,
-            fact.AtencionesFinalizadasConformes = src.AtencionesFinalizadasConformes
+            fact.cita_evaluable = src.cita_evaluable,
+            fact.atencion_realizada = src.atencion_realizada,
+            fact.cita_inasistencia = src.cita_inasistencia,
+            fact.tiempo_sillon_dental_minuto = src.tiempo_sillon_dental_minuto,
+            fact.atencion_finalizada_conforme = src.atencion_finalizada_conforme
     WHEN NOT MATCHED BY TARGET THEN
-        INSERT (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyEstadoAtencion, CitasEvaluables, AtencionesRealizadas, CitasConInasistencia, TiempoEnSillonDentalMin, AtencionesFinalizadasConformes)
-        VALUES (src.KeyTiempo, src.KeySede, src.KeyServicio, src.KeyProfesional, src.KeyEstadoAtencion, src.CitasEvaluables, src.AtencionesRealizadas, src.CitasConInasistencia, src.TiempoEnSillonDentalMin, src.AtencionesFinalizadasConformes)
+        INSERT (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyEstadoAtencion, cita_evaluable, atencion_realizada, cita_inasistencia, tiempo_sillon_dental_minuto, atencion_finalizada_conforme)
+        VALUES (src.KeyTiempo, src.KeySede, src.KeyServicio, src.KeyProfesional, src.KeyEstadoAtencion, src.cita_evaluable, src.atencion_realizada, src.cita_inasistencia, src.tiempo_sillon_dental_minuto, src.atencion_finalizada_conforme)
     WHEN NOT MATCHED BY SOURCE THEN
         DELETE;
 
@@ -754,23 +870,23 @@ BEGIN TRY
     -- 5.5 Carga Idempotente: Fact_SeguimientoTurned
     -- Retorno clínico real: solo atenciones asistidas en los 90 días posteriores.
     -- ----------------------------------------------------------------
-    IF OBJECT_ID('dbo.Fact_SeguimientoTurned', 'U') IS NULL
+    IF OBJECT_ID('dbo.fact_seguimiento_turned', 'U') IS NULL AND OBJECT_ID('dbo.Fact_SeguimientoTurned') IS NULL
     BEGIN
-        CREATE TABLE dbo.Fact_SeguimientoTurned (
+        CREATE TABLE dbo.fact_seguimiento_turned (
             KeyTiempo INT FOREIGN KEY REFERENCES dbo.Dim_Tiempo(KeyTiempo),
             KeySede INT FOREIGN KEY REFERENCES dbo.Dim_Sede(KeySede),
             KeyServicio INT FOREIGN KEY REFERENCES dbo.Dim_Servicio(KeyServicio),
             KeyProfesional INT FOREIGN KEY REFERENCES dbo.Dim_Profesional(KeyProfesional),
             KeyCanal INT FOREIGN KEY REFERENCES dbo.Dim_Canal(KeyCanal),
-            SeguimientosRegistrados INT DEFAULT 0,
-            SeguimientosEfectivos INT DEFAULT 0,
-            IncidenciasReportadas INT DEFAULT 0,
-            IncidenciasResueltas24h INT DEFAULT 0,
-            RetornosCohorte90Dias INT DEFAULT 0,
-            PacientesElegiblesRetorno INT DEFAULT 0
+            seguimiento_registrado INT DEFAULT 0,
+            seguimiento_efectivo INT DEFAULT 0,
+            incidencia_reportada INT DEFAULT 0,
+            incidencia_resuelta_24_hora INT DEFAULT 0,
+            retorno_cohorte_90_dia INT DEFAULT 0,
+            paciente_elegible_retorno INT DEFAULT 0
         );
         CREATE UNIQUE NONCLUSTERED INDEX UQ_FactSeguimientoTurned_Grain 
-        ON Fact_SeguimientoTurned (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyCanal);
+        ON fact_seguimiento_turned (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyCanal);
     END;
 
     ;WITH TurnedSource AS (
@@ -780,12 +896,12 @@ BEGIN TRY
             ISNULL(dserv.KeyServicio, 0) AS KeyServicio,
             ISNULL(dp.KeyProfesional, 0) AS KeyProfesional,
             ISNULL(dc.KeyCanal, 0) AS KeyCanal,
-            COUNT(s.id_seguimiento) AS SeguimientosRegistrados,
-            SUM(CASE WHEN s.satisfaccion IS NOT NULL OR s.resultado IS NOT NULL THEN 1 ELSE 0 END) AS SeguimientosEfectivos,
-            SUM(CASE WHEN s.incidencia = 1 OR s.satisfaccion <= 2 THEN 1 ELSE 0 END) AS IncidenciasReportadas,
-            SUM(CASE WHEN s.incidencia = 1 THEN 1 ELSE 0 END) AS IncidenciasResueltas24h,
-            SUM(CASE WHEN ret90.tiene_retorno_90d = 1 THEN 1 ELSE 0 END) AS RetornosCohorte90Dias,
-            COUNT(DISTINCT s.id_persona) AS PacientesElegiblesRetorno
+            COUNT(s.id_seguimiento) AS seguimiento_registrado,
+            SUM(CASE WHEN s.satisfaccion IS NOT NULL OR s.resultado IS NOT NULL THEN 1 ELSE 0 END) AS seguimiento_efectivo,
+            SUM(CASE WHEN s.incidencia = 1 OR s.satisfaccion <= 2 THEN 1 ELSE 0 END) AS incidencia_reportada,
+            SUM(CASE WHEN s.incidencia = 1 THEN 1 ELSE 0 END) AS incidencia_resuelta_24_hora,
+            SUM(CASE WHEN ret90.tiene_retorno_90d = 1 THEN 1 ELSE 0 END) AS retorno_cohorte_90_dia,
+            COUNT(DISTINCT s.id_persona) AS paciente_elegible_retorno
         FROM [NexoSaludDB].dbo.[Seguimientos] s
         LEFT JOIN [NexoSaludDB].dbo.[Atenciones] a ON s.id_atencion = a.id_atencion
         LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Sede] ds ON a.id_sede = ds.id_sede
@@ -801,7 +917,7 @@ BEGIN TRY
               AND a2.asistencia LIKE '%Asisti%' AND a2.asistencia NOT LIKE '%No%'
         ) ret90
         GROUP BY 
-            CAST(FORMAT(s.fecha_hora, 'yyyyMMdd') AS INT),
+            CAST(FORMAT(s.fecha_hora, 'yyyyMMdd') AS INT), 
             ds.KeySede,
             dserv.KeyServicio,
             dp.KeyProfesional,
@@ -819,15 +935,15 @@ BEGIN TRY
        AND fact.KeyCanal = src.KeyCanal
     WHEN MATCHED THEN
         UPDATE SET 
-            fact.SeguimientosRegistrados = src.SeguimientosRegistrados,
-            fact.SeguimientosEfectivos = src.SeguimientosEfectivos,
-            fact.IncidenciasReportadas = src.IncidenciasReportadas,
-            fact.IncidenciasResueltas24h = src.IncidenciasResueltas24h,
-            fact.RetornosCohorte90Dias = src.RetornosCohorte90Dias,
-            fact.PacientesElegiblesRetorno = src.PacientesElegiblesRetorno
+            fact.seguimiento_registrado = src.seguimiento_registrado,
+            fact.seguimiento_efectivo = src.seguimiento_efectivo,
+            fact.incidencia_reportada = src.incidencia_reportada,
+            fact.incidencia_resuelta_24_hora = src.incidencia_resuelta_24_hora,
+            fact.retorno_cohorte_90_dia = src.retorno_cohorte_90_dia,
+            fact.paciente_elegible_retorno = src.paciente_elegible_retorno
     WHEN NOT MATCHED BY TARGET THEN
-        INSERT (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyCanal, SeguimientosRegistrados, SeguimientosEfectivos, IncidenciasReportadas, IncidenciasResueltas24h, RetornosCohorte90Dias, PacientesElegiblesRetorno)
-        VALUES (src.KeyTiempo, src.KeySede, src.KeyServicio, src.KeyProfesional, src.KeyCanal, src.SeguimientosRegistrados, src.SeguimientosEfectivos, src.IncidenciasReportadas, src.IncidenciasResueltas24h, src.RetornosCohorte90Dias, src.PacientesElegiblesRetorno)
+        INSERT (KeyTiempo, KeySede, KeyServicio, KeyProfesional, KeyCanal, seguimiento_registrado, seguimiento_efectivo, incidencia_reportada, incidencia_resuelta_24_hora, retorno_cohorte_90_dia, paciente_elegible_retorno)
+        VALUES (src.KeyTiempo, src.KeySede, src.KeyServicio, src.KeyProfesional, src.KeyCanal, src.seguimiento_registrado, src.seguimiento_efectivo, src.incidencia_reportada, src.incidencia_resuelta_24_hora, src.retorno_cohorte_90_dia, src.paciente_elegible_retorno)
     WHEN NOT MATCHED BY SOURCE THEN
         DELETE;
 

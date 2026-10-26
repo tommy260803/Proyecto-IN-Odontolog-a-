@@ -205,6 +205,25 @@ CREATE TABLE DatosLaborales (
 );
 GO
 
+CREATE TABLE PersonaSaludOdontologica (
+    id_salud_odonto             INT IDENTITY(1,1) PRIMARY KEY,
+    id_persona                  INT NOT NULL,
+
+    ultima_visita_odontologica  VARCHAR(50) NULL,
+    motivo_consulta             VARCHAR(100) NULL,
+    tratamiento_previo          VARCHAR(100) NULL,
+    nivel_dolor                 VARCHAR(20) NULL,
+    presenta_sensibilidad       VARCHAR(10) NULL,
+    sangrado_o_inflamacion      VARCHAR(30) NULL,
+    usa_aparato_o_protesis      VARCHAR(30) NULL,
+    condicion_atencion_especial VARCHAR(100) NULL,
+
+    fecha_registro              DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+
+    CONSTRAINT FK_PersonaSaludOdonto_Persona FOREIGN KEY (id_persona) REFERENCES Personas(id_persona)
+);
+GO
+
 CREATE TABLE PersonaPreferencias (
     id_preferencia      INT IDENTITY(1,1) PRIMARY KEY,
 

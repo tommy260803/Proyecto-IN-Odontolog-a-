@@ -6,10 +6,10 @@ async function testLeadEtl() {
         CAST(FORMAT(ev.fecha_hora, 'yyyyMMdd') AS INT) AS KeyTiempo,
         ISNULL(ds.KeySede, 1) AS KeySede,
         ISNULL(dn.KeyNegociador, 1) AS KeyNegociador,
-        COUNT(DISTINCT ev.id_persona) AS LeadsCohorteEvaluable,
-        SUM(CASE WHEN p.id_etapa_actual >= 3 THEN 1 ELSE 0 END) AS LeadsConvertidosPayer14Dias,
-        SUM(CASE WHEN p.id_etapa_actual = 2 THEN 1 ELSE 0 END) AS LeadsEnNegociacion,
-        SUM(CASE WHEN p.id_etapa_actual < 2 THEN 1 ELSE 0 END) AS LeadsAbandonados
+        COUNT(DISTINCT ev.id_persona) AS cohorte_evaluable,
+        SUM(CASE WHEN p.id_etapa_actual >= 3 THEN 1 ELSE 0 END) AS conversion_payer_14_dia,
+        SUM(CASE WHEN p.id_etapa_actual = 2 THEN 1 ELSE 0 END) AS leads_en_negociacion,
+        SUM(CASE WHEN p.id_etapa_actual < 2 THEN 1 ELSE 0 END) AS negociacion_abandonada
     FROM [NexoSaludDB].dbo.[EventosEtapa] ev
     JOIN [NexoSaludDB].dbo.[Personas] p ON ev.id_persona = p.id_persona
     LEFT JOIN [NexoSalud_Mart].dbo.[Dim_Sede] ds ON ds.id_sede = 1

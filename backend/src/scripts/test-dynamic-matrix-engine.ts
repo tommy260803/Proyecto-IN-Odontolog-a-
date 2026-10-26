@@ -110,9 +110,9 @@ async function testAllStages() {
     SELECT 
       ISNULL(f.TipoOrigen, ISNULL(c.TipoMedio, 'Digital')) AS categoria,
       ISNULL(c.NombreCanal, 'Sin Canal') AS item,
-      SUM(fc.ContactosRegistrados) AS [Contactos Registrados],
-      SUM(fc.ContactosUtilizables) AS [Contactos Utilizables],
-      SUM(fc.ConversionesALead) AS [Conversiones a LEAD]
+      SUM(fc.contacto_registrado) AS [Contactos Registrados],
+      SUM(fc.contacto_utilizable) AS [Contactos Utilizables],
+      SUM(fc.conversion_lead) AS [Conversiones a LEAD]
     FROM Fact_CaptacionBuyer fc
     LEFT JOIN Dim_Canal c ON c.KeyCanal = fc.KeyCanal
     LEFT JOIN Dim_Fuente f ON f.KeyFuente = fc.KeyFuente
@@ -125,9 +125,9 @@ async function testAllStages() {
     SELECT 
       ISNULL(s.Sede, 'Sede Centro') AS categoria,
       ISNULL(serv.ServicioOdontologico, 'Evaluación') AS item,
-      SUM(fa.CitasEvaluables) AS [Citas Evaluables],
-      SUM(fa.AtencionesRealizadas) AS [Atendidos],
-      SUM(fa.CitasConInasistencia) AS [Inasistencias]
+      SUM(fa.cita_evaluable) AS [Citas Evaluables],
+      SUM(fa.atencion_realizada) AS [Atendidos],
+      SUM(fa.cita_inasistencia) AS [Inasistencias]
     FROM Fact_AtencionCustomer fa
     LEFT JOIN Dim_Sede s ON s.KeySede = fa.KeySede
     LEFT JOIN Dim_Servicio serv ON serv.KeyServicio = fa.KeyServicio

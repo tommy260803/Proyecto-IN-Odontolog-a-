@@ -37,30 +37,31 @@ async function main() {
     await runSqlFile(mart, etlPath);
 
     const snapshot1 = await queryMart(`
-      SELECT 'Buyer' as Tbl, COUNT(*) as F, SUM(ContactosRegistrados) as M1, SUM(ConversionesALead) as M2 FROM Fact_CaptacionBuyer
-      UNION ALL SELECT 'Lead', COUNT(*), SUM(LeadsCohorteEvaluable), SUM(LeadsConvertidosPayer14Dias) FROM Fact_NegociacionLead
-      UNION ALL SELECT 'Payer', COUNT(*), SUM(PagosRegistrados), SUM(CAST(ImporteTotalCobro AS BIGINT)) FROM Fact_GestionPayer
-      UNION ALL SELECT 'Customer', COUNT(*), SUM(CitasEvaluables), SUM(AtencionesRealizadas) FROM Fact_AtencionCustomer
-      UNION ALL SELECT 'Turned', COUNT(*), SUM(SeguimientosRegistrados), SUM(RetornosCohorte90Dias) FROM Fact_SeguimientoTurned
+      SELECT 'Buyer' as Tbl, COUNT(*) as F, SUM(contacto_registrado) as M1, SUM(conversion_lead) as M2 FROM Fact_CaptacionBuyer
+      UNION ALL SELECT 'Lead', COUNT(*), SUM(cohorte_evaluable), SUM(conversion_payer_14_dia) FROM Fact_NegociacionLead
+      UNION ALL SELECT 'Payer', COUNT(*), SUM(pago_registrado), SUM(CAST(importe_total_cobro AS BIGINT)) FROM Fact_GestionPayer
+      UNION ALL SELECT 'Customer', COUNT(*), SUM(cita_evaluable), SUM(atencion_realizada) FROM Fact_AtencionCustomer
+      UNION ALL SELECT 'Turned', COUNT(*), SUM(seguimiento_registrado), SUM(retorno_cohorte_90_dia) FROM Fact_SeguimientoTurned
     `);
 
     await runSqlFile(mart, etlPath);
 
     const snapshot2 = await queryMart(`
-      SELECT 'Buyer' as Tbl, COUNT(*) as F, SUM(ContactosRegistrados) as M1, SUM(ConversionesALead) as M2 FROM Fact_CaptacionBuyer
-      UNION ALL SELECT 'Lead', COUNT(*), SUM(LeadsCohorteEvaluable), SUM(LeadsConvertidosPayer14Dias) FROM Fact_NegociacionLead
-      UNION ALL SELECT 'Payer', COUNT(*), SUM(PagosRegistrados), SUM(CAST(ImporteTotalCobro AS BIGINT)) FROM Fact_GestionPayer
-      UNION ALL SELECT 'Customer', COUNT(*), SUM(CitasEvaluables), SUM(AtencionesRealizadas) FROM Fact_AtencionCustomer
-      UNION ALL SELECT 'Turned', COUNT(*), SUM(SeguimientosRegistrados), SUM(RetornosCohorte90Dias) FROM Fact_SeguimientoTurned
+      SELECT 'Buyer' as Tbl, COUNT(*) as F, SUM(contacto_registrado) as M1, SUM(conversion_lead) as M2 FROM Fact_CaptacionBuyer
+      UNION ALL SELECT 'Lead', COUNT(*), SUM(cohorte_evaluable), SUM(conversion_payer_14_dia) FROM Fact_NegociacionLead
+      UNION ALL SELECT 'Payer', COUNT(*), SUM(pago_registrado), SUM(CAST(importe_total_cobro AS BIGINT)) FROM Fact_GestionPayer
+      UNION ALL SELECT 'Customer', COUNT(*), SUM(cita_evaluable), SUM(atencion_realizada) FROM Fact_AtencionCustomer
+      UNION ALL SELECT 'Turned', COUNT(*), SUM(seguimiento_registrado), SUM(retorno_cohorte_90_dia) FROM Fact_SeguimientoTurned
     `);
 
-    const equal = JSON.stringify(snapshot1) === JSON.stringify(snapshot2);
+    const serializeBigInt = (obj: any) => JSON.stringify(obj, (_k, v) => typeof v === 'bigint' ? v.toString() : v);
+    const equal = serializeBigInt(snapshot1) === serializeBigInt(snapshot2);
     results.push({
       code: 'TEST-A',
       name: 'Idempotencia en reejecución idéntica',
       verdict: equal ? 'PASÓ' : 'FALLÓ',
       details: equal 
-        ? `100% de concordancia en filas y métricas a través de las 5 tablas de hechos (${JSON.stringify(snapshot1[2])}).`
+        ? `100% de concordancia en filas y métricas a través de las 5 tablas de hechos (${serializeBigInt(snapshot1[2])}).`
         : `Discrepancia detectada entre snapshot 1 y snapshot 2.`
     });
   } catch (err: any) {
@@ -81,7 +82,7 @@ async function main() {
     await runSqlFile(mart, etlPath);
 
     const check = await queryMart<{ F: number, TotImp: number }>(`
-      SELECT COUNT(*) as F, SUM(ImporteTotalCobro) as TotImp 
+      SELECT COUNT(*) as F, SUM(importe_total_cobro) as TotImp 
       FROM Fact_GestionPayer 
       WHERE KeyTiempo = 20261020 AND KeyPasarela = 4; -- Yape = 4
     `);
@@ -107,18 +108,18 @@ async function main() {
 
       await runSqlFile(mart, etlPath);
 
-      const checkReclass = await queryMart<{ KeyCobro: number, PagosRechazados: number, PagosValidados: number }>(`
-        SELECT KeyCobro, PagosRechazados, PagosValidados
+      const checkReclass = await queryMart<{ KeyCobro: number, pago_rechazado: number, pago_validado: number }>(`
+        SELECT KeyCobro, pago_rechazado, pago_validado
         FROM Fact_GestionPayer 
         WHERE KeyTiempo = 20261020 AND KeyPasarela = 4;
       `);
 
-      const passed = checkReclass.length === 1 && checkReclass[0].KeyCobro === 3 && checkReclass[0].PagosRechazados === 1 && checkReclass[0].PagosValidados === 0;
+      const passed = checkReclass.length === 1 && checkReclass[0].KeyCobro === 3 && checkReclass[0].pago_rechazado === 1 && checkReclass[0].pago_validado === 0;
       results.push({
         code: 'TEST-C',
         name: 'Reclasificación por cambio de estado transaccional',
         verdict: passed ? 'PASÓ' : 'FALLÓ',
-        details: `El pago #${testPaymentId} migró de KeyCobro=1 (VALIDATED) a KeyCobro=3 (REJECTED) con métrica PagosRechazados=1 y PagosValidados=0.`
+        details: `El pago #${testPaymentId} migró de KeyCobro=1 (VALIDATED) a KeyCobro=3 (REJECTED) con métrica pago_rechazado=1 y pago_validado=0.`
       });
     }
   } catch (err: any) {
@@ -187,7 +188,7 @@ async function main() {
       await mart.request().batch(`
         BEGIN TRY
           BEGIN TRANSACTION;
-          UPDATE Fact_CaptacionBuyer SET ContactosRegistrados = 999999 WHERE KeyTiempo = 20260901;
+          UPDATE Fact_CaptacionBuyer SET contacto_registrado = 999999 WHERE KeyTiempo = 20260901;
           -- Forzar división por cero
           DECLARE @Fail INT = 1 / 0;
           COMMIT TRANSACTION;
@@ -204,7 +205,7 @@ async function main() {
       SELECT TOP 1 BatchId, Mensaje FROM dbo.Log_Ejecucion_ETL WHERE BatchId = 'TEST_FAIL_01';
     `);
 
-    const countAfter = await queryMart<{ cnt: number }>('SELECT COUNT(*) as cnt FROM Fact_CaptacionBuyer WHERE ContactosRegistrados = 999999');
+    const countAfter = await queryMart<{ cnt: number }>('SELECT COUNT(*) as cnt FROM Fact_CaptacionBuyer WHERE contacto_registrado = 999999');
 
     const passed = countAfter[0].cnt === 0 && checkLog.length > 0 && checkLog[0].Mensaje.includes('Divide by zero');
     results.push({
@@ -270,9 +271,9 @@ async function main() {
 
     const martPagos = await queryMart<{ TotPagos: number, TotValid: number, ImpTot: number }>(`
       SELECT 
-        SUM(PagosRegistrados) as TotPagos,
-        SUM(PagosValidados) as TotValid,
-        SUM(ImporteTotalCobro) as ImpTot
+        SUM(pago_registrado) as TotPagos,
+        SUM(pago_validado) as TotValid,
+        SUM(importe_total_cobro) as ImpTot
       FROM Fact_GestionPayer;
     `);
 
@@ -286,9 +287,9 @@ async function main() {
 
     const martAtenc = await queryMart<{ TotAtenc: number, Asist: number, Inasist: number }>(`
       SELECT 
-        SUM(CitasEvaluables) as TotAtenc,
-        SUM(AtencionesRealizadas) as Asist,
-        SUM(CitasConInasistencia) as Inasist
+        SUM(cita_evaluable) as TotAtenc,
+        SUM(atencion_realizada) as Asist,
+        SUM(cita_inasistencia) as Inasist
       FROM Fact_AtencionCustomer;
     `);
 
@@ -316,7 +317,7 @@ async function main() {
     `);
 
     const martLeads = await queryMart<{ CohorteTotal: number }>(`
-      SELECT SUM(LeadsCohorteEvaluable) as CohorteTotal
+      SELECT SUM(cohorte_evaluable) as CohorteTotal
       FROM Fact_NegociacionLead;
     `);
 

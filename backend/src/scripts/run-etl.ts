@@ -1,33 +1,48 @@
+import { queryMart } from '../db/mart';
 import fs from 'fs';
 import path from 'path';
-import { getMartPool } from '../db/mart';
 
-async function run() {
-  const pool = await getMartPool();
-  const useInsert = process.argv.includes('--strategy=insert');
-  const fileName = useInsert ? 'etl_populate_mart_insert.sql' : 'etl_populate_mart.sql';
-  const filePath = path.resolve(__dirname, `../../../database/${fileName}`);
-  
-  console.log(`🚀 Iniciando ETL de NexoSalud [Estrategia: ${useInsert ? 'UPDATE + INSERT (WHERE NOT EXISTS)' : 'MERGE (Oficial)'}]`);
-  console.log(`📄 Script: ${fileName}`);
-
-  const sqlContent = fs.readFileSync(filePath, 'utf8');
-  const batches = sqlContent.split(/^GO\s*$/mi);
-  
-  let i = 1;
-  for (const batch of batches) {
+async function runEtl() {
+  console.log('🔄 Ejecutando database/etl_populate_mart.sql...');
+  const etlPath = path.resolve(__dirname, '../../../database/etl_populate_mart.sql');
+  const etlSql = fs.readFileSync(etlPath, 'utf8');
+  const etlBatches = etlSql.split(/^GO\s*$/mi);
+  let b = 1;
+  for (const batch of etlBatches) {
     const trimmed = batch.trim();
     if (trimmed) {
-      console.log(`Executing batch ${i}...`);
-      await pool.request().batch(trimmed);
-      i++;
+      console.log(`   Ejecutando lote ETL ${b}...`);
+      await queryMart(trimmed);
+      b++;
     }
   }
-  console.log(`✅ Proceso ETL completado con éxito! [${fileName}]`);
-  process.exit(0);
+  console.log('✅ etl_populate_mart.sql ejecutado con éxito en NexoSalud_Mart.');
+
+  console.log('\n📊 VERIFICACIÓN DE DATOS FACT_OPORTUNIDADCAPTACION:');
+  const atom = await queryMart(`
+    SELECT 
+      COUNT(*) as TotalFilas,
+      SUM(contacto_utilizable) as Utilizables,
+      SUM(conversion_lead) as Conversiones,
+      SUM(costo_atribuido_captacion) as CostoTotal
+    FROM Fact_OportunidadCaptacion;
+  `);
+  console.table(atom);
+
+  console.log('\n📊 VERIFICACIÓN DE DATOS FACT_CAPTACIONBUYER (AGREGADA):');
+  const aggr = await queryMart(`
+    SELECT 
+      COUNT(*) as GruposAgregados,
+      SUM(contacto_registrado) as Registrados,
+      SUM(contacto_utilizable) as Utilizables,
+      SUM(conversion_lead) as Conversiones,
+      SUM(costo_atribuido_captacion) as CostoTotal
+    FROM Fact_CaptacionBuyer;
+  `);
+  console.table(aggr);
 }
 
-run().catch(err => {
-  console.error('❌ Error ejecutando ETL:', err);
+runEtl().then(() => process.exit(0)).catch(err => {
+  console.error(err);
   process.exit(1);
 });

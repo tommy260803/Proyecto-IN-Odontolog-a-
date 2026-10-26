@@ -1,14 +1,14 @@
 USE NexoSalud_Mart;
 GO
 
--- 1. Agregar columna LeadsEnNegociacion a Fact_NegociacionLead si no existe
+-- 1. Agregar columna leads_en_negociacion a Fact_NegociacionLead si no existe
 IF NOT EXISTS (
     SELECT * FROM sys.columns 
     WHERE object_id = OBJECT_ID('Fact_NegociacionLead') 
-      AND name = 'LeadsEnNegociacion'
+      AND name = 'leads_en_negociacion'
 )
 BEGIN
-    ALTER TABLE Fact_NegociacionLead ADD LeadsEnNegociacion INT DEFAULT 0;
+    ALTER TABLE Fact_NegociacionLead ADD leads_en_negociacion INT DEFAULT 0;
 END
 GO
 
@@ -87,7 +87,7 @@ VALUES
 -- Septiembre 2026 -> KeyTiempo = 20260915
 -- Redes Sociales (KeyFuente=1)
 -- WhatsApp (KeyCanal=1): 250 válidos, 25 incompletos, 15 duplicados, 10 rechazados
-INSERT INTO Fact_CaptacionBuyer (KeyTiempo, KeyFuente, KeyCanal, KeyEstadoRegistro, ContactosRegistrados, ContactosUtilizables, ConversionesALead)
+INSERT INTO Fact_CaptacionBuyer (KeyTiempo, KeyFuente, KeyCanal, KeyEstadoRegistro, contacto_registrado, contacto_utilizable, conversion_lead)
 VALUES 
     (20260915, 1, 1, 1, 250, 250, 80),
     (20260915, 1, 1, 2, 25, 0, 0),
@@ -152,8 +152,8 @@ VALUES
 -- Operador_04 (KeyNegociador=4): Convertidos a PAYER=15, En Negociación=33, Abandonados=12, Total=60
 INSERT INTO Fact_NegociacionLead (
     KeyTiempo, KeySede, KeyNegociador, 
-    LeadsCohorteEvaluable, LeadsConvertidosPayer14Dias, LeadsEnNegociacion, LeadsAbandonados,
-    LeadsRequierenRespuesta, LeadsRespuestaUtil15Min, LeadsResultadoFinal
+    cohorte_evaluable, conversion_payer_14_dia, leads_en_negociacion, negociacion_abandonada,
+    solicitud_requiere_respuesta, respuesta_util_15_min, negociacion_finalizada
 )
 VALUES 
     (20260915, 1, 1, 85, 32, 43, 10, 85, 78, 42),
@@ -186,7 +186,7 @@ VALUES
 -- Bancarizado:
 -- Transferencia: Validado 8,100.00 | Pendiente 1,500.00 | Rechazado 400.00 | Total 10,000.00
 -- Tarjeta (Web): Validado 4,500.00 | Pendiente 0.00 | Rechazado 50.00 | Total 4,550.00
-INSERT INTO Fact_GestionPayer (KeyTiempo, KeyPasarela, KeyCobro, ImporteTotalCobro, PagosRegistrados, PagosValidados, PagosRechazados)
+INSERT INTO Fact_GestionPayer (KeyTiempo, KeyPasarela, KeyCobro, importe_total_cobro, pago_registrado, pago_validado, pago_rechazado)
 VALUES 
     (20260915, 1, 1, 4500.00, 45, 45, 0),
     (20260915, 1, 2, 200.00, 2, 0, 0),
@@ -230,7 +230,7 @@ VALUES
 -- Odontología Especializada:
 -- Ortodoncia Inicial: Atendidos 40 | No Asistió 8 | Cancelados 2 | Total 50
 -- Implante Dental: Atendidos 15 | No Asistió 0 | Cancelados 2 | Total 17
-INSERT INTO Fact_AtencionCustomer (KeyTiempo, KeyServicio, KeyEstadoAtencion, CitasEvaluables, AtencionesRealizadas, CitasConInasistencia)
+INSERT INTO Fact_AtencionCustomer (KeyTiempo, KeyServicio, KeyEstadoAtencion, cita_evaluable, atencion_realizada, cita_inasistencia)
 VALUES 
     (20260915, 10, 1, 85, 85, 0),
     (20260915, 10, 2, 12, 0, 12),

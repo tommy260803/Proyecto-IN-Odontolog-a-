@@ -1,87 +1,80 @@
 import sqlDefault, { ConnectionPool } from 'mssql';
 import dotenv from 'dotenv';
+import { prisma } from '../db';
 
 dotenv.config();
 
-let sql: typeof sqlDefault;
-try {
-  // Permite autenticación de Windows en entornos locales con ODBC
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  sql = require('mssql/msnodesqlv8');
-} catch {
-  // Fallback seguro a mssql estándar en entornos Linux / Render
-  sql = sqlDefault;
+const sql = sqlDefault;
+
+export async function queryMart<T = any>(queryText: string, params?: Record<string, any>): Promise<T[]> {
+  let sqlStatement = queryText;
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      const valStr = typeof value === 'number' ? String(value) : `'${String(value).replace(/'/g, "''")}'`;
+      sqlStatement = sqlStatement.replace(new RegExp(`@${key}\\b`, 'g'), valStr);
+    }
+  }
+  const martDb = process.env.MART_DATABASE || 'NexoSalud_Mart';
+  const oltpDb = process.env.OLTP_DATABASE || 'NexoSaludDB';
+  try {
+    const fullSql = `USE [${martDb}]; ${sqlStatement}`;
+    const result = await prisma.$queryRawUnsafe(fullSql);
+    return result as T[];
+  } finally {
+    await prisma.$queryRawUnsafe(`USE [${oltpDb}];`).catch(() => {});
+  }
 }
 
-const connectionString =
-  process.env.MART_CONNECTION_STRING ||
-  'Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=NexoSalud_Mart;Trusted_Connection=yes;TrustServerCertificate=yes;';
+export async function queryOltp<T = any>(queryText: string, params?: Record<string, any>): Promise<T[]> {
+  let sqlStatement = queryText;
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      const valStr = typeof value === 'number' ? String(value) : `'${String(value).replace(/'/g, "''")}'`;
+      sqlStatement = sqlStatement.replace(new RegExp(`@${key}\\b`, 'g'), valStr);
+    }
+  }
+  const oltpDb = process.env.OLTP_DATABASE || 'NexoSaludDB';
+  const fullSql = `USE [${oltpDb}]; ${sqlStatement}`;
+  const result = await prisma.$queryRawUnsafe(fullSql);
+  return result as T[];
+}
 
-let poolPromise: Promise<ConnectionPool> | null = null;
+const baseDbConfig = {
+  user: process.env.DB_USER || 'nexouser',
+  password: process.env.DB_PASSWORD || 'NexoSalud2026!',
+  server: process.env.DB_SERVER || '127.0.0.1',
+  port: parseInt(process.env.DB_PORT || '1433', 10),
+  options: { encrypt: false, trustServerCertificate: true, requestTimeout: 60000 }
+};
 
+let martPoolPromise: Promise<ConnectionPool> | null = null;
 export async function getMartPool(): Promise<ConnectionPool> {
-  if (!poolPromise) {
-    const config: any = {
-      connectionString,
-    };
-    const pool = new sql.ConnectionPool(config);
-
-    poolPromise = pool.connect().then((connectedPool) => {
-      console.log('✅ [NexoSalud_Mart] Conexión establecida exitosamente al DataMart (sin Prisma).');
-      return connectedPool;
-    }).catch((err) => {
-      console.error('❌ [NexoSalud_Mart] Error conectando a NexoSalud_Mart:', err.message);
-      poolPromise = null;
+  if (!martPoolPromise) {
+    const martPool = new sql.ConnectionPool({
+      ...baseDbConfig,
+      database: process.env.MART_DATABASE || 'NexoSalud_Mart'
+    });
+    martPoolPromise = martPool.connect().catch((err) => {
+      martPoolPromise = null;
       throw err;
     });
   }
-
-  return poolPromise;
+  return martPoolPromise;
 }
-
-export async function queryMart<T = any>(queryText: string, params?: Record<string, any>): Promise<T[]> {
-  const pool = await getMartPool();
-  const request = pool.request();
-  if (params) {
-    for (const [key, value] of Object.entries(params)) {
-      request.input(key, value);
-    }
-  }
-  const result = await request.query(queryText);
-  return result.recordset as T[];
-}
-
-const oltpConnectionString =
-  process.env.OLTP_CONNECTION_STRING ||
-  'Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=NexoSaludDB;Trusted_Connection=yes;TrustServerCertificate=yes;';
 
 let oltpPoolPromise: Promise<ConnectionPool> | null = null;
-
 export async function getOltpPool(): Promise<ConnectionPool> {
   if (!oltpPoolPromise) {
-    const pool = new sql.ConnectionPool({ connectionString: oltpConnectionString } as any);
-    oltpPoolPromise = pool.connect().then((connectedPool) => {
-      console.log('✅ [NexoSaludDB] Conexión establecida exitosamente a la BD Transaccional.');
-      return connectedPool;
-    }).catch((err) => {
-      console.error('❌ [NexoSaludDB] Error conectando a NexoSaludDB:', err.message);
+    const oltpPool = new sql.ConnectionPool({
+      ...baseDbConfig,
+      database: process.env.OLTP_DATABASE || 'NexoSaludDB'
+    });
+    oltpPoolPromise = oltpPool.connect().catch((err) => {
       oltpPoolPromise = null;
       throw err;
     });
   }
   return oltpPoolPromise;
-}
-
-export async function queryOltp<T = any>(queryText: string, params?: Record<string, any>): Promise<T[]> {
-  const pool = await getOltpPool();
-  const request = pool.request();
-  if (params) {
-    for (const [key, value] of Object.entries(params)) {
-      request.input(key, value);
-    }
-  }
-  const result = await request.query(queryText);
-  return result.recordset as T[];
 }
 
 export { sql as martSql };
