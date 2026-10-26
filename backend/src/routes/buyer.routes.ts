@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../db';
+import { BuyerService } from '../services/buyerService';
 
 const router = Router();
 
@@ -198,245 +199,78 @@ router.get('/check-duplicate', async (req, res) => {
   }
 });
 
-// Registrar BUYER e inmediatamente solicitar información (Convertir a LEAD si es único)
-router.post('/register', async (req, res) => {
-  const {
-    nombres,
-    apellidos,
-    email,
-    numero,
-    autoriza_contacto,
-    id_canal,
-    id_fuente,
-    id_servicio,
-    sede_preferida,
-    id_campana_origen,
-    id_canal_origen,
-    tipo_persona,
-    estado_calidad,
-    id_servicio_interes,
-  } = req.body;
-
+// Endpoints especializados de OportunidadesCaptacion (Fase BUYER)
+router.get('/opportunities', async (req, res) => {
   try {
-    let etapaBuyer = await prisma.etapas.findFirst({ where: { nombre: 'BUYER' } });
-    if (!etapaBuyer) etapaBuyer = await prisma.etapas.create({ data: { nombre: 'BUYER', descripcion: 'Contacto inicial' } });
+    const result = await BuyerService.listOpportunities(req.query);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error in GET /opportunities:', error);
+    res.status(500).json({ error: error.message || 'Error al listar oportunidades' });
+  }
+});
 
-    let etapaLead = await prisma.etapas.findFirst({ where: { nombre: 'LEAD' } });
-    if (!etapaLead) etapaLead = await prisma.etapas.create({ data: { nombre: 'LEAD', descripcion: 'Intención concreta' } });
+router.get('/opportunities/:id', async (req, res) => {
+  try {
+    const numId = Number(req.params.id);
+    if (isNaN(numId)) return res.status(400).json({ error: 'ID de oportunidad inválido' });
+    const detail = await BuyerService.getOpportunityDetail(numId);
+    res.json(detail);
+  } catch (error: any) {
+    console.error('Error in GET /opportunities/:id:', error);
+    res.status(404).json({ error: error.message || 'Oportunidad no encontrada' });
+  }
+});
 
-    const rawDigits = numero ? String(numero).replace(/\D/g, '') : '';
-    const cleanPhone = rawDigits.length >= 9 ? rawDigits.slice(-9) : (rawDigits.length >= 7 ? rawDigits : null);
-    const cleanEmail = email ? String(email).trim().toLowerCase() : null;
+router.patch('/opportunities/:id/status', async (req, res) => {
+  try {
+    const numId = Number(req.params.id);
+    if (isNaN(numId)) return res.status(400).json({ error: 'ID de oportunidad inválido' });
+    const updated = await BuyerService.updateStatus(numId, req.body);
+    res.json({ success: true, message: 'Estado de oportunidad actualizado', data: updated });
+  } catch (error: any) {
+    console.error('Error in PATCH /opportunities/:id/status:', error);
+    res.status(400).json({ error: error.message || 'Error al actualizar estado de oportunidad' });
+  }
+});
 
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Detectar duplicado por teléfono o correo
-      let isDuplicate = false;
-      let existingPerson = null;
-      const isNewPersonConfirmed = Boolean(req.body.isNewPersonConfirmed);
+router.post('/opportunities/:id/convert', async (req, res) => {
+  try {
+    const numId = Number(req.params.id);
+    if (isNaN(numId)) return res.status(400).json({ error: 'ID de oportunidad inválido' });
+    const result = await BuyerService.convertToLead(numId, req.body);
+    res.json({ success: true, message: 'Oportunidad convertida a LEAD exitosamente', data: result });
+  } catch (error: any) {
+    console.error('Error in POST /opportunities/:id/convert:', error);
+    res.status(400).json({ error: error.message || 'Error al convertir a LEAD' });
+  }
+});
 
-      const dupChecks: any[] = [];
-      if (cleanPhone) dupChecks.push({ numero: { contains: cleanPhone } });
-      if (cleanEmail && cleanEmail.includes('@')) dupChecks.push({ email: cleanEmail });
-
-      if (dupChecks.length > 0 && !isNewPersonConfirmed) {
-        existingPerson = await tx.personas.findFirst({
-          where: { OR: dupChecks }
-        });
-        if (existingPerson) {
-          isDuplicate = true;
-        }
+// Registrar BUYER e inmediatamente solicitar información (Convertir a LEAD si es único)
+// Registrar BUYER en la fase BUYER (sin salto forzado a LEAD)
+router.post('/register', async (req, res) => {
+  try {
+    const result = await BuyerService.registerOpportunity(req.body);
+    res.status(201).json({
+      success: true,
+      isDuplicate: result.esRecurrente,
+      isRecurring: result.esRecurrente,
+      consultationCount: result.esRecurrente ? 2 : 1,
+      message: result.esRecurrente
+        ? 'Nueva oportunidad registrada para paciente existente.'
+        : 'Oportunidad registrada exitosamente en fase BUYER.',
+      data: {
+        id_persona: result.persona.id_persona,
+        id_oportunidad: result.oportunidad.id_oportunidad,
+        persona: result.persona,
+        oportunidad: result.oportunidad,
+        alertas: result.alertas
       }
-
-      // 2. Canal Web y Fuente Web
-      let webCanal = await tx.canales.findFirst({
-        where: {
-          OR: [
-            { nombre: { contains: 'Web' } },
-            { nombre: { contains: 'Portal' } },
-            { nombre: { contains: 'Online' } }
-          ]
-        }
-      });
-      if (!webCanal) {
-        webCanal = await tx.canales.create({
-          data: { nombre: 'Página Web / Portal Online', activo: true }
-        });
-      }
-
-      let webFuente = await tx.fuentes.findFirst({
-        where: {
-          OR: [
-            { nombre: { contains: 'Web' } },
-            { nombre: { contains: 'Formulario' } },
-            { nombre: { contains: 'Digital' } },
-            { nombre: { contains: 'Meta' } }
-          ]
-        }
-      });
-      if (!webFuente) {
-        webFuente = await tx.fuentes.create({
-          data: { nombre: 'Formulario Web - Portal NexoSalud', activo: true }
-        });
-      }
-
-      const validCanal = (id_canal ? await getValidCanalId(tx, id_canal) : null) || webCanal.id_canal;
-      const validCanalOrigen = (id_canal_origen ? await getValidCanalId(tx, id_canal_origen) : null) || webCanal.id_canal;
-      const validFuente = (id_fuente ? await getValidFuenteId(tx, id_fuente) : null) || webFuente.id_fuente;
-      const validCampana = id_campana_origen ? await getValidCampanaId(tx, id_campana_origen) : null;
-      const validServicio = await getValidServicioId(tx, id_servicio);
-      const validServicioInteres = (await getValidServicioId(tx, id_servicio_interes)) || validServicio;
-
-      let persona;
-      let totalConsultas = 1;
-
-      if (isDuplicate && existingPerson) {
-        // ARQUITECTURA LIMPIA: No duplicamos la fila de persona. Anexamos la nueva consulta a su historial.
-        const prevCount = await tx.solicitudes.count({ where: { id_persona: existingPerson.id_persona } });
-        totalConsultas = prevCount + 1;
-
-        persona = await tx.personas.update({
-          where: { id_persona: existingPerson.id_persona },
-          data: {
-            email: email ? String(email).trim() : existingPerson.email,
-            fecha_actualizacion: new Date(),
-            // Al reiterar consulta, se reactiva y promueve a LEAD para negociación comercial
-            id_etapa_actual: etapaLead.id_etapa,
-            estado_calidad: 'Valido',
-          }
-        });
-
-        // Registrar evento de cambio de etapa si estaba en BUYER
-        if (existingPerson.id_etapa_actual === etapaBuyer.id_etapa) {
-          await tx.eventosEtapa.create({
-            data: {
-              id_persona: persona.id_persona,
-              etapa_origen: etapaBuyer.id_etapa,
-              etapa_destino: etapaLead.id_etapa,
-              motivo: `Reactivación y avance a LEAD por consulta recurrente (#${totalConsultas})`,
-            }
-          });
-        }
-      } else {
-        // Paciente nuevo: Creamos el registro único
-        persona = await tx.personas.create({
-          data: {
-            nombres,
-            apellidos,
-            email: email ? String(email).trim() : null,
-            numero: numero ? String(numero).trim() : null,
-            autoriza_contacto: autoriza_contacto || false,
-            fecha_autorizacion: autoriza_contacto ? new Date() : null,
-            id_campana_origen: validCampana,
-            id_canal_origen: validCanalOrigen,
-            tipo_persona: tipo_persona || 'Adulto General',
-            estado_calidad: 'Valido',
-            id_etapa_actual: etapaLead.id_etapa,
-          }
-        });
-
-        await tx.eventosEtapa.create({
-          data: {
-            id_persona: persona.id_persona,
-            etapa_origen: etapaBuyer.id_etapa,
-            etapa_destino: etapaLead.id_etapa,
-            motivo: isNewPersonConfirmed
-              ? 'Nuevo paciente registrado con contacto compartido (Confirmado vía Agente de Marketing)'
-              : 'Solicitud de información concreta (Ingreso web inicial)',
-          }
-        });
-      }
-
-      // Detalle de la duda o consulta específica ingresada por el paciente
-      const prefix = isNewPersonConfirmed ? '[Contacto Compartido] ' : '';
-      const motivoRaw = req.body.duda_especifica 
-        ? `[Consulta #${totalConsultas}] ${req.body.duda_especifica}`
-        : (req.body.concreteRequest || (isDuplicate ? `Consulta recurrente #${totalConsultas} desde portal web` : 'Solicitud de información desde formulario web'));
-      const motivoConsulta = String(prefix + motivoRaw).slice(0, 195);
-
-      // 1. Guardar la nueva Solicitud en su historial
-      const solicitud = await tx.solicitudes.create({
-        data: {
-          id_persona: persona.id_persona,
-          id_servicio: validServicio,
-          motivo: motivoConsulta,
-        }
-      });
-
-      // 2. Registrar la Interacción con trazabilidad de fecha y detalle
-      await tx.interacciones.create({
-        data: {
-          id_persona: persona.id_persona,
-          id_canal: validCanal,
-          id_fuente: validFuente,
-          tipo: isDuplicate ? `Consulta Web Recurrente (#${totalConsultas})` : 'Registro y Solicitud de Info (Consulta #1)',
-          mensaje: isDuplicate 
-            ? `El usuario reiteró consulta vía web (Intento #${totalConsultas}). Duda/Motivo: ${motivoConsulta}. Sede preferida: ${sede_preferida || 'No especificada'}.`
-            : `El usuario llenó el formulario público de solicitud de información. Duda/Motivo: ${motivoConsulta}.`
-        }
-      });
-
-      // 3. Preferencias del paciente (Upsert)
-      if (sede_preferida || validCanal || validServicioInteres) {
-        const existingPref = await tx.personaPreferencias.findFirst({ where: { id_persona: persona.id_persona } });
-        if (existingPref) {
-          await tx.personaPreferencias.update({
-            where: { id_preferencia: existingPref.id_preferencia },
-            data: {
-              id_canal: validCanal || existingPref.id_canal,
-              id_servicio_interes: validServicioInteres || existingPref.id_servicio_interes,
-              sede_preferida: sede_preferida || existingPref.sede_preferida,
-            }
-          });
-        } else {
-          await tx.personaPreferencias.create({
-            data: {
-              id_persona: persona.id_persona,
-              id_canal: validCanal,
-              id_servicio_interes: validServicioInteres,
-              sede_preferida: sede_preferida || null,
-            }
-          });
-        }
-      }
-
-      return { persona, solicitud, isDuplicate, existingPerson, totalConsultas, isNewPersonWithSharedContact: isNewPersonConfirmed };
-    });
-
-    if (result.isDuplicate) {
-      return res.status(200).json({ 
-        success: true, 
-        isDuplicate: true, 
-        isRecurring: true,
-        consultationCount: result.totalConsultas,
-        message: `¡Hola de nuevo! Anexamos tu nueva consulta a tu historial (Consulta #${result.totalConsultas}). Tu caso fue priorizado para atención en la etapa LEAD.`, 
-        data: result 
-      });
-    }
-
-    if (result.isNewPersonWithSharedContact) {
-      return res.status(201).json({
-        success: true,
-        isDuplicate: false,
-        isRecurring: false,
-        isNewPersonWithSharedContact: true,
-        consultationCount: 1,
-        message: 'Registrado exitosamente como nuevo paciente independiente.',
-        data: result
-      });
-    }
-
-    res.status(201).json({ 
-      success: true, 
-      isDuplicate: false, 
-      isRecurring: false,
-      consultationCount: 1,
-      message: 'Solicitud registrada correctamente. Pasado a estado LEAD.', 
-      data: result 
     });
   } catch (error: any) {
     console.error('Error al registrar BUYER:', error);
-    res.status(500).json({ 
-      error: error?.message || 'Error al registrar al BUYER',
+    res.status(400).json({
+      error: error?.message || 'Error al registrar oportunidad en fase BUYER',
       details: error?.message
     });
   }
@@ -955,68 +789,22 @@ router.put('/:id', async (req, res) => {
 });
 
 // Convertir BUYER a LEAD
+// Convertir BUYER a LEAD mediante BuyerService
 router.post('/:id/convert', async (req, res) => {
   const { id } = req.params;
   const numId = Number(id);
   if (isNaN(numId)) return res.status(400).json({ error: 'ID de buyer inválido' });
 
   try {
-    let etapaLead = await prisma.etapas.findFirst({ where: { nombre: 'LEAD' } });
-    if (!etapaLead) etapaLead = await prisma.etapas.create({ data: { nombre: 'LEAD', descripcion: 'Intención concreta' } });
-
-    const personaActual = await prisma.personas.findUnique({
-      where: { id_persona: numId },
-      include: { Solicitudes: true }
+    const result = await BuyerService.convertToLead(numId, req.body);
+    res.json({
+      success: true,
+      message: 'Paciente transferido a LEAD exitosamente',
+      data: result
     });
-
-    if (!personaActual) return res.status(404).json({ error: 'Paciente no encontrado' });
-
-    await prisma.$transaction(async (tx) => {
-      // 1. Asegurar autorización y actualizar etapa a LEAD
-      await tx.personas.update({
-        where: { id_persona: numId },
-        data: {
-          id_etapa_actual: etapaLead.id_etapa,
-          autoriza_contacto: true,
-          fecha_autorizacion: personaActual.fecha_autorizacion || new Date(),
-          fecha_actualizacion: new Date(),
-        }
-      });
-
-      // 2. Asegurar que exista al menos una solicitud con motivo
-      if (!personaActual.Solicitudes || personaActual.Solicitudes.length === 0) {
-        await tx.solicitudes.create({
-          data: {
-            id_persona: numId,
-            motivo: 'Solicitud de evaluación odontológica para paso a LEAD',
-            estado: 'Abierta',
-            fecha_solicitud: new Date(),
-          }
-        });
-      } else if (!personaActual.Solicitudes[0].motivo || personaActual.Solicitudes[0].motivo.trim() === '') {
-        await tx.solicitudes.update({
-          where: { id_solicitud: personaActual.Solicitudes[0].id_solicitud },
-          data: {
-            motivo: 'Solicitud de evaluación odontológica para paso a LEAD',
-          }
-        });
-      }
-
-      // 3. Registrar el evento en el historial de transiciones
-      await tx.eventosEtapa.create({
-        data: {
-          id_persona: numId,
-          etapa_origen: personaActual.id_etapa_actual,
-          etapa_destino: etapaLead.id_etapa,
-          motivo: 'Conversión de BUYER a LEAD (Apertura de Mesa de Negociación)',
-        }
-      });
-    });
-
-    res.json({ message: 'Paciente transferido a LEAD exitosamente' });
   } catch (error: any) {
     console.error('Error al convertir a LEAD:', error);
-    res.status(500).json({ error: error.message || 'Error al convertir a LEAD' });
+    res.status(400).json({ error: error.message || 'Error al convertir a LEAD' });
   }
 });
 
