@@ -116,14 +116,62 @@ export const buyerService = {
     return res.json();
   },
 
-  convertToLead: async (id: string) => {
+  convertToLead: async (id: string, payload?: any) => {
     if (!useApi) return buyerUseCases.convertToLead(id);
     const res = await fetch(`${API_URL}/buyer/${id}/convert`, {
-      method: 'POST'
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {})
     });
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       throw new Error(errorData.error || 'Error al convertir buyer a lead');
+    }
+    return res.json();
+  },
+
+  getOpportunities: async (params?: Record<string, any>) => {
+    const query = new URLSearchParams(params || {});
+    const res = await fetch(`${API_URL}/buyer/opportunities?${query.toString()}`);
+    if (!res.ok) throw new Error('Error al cargar oportunidades de captación');
+    return res.json();
+  },
+
+  getOpportunityDetail: async (id: number) => {
+    const res = await fetch(`${API_URL}/buyer/opportunities/${id}`);
+    if (!res.ok) throw new Error(`Error al obtener detalle de oportunidad #${id}`);
+    return res.json();
+  },
+
+  updateOpportunityStatus: async (id: number, nuevo_estado: string, motivo?: string) => {
+    const res = await fetch(`${API_URL}/buyer/opportunities/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nuevo_estado, motivo })
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Error al actualizar estado de oportunidad');
+    }
+    return res.json();
+  },
+
+  getAlerts: async (params?: Record<string, any>) => {
+    const query = new URLSearchParams(params || {});
+    const res = await fetch(`${API_URL}/buyer/alerts?${query.toString()}`);
+    if (!res.ok) throw new Error('Error al cargar Impulse Alerts');
+    return res.json();
+  },
+
+  resolveAlert: async (id: number, motivo_resolucion: string, id_usuario = 1) => {
+    const res = await fetch(`${API_URL}/buyer/alerts/${id}/resolve`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ motivo_resolucion, id_usuario })
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Error al resolver alerta');
     }
     return res.json();
   }

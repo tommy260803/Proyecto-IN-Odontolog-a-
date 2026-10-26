@@ -551,64 +551,39 @@ export async function analyzeBuyerMarketingAgent(ctx: BuyerMarketingContext): Pr
     marketingRecommendation = 'Enviar catálogo del tratamiento y agendar llamada de orientación odontológica.';
   }
 
-  // Si hay API Key de Groq y la consulta tiene texto descriptivo adicional, enriquecer el análisis
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-  if (apiKey && apiKey !== 'tu_groq_api_key_aqui' && ctx.concreteRequest && ctx.concreteRequest.trim().length > 6 && !isAlreadyConverted) {
-    try {
-      const prompt = `Analiza la intención comercial del siguiente prospecto odontológico:
-- Paciente: ${ctx.fullName}
-- Servicio: ${service}
-- Canal de Captación: ${channel}
-- Motivo / Mensaje: "${ctx.concreteRequest}"
+  // Delegación segura al servicio backend del Agente de Marketing (Persistencia en DecisionesIA y sin exponer credenciales)
+  try {
+    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api') + '/buyer/agent/analyze';
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombres: ctx.fullName?.split(' ')[0] || 'Interesado',
+        apellidos: ctx.fullName?.split(' ').slice(1).join(' ') || '',
+        telefono: ctx.phone,
+        email: ctx.email,
+        consulta: ctx.concreteRequest || 'Consulta inicial de servicios',
+        canal: channel,
+        fuente: source,
+        campana: campaign
+      })
+    });
 
-Criterios de Clasificación:
-1. "ALTA": Paciente contacta por Sede Presencial o Llamada Telefónica, o tiene dolor/urgencia, o solicita precio y disponibilidad para agendar cita.
-2. "MEDIA": Paciente interesado en la web/redes que hace consultas exploratorias de servicios sin urgencia inmediata declarada.
-3. "AMBIGUA": Mensaje vago ("info", "hola"), datos incompletos o sin propósito clínico definido.
-
-Responde ÚNICAMENTE un JSON con:
-{
-  "hasConcreteIntent": true/false,
-  "intentLevel": "ALTA" | "MEDIA" | "AMBIGUA",
-  "intentReason": "explicación concisa del nivel de intención en 1 línea",
-  "suggestedAction": "CONVERT_TO_LEAD" | "KEEP_IN_BUYER",
-  "marketingRecommendation": "acción comercial recomendada en 1 línea"
-}`;
-
-      const res = await fetch(GROQ_API_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: GROQ_MODELS[0],
-          messages: [
-            { role: 'system', content: 'Eres el Agente de Marketing de NexoSalud Dental. Evalúas con precisión la intención comercial de los BUYERS.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.2,
-          max_tokens: 300,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const content = data.choices?.[0]?.message?.content?.replace(/```json/gi, '')?.replace(/```/g, '')?.trim();
-        if (content) {
-          const parsed = JSON.parse(content);
-          if (parsed.intentLevel) {
-            hasConcreteIntent = Boolean(parsed.hasConcreteIntent ?? hasConcreteIntent);
-            intentLevel = parsed.intentLevel;
-            intentReason = parsed.intentReason || intentReason;
-            suggestedAction = parsed.suggestedAction || suggestedAction;
-            marketingRecommendation = parsed.marketingRecommendation || marketingRecommendation;
-          }
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        const d = json.data;
+        if (d.intencion_detectada) {
+          intentLevel = d.intencion_detectada === 'AMBIGUA' ? 'AMBIGUA' : (d.score_calificacion >= 70 ? 'ALTA' : 'MEDIA');
+          hasConcreteIntent = d.intencion_detectada !== 'AMBIGUA';
+          intentReason = d.justificacion || intentReason;
+          suggestedAction = (d.recomendacion === 'CONVERTIR_LEAD' || d.recomendacion === 'CALIFICAR') ? 'CONVERT_TO_LEAD' : 'KEEP_IN_BUYER';
+          marketingRecommendation = `[${d.proveedor} / ${d.modelo}] ${d.justificacion}`;
         }
       }
-    } catch {
-      // Usar resultado heurístico
     }
+  } catch {
+    // Si la API backend no responde, se mantiene el resultado de las reglas locales
   }
 
   return {
