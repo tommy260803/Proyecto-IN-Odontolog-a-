@@ -1,0 +1,1030 @@
+﻿FACULTAD DE INGENIERÍA
+PROGRAMA DE ESTUDIOS DE INGENIERÍA DE SISTEMAS
+CURSO: INTELIGENCIA DE NEGOCIOS
+“INFORME SOBRE IDEA STARTUP CON METODOLOGÍA IMPULSE”
+AUTORES:
+Cruz Vargas, Germaín Alexander
+Garcia Ventura, Anthony
+Gonzales Esquivel, Jeanfranco Jefferson
+Hermenegildo Pacheco, Marck Alessandro
+Martinez Dominguez, Mario Antonio
+Ordóñez Ugarte, Jesús Daniel
+Vigo Huayán, Alexis Gean Gerardo
+DOCENTE:
+Dr. Mendoza Rivera, Ricardo Dario
+Trujillo - Perú
+2026-II
+Tabla de Contenido
+Introducción3
+Problemática3
+Propuesta NexoSalud4
+Estrategia Integral para la Captación y Conversión de Nuevos Clientes5
+Estrategia de Crecimiento Sostenible del Negocio Odontológico5
+Aplicación de la metodología IMPULSE6
+Alcance y delimitación del proyecto7
+Delimitación del área de salud: Odontología7
+Servicios odontológicos considerados7
+Recorrido general del usuario8
+BUYER a LEAD8
+LEAD a PAYER8
+PAYER a CUSTOMER8
+CUSTOMER a TURNED9
+Modelo transaccional y base de datos general9
+Modelo transaccional E-R general9
+Entidades10
+Etapa BUYER12
+Objetivo y criterio de conversión12
+Proceso Operativo / Actividades Clave12
+Modelo E-R específico de BUYER18
+Dimensionalización de BUYER18
+Indicadores de BUYER20
+Interfaces de Pantalla y Prototipos22
+Reportes de Gestión24
+Agente Inteligente (Agente de Marketing)25
+Impulse Alert de BUYER26
+Etapa LEAD27
+Objetivo y criterio de conversión27
+Proceso Operativo / Actividades Clave27
+Actividades en la Etapa Lead del Agente Negociador29
+Modelo E-R específico de LEAD32
+Dimensionalización de LEAD33
+Indicadores de LEAD34
+Interfaces de Pantalla y Prototipos35
+Reportes de Gestión38
+Agente Inteligente (Agente Negociador)39
+Situaciones y disparadores40
+Decisiones automatizables40
+Límites del agente40
+Impulse Alerts de LEAD41
+Etapa PAYER41
+Objetivo y criterio de conversión41
+Proceso Operativo / Actividades Clave41
+Modelo E-R Específico47
+Dimensionalización de PAYER47
+Indicadores de PAYER49
+Interfaces de Pantalla y Prototipos50
+Reportes de Gestión53
+Agente Inteligente (Agente de Cobranza)53
+Impulse Alerts de PAYER54
+Etapa CUSTOMER55
+Objetivo y Criterio de Conversión55
+Proceso Operativo / Actividades Clave57
+Modelo E-R específico de CUSTOMER62
+Dimensionalización de CUSTOMER63
+Indicadores de CUSTOMER64
+Interfaces de Pantalla y Prototipos66
+Reportes de Gestión68
+Agente Inteligente (Agente de Soporte Clínico y Copiloto de Box)69
+Situaciones y disparadores:69
+Decisiones automatizables70
+Límites del agente70
+Impulse Alerts de CUSTOMER70
+Introducción
+El recorrido de un paciente por una clínica odontológica no termina cuando se levanta del sillón dental: comienza mucho antes, en el primer contacto por WhatsApp o redes sociales, y continúa después, en el seguimiento de su experiencia y fidelización. Cuando ese recorrido se gestiona de forma fragmentada entre mensajería, hojas de cálculo y cuadernos de citas, la clínica pierde visibilidad sobre dónde se le están escapando pacientes y por qué. Frente a ese problema surge NexoSalud, una propuesta de software diseñada específicamente para clínicas y centros odontológicos privados, que unifica en un solo sistema las áreas de marketing, ventas, agenda médica, cobranza y postventa. Su propósito es orquestar y hacer trazable el viaje completo del paciente aplicando la metodología IMPULSE, estructurada en cinco etapas sucesivas: Buyer, Lead, Payer, Customer y Turned. Sobre esta base, el presente informe desarrolla cada etapa del recorrido, definiendo sus reglas de negocio, los agentes de inteligencia artificial que automatizan decisiones operativas y los indicadores que permiten medir, en tiempo real, la salud comercial y clínica del negocio.
+Problemática
+El sector odontológico privado peruano, específicamente la Clínica Odontológica Luxedent de Trujillo, presenta una desconexión entre la captación comercial, la programación de citas y el seguimiento de pacientes. La gestión mediante hojas de cálculo independientes, agendas físicas y canales manuales como WhatsApp y redes sociales genera cuellos de botella, deteriora la experiencia del cliente y dificulta la toma de decisiones basada en datos.
+En primer lugar, la inversión en publicidad digital y convenios institucionales no se aprovecha eficientemente, pues mayormente los prospectos se pierden en el primer contacto y los tiempos de respuestas no son de forma inmediata. La ausencia de un triaje administrativo inmediato y de un consentimiento expreso conforme a la Ley N.º 29733 favorece el abandono de las conversaciones. Además, no existe un control analítico del costo de adquisición de clientes (CAC), ni se identifica qué canales generan nuevos pacientes o en qué etapa del embudo IMPULSE se producen las pérdidas.
+En segundo lugar, la programación manual de citas ocasiona superposiciones entre odontólogos y sedes, así como inasistencias de los pacientes. La falta de pre-reservas con confirmación estructurada y alertas de disponibilidad en tiempo real provoca sillones dentales ociosos y pérdidas asociadas a costos fijos, como las horas clínicas y la esterilización, reduciendo el aprovechamiento de la capacidad instalada.
+En tercer lugar, la falta de integración entre las cotizaciones, los pagos recibidos y los tratamientos ejecutados genera descuadres contables, saldos pendientes de cobro y una percepción distorsionada de la liquidez. Esto ocurre porque los anticipos y las cuotas pueden registrarse en fechas distintas a la prestación del servicio y no existe un data mart que diferencie las transacciones monetarias validadas de los procedimientos clínicos realizados.
+En cuarto lugar, la ausencia de seguimiento sintomatológico a las 24 o 48 horas y de recordatorios para los controles preventivos semestrales reduce el valor de vida del paciente (LTV). Como consecuencia, la clínica depende continuamente de captar nuevos clientes para compensar la deserción y la pérdida de pacientes recurrentes.
+Finalmente, la inexistencia de una arquitectura analítica centralizada obliga a tomar decisiones subjetivas. La dirección desconoce la rentabilidad de los tratamientos por hora de sillón, la eficiencia de conversión por sede, el desempeño de las campañas según la asistencia de los pacientes y la tasa de retención interanual. Esta carencia limita la planificación del crecimiento y la posible apertura de nuevos consultorios sobre la base de evidencia objetiva.
+Propuesta NexoSalud
+NexoSalud resuelve toda la fragmentación de las áreas mediante un sistema unificado enfocado en el recorrido del paciente.
+Arquitectura de Dominio con Transiciones Protegidas: Cada etapa del embudo cuenta con validadores de dominio que no permiten avanzar a un paciente si no cumple requisitos mínimos comprobables como la confirmación de reserva, validación de pago o registro de indicaciones clínicas.
+Gestión de Opciones y Reserva Temporal: Permite generar múltiples alternativas de atención, teniendo en cuenta la combinación de especialistas, sede, fecha y tarifa, e incluso, congelar el cupo tras la selección del paciente.
+Módulo de Tesorería y Conciliación: Control de estados de pago (PENDING, IN_REVIEW, VALIDATED, REJECTED, REVERTED) con registro de comprobantes y gestión integrada de incidencias operativas.
+Ficha de Atención Odontológica Estructurada: Registro ágil del motivo de consulta, antecedentes relevantes, alergias, evaluación clínica, procedimiento efectuado, tiempos de atención (inicio/fin) e indicaciones médicas.
+Protocolo de Postventa y Reactivación: Registro de seguimientos, control de fechas de próximo contacto, encuestas de satisfacción y la capacidad de iniciar una Nueva Solicitud vinculada a la misma persona física sin duplicar su historial base.
+Métricas y Alertas en Tiempo Real: Medición automática de indicadores con semaforización (verde, ámbar, rojo) para evaluar la salud comercial y clínica del negocio.
+Estrategia Integral para la Captación y Conversión de Nuevos Clientes
+NexoSalud transforma la captación de clientes en un proceso estructurado y medible para incrementar la conversión y optimizar la inversión publicitaria mediante tres mecanismos. Primero, el registro inmediato y perfilamiento progresivo recopila los datos esenciales del prospecto, su motivo de consulta y canal de origen, solicitando el consentimiento conforme a la Ley N.º 29733 y completando su perfil en interacciones posteriores. Segundo, la atención omnicanal asistida por inteligencia artificial permite que los agentes de Marketing y Negociación respondan en menos de 15 minutos por WhatsApp y web, ofreciendo opciones según la disponibilidad real de especialistas y sedes. Tercero, la calificación y el enrutamiento inteligente clasifica a los prospectos según su urgencia y servicio requerido, prevención, ortodoncia, estética o implantes y les asigna franjas horarias prioritarias para mejorar la ocupación de los sillones dentales.
+Estrategia de Crecimiento Sostenible del Negocio Odontológico
+Se promueve el crecimiento sostenible de la clínica mediante cuatro estrategias. Primero, la captación y conversión de nuevos clientes mejora el avance de los prospectos entre las etapas BUYER, LEAD y PAYER, reduciendo el costo de adquisición (CAC) y acelerando la primera atención. Segundo, la expansión del valor de vida del paciente (LTV) automatiza los controles semestrales y el seguimiento posoperatorio para fomentar la recurrencia y la contratación de tratamientos complementarios sin aumentar proporcionalmente la inversión publicitaria. Tercero, la productividad y capacidad asistencial busca reducir las inasistencias a menos del 10 % y elevar la ocupación de los sillones dentales por encima del 85 %, mediante recordatorios y pre-reservas protegidas, aprovechando los costos fijos existentes. Finalmente, la escalabilidad basada en datos utiliza el Data Mart para monitorear el crecimiento mensual (MoM), el ticket promedio y la rentabilidad por servicio, respaldando decisiones sobre inversión, contratación de especialistas y ampliación de infraestructura.
+Aplicación de la metodología IMPULSE
+La metodología IMPULSE integra el crecimiento y la optimización de procesos a través de etapas progresivas basadas en datos, experimentación y control continuo. En NexoSalud, se aplica directamente sobre el flujo operativo y tecnológico de la siguiente manera:
+Tabla 1
+Fases de la metodología IMPULSE en NexoSalud
+Fase IMPULSE
+Concepto Metodológico
+Aplicación Concreta en NexoSalud
+I - Identificación (Inbound / Intake)
+Captura rigurosa del interés inicial y perfilamiento del cliente potencial.
+Etapa BUYER: Registro de datos necesarios de la persona, canal de entrada (WhatsApp, Web, Redes), fuente de atracción, solicitud concreta y autorización de contacto legal.
+M - Mapeo de Opciones (Mapping Alternatives)
+Análisis de requerimientos y ajuste de la oferta de valor según capacidad real.
+Etapa LEAD: Mapeo entre la necesidad declarada del paciente y la disponibilidad de sillones, sedes y odontólogos especialistas, ofreciendo alternativas claras con tarifas oficiales.
+P - Pago y Validación (Payment y Commitment)
+Aseguramiento financiero del compromiso antes de movilizar recursos operativos.
+Etapa PAYER: Validación formal del comprobante y conciliación bancaria antes de confirmar la atención en el sillón dental.
+U - Unificación Clínica (Unified Care)
+Concentración del acto médico, anamnesis y tratamiento en un único registro.
+Etapa CUSTOMER: Ejecución del procedimiento odontológico, control de tiempos de atención y consolidación de la ficha clínica con indicaciones postoperatorias.
+L - Lealtad y Postventa (Loyalty y Care)
+Acompañamiento posterior, monitoreo de recuperación y medición de experiencia.
+Etapa TURNED: Gestión de contactos de seguimiento, registro de eventos, atención de incidencias clínicas posconsulta y calificación de satisfacción del paciente.
+S - Seguimiento y Trazabilidad (Stepper y Tracking)
+Visibilidad transversal del historial y estado del usuario en todo su ciclo de vida.
+Componente paso a paso del recorrido y registro cronológico de eventos en base de datos.
+E - Evaluación Continua (Evaluation y KPIs)
+Toma de decisiones basada en indicadores clave y optimización de cuellos de botella.
+Motor de Indicadores Matemáticos: Cálculo en tiempo real de ratios de conversión, tiempos de respuesta, tasa de inasistencias y tasa de reactivación.
+Alcance y delimitación del proyecto
+Delimitación del área de salud: Odontología
+El sistema está delimitado exclusivamente a la gestión de clínicas y centros odontológicos privados ambulatorios, con soporte para esquemas multisede y múltiples especialistas con turnos rotativos.
+Servicios odontológicos considerados
+El modelo de datos y catálogos iniciales contemplan cuatro servicios odontológicos fundamentales que abarcan desde el diagnóstico hasta la rehabilitación:
+Evaluación General: Chequeo odontológico integral, diagnóstico preventivo, detección de caries y derivación a especialidades.
+Ortodoncia Inicial: Diagnóstico oclusal, toma de registros, planificación de aparatología fija o alineadores y cita de inicio de tratamiento.
+Blanqueamiento Dental: Procedimiento estético y profiláctico enfocado en aclaramiento dental ambulatorio o en clínica.
+Implante Dental: Tratamiento de cirugía y rehabilitación oral avanzada para colocación de implantes oseointegrados de titanio.
+Recorrido general del usuario
+Figura 1
+Recorrido del usuario desde la etapa Buyer a Turned
+BUYER a LEAD
+El usuario demuestra interés en los servicios odontológicos a través de un canal institucional. Se registran sus datos, necesidad de atención y consentimiento de comunicación. Cumplidos estos criterios, pasa a ser un prospecto calificado (LEAD).
+LEAD a PAYER
+El prospecto selecciona una alternativa de atención teniendo en cuenta factores como sede, profesional, fecha, horario y condiciones económicas. Se realiza la reserva temporal y se genera la solicitud de pago. Con ello, pasa al estado PAYER.
+PAYER a CUSTOMER
+El usuario realiza el pago y la clínica verifica su acreditación, importe y correspondencia con la reserva. Una vez validada la transacción, la cita queda confirmada y el usuario pasa al estado CUSTOMER.
+CUSTOMER a TURNED
+El paciente asiste a la cita y recibe la atención odontológica correspondiente. Se registra la finalización del servicio y se actualiza la historia clínica con el procedimiento e indicaciones pertinentes. Con ello, pasa al estado TURNED, quedando disponible para futuras atenciones o reactivaciones.
+Modelo transaccional y base de datos general
+Modelo transaccional E-R general
+Figura 2
+Diagrama E-R general de la Base de Datos NexoSalud
+Nota. Diagrama obtenido de mermaid.live. Link de acceso: Entrar a link.
+Entidades
+Tabla 2
+Entidades de la Base de Datos NexoSalud
+Entidad
+Propósito Funcional
+Personas
+Núcleo de identidad único del paciente/usuario en el sistema (DNI, nombres, datos de contacto y estado de autorización).
+Etapas
+Catálogo maestro de las cinco fases del ciclo del paciente (BUYER, LEAD, PAYER, CUSTOMER, TURNED).
+Canales
+Medios de contacto e interacción (WhatsApp, Facebook, Instagram, Web, Llamadas, Correo).
+Fuentes
+Origen de adquisición y tracción del usuario (Búsqueda Orgánica, Redes Sociales, etc.).
+Campanas
+Campañas comerciales activas de captación de pacientes.
+GastosCampana
+Costos financieros de cada campaña para medición de CAC y costo por LEAD atribuible.
+Servicios
+Catálogo de tratamientos odontológicos (Evaluación general, Ortodoncia, Profilaxis, etc.).
+Tarifas
+Precios vigentes asociados a cada servicio con vigencia temporal.
+Profesionales
+Odontólogos y especialistas colegiados autorizados para atención clínica.
+Sedes
+Locaciones físicas clínicas donde se realizan los procedimientos odontológicos.
+ProfesionalServicio
+Tabla asociativa que define las especialidades y servicios habilitados para cada profesional.
+Disponibilidad
+Slots o cupos horarios por sede, fecha y profesional (estados: Disponible, Bloqueado, Ocupado).
+Horarios
+Rangos horarios de atención estándar por día de semana.
+Modalidades
+Modalidad de atención o consulta (Presencial o Virtual/Teleorientación).
+Roles
+Roles operativos del personal (Administrador, Marketing, Negociador, Cobranza, Soporte, PostVenta).
+Usuarios
+Operadores del sistema con credenciales de acceso vinculados a un rol.
+DatosAcademicos
+Información de estudios del paciente (universidad, carrera, ciclo) para perfilamiento de convenios.
+DatosLaborales
+Información ocupacional (empresa, disponibilidad, modalidad laboral) para ajuste de citas.
+PersonaSaludOdontologica
+Anamnesis inicial preliminar (motivo de consulta, última visita, dolor, sensibilidad, prótesis).
+PersonaPreferencias
+Preferencias del paciente (sede, profesional, modalidad y franja horaria preferida).
+Interacciones
+Bitácora cronológica omnicanal de comunicaciones entrantes y salientes con el usuario.
+Solicitudes
+Demanda explícita del paciente (servicio solicitado, urgencia, fechas de primera respuesta).
+Opciones
+Propuestas y alternativas de cotización presentadas al Lead (sede, fecha, odontólogo y precio).
+Reservas
+Cita formalmente agendada tras la selección de una opción (bloqueo temporal o reserva confirmada).
+Pagos
+Transacciones de anticipo o liquidación económica (comprobante, estado, validación contable).
+Atenciones
+Acto médico-clínico (anamnesis, evaluación, diagnóstico, procedimiento ejecutado e indicaciones).
+Seguimientos
+Contactos de postventa tras la atención (satisfacción 1–5, evolución clínica e incidencias).
+EventosEtapa
+Auditoría y trazabilidad histórica de transiciones de etapa del paciente en el Funnel.
+Incidencias
+Tickets de problemas operativos, transaccionales (rechazo de pago) o clínicos.
+DecisionesIA
+Registro de inferencias y sugerencias generadas por modelos de IA (Groq LLM/asistente de cobro).
+Etapa BUYER
+Objetivo y criterio de conversión
+Finalidad de la fase: La etapa BUYER es el punto inicial del proceso comercial de NexoSalud. Su propósito es captar personas interesadas provenientes de redes sociales, páginas web o convenios, registrando únicamente datos básicos de contacto y su autorización, sin recopilar información clínica sensible.   
+Definición y condición de entrada: Una persona se considera BUYER cuando proporciona voluntariamente su nombre, al menos un medio de contacto (teléfono, WhatsApp o correo) y acepta ser contactada. No se consideran BUYER las visitas anónimas o interacciones sin identificación.   
+Delimitación de la demanda inicial: El BUYER expresa interés general por algún servicio de la clínica, como evaluación odontológica, blanqueamiento dental, ortodoncia, o rehabilitación. En esta fase no se realizan diagnósticos ni se recopila información clínica detallada.   
+Criterio de salida (Conversión a LEAD): El BUYER pasa a ser LEAD cuando demuestra una intención concreta, por ejemplo, al solicitar precios, disponibilidad de citas, información sobre especialistas, sedes o condiciones de reserva. Si solo realiza consultas generales o no expresa una necesidad específica, permanece como BUYER.   
+Registro y trazabilidad: La transición formal inserta un registro en Solicitudes, actualiza el estado en LEAD y genera el evento auditable en EventosEtapa para alimentar el indicador B1 y el análisis de cohortes.
+Proceso Operativo / Actividades Clave
+Segmento objetivo: El público objetivo delimitado comprende a la población adulta de la ciudad de Trujillo (de 18 a 45 años) que recurre a entornos digitales para gestionar atenciones odontológicas ambulatorias de carácter preventivo o básico.   
+Buyer persona: Para guiar las respuestas administrativas y operativas, se modelan arquetipos de perfil (como Lucía Mendoza y Carlos Rojas) que detallan sus datos de contacto, interés clínico inicial, franja horaria preferida y autorización de datos.
+Tabla 3
+Casos de Perfiles de Buyer
+Dimensión / Agrupación
+Variable / Campo
+Origen del Dato
+Buyer Persona 1: Lucía Mendoza
+Buyer Persona 2: Carlos Rojas
+Estado y Regla de Negocio para la Etapa BUYER
+Identificación y Contacto
+Nombres y Apellidos
+Proporcionado por usuario
+Lucía Mendoza
+Carlos Rojas
+Obligatorio. Identificación básica para evitar registros anónimos.
+Teléfono / WhatsApp
+Proporcionado por usuario
++51987654321
++51999666555
+Obligatorio. Canal directo de respuesta comercial.
+Correo Electrónico
+Proporcionado por usuario
+lucia@example.com
+carlos@example.com
+Opcional. Para envío alternativo de presupuestos/recordatorios.
+Interés Clínico Inicial
+Servicio de Interés
+Proporcionado por usuario
+Evaluación / Limpieza dental
+Control odontológico
+Obligatorio. Seleccionado estrictamente del catálogo básico preventivo.
+Motivo de Consulta
+Proporcionado por usuario
+Consultar precio y disponibilidad
+Consultar condiciones de atención
+Obligatorio. Declara la necesidad administrativa inicial del prospecto.
+Preferencias de Atención
+Franja Horaria Preferida
+Proporcionado por usuario
+Tarde (13:00 - 18:00)
+Noche (18:00 - 21:00)
+Opcional. Ayuda a filtrar propuestas generales de agenda.
+Sede de Interés
+Proporcionado por usuario
+Sede Centro
+Sede Norte
+Obligatorio/Opcional. Relevante para filtrado si la clínica es multisede.
+Trazabilidad y Legal
+Autorización de Datos
+Proporcionado por usuario
+Aceptado (true)
+Aceptado (true)
+Obligatorio (Checkbox). Consentimiento explícito por Ley de Protección de Datos.
+Canal de Origen
+Capturado por Sistema
+WhatsApp
+WhatsApp
+Automático. Unifica la vía técnica por donde ingresó el mensaje.
+Fuente de Atracción
+Capturado por Sistema
+Redes Sociales (Meta Ads)
+Búsqueda Orgánica
+Automático. Atribución de marketing (UTM / API) para costear la captación.
+Estado de Calidad
+Capturado por Sistema
+Validado
+Validado
+Automático. Control del sistema (Valido, Incompleto, Duplicado).
+Para gestionar adecuadamente la captación y caracterizar al prospecto, el equipo comercial y el sistema ejecutan las actividades descritas a continuación:
+Tabla 4
+Actividades en la Etapa Buyer comparado con el Rol del Agente de Marketing
+Actividad
+Descripción y Regla de Negocio
+Impacto en BD
+Rol del Agente de Marketing (IA)
+Resultado / Evidencia
+1. Validar el registro del BUYER
+Verificar que el contacto cuente con los datos mínimos requeridos: nombres y apellidos, teléfono, servicio de interés, motivo de consulta y autorización de datos. Si falta un dato obligatorio, el registro no debe considerarse completamente válido.
+Consulta y actualiza los datos del registro del BUYER y su estado de calidad: Válido, Incompleto o Duplicado.
+Revisa automáticamente la presencia de campos obligatorios, detecta posibles duplicados y comprueba que exista autorización de contacto.
+Registro validado y estado de calidad actualizado.
+2. Clasificar el interés y las preferencias del BUYER
+Organizar la información declarada por el usuario sobre el servicio que busca y sus preferencias de atención. Los valores deben provenir de opciones permitidas por el sistema y no de inferencias clínicas.
+Registra o consulta servicio de interés, motivo de consulta, franja horaria preferida y sede de interés.
+Clasifica al BUYER según el servicio solicitado y sus preferencias para facilitar las siguientes acciones comerciales.
+Perfil inicial del BUYER clasificado con su interés y preferencias registradas.
+3. Identificar el origen de captación
+Registrar de dónde proviene el BUYER para poder analizar posteriormente qué canales y fuentes generan más contactos y conversiones.
+Utiliza los campos canal de origen y fuente de atracción, capturados automáticamente por el sistema.
+Interpreta y asocia el origen del contacto con el canal o campaña correspondiente para apoyar el análisis de marketing.
+Canal y fuente de captación asociados al BUYER y disponibles para análisis BI.
+4. Evaluar la conversión de BUYER a LEAD
+El BUYER puede pasar a LEAD cuando expresa una intención administrativa concreta, por ejemplo consultar precio, disponibilidad, sede o condiciones de atención, y además cuenta con un registro válido.
+Actualiza la etapa del usuario y registra el evento de conversión BUYER a LEAD cuando se cumplen las condiciones definidas.
+Analiza el motivo de consulta y determina si existe intención suficiente para pasar a LEAD. Si la intención es ambigua, mantiene al usuario como BUYER.
+Conversión a LEAD registrada con fecha, motivo y evidencia de la intención del usuario.
+Modelo E-R específico de BUYER
+El diseño del submodelo transaccional para la fase de captación delimita exclusivamente las entidades requeridas para sostener el flujo operativo del contacto, su trazabilidad legal, el triaje preliminar y las acciones del Agente de Marketing. En la Figura 3 se representa la estructura Entidad-Relación correspondiente a esta etapa y su integración conceptual con la base de datos general corporativa.
+Figura 3
+Submodelo Entidad-Relación específico de la etapa BUYER
+Nota. Diagrama obtenido de mermaid.live. Link de acceso: Entrar a link.
+Dimensionalización de BUYER
+El modelo de análisis dimensional para la fase BUYER se estructura bajo el hecho central de captación de un contacto. El grano del hecho corresponde a un registro de captación por contacto ingresado al sistema, permitiendo contabilizar los contactos captados, identificar cuáles cumplen las condiciones para ser considerados utilizables y determinar cuáles posteriormente se convierten en LEAD. Alrededor de este hecho central se organizan siete dimensiones de análisis que permiten desagregar la información y evaluar el comportamiento de la captación desde diferentes perspectivas: Tiempo, Servicio, Canal, Tipo Persona, Fuente, Sede y Estado del registro.
+Figura 4
+Análisis Dimensional de la Etapa Buyer
+En las dimensiones Tiempo, Servicio, Canal y Sede existe una relación natural de agregación entre sus elementos. En las dimensiones Tipo Persona, Fuente y Estado del registro, los elementos se emplean principalmente como atributos para segmentar y filtrar la información, por lo que no representan necesariamente una jerarquía estricta. Cuando un dato como el servicio o la sede todavía no ha sido especificado por el contacto, se utiliza un valor como “No especificado”, evitando perder el registro del hecho durante el análisis. En la intersección de estas dimensiones se registran las medidas base del negocio, que representan los valores cuantitativos utilizados posteriormente para calcular los indicadores de la etapa BUYER. 
+Las medidas base de la etapa BUYER en el hecho central fact_captacion_buyer se definen bajo el estándar SQL en snake_case y singular: contacto_registrado, contacto_utilizable, conversion_lead, tiempo_conversion_dia y costo_atribuido_captacion (Figura 4). Las tres primeras corresponden a medidas aditivas de conteo que se agregan mediante suma. La medida contacto_utilizable contabiliza con valor 1 aquellos registros que cumplen con datos mínimos válidos y consentimiento legal (Ley 29733) y 0 en caso contrario. En contraste, tiempo_conversion_dia representa el número de días transcurridos entre el registro y su conversión a LEAD, analizándose mediante promedio y dispersión en lugar de acumulación simple.
+Por su parte, la medida costo_atribuido_captacion representa la fracción del gasto publicitario asignada proporcionalmente al contacto de acuerdo con su campaña, fuente o canal de origen, evitando duplicidades en el análisis financiero.
+Indicadores de BUYER
+Los indicadores de la etapa BUYER permiten evaluar la efectividad de la captación, la calidad de los registros y la eficiencia económica de las acciones de marketing. Su cálculo utiliza la información generada durante el registro y seguimiento del contacto, considerando variables como fecha de captación, servicio de interés, canal, fuente, campaña, características del contacto, calidad del registro y transición hacia la etapa LEAD.  
+Tabla 5
+Indicadores de Buyer en NexoSalud
+Elemento
+B1. Conversión BUYER → LEAD en 14 días
+B2. Contactos utilizables
+B3. Costo por LEAD atribuible
+Descripción
+Mide qué proporción de los contactos utilizables se convierte formalmente en LEAD dentro de los primeros 14 días desde su registro.
+Mide qué proporción de los contactos captados cumple las condiciones de calidad y consentimiento legal (Ley 29733) para ser utilizables.
+Mide el costo promedio de captación publicitaria necesario para generar un nuevo LEAD atribuible a campañas.
+Medidas base (fact_captacion_buyer)
+conversion_lead contacto_utilizable tiempo_conversion_dia
+contacto_utilizable contacto_registrado
+costo_atribuido_captacion conversion_lead
+Fórmula KPI
+(conversion_lead con tiempo_conversion_dia ≤ 14 / contacto_utilizable) × 100
+(contacto_utilizable / contacto_registrado) × 100
+costo_atribuido_captacion / conversion_lead
+Tablas BD (OLTP & Mart)
+Personas, EventosEtapa NexoSalud_Mart.dbo.fact_captacion_buyer
+Personas NexoSalud_Mart.dbo.fact_captacion_buyer
+GastosCampana, Campanas NexoSalud_Mart.dbo.fact_captacion_buyer
+Dimensiones de análisis
+dim_tiempo, dim_sede, dim_servicio, dim_canal, dim_tipo_persona, dim_fuente, dim_estado_registro
+dim_tiempo, dim_canal, dim_tipo_persona, dim_fuente, dim_estado_registro
+dim_tiempo, dim_sede, dim_servicio, dim_canal, dim_fuente
+Periodicidad
+Cálculo diario (ventana 14d); revisión semanal y consolidación mensual
+Cálculo diario; revisión semanal y consolidación mensual
+Revisión semanal y consolidación mensual
+Semáforo
+Verde ≥ 20 %; ámbar ≥ 10 % y < 20 %; rojo < 10 %
+Verde ≥ 80 %; ámbar ≥ 60 % y < 80 %; rojo < 60 %
+Verde ≤ S/ 50; ámbar > S/ 50 y ≤ S/ 100; rojo > S/ 100
+Interfaces de Pantalla y Prototipos
+La interfaz de este módulo centraliza la información inicial del usuario para permitir una rápida evaluación comercial.
+Datos del BUYER: Muestra el perfil básico del contacto (nombre, canal y aceptación de políticas de comunicación).   
+Solicitud de información y Preferencias: Paneles que resumen el motivo principal de acercamiento, servicios y sedes de interés.   
+Acción de conversión: Botón "Convertir a LEAD" habilitado cuando se cumplen los datos mínimos obligatorios.  
+Figura 5
+Ventana de listado de Buyers
+Figura 6
+Ventana de Registros para un Nuevo Buyer
+Figura 6 (continuación)
+Figura 7
+Ventana de Formulario de Detalle BUYER con Énfasis en botón (Convertir a LEAD)
+Reportes de Gestión
+Figura 8
+Reporte resumen de captación.
+Este reporte analiza el volumen total de atracción generado por las diferentes estrategias de marketing, distribuido por las ubicaciones físicas del negocio durante un período determinado.
+Dimensión de Contexto (Filtro): TIEMPO (Año y Mes del registro).
+Dimensión en Filas: FUENTE (Tipo de Origen) agrupando a CANAL (Nombre del Canal).
+Dimensión en Columnas: SEDE (Sede Física).
+Medida Principal (Intersección): contacto_registrado. Esta medida suma el número bruto de personas que interactuaron inicialmente a través de cada canal, sin aplicar aún filtros de calidad.
+Agente Inteligente (Agente de Marketing)
+Datos consultados: Consulta nombres, teléfono, servicio de interés, motivo de consulta, franja horaria, sede, autorización, canal y fuente.   
+Decisiones automatizables: Validación de registros (Válido, Incompleto, Duplicado), detección de duplicados, clasificación de intereses y evaluación de conversión BUYER a LEAD.   
+Límites y escalamiento humano: El agente no realiza diagnósticos clínicos ni infiere necesidades médicas no declaradas. Si la intención es ambigua, el usuario permanece como BUYER o es derivado al Agente Negociador.
+Figura 9
+Ventana de Agente Inteligente de Marketing
+Impulse Alert de BUYER
+Matriz de reglas proactivas implementadas para detectar anomalías o desvíos en la calidad de los registros:   
+Registro Incompleto: Alerta cuando falta alguno de los datos obligatorios del BUYER.   
+Posible Duplicado: Advierte la preexistencia de un registro con datos similares.   
+Falta Autorización: Indica la ausencia de consentimiento expreso de contacto.   
+Intención Ambigua: Señala que no existe evidencia suficiente para proceder con la conversión a LEAD.
+Figura 10
+Ventana de Agente Inteligente de Marketing mostrando alertas 
+Etapa LEAD
+Objetivo y criterio de conversión
+Finalidad de la fase: La etapa LEAD busca gestionar de forma clara y estructurada la negociación con los prospectos interesados, con el fin de convertir su intención en una reserva confirmada. Para ello, se evalúan sus necesidades y preferencias junto con la disponibilidad de agenda, especialistas y tarifas de la clínica.   
+Criterio de ingreso: Un usuario se considera LEAD cuando proviene de la etapa BUYER, cuenta con datos de contacto verificados, otorgó su autorización y solicita activamente una atención odontológica.   
+Alcance de la propuesta: Las alternativas presentadas abarcas servicios del catálogo oficial (como evaluaciones, limpiezas, profilaxis o tratamientos básicos) y se formulan según la disponibilidad real de los profesionales.
+Proceso Operativo / Actividades Clave
+Para brindar una atención fluida y profesional, el equipo comercial sigue una serie de pasos ordenados desde la recepción de la consulta hasta la confirmación de la cita. Para ello, se define un perfil de negociación, el cual es un conjunto de información que el asesor necesita completar para formular opciones de atención.
+Figura 11
+Perfil de negociación del Lead
+Figura 11 (continuación)
+Tabla 6
+Actividades en la Etapa Lead del Agente Negociador
+Actividad
+Descripción y Regla de Negocio
+Impacto en BD
+Rol del Agente Negociador (IA)
+Resultado / Evidencia
+1. Priorización de LEADs
+Cuando existen varios LEADs pendientes o alguno se aproxima al tiempo máximo de primera respuesta, debe priorizarse su atención para reducir demoras en la negociación.
+Consulta el estado de la negociación, la fecha y hora de ingreso del LEAD y los registros de primera respuesta útil; puede actualizar la prioridad del caso o registrar una alerta.
+Analiza el tiempo de espera, el estado de la negociación y la ausencia de respuesta útil para identificar qué casos requieren atención primero.
+LEAD priorizado y alerta generada para el negociador.
+2. Recomendación de alternativas
+Cuando el paciente declara preferencias o rechaza una primera opción, deben proponerse alternativas válidas basadas únicamente en la disponibilidad real del sistema.
+Consulta servicio solicitado, sede, profesional, fecha, horario y alternativas disponibles asociadas a la negociación.
+Compara las preferencias del paciente con las opciones disponibles y recomienda las alternativas con mayor compatibilidad.
+Alternativas relevantes disponibles para presentar al paciente.
+3. Detección y apoyo ante objeciones
+Cuando el paciente manifiesta una dificultad relacionada con precio, horario, sede, profesional u otra condición administrativa, la negociación puede ajustarse utilizando alternativas permitidas.
+Registra la objeción expresada, la interacción asociada y las nuevas alternativas propuestas durante la negociación.
+Identifica el tipo de objeción a partir de la conversación y recomienda al negociador respuestas o alternativas válidas registradas en el sistema.
+Objeción registrada y respuesta o alternativa adecuada para continuar la negociación.
+4. Seguimiento inteligente
+Cuando una propuesta ha sido enviada y el paciente no responde dentro del periodo establecido, debe realizarse seguimiento respetando las reglas de contacto definidas.
+Consulta la fecha de última interacción, el estado de la negociación y el historial de contactos; registra nuevos intentos de seguimiento.
+Detecta periodos de inactividad, analiza el contexto de la negociación y prepara un mensaje de seguimiento acorde con el estado y canal utilizado.
+Seguimiento realizado y negociación actualizada, reduciendo el riesgo de abandono.
+5. Preparación del paso a PAYER
+Cuando el paciente acepta expresamente una alternativa, deben verificarse los elementos necesarios antes de iniciar la siguiente etapa. La realización y validación del pago corresponden a PAYER.
+Consulta y valida servicio, alternativa seleccionada, tarifa, condiciones y reserva cuando corresponda; registra el evento de transición y la solicitud de pago.
+Verifica que la negociación se encuentre completa y prepara la información necesaria para generar la solicitud de pago e iniciar el proceso PAYER.
+Negociación preparada y transición LEAD → PAYER registrada con la información necesaria para gestionar el pago.
+Modelo E-R específico de LEAD
+Para asegurar que los procesos funcionen sin errores, la información de esta etapa se organiza bajo una estructura relacional lógica.   
+Entidades utilizadas:
+Capa Núcleo y Proceso Central: Personas (1) a Solicitudes (0..N); Solicitudes (1) a Opciones (1..N); Opciones (1) a Reservas (0..1); Reservas (1) a Pagos (0..1); EventosEtapa (0..N).   
+Capa Perfilamiento y Preferencias: DatosLaborales, DatosAcademicos, PersonaSaludOdontologica, PersonaPreferencias e Interacciones.   
+Capa Operativa y Catálogos: Servicios, Tarifas, Profesionales, ProfesionalServicio, Disponibilidad, catálogos y Usuarios.   
+Relaciones: Se estructuran en el flujo principal de conversión (1:N y 1:0..1), la validación de agenda y servicios (1:N y M:N), y los atributos de trazabilidad del usuario (1:N).
+Figura 12
+Submodelo Entidad-Relación específico de la etapa LEAD
+Nota. Diagrama obtenido de mermaid.live. Link de acceso: Entrar a link.
+Dimensionalización de LEAD
+Figura 13
+Análisis Dimensional de la Etapa Lead
+El modelo de análisis dimensional para la Negociación LEAD estructura el Data Mart bajo el enfoque de Ralph Kimball, tomando como hecho central de tipo instantánea acumulativa cada negociación que ingresa formalmente a la etapa LEAD. El proceso registra sus principales hitos; ingreso a LEAD, primera respuesta útil, pago y cierre y permite analizarlo mediante las dimensiones Tiempo, Servicio, Profesional, Sede y Negociador.
+En el núcleo del modelo dimensional (fact_negociacion_lead), las medidas base se nombran limpiamente en minúsculas y singular (estilo snake_case) sin redundancias ni sufijos entre corchetes (Figura 13):
+cohorte_evaluable: Total de prospectos calificados con ventana mínima de maduración cumplida (14 días).
+conversion_payer_14_dia: Prospectos que completaron la aceptación de la propuesta y confirmaron su abono inicial dentro del SLA objetivo de 14 días.
+solicitud_requiere_respuesta: Solicitudes de presupuesto y consultas comerciales entrantes por canales omnicanal.
+respuesta_util_15_min: Prospectos que recibieron atención calificada en un tiempo máximo de 15 minutos hábiles.
+negociacion_finalizada: Negociaciones concluidas formalmente (convertida, cerrada o abandonada).
+negociacion_abandonada: Oportunidades comerciales descartadas o dadas de baja por desistimiento o falta de respuesta.
+Las jerarquías naturales consideradas son Día → Mes → Trimestre → Año, Procedimiento → Categoría, Odontólogo → Especialidad principal y Sede → Distrito. La dimensión Negociador permite identificar al responsable de la gestión comercial del LEAD. Datos como la hora de atención, el canal o fuente de captación y el estado o resultado de la negociación se mantienen en la base de datos como información operativa necesaria para el cálculo o análisis de determinados indicadores, pero no se representan como dimensiones principales del modelo radial.
+Indicadores de LEAD
+Tabla 7
+Indicadores de la etapa LEAD en NexoSalud
+Elemento
+L1. Conversión LEAD → PAYER en ≤ 14 días
+L2. Primera respuesta útil en ≤ 15 minutos hábiles
+L3. Tasa de abandono de negociaciones
+Descripción
+Mide la proporción de negociaciones evaluables que validan una reserva con abono dentro de los primeros 14 días.
+Mide la proporción de prospectos que reciben su primera respuesta comercial calificada dentro del SLA de 15 minutos hábiles.
+Mide la proporción de negociaciones formalmente finalizadas cuyo resultado es abandonado o desestimado.
+Medidas base (fact_negociacion_lead)
+conversion_payer_14_dia cohorte_evaluable
+respuesta_util_15_min solicitud_requiere_respuesta
+negociacion_abandonada negociacion_finalizada
+Fórmula KPI
+(conversion_payer_14_dia / cohorte_evaluable) × 100
+(respuesta_util_15_min / solicitud_requiere_respuesta) × 100
+(negociacion_abandonada / negociacion_finalizada) × 100
+Tablas BD (OLTP & Mart)
+Solicitudes, Pagos, EventosEtapa NexoSalud_Mart.dbo.fact_negociacion_lead
+Solicitudes, Interacciones NexoSalud_Mart.dbo.fact_negociacion_lead
+Solicitudes, EventosEtapa NexoSalud_Mart.dbo.fact_negociacion_lead
+Dimensiones de análisis
+dim_tiempo, dim_sede, dim_servicio, dim_negociador, dim_profesional
+dim_tiempo, dim_sede, dim_servicio, dim_negociador
+dim_tiempo, dim_sede, dim_servicio, dim_negociador
+Periodicidad
+Cálculo diario sobre cohortes maduras; revisión semanal y mensual
+Cálculo continuo en tiempo real; revisión diaria y semanal
+Cálculo diario; revisión semanal y mensual
+Semáforo
+Verde ≥ 30 %; ámbar ≥ 15 % y < 30 %; rojo < 15 %
+Verde ≥ 80 %; ámbar ≥ 50 % y < 80 %; rojo < 50 %
+Verde ≤ 15 %; ámbar > 15 % y ≤ 30 %; rojo > 30 %
+Interfaces de Pantalla y Prototipos
+La pantalla de negociación centraliza la gestión comercial a través de los siguientes componentes:   
+Perfil del LEAD: Resumen lateral que agrupa los datos de contacto y el historial cronológico del paciente.   
+Servicio solicitado: Sección para vincular la intención del usuario con un procedimiento exacto del catálogo.   
+Preferencias: Sección visual para recordar rápidamente los horarios y lugares que prefiere el usuario.   
+Alternativas disponibles y Reserva: Tabla dinámica donde se agregan propuestas (fecha, clínica, doctor y precio) y se asegura el bloqueo en la agenda médica.   
+Paso a PAYER: Botón de "Generar Solicitud de Pago" para enviar los datos a tesorería.  
+Figura 14
+Ventana con información del Perfil LEAD
+Figura 15
+Estrategia comercial recomendada
+Figura 16
+Diseño de oferta comercial por el agente
+Figura 17
+Oferta comercial generada
+Figura 18
+Envío de Oferta Omnicanal & Generador Canva
+Figura 19
+Copiloto de Apoyo ante Objeciones
+Reportes de Gestión
+Figura 20 
+Reporte resumen de negociación
+Este reporte evalúa la efectividad del equipo comercial para cerrar ventas tempranas (dentro de los primeros 14 días) según el tipo de tratamiento solicitado en un rango temporal específico.
+Dimensión de Contexto (Filtro): TIEMPO (Año y Mes de la solicitud).
+Dimensión en Filas: SEDE agrupando a NEGOCIADOR (Operador comercial).
+Dimensión en Columnas: SERVICIO (Categoría del tratamiento).
+Medida Principal (Intersección): conversion_payer_14_dia. Esta métrica contabiliza exclusivamente a los prospectos que concretaron un acuerdo y avanzaron a la etapa de pago dentro del SLA objetivo de dos semanas.
+Agente Inteligente (Agente Negociador)
+El Agente Negociador es una herramienta de asistencia comercial diseñada para acelerar el proceso de venta, priorizar casos críticos y evitar que el paciente pierda interés. Las actividades automatizadas son las siguientes:
+Priorización de LEADs: Ordena los casos pendientes analizando tiempos de espera y estado de negociación.   
+Recomendación de alternativas: Compara preferencias con la disponibilidad real para sugerir opciones compatibles.   
+Detección de objeciones: Identifica dificultades expresadas por el usuario ("está caro", "horario no disponible", etc.) y recomienda alternativas.   
+Seguimiento inteligente: Detecta inactividad y prepara mensajes contextuales para reducir el riesgo de abandono.   
+Preparación al paso a PAYER: Verifica que los datos de servicio, precio y reserva estén listos para el proceso de pago.
+Situaciones y disparadores
+Se activa si una cotización lleva abierta más de 24 horas sin respuesta, al detectar objeciones comunes respecto al precio, o cuando el paciente manifiesta síntomas de emergencia en su primer contacto.
+Decisiones automatizables
+Detección de Urgencia (Triaje Comercial): Analiza los mensajes iniciales o el triaje preliminar. Si detecta indicadores de dolor agudo o emergencia, actualiza automáticamente el campo prioridad de la tabla Solicitudes al valor "Alta". Esto asegura que el equipo humano cotice el caso con inmediatez e impacta de forma directa en el cumplimiento del KPI L2 (Respuesta útil en ≤ 15 minutos hábiles).
+Seguimiento y Retención: Sugiere mensajes de seguimiento adaptados al canal preferido del usuario y emite alertas cuando un turno reservado está próximo a caducar. Toda sugerencia o acción tomada queda estrictamente registrada y auditada en la tabla DecisionesIA (utilizando los campos regla_aplicada y decision).
+Límites del agente
+No tiene autorización para aplicar descuentos por debajo del margen mínimo fijado por la clínica. El sistema controla esta restricción de forma nativa validando la oferta contra un campo de precio_minimo (o descuento máximo permitido) configurado previamente en la tabla Tarifas. Cualquier rebaja extraordinaria requiere la validación de un supervisor humano.
+Impulse Alerts de LEAD
+Se gestionan de manera integrada mediante el Agente Negociador y los reportes en tiempo real para alertar sobre tiempos máximos de primera respuesta (menor a 15 min) y control de abandono de negociaciones.
+Etapa PAYER
+Objetivo y criterio de conversión
+Objetivo de la fase: La etapa PAYER tiene como objetivo formalizar la contratación del servicio odontológico pre-agendado en la fase LEAD mediante la emisión de la proforma oficial, gestionar el cronograma y la cadencia de pagos (monitoreo preventivo, alertas de vencimiento y liberación oportuna de sillones ante impagos), y activar la atención médica únicamente cuando se confirme y valide el abono inicial correspondiente.   
+Criterio de conversión (Salida a CUSTOMER): Exige que el abono o seña haya sido verificado y conciliado exitosamente, alcanzando el estado formal de VALIDADO y emitiendo la respectiva constancia oficial de pago. Este hito garantiza el bloqueo definitivo del turno en la agenda clínica y autoriza la apertura del expediente para la atención presencial.   
+Estados del proceso financiero: Para controlar este proceso, el flujo opera bajo los siguientes estados transaccionales: PENDIENTE (registro creado sin pago), EN_REVISION (comprobante pendiente de validación), VALIDADO (pago aprobado para conversión), RECHAZADO (comprobante con inconsistencias) y REVERTIDO (pago anulado manualmente).  
+Proceso Operativo / Actividades Clave
+El flujo transaccional y operativo de la etapa se sintetiza en las siguientes actividades clave ejecutadas por el personal de tesorería y el sistema:
+Generación y canales de pago: Al registrarse el cobro en estado PENDIENTE vinculado a la reserva médica, el sistema emite la proforma y habilita los medios de pago disponibles: pasarela web integrada (MercadoPago / Yape en tiempo real), transferencias bancarias directas o carga manual de comprobante digital.   
+Registro y conciliación: Cuando el paciente declara su pago, el registro pasa a EN_REVISION, documentando metadatos (monto, fecha, canal, número de operación y archivo adjunto de hasta 5 MB). El agente verifica la información contra el importe de la reserva para dictaminar su aprobación (VALIDADO) o rechazo (RECHAZADO).   
+Gestión de incidencias y conversión: Ante rechazos o anulaciones (REVERTIDO), se registran incidencias con justificación obligatoria (mínimo 10 caracteres) para su trazabilidad. Solo los registros en estado VALIDADO transfieren al paciente al módulo de atención clínica. 
+Tabla 8
+Actividades en la Etapa Payer del Agente de Cobranza
+Actividad
+Descripción y Regla de Negocio
+Impacto en BD
+Rol del Agente de Cobranza (IA)
+Resultado / Evidencia
+1. Validar el comprobante de pago del PAYER
+Verificar que el paciente cuente con los datos de la reserva acordada en LEAD (servicio, especialista, fecha y monto) y comprobar si adjuntó comprobante de pago. Si faltan datos clave, el cobro no puede procesarse.
+Consulta y actualiza el estado de conciliación del PAYER: PENDIENTE, EN_REVISION, VALIDADO, RECHAZADO O REVERTIDO.
+Detecta automáticamente si existe comprobante adjunto y alerta discrepancias entre el monto declarado y el monto por cobrar.
+Registro verificado y estado de cobro actualizado en la tabla principal.
+2. Priorizar cobros mediante
+Calcular el nivel de riesgo de impago del paciente mediante un modelo predictivo (Groq AI) considerando incidencias previas, tiempo transcurrido y cercanía de la cita para priorizar la gestión.
+Actualiza la columna de prioridad en la tabla de PAYERs con el nivel de riesgo: Aprobado, Bajo, Moderado o Alto.
+Analiza las variables del paciente, genera un score de riesgo (0% a 100%) y sugiere la estrategia de contacto más conveniente.
+Tablero de cobranza priorizado con scoring de riesgo y diagnóstico operativo visible.
+3. Ejecutar cadencia de cobranza en 3 etapas (Cron Job)
+Monitorear automáticamente los plazos de pago: Etapa 1 (T-48h): recordatorio preventivo con proforma PDF; Etapa 2 (T-24h): alerta de urgencia clínica; Etapa 3 (00:00 hrs): cancelación automática de cita y liberación de sillón por falta de pago.
+Modifica el estado de reservas y citas; en Etapa 3 pasa el registro a Cancelado/Revertido y libera el slot en la agenda clínica.
+El servicio en segundo plano (24/7) despacha notificaciones automáticas por correo y anula citas vencidas sin intervención humana.
+Monitor de auditoría en vivo (Live Tail) con registro de correos enviados, citas canceladas y sillones liberados.
+4. Contactar al paciente por canales multicanal (WhatsApp y Correo)
+Enviar recordatorios y avisos formales de cobro según el perfil del paciente. Permite elegir entre 3 mensajes persuasivos (Preventivo, Urgencia o Rescate 50% de seña) y despachar la proforma PDF oficial.
+Registra en logs el despacho de correos electrónicos con proforma PDF adjunta (PRF-XXXXX).
+Redacta mensajes persuasivos personalizados mediante IA y prepara el envío directo a WhatsApp o al buzón de correo.
+Mensaje de WhatsApp enviado y correo formal con proforma PDF entregado al paciente.
+5. Conciliar pago y gestionar incidencias (Rechazo / Reversión)
+Validar formalmente el pago si el comprobante es correcto. En caso de inconsistencias, rechazar o revertir registrando obligatoriamente el motivo (mínimo 10 caracteres) para trazabilidad.
+Inserta el registro de incidencia vinculada al PAYER y actualiza el estado ha Validado, Rechazado o Revertido.
+Identifica pagos pendientes de revisión, muestra alertas de incidencias abiertas y restringe la aprobación a pagos válidos.
+Pago validado con constancia emitida, o incidencia registrada para subsanación del paciente.
+6. Activar el servicio y transferir a CUSTOMER
+Confirmar la cita odontológica de forma definitiva una vez validado el pago, finalizando la etapa de cobranza y transfiriendo al paciente al módulo de atención clínica.
+Cambia el estado final a VALIDADO, crea/vincula el registro en la tabla de CUSTOMERS y actualiza el Customer Journey.
+Habilita la transición automática a CUSTOMER únicamente cuando se confirma el abono y genera la Constancia de Pago PDF (CONST-XXXXX).
+Paciente formalizado como CUSTOMER, cita médica confirmada y constancia oficial de pago emitida.
+Modelo E-R Específico
+Figura 21
+Submodelo Entidad-Relación específico de la etapa PAYER
+Nota. Diagrama obtenido de mermaid.live. Link de acceso: Entrar al link
+Dimensionalización de PAYER
+El modelo de análisis dimensional para la fase PAYER se estructura bajo el hecho central de gestión de cobro y validación de pago. El grano del hecho corresponde a un registro por cada intento o transacción de pago realizada o declarada para una reserva de atención médica, permitiendo contabilizar los cobros registrados, verificar cuáles han sido validados o rechazados de forma efectiva y determinar cuántos derivan en la conversión a CUSTOMER.
+Figura 22
+Análisis Dimensional de la Etapa de PAYER
+Alrededor de este hecho central se organizan ocho dimensiones de análisis que permiten desagregar la información y evaluar el rendimiento financiero y operativo de la tesorería desde diferentes perspectivas: Fecha, Hora, Servicio, Pasarela, Pagador, Fuente, Sede y Cobro. En las dimensiones Fecha, Hora, Servicio, Pasarela y Sede existe una relación natural de agregación entre sus elementos. Por ejemplo, en Fecha se escala de Día a Año; en Hora, de Minuto a Turno; en Servicio, de Procedimiento a Categoría; y en Sede, de Sede a Distrito. En las dimensiones Pagador, Fuente y Cobro, los elementos se emplean principalmente como atributos para segmentar y filtrar la información (como la ocupación, el nivel de ingreso del paciente, la campaña de origen o la presencia de comprobante adjunto), por lo que no representan necesariamente una jerarquía estricta. Cuando un dato como la entidad financiera o el procedimiento aún no ha sido especificado durante el proceso de pago, se utiliza el valor "No especificado", evitando perder la trazabilidad del hecho transaccional durante el análisis.
+En la intersección de estas dimensiones se registran las medidas base aditivas del negocio bajo nomenclatura estándar snake_case: pago_registrado, pago_validado, pago_rechazado, conversion_customer, costo_transaccion y tiempo_validacion_minuto (Figura 22). Las cuatro primeras corresponden a medidas estrictamente aditivas de conteo. La medida pago_validado contabiliza con valor 1 cada transacción cuya conciliación contable ha sido confirmada exitosamente y 0 en caso contrario, permitiendo obtener el total acumulado mediante suma.
+Por su parte, la medida costo_transaccion representa las comisiones retenidas por pasarelas bancarias y digitales. Finalmente, tiempo_validacion_minuto registra los minutos transcurridos entre el comprobante y su validación por tesorería, empleándose como dividendo base para calcular el tiempo promedio de validación.
+Indicadores de PAYER
+Tabla 9
+Indicadores de la etapa PAYER
+Elemento
+P1. Pagos Validados
+P2. Tiempo Promedio de Validación
+P3. Pagos Rechazados
+P4. Conversión PAYER → CUSTOMER
+Descripción
+Mide la eficacia de la tesorería en conciliar y aprobar exitosamente los pagos recibidos.
+Mide la agilidad del proceso de verificación bancaria entre el comprobante y su aprobación.
+Mide la proporción de pagos inválidos, erróneos o fallidos sobre el total recibido.
+Mide la proporción de abonos registrados que logran sentar efectivamente al paciente en sillón dental.
+Medidas base (fact_gestion_payer)
+pago_validado pago_registrado
+tiempo_validacion_minuto pago_validado
+pago_rechazado pago_registrado
+conversion_customer pago_registrado
+Fórmula KPI
+(pago_validado / pago_registrado) × 100
+tiempo_validacion_minuto / pago_validado
+(pago_rechazado / pago_registrado) × 100
+(conversion_customer / pago_registrado) × 100
+Tablas BD (OLTP & Mart)
+Pagos NexoSalud_Mart.dbo.fact_gestion_payer
+Pagos NexoSalud_Mart.dbo.fact_gestion_payer
+Pagos NexoSalud_Mart.dbo.fact_gestion_payer
+Pagos, Reservas, EventosEtapa NexoSalud_Mart.dbo.fact_gestion_payer
+Dimensiones de análisis
+dim_fecha, dim_hora, dim_sede, dim_pasarela, dim_cobro
+dim_fecha, dim_hora, dim_sede, dim_pasarela, dim_pagador
+dim_fecha, dim_hora, dim_sede, dim_pasarela, dim_cobro
+dim_fecha, dim_hora, dim_sede, dim_servicio, dim_cobro
+Periodicidad
+Cálculo diario; revisión semanal y mensual
+Cálculo continuo; revisión diaria y mensual
+Cálculo diario; revisión semanal y mensual
+Cálculo diario sobre cohortes; revisión semanal y mensual
+Semáforo
+Verde ≥ 80 %; ámbar ≥ 60 % y < 80 %; rojo < 60 %
+Verde ≤ 60 min; ámbar > 60 y ≤ 120 min; rojo > 120 min
+Verde ≤ 5 %; ámbar > 5 % y ≤ 10 %; rojo > 10 %
+Verde ≥ 90 %; ámbar ≥ 75 % y < 90 %; rojo < 75 %
+Interfaces de Pantalla y Prototipos
+La interfaz de gestión financiera centraliza los métodos de pago, la revisión de comprobantes y los tableros de control:
+Métodos de Pago integrados en NexoSalud mediante MercadoPago (Yape en tiempo real y Tarjeta de Débito/Crédito).   
+Figura 23
+Método de Pago - YAPE en NexoSalud con MercadoPago
+Figura 24
+Método de Pago - Tarjeta Débito/Crédito en nexo Salud con MercadoPago
+Figura 25
+Indicadores de la fase PAYER en NexoSalud
+Figura 26
+Agente de Cobranza en el Sistema NexoSalud en la fase PAYER
+Reportes de Gestión 
+Figura 27
+Reporte resumen de recaudacion
+Este reporte monitorea la salud financiera desglosando los ingresos brutos según la pasarela utilizada y el estatus actual de conciliación en el mes evaluado.
+Dimensión de Contexto (Filtro): TIEMPO (Año y Mes del registro del pago).
+Dimensión en Filas: PASARELA (Modalidad agrupando a Canal de Pago).
+Dimensión en Columnas: COBRO (Estado del Pago).
+Medida Principal (Intersección): pago_registrado y pago_validado. Esta métrica cuantifica el flujo transaccional registrado y aprobado, permitiendo al área de tesorería evaluar los cobros conciliados, pendientes o fallidos.
+Agente Inteligente (Agente de Cobranza)
+Datos consultados: Evalúa de forma continua el estado financiero, historial de pagos, montos de proformas y tiempos transcurridos de cada paciente.   
+Decisiones automatizables: Calcula el scoring de riesgo de impago mediante IA, detecta comprobantes adjuntos pendientes, prioriza la cola de validación de tesorería y ejecuta notificaciones automáticas de cadencia de pago.   
+Límites y escalamiento humano: El agente automatiza recordatorios y bloqueos técnicos, pero las incidencias complejas de conciliación o devoluciones de dinero requieren la validación y autorización explícita de un operador humano de tesorería (Human-in-the-loop).
+Impulse Alerts de PAYER
+Matriz de reglas proactivas implementadas para detectar desvíos operativos y financieros en la etapa PAYER:
+Tabla 10
+Impulse Alerts de PAYER
+Código
+Alerta Operativa
+Condición de Disparo
+Nivel de Severidad
+Acción Automatizada / Mitigación
+ALT-P1
+Riesgo de Impago Alto
+Paciente clasificado por el modelo predictivo con alto score de probabilidad de fuga o impago previo a vencer el plazo de seña.
+Alto / Rojo
+Notificación proactiva al operador y despliegue automático de la estrategia recomendada (ej. rescate del 50% o urgencia clínica).
+ALT-P2
+Comprobante Pendiente de Revisión
+Transacciones que ingresan al estado EN_REVISION (comprobante adjunto) y superan el tiempo de tolerancia configurado en el sistema (ej. SLA > 2 horas) sin validación de tesorería.
+Medio / Ámbar
+Aviso directo en el panel del Agente de Cobranza para priorizar la conciliación y evitar demoras en la agenda.
+ALT-P3
+Discrepancia en Monto Declarado
+El importe registrado (importe_pagado) o adjunto en el comprobante del paciente no coincide con el precio oficial de la reserva (monto_proforma).
+Alto / Rojo
+Bloqueo de la aprobación automática (VALIDADO), marcaje de incidencia y notificación al paciente para subsanación.
+ALT-P4
+Vencimiento de Plazo (T-48h / T-24h)
+Cuenta regresiva del Cron Job que detecta proximidad a la fecha de la cita sin confirmación de pago (fases preventiva y de urgencia).
+Medio / Ámbar
+Despacho automático de la proforma PDF oficial y recordatorios persuasivos multicanal (WhatsApp y correo).
+ALT-P5
+Cancelación Automática por Impago
+Llega el momento límite (T-00:00 hrs) sin que el pago haya sido validado o registrado en el sistema.
+Alto / Rojo
+Ejecución del Cron Job: anulación automática de la reserva, liberación inmediata del sillón dental en la agenda y paso a estado de cancelación.
+Etapa CUSTOMER
+Objetivo y Criterio de Conversión
+Objetivo de la fase: La etapa CUSTOMER representa la prestación presencial del servicio odontológico previamente reservado y con pago validado. Su objetivo es gestionar la atención clínica desde la llegada del paciente hasta la culminación del tratamiento y la emisión de las recomendaciones médicas.
+Criterio de entrada y salida: Una persona ingresa a CUSTOMER cuando posee una reserva con abono validado en caja. La atención finaliza y transita a TURNED con estado “Realizado” cuando se confirma la concurrencia (“Asistió”), se registran inicio y fin, y se completan diagnóstico, procedimiento e indicaciones finales.
+Alcance: Todos los datos utilizados son ficticios y tienen fines académicos. El prototipo no incluye historias clínicas completas, odontogramas, periodontogramas, radiografías, imágenes clínicas ni tratamientos especializados.
+Figura 28
+Vista principal del módulo CUSTOMER y control de atenciones
+Proceso Operativo / Actividades Clave
+El sistema impide registros duplicados, horarios inválidos y la finalización de atenciones con información incompleta. Las actividades de atención y prestación del servicio son:
+Tabla 11
+Actividades de atención y prestación del servicio del Agente Copiloto de Box (IA)
+Actividad
+Descripción y Regla de Negocio
+Impacto en BD
+Rol del Agente Copiloto de Box (IA)
+Resultado
+1. Admisión y verificación de llegada
+Se verifica la llegada del paciente a la sala de espera. Solo se admite si cuenta con reserva confirmada y pago en estado VALIDADO. Si transcurren más de 20 min de tolerancia sin presentarse, la cita se clasifica como inasistencia (No-show).
+Consulta Reservas y Pagos. Actualiza Atenciones.asistencia ('Asistió' o 'No asistió') y la marca de tiempo fecha_atencion.
+Monitorea la hora programada en tiempo real. Si detecta inactividad tras la tolerancia de 20 min, sugiere registrar la inasistencia (alerta ALT-C4) y notifica para liberar el sillón.
+Asistencia confirmada en el sistema o registro de No-show para los indicadores C1 y C2.
+2. Inicio del acto clínico y triaje preventivo
+El paciente ingresa al box odontológico. Se estampa el inicio formal de la consulta y el profesional realiza la anamnesis presencial obligatoria (verificación de alergias, dolor actual o condiciones de riesgo).
+Inserta la marca temporal Atenciones.fecha_inicio = SYSDATETIME() y actualiza Atenciones.estado_servicio = 'En proceso'. Consulta PersonaSaludOdontologica.
+Cruza los antecedentes autodeclarados del paciente en PersonaSaludOdontologica y despliega una alerta visual destacada en pantalla si reportó dolor agudo, alergias a anestésicos o prótesis.
+Registro de fecha_inicio para el control de tiempos (base KPI C3) y advertencias preventivas validadas en sillón.
+3. Ejecución y registro del procedimiento
+El odontólogo ejecuta el tratamiento ambulatorio (limpieza, evaluación, profilaxis, restauración). El sistema exige que el procedimiento registrado corresponda al catálogo oficial y se respalde con un diagnóstico básico.
+Actualiza Atenciones.id_servicio, Atenciones.diagnostico_basico y Atenciones.procedimiento_realizado. Consulta el catálogo maestro Servicios.
+Carga plantillas clínicas estructuradas según el servicio seleccionado, preformateando la estructura del procedimiento para que el odontólogo solo complete los hallazgos particulares.
+Procedimiento y diagnóstico básico asentados formalmente en la ficha clínica conforme al catálogo médico.
+4. Monitoreo de tiempo en sillón dental
+Monitoreo continuo de la duración del tratamiento frente al tiempo objetivo parametrizado. Si la atención excede en más de un 15% el estándar, se deben activar protocolos de mitigación para no desfasar la agenda posterior.
+Calcula en tiempo de ejecución: DATEDIFF(minute, fecha_inicio, SYSDATETIME()) contra la duración estándar registrada en Servicios.
+Evalúa la cadencia de la consulta; si detecta sobretiempo superior al 15%, despacha un aviso automático a recepción (alerta ALT-C2) para modular los tiempos de espera del siguiente turno.
+Duración en sillón monitoreada en tiempo real (KPI C3) y sincronización con el panel de recepción sin interrumpir al médico.
+5. Prescripción de indicaciones postoperatorias
+Todo procedimiento finalizado exige el registro de recomendaciones de cuidado ambulatorio, higiene y pautas de alarma para el hogar antes de autorizar la salida del paciente.
+Actualiza el campo Atenciones.indicaciones_finales y deja preparado el insumo base para la tabla Seguimientos.
+Redacta de forma automatizada un borrador comprensible de indicaciones postoperatorias adaptadas al tratamiento, el cual actúa como sugerencia editable para el odontólogo (Human-in-the-loop).
+Recomendaciones médicas guardadas en el sistema y listas para su despacho automático por WhatsApp al paciente.
+6. Auditoría de integridad y finalización
+El sistema ejecuta una validación estricta de completitud documental: no permite cerrar la cita si diagnostico_basico, procedimiento_realizado o indicaciones_finales están vacíos.
+Actualiza Atenciones.fecha_fin = SYSDATETIME(), Atenciones.estado_servicio = 'Realizado', actualiza Personas.id_etapa_actual = 5 e inserta el evento en EventosEtapa.
+Ejecuta el checklist de calidad técnica; si detecta omisiones, bloquea el botón de cierre (alerta ALT-C3). Si los campos están conformes, habilita la transición transaccional hacia TURNED.
+Atención odontológica culminada con éxito, ficha clínica 100% íntegra (KPI C4) y cambio de etapa registrado en base de datos.
+Modelo E-R específico de CUSTOMER
+El submodelo transaccional de la etapa CUSTOMER delimita las entidades de la base de datos NexoSaludDB que intervienen directamente en el acto asistencial en consultorio, el soporte preventivo del triaje bucal, la supervisión del Agente Copiloto y la trazabilidad de salida hacia la etapa TURNED. En la Figura 28 se detalla la estructura Entidad-Relación de esta fase.
+Entidades utilizadas:
+Capa Núcleo y Proceso Asistencial: Reservas (1) a Atenciones (0..1); Reservas (1) a Pagos (0..1); Personas (1) a Atenciones (0..N); Atenciones (1) a Seguimientos (0..N); EventosEtapa (0..N).
+Capa de Triaje y Soporte Clínico: PersonaSaludOdontologica, DecisionesIA e Incidencias.
+Capa Operativa y Catálogos: Servicios, Profesionales y Sedes.
+Relaciones: Se estructuran en el flujo principal de ejecución clínica y pase a TURNED (1:0..1 y 1:N), la vinculación de recursos operativos y locaciones (1:N), y la trazabilidad preventiva, incidencias y auditoría del sistema (1:N).
+Figura 29
+Submodelo Entidad-Relación específico de la etapa CUSTOMER
+Nota. Diagrama obtenido de mermaid.live. Link de acceso: Entrar a link.
+Dimensionalización de CUSTOMER
+El modelo de análisis dimensional para la etapa CUSTOMER estructura el Data Mart clínico-operativo bajo el enfoque de Ralph Kimball, situando en el nodo central el proceso de negocio de la Atención Odontológica ejecutada en consultorio y desplegando cinco ejes radiales con jerarquías de agregación que permiten evaluar el rendimiento por Tiempo (Hora a Año), Servicio (Servicio odontológico a Categoría), Profesional (Odontólogo a Especialidad), Sede (Sede a Distrito) y Estado de Atención (Asistencia a Estado final).
+Figura 30
+Análisis Dimensional de la Etapa CUSTOMER
+El modelo dimensional sitúa en el centro el evento de la cita odontológica en sillón dental y despliega cinco dimensiones de análisis con sus respectivas jerarquías de consolidación (roll-up):
+Tiempo: Hora → Día → Mes → Año.   
+Servicio: Servicio odontológico → Categoría.   
+Profesional: Odontólogo → Especialidad.   
+Sede: Sede → Distrito.   
+Estado de Atención: Asistencia (Asistió / No asistió) → Estado final (Atendido / Cancelado / Programado). 
+En la convergencia de estas dimensiones se cuantifican los hechos y medidas base del negocio con sus respectivas unidades métricas, las cuales alimentan directamente el cálculo de los indicadores de la etapa:   
+cita_evaluable: Volumen total de citas programadas cuya fecha/hora ya ocurrió (universo base para C1 y C2).
+atencion_realizada: Citas donde el paciente se presentó en la clínica y se inició la consulta en sillón dental (asistencia = 'Asistió') (numerador base del KPI C1).
+cita_inasistencia: Citas formalizadas donde el usuario no acudió al establecimiento, es decir, No-show (asistencia = 'No asistió') (numerador base del KPI C2).
+tiempo_sillon_dental_minuto: Duración real de la prestación en minutos efectivos calculados entre fecha_inicio y fecha_fin (insumo para el promedio del KPI C3).
+atencion_finalizada_conforme: Atenciones culminadas que cumplen con la totalidad de campos clínicos obligatorios (procedimiento_realizado e indicaciones_finales no nulos) (numerador base del KPI C4).
+Indicadores de CUSTOMER
+Tabla 12
+Indicadores de CUSTOMER
+Elemento
+C1. Asistencia Efectiva en Sillón
+C2. Tasa de No-Show (Ausentismo)
+C3. Tiempo Promedio en Sillón Dental
+C4. Conformidad Asistencial
+Descripción
+Mide la proporción de citas agendadas que se convierten en atenciones médicas efectivas en consultorio.
+Mide la proporción de pacientes que no asisten a su consulta odontológica programada.
+Mide la duración promedio que el paciente permanece en el sillón dental durante el procedimiento.
+Mide la proporción de atenciones clínicas culminadas que cuentan con historia clínica y ficha completa.
+Medidas base (fact_atencion_customer)
+atencion_realizada cita_evaluable
+cita_inasistencia cita_evaluable
+tiempo_sillon_dental_minuto atencion_realizada
+atencion_finalizada_conforme atencion_realizada
+Fórmula KPI
+(atencion_realizada / cita_evaluable) × 100
+(cita_inasistencia / cita_evaluable) × 100
+tiempo_sillon_dental_minuto / atencion_realizada
+(atencion_finalizada_conforme / atencion_realizada) × 100
+Tablas BD (OLTP & Mart)
+Atenciones NexoSalud_Mart.dbo.fact_atencion_customer
+Atenciones NexoSalud_Mart.dbo.fact_atencion_customer
+Atenciones NexoSalud_Mart.dbo.fact_atencion_customer
+Atenciones NexoSalud_Mart.dbo.fact_atencion_customer
+Dimensiones de análisis
+dim_tiempo, dim_sede, dim_servicio, dim_profesional, dim_estado_atencion
+dim_tiempo, dim_sede, dim_servicio, dim_profesional, dim_estado_atencion
+dim_tiempo, dim_sede, dim_servicio, dim_profesional
+dim_tiempo, dim_sede, dim_servicio, dim_profesional
+Periodicidad
+Cálculo diario; revisión semanal y mensual
+Cálculo diario; revisión semanal y mensual
+Cálculo diario; revisión semanal y mensual
+Cálculo diario; auditoría clínica mensual
+Semáforo
+Verde ≥ 80 %; ámbar ≥ 65 % y < 80 %; rojo < 65 %
+Verde ≤ 10 %; ámbar > 10 % y ≤ 20 %; rojo > 20 %
+Verde: ± 10 min de duración objetivo; ámbar: ± 15 min; rojo: > 20 min
+Verde ≥ 95 %; ámbar ≥ 85 % y < 95 %; rojo < 85 %
+Las citas evaluables corresponden a aquellas cuya fecha y turno programado ya transcurrieron y registraron un resultado formal de concurrencia ('Asistió' o 'No asistió'). Los indicadores pueden segmentarse analíticamente por periodo temporal, servicio odontológico, odontólogo tratante y sede física. Su cálculo se ejecuta diariamente a nivel transaccional y se consolida mensualmente dentro del Data Mart.
+Figura 31
+Tarjetas de indicadores de desempeño de la etapa CUSTOMER
+Interfaces de Pantalla y Prototipos
+Flujo de atención: Reserva confirmada luego Confirmar asistencia luego Iniciar atención luego Registrar información luego  Finalizar atención (con opción de marcar "No asistió" o cancelar).   
+Pantalla de registro: Contiene controles de flujo, formulario odontológico básico, datos de la cita y sección para incidencias técnicas. El botón de finalización solo se habilita con los datos obligatorios completos.   
+Soporte de plataforma: Permite reportar incidencias técnicas (descripción, prioridad, fecha/hora, estado y observación de solución) gestionadas exclusivamente por soporte técnico, sin alterar datos clínicos.
+Figura 32
+Formulario de registro y detalle de la atención odontológica
+Figura 33
+Formulario de reporte de incidencias técnicas (Soporte de Plataforma)
+Reportes de Gestión 
+Figura 34
+Reporte de resumen de presentación clínica
+Este reporte clínico detalla la ejecución real de la agenda médica en los sillones dentales de cada local durante un lapso de tiempo determinado.
+Dimensión de Contexto (Filtro): TIEMPO (Año y Mes de la atención médica).
+Dimensión en Filas: SERVICIO (Categoría agrupando a Servicio Odontológico).
+Dimensión en Columnas: SEDE (Sede Clínica).
+Medida Principal (Intersección): atencion_realizada. Esta métrica filtra y suma únicamente aquellas citas donde el paciente asistió físicamente y se prestó el acto asistencial, descartando ausentismos.
+Agente Inteligente (Agente de Soporte Clínico y Copiloto de Box)
+Para mantener la rigurosidad metodológica del modelo IMPULSE y asegurar que cada fase del embudo cuente con asistencia automatizada, la etapa CUSTOMER incorpora el Agente de Soporte Clínico (Copiloto de Box Odontológico). Este agente de IA opera de manera no invasiva durante el acto médico en consultorio, facilitando el registro estructurado de la atención y reduciendo la carga administrativa del cirujano dentista.
+Situaciones y disparadores:
+Detección de Antecedentes y Alergias Críticas: Al abrirse la ficha de atención, el agente cruza los antecedentes registrados en la entidad PersonaSaludOdontologica (alergia a penicilina, hipertensión, diabetes) y genera una notificación visual preventiva en pantalla antes de iniciar cualquier maniobra invasiva o administración de anestesia local.
+Inicio y Cronometraje de Atención: El odontólogo presiona el control de 'Iniciar Atención' en la interfaz clínica, disparando la marca temporal (fecha_inicio) para el cálculo exacto del tiempo efectivo en sillón dental (TiempoEnSillonDentalMin).
+Cierre y Emisión de Pautas Postoperatorias: Al seleccionar el procedimiento realizado (evaluación, profilaxis, ortodoncia o cirugía de implante), el agente despliega automáticamente la plantilla recomendada de cuidados postoperatorios, medicamentos y pautas de higiene oral personalizadas.
+Decisiones automatizables
+Validación de Coherencia Asistencial: Impide el guardado de la atención si se omiten campos obligatorios como el resultado clínico o si la duración registrada resulta inconsistente (ej. tiempos negativos o inferiores a 5 minutos).
+Transición Protegida hacia TURNED: Tras completarse y firmarse electrónicamente la atención, el agente actualiza el estado de la reserva a 'COMPLETED', inserta el evento correspondiente en EventosEtapa y genera de forma automática el ticket de entrada hacia la etapa TURNED para iniciar el protocolo de postventa.
+Registro Inmediato de Incidencias de Sillón: En caso de desperfectos en el equipo dental o rechazo del paciente al tratamiento, el agente habilita el formulario de soporte técnico (Incidencias) canalizándolo al responsable de sede.
+Límites del agente
+El Copiloto Clínico actúa exclusivamente como asistente administrativo y de soporte documental. En ningún caso emite diagnósticos médicos autónomos, no modifica prescripciones farmacológicas ni sustituye el criterio facultativo del cirujano dentista tratante, preservando la responsabilidad deontológica y legal del acto odontológico.
+Impulse Alerts de CUSTOMER
+Para sostener la evaluación continua y la toma de decisiones ágil dentro del consultorio, se parametrizan reglas de monitoreo en tiempo real que disparan avisos proactivos ante desvíos operativos en sillón dental:
+Tabla 13
+Matriz de reglas de Impulse Alerts para la etapa CUSTOMER
+Código
+Alerta Operativa
+Condición de Disparo
+Nivel de Severidad
+Acción Automatizada / Mitigación
+ALT-C1
+Retraso crítico de inicio
+Paciente con concurrencia confirmada (asistencia = 'Asistió') que supera los 10 min de espera en sala sin marcar fecha_inicio.
+Ámbar
+Notificación al box odontológico para agilizar desinfección de instrumental y llamado del paciente.
+ALT-C2
+Sobretiempo en sillón dental
+Duración calculada (DATEDIFF(MINUTE, fecha_inicio, SYSDATETIME())) excede en más de 15% el tiempo estándar presupuestado en Servicios.
+Ámbar
+Aviso silencioso al personal auxiliar y ajuste del tiempo proyectado en sala de espera (mitigación de desvío del KPI C3).
+ALT-C3
+Bloqueo por ficha incompleta
+Intento de guardar la atención con procedimiento_realizado o indicaciones_finales nulos (IS NULL).
+Rojo
+Despliegue de advertencia modal, bloqueo del cambio de estado_servicio a 'Realizado' y resguardo del indicador C4.
+ALT-C4
+Inasistencia no gestionada
+Transcurren 20 minutos de la hora citada sin confirmación de concurrencia en el sistema.
+Rojo
+Marcado automático como asistencia = 'No asistió', liberación del cupo en agenda y pase a la medida CitasConInasistencia (KPI C2).
+Etapa TURNED
+Objetivo y criterio de conversión
+Finalidad de la fase: La etapa TURNED constituye la quinta fase del modelo IMPULSE y representa el pilar de lealtad, postventa y crecimiento recurrente de NexoSalud. Su propósito es consolidar la satisfacción del paciente tras la atención recibida en CUSTOMER, monitorear su recuperación clínica inmediata, asegurar la asistencia a los controles preventivos semestrales, gestionar con inmediatez cualquier incidencia o complicación y activar de forma personalizada la reactivación comercial hacia un nuevo ciclo de atención sin duplicar identidades en la base de datos.
+Criterio de ingreso: Un usuario transiciona a la etapa TURNED cuando culmina su atención odontológica en el sillón dental con estado asistencial válido, la ficha clínica ha sido firmada y cerrada en NexoSaludDB.dbo.Atenciones y se ha generado el evento de salida correspondiente en EventosEtapa.
+Criterio de reactivación y recompra: El paciente egresa exitosamente de la fase de fidelización cuando manifiesta necesidad de un nuevo tratamiento o acude a su control preventivo semestral, generándose una nueva Solicitud en la etapa LEAD asociada a su mismo id_persona preexistente, garantizando trazabilidad unificada y conservación íntegra de su historial médico.
+Proceso Operativo / Actividades Clave
+El flujo operativo de la etapa TURNED se encuentra gobernado por protocolos cronológicos estandarizados que aseguran un acompañamiento integral post-consulta. Estos protocolos incluyen: (a) Seguimiento temprano a las 24 y 48 horas para evaluar dolor o inflamación post-intervención; (b) Aplicación de encuestas breves de satisfacción (CSAT y NPS) vía mensajería instantánea; (c) Gestión priorizada de incidencias clínicas o técnicas; (d) Agendamiento de la cita de control preventivo a los 180 días; y (e) Campañas personalizadas de reactivación para pacientes inactivos. En la Tabla 14 se detallan las actividades operativas frente al rol que asume el Agente Post-Venta con Inteligencia Artificial.
+Tabla 14
+Actividades en la Etapa Turned comparadas con el Rol del Agente Post-Venta
+Actividad
+Descripción y Regla de Negocio
+Impacto en BD
+Rol del Agente Post-Venta (IA)
+Resultado / Evidencia
+1. Contacto postoperatorio inmediato (24-48h)
+Monitorear la evolución clínica del paciente tras tratamientos invasivos (cirugía, endodoncia o colocación de brackets) para verificar alivio de dolor.
+Inserta registro en dbo.Seguimientos con tipo_seguimiento = 'POST_OPERATORIO' y fecha programada.
+Dispara mensaje automático por WhatsApp con saludo empático y formulario de dolor/recuperación en 3 preguntas.
+Registro de seguimiento completado y nivel de dolor reportado (escala 1 a 5).
+2. Medición de satisfacción y experiencia (NPS)
+Capturar la percepción de calidad del servicio recibido, trato del especialista y puntualidad de la atención.
+Actualiza observaciones y resultado_contacto en dbo.Seguimientos; genera calificación numérica 1-10.
+Envía encuesta interactiva de 1 clic; clasifica automáticamente al paciente como Promotor, Pasivo o Detractor.
+Índice de satisfacción consolidado y alertas de insatisfacción en tiempo real.
+3. Gestión de incidencias y complicaciones
+Atender reclamos por molestias no previstas (desajuste de aparatología, sensibilidad extrema o caída de curación provisional).
+Inserta fila en dbo.Incidencias vinculada a id_atencion, id_persona y prioridad clínica (ALTA/CRITICA).
+Identifica palabras de alerta médica por procesamiento de lenguaje natural y escala el caso al odontólogo de turno.
+Ticket de incidencia creado y notificación inmediata a la central de citas.
+4. Protocolo de control preventivo semestral
+Programar y recordar la cita de control profiláctico a los 180 días post-tratamiento para evitar recidivas y fomentar la salud bucal.
+Inserta seguimiento con fecha_contacto programada a 150 y 180 días; actualiza estado en dbo.Personas.
+Calcula la ventana óptima de retorno y envía recordatorio amigable con enlace de reserva preferencial para horario valle.
+Cita preventiva agendada sin costo de adquisición de nuevo cliente.
+5. Reactivación comercial y nueva solicitud
+Invitar a pacientes con tratamientos inconclusos o sin visitas en más de 9 meses a una evaluación diagnóstica de actualización.
+Crea nueva fila en dbo.Solicitudes vinculada al mismo id_persona, preservando el histórico de atenciones previas.
+Genera ofertas personalizadas con descuento de fidelidad para servicios complementarios (ej. blanqueamiento tras ortodoncia).
+Nueva solicitud comercial creada en fase LEAD sin duplicación de identidad.
+6. Auditoría de calidad de lealtad
+Evaluar el cumplimiento de los tiempos de resolución de quejas y la tasa de pacientes recurrentes por odontólogo y sede.
+Alimenta la tabla analítica dbo.Fact_SeguimientoTurned en el data mart analítico NexoSalud_Mart.
+Calcula semanalmente los ratios de pérdida de pacientes (churn) y proyecta el impacto en el Valor de Vida del Cliente (LTV).
+Reporte ejecutivo de retención publicado en el Dashboard corporativo.
+Modelo E-R específico de TURNED
+El submodelo transaccional que gobierna la etapa TURNED delimita las entidades encargadas de sostener la relación de largo plazo con el paciente. A diferencia de un sistema administrativo tradicional donde la atención clínica constituye el punto final del esquema, en NexoSalud la entidad Atenciones actúa como nodo emisor hacia el circuito de fidelización. Las entidades clave son:
+• dbo.Seguimientos: Representa cada interacción de contacto postoperatorio, control periódico o encuesta. Contiene atributos como id_seguimiento (PK), id_persona (FK), id_atencion (FK), fecha_hora, tipo_seguimiento (Postoperatorio, Control Semestral, Fidelización), canal_contacto (WhatsApp, Teléfono, Correo), resultado_contacto (Exitoso, No Contactado, Rechazado) y la bandera booleana requiere_nueva_cita.
+• dbo.Atenciones: Entidad antecedente que provee el contexto médico del procedimiento efectuado, el odontólogo responsable y la fecha efectiva del acto clínico, permitiendo parametrizar el tiempo de seguimiento.
+• dbo.Incidencias: Almacena reportes de disconformidad clínica o problemas técnicos, registrando id_incidencia (PK), id_persona (FK), tipo_incidencia, prioridad (Baja, Media, Alta, Crítica), estado (Pendiente, En Proceso, Resuelta), fecha_registro y fecha_resolucion.
+• dbo.Personas y dbo.Solicitudes: Garantizan la reactivación limpia. La persona física mantiene un identificador perenne (id_persona); cuando decide iniciar un nuevo servicio o control, se inserta una nueva tupla en dbo.Solicitudes con su respectivo servicio_id, iniciando un nuevo ciclo en LEAD sin corromper la unicidad del historial clínico y contable.
+Dimensionalización de TURNED
+Para responder a las preguntas analíticas de retención y lealtad planteadas por la gerencia de Luxedent, en el hito H3 se diseñó e implementó la tabla de hechos dimensional dbo.Fact_SeguimientoTurned en el Data Mart NexoSalud_Mart. Su modelado sigue rigurosamente los principios de Ralph Kimball para procesos de seguimiento y cohortes maduras:
+• Grano Inequívoco: Exactamente una fila por cada seguimiento individual registrado (id_seguimiento_origen). La clave natural posee restricción UNIQUE NONCLUSTERED para garantizar cargas idempotentes y libres de duplicación.
+• Llaves Foráneas a Dimensiones Conformadas: Vincula KeyTiempo (fecha del seguimiento), KeyHora, KeySede (sede de la atención antecedente), KeyServicio (procedimiento odontológico recibido), KeyProfesional (cirujano dentista tratante), KeyCanal (canal de contacto utilizado), KeyEstadoAtencion y KeyPersona (identificador pseudonimizado del paciente para análisis de cohortes, en cumplimiento estricto de la Ley 29733).
+• Medidas Atómicas y de Cohorte: La tabla proyecta las siguientes métricas aditivas y semiaditivas en formato snake_case (Figura TURNED): (1) seguimiento_registrado (conteo base de contactos efectuados); (2) seguimiento_efectivo (contactos donde el paciente respondió y validó su condición); (3) incidencia_reportada (eventos donde se manifestó dolor, molestia o queja); (4) incidencia_resuelta_24_hora (problemas resueltos dentro del estándar de 24 horas); (5) retorno_cohorte_90_dia (pacientes con nueva cita o tratamiento dentro de 90 días); y (6) paciente_elegible_retorno (pacientes atendidos hace al menos 90 días respecto al corte analítico).
+Regla de Cohorte Madura de 90 Días: Conforme a la auditoría de H1 y la guía de H3, evaluar recompra en pacientes atendidos hace menos de 90 días introduce un sesgo artificial a la baja. Por ello, el ETL fija una ventana de maduración obligatoria de 90 días para el cálculo formal de la tasa de retorno, tratando las atenciones más recientes como 'Cohorte en Maduración'.
+Indicadores de TURNED
+La evaluación cuantitativa del desempeño en la fase postventa se sustenta en cuatro indicadores clave (T1 a T4), estructurados con fórmulas verificables, fuentes precisas en el Data Mart y umbrales de semaforización ejecutiva (Tabla 15).
+Tabla 15
+Indicadores de la etapa TURNED en NexoSalud
+Código
+Nombre del Indicador
+Fórmula Matemática / Algoritmo
+Unidad
+Semáforo y Umbrales
+Sentido
+Fuente de Datos
+T1
+Cobertura de Contacto Post-Atención 48h
+(seguimiento_efectivo / seguimiento_registrado) × 100
+%
+Verde: >= 90% Ámbar: 75% - 89.9% Rojo: < 75%
+Maximizar
+NexoSalud_Mart.dbo.fact_seguimiento_turned (seguimiento_efectivo / seguimiento_registrado)
+T2
+Resolución Oportuna de Incidencias Clínicas (≤ 24h)
+(incidencia_resuelta_24_hora / incidencia_reportada) × 100
+%
+Verde: >= 85% Ámbar: 70% - 84.9% Rojo: < 70%
+Maximizar
+NexoSalud_Mart.dbo.fact_seguimiento_turned (incidencia_resuelta_24_hora / incidencia_reportada)
+T3
+Tasa de Retorno y Recompra Odontológica (90d)
+(retorno_cohorte_90_dia / paciente_elegible_retorno) × 100
+%
+Verde: >= 35% Ámbar: 20% - 34.9% Rojo: < 20%
+Maximizar
+NexoSalud_Mart.dbo.fact_seguimiento_turned (retorno_cohorte_90_dia / paciente_elegible_retorno)
+T4
+Efectividad de Activación Preventiva
+(paciente_elegible_retorno / seguimiento_efectivo) × 100
+%
+Verde: >= 60% Ámbar: 40% - 59.9% Rojo: < 40%
+Maximizar
+NexoSalud_Mart.dbo.fact_seguimiento_turned (paciente_elegible_retorno / seguimiento_efectivo)
+Interfaces de Pantalla y Prototipos
+La experiencia del operador y del personal de postventa en NexoSalud se materializa en componentes visuales desarrollados en React y TypeScript dentro del módulo src/modules/turned. Estas interfaces garantizan agilidad, visibilidad del riesgo de deserción y registro estructurado de cada contacto:
+• Consola Principal de Pacientes en Seguimiento (TurnedPage.tsx): Visualiza el listado consolidado de pacientes que han recibido el servicio, categorizados según su riesgo de deserción (Bajo, Medio, Crítico) calculado a partir de los días transcurridos desde su última cita. Incluye filtros rápidos por sede, odontólogo tratante y estado de contacto (Pendiente, Contactado, Requiere Reagendamiento).
+• Formulario de Registro de Seguimiento Postoperatorio (FollowUpForm.tsx): Modal estructurado que permite documentar en menos de 30 segundos la llamada o mensaje post-consulta. Registra el canal utilizado, escala visual de dolor/molestia (1 a 5), estado de cicatrización oral, nivel de satisfacción preliminar y si amerita derivación a consulta presencial inmediata.
+• Diálogo de Inicio de Nueva Solicitud Comercial (NewRequestDialog.tsx): Permite al asesor de postventa o al Agente IA iniciar una nueva solicitud para un paciente recurrente. El sistema precarga automáticamente los datos de identidad y preferencias del usuario, solicitando únicamente el nuevo servicio de interés (ortodoncia, estética o chequeo general), canalizándolo directamente a la etapa LEAD sin recrear al paciente en la base de datos.
+• Ficha Integral de Historial y Experiencia (TurnedDetailPage.tsx): Presenta la línea de tiempo completa del paciente a lo largo de todas sus atenciones previas, encuestas de satisfacción registradas, incidencias resueltas y fecha límite para su próximo control preventivo.
+Reportes de Gestión
+RESUMEN DE FIDELIZACIÓN Y RETORNO POST-VENTA. Etapa TURNED Este reporte analítico permite a la dirección médica de Luxedent evaluar la efectividad de la retención de pacientes desglosada por servicio clínico y profesional tratante:
+• Dimensión de Contexto (Filtro Global): TIEMPO (Año y Mes de seguimiento / cohorte analizada).
+• Dimensión en Filas: SERVICIO ODONTOLÓGICO (Evaluación General, Ortodoncia Inicial, Blanqueamiento, Implante Dental).
+• Dimensión en Columnas: PROFESIONAL / ODONTÓLOGO TRATANTE (Dr. Jhon Silver Díaz y equipo médico).
+• Medida Principal (Intersección Matricial): Tasa de Retorno [%] y seguimiento_efectivo.
+Interpretación para la toma de decisiones: Si el reporte evidencia que los pacientes atendidos en Ortodoncia Inicial presentan una tasa de retorno a controles superior al 80% mientras que en Blanqueamiento Dental la cifra desciende al 15%, la gerencia médica puede activar campañas específicas de mantenimiento estético a los 6 meses, evitando la fuga prematura de clientes hacia otros centros.
+Agente Inteligente (Agente Post-Venta y Fidelización)
+Situaciones y disparadores:
+• Transcurridas 24 horas del procedimiento quirúrgico (implante o exodoncia): El agente activa automáticamente el envío de una notificación de control postoperatorio con recomendaciones específicas de medicación y reposo bucal.
+• Transcurridas 48 horas de una atención general o estética: El agente remite la encuesta de satisfacción de un clic vía WhatsApp.
+• A los 150 días de la última profilaxis dental: El agente dispara un mensaje recordatorio informando al paciente que está próximo a cumplirse su ventana de 6 meses para la revisión preventiva semestral gratuita o preferencial.
+Decisiones automatizables:
+• Calificación y Categorización de Respuestas: Clasifica automáticamente los comentarios del paciente empleando modelos de análisis de sentimiento; ante puntuaciones inferiores a 3 estrellas, genera de inmediato un ticket de alerta al jefe de sede.
+• Detección Léxica de Complicaciones: Si la respuesta del paciente contiene términos de riesgo clínico (ej. 'sangrado persistente', 'fiebre', 'dolor agudo', 'se soltó el bracket'), el agente prioriza el caso con severidad ALTA y programa un contacto telefónico humano.
+• Propuesta de Horarios Valle: Al invitar al control semestral, el agente consulta la disponibilidad de sillones en el OLTP y ofrece alternativas de turnos en franjas de baja ocupación, elevando la productividad del consultorio.
+Límites del agente:
+El Agente Post-Venta tiene estrictamente prohibido prescribir fármacos, emitir opiniones de evolución clínica o desestimar el dolor reportado por un paciente. Cualquier molestia que exceda los parámetros estándar es canalizada inmediatamente al cirujano dentista tratante.
+Impulse Alerts de TURNED
+Para blindar la experiencia del paciente y mitigar la pérdida de clientes, la etapa TURNED implementa cuatro reglas de alerta operativa en tiempo real (Tabla 16).
+Tabla 16
+Matriz de reglas de Impulse Alerts para la etapa TURNED
+Código
+Alerta Operativa
+Condición de Disparo Técnico
+Nivel de Severidad
+Acción Correctiva Automatizada
+ALT-TRN-01
+Complicación clínica no resuelta > 12h
+dbo.Incidencias con prioridad ALTA/CRITICA y estado = 'Pendiente' con fecha_registro <= NOW() - 12 horas.
+Crítica
+Notificación directa vía SMS/WhatsApp al cirujano dentista titular y llamada de emergencia de la dirección médica.
+ALT-TRN-02
+Seguimiento post-atención pendiente > 48h
+dbo.Atenciones con estado = 'COMPLETED' sin registro asociado en dbo.Seguimientos transcurridas 48 horas.
+Alta
+Reasignación automática del paciente a la cola prioritaria del asesor de postventa en turno.
+ALT-TRN-03
+Control preventivo semestral vencido > 30d
+Paciente con última atención hace >= 210 días (180 + 30 de gracia) sin solicitud ni cita agendada.
+Media
+Activación de campaña omnicanal de reenganche por WhatsApp con oferta promocional de profilaxis preventiva.
+ALT-TRN-04
+Paciente en riesgo de deserción (Churn Risk)
+Paciente con tratamiento de ortodoncia o implante en curso sin asistencia en los últimos 60 días.
+Alta
+Alerta en consola de recepción; envío de recordatorio amigable sobre la importancia de no interrumpir el tratamiento.

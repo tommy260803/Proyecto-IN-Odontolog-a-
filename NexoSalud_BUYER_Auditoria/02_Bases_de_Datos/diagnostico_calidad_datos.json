@@ -1,0 +1,71 @@
+{
+  "timestamp_auditoria": "2026-10-26T18:15:00.000Z",
+  "servidor_evaluado": "127.0.0.1:1433 (Microsoft SQL Server)",
+  "entorno": "Local Development / Staging",
+  "bases_de_datos": {
+    "oltp": {
+      "nombre": "NexoSaludDB",
+      "motor": "Microsoft SQL Server",
+      "conteos_filas_reales": {
+        "Personas": 71,
+        "Solicitudes": 60,
+        "EventosEtapa": 98,
+        "DecisionesIA": 0,
+        "Campanas": 6,
+        "GastosCampana": 12,
+        "Canales": 5,
+        "Fuentes": 7,
+        "Sedes": 4,
+        "Servicios": 10
+      },
+      "distribucion_etapa_actual": {
+        "1_BUYER": 0,
+        "2_LEAD": 0,
+        "3_PAYER": 0,
+        "4_CUSTOMER": 0,
+        "5_TURNED": 71
+      },
+      "hallazgos_calidad_oltp": {
+        "anomalia_etapa_buyer": "El 100% de los registros en Personas (71 de 71) se encuentran en Etapa 5 (TURNED). No hay registros activos en Etapa 1 (BUYER) debido a auto-conversión sintética de seed.",
+        "anomalia_decisiones_ia": "La tabla DecisionesIA tiene 0 filas. El agente de IA cliente nunca ha persistido transacciones o clasificaciones en la base de datos.",
+        "violacion_privacidad_datos": "En POST /api/buyer/:id/convert se fuerza autoriza_contacto = true independientemente de la voluntad del usuario.",
+        "intrusismo_clinico": "Entidad PersonaSaludOdontologica vinculada a la fase preliminar BUYER captando signos patológicos antes del triaje LEAD."
+      }
+    },
+    "dimensional": {
+      "nombre": "NexoSalud_Mart",
+      "motor": "Microsoft SQL Server",
+      "conteos_filas_reales": {
+        "Fact_CaptacionBuyer": 71,
+        "Dim_Tiempo": 1826,
+        "Dim_Sede": 4,
+        "Dim_Canal": 5,
+        "Dim_Fuente": 7,
+        "Dim_Campana": 6,
+        "Dim_EstadoRegistro": 5,
+        "Dim_Servicio": 10,
+        "Dim_TipoPersona": 3
+      },
+      "hallazgos_calidad_dimensional": {
+        "clave_primaria_fact_captacion": "(KeyTiempo, KeySede, KeyCanal, KeyFuente, KeyEstadoRegistro) - Grano diario agregado por canal/fuente/sede.",
+        "columnas_huerfanas_null": {
+          "KeyServicio": "NULL en el 100% de las 71 filas de Fact_CaptacionBuyer.",
+          "KeyTipoPersona": "NULL en el 100% de las 71 filas de Fact_CaptacionBuyer."
+        },
+        "metricas_distorsionadas": {
+          "costo_atribuido_captacion": "0.00 en el 100% de las 71 filas (no hay prorrateo de GastosCampana en el ETL).",
+          "tiempo_conversion_dia": "0 en el 100% de las filas debido a la conversión síncrona inmediata en el endpoint /api/buyer/register."
+        },
+        "defectos_etl_sql": {
+          "join_defectuoso": "ON p.id_campana_origen = df.id_campana en Dim_Fuente (mezcla semántica de campañas y fuentes).",
+          "mapeo_sede_hardcoded": "CASE WHEN p.zona IN ('Miraflores','San Isidro') THEN 1 ... inyecta reglas frágiles de geografía en lugar de llaves foráneas."
+        }
+      }
+    }
+  },
+  "diagnostico_kpis_frontend": {
+    "desconexion_mart": "Los KPIs B1, B2 y B3 mostrados en BuyerListView.tsx se calculan en memoria desde la API REST de Express (/api/buyer), desconectados completamente de Fact_CaptacionBuyer.",
+    "tendencias_simuladas": "Las variaciones (+12.4%, +4.2%) están codificadas como cadenas estáticas en el JSX del frontend.",
+    "costos_ficticios": "B3 (Costo de Adquisición) utiliza DEFAULT_SOURCE_COSTS hardcodeados en src/domain/indicators/index.ts en lugar de la tabla GastosCampana."
+  }
+}
