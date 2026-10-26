@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../db';
 import { BuyerService } from '../services/buyerService';
 import { MarketingAgentService } from '../services/ai/MarketingAgentService';
+import { AlertService } from '../services/alertService';
 
 const router = Router();
 
@@ -281,6 +282,40 @@ router.post('/opportunities/:id/analyze', async (req, res) => {
   } catch (error: any) {
     console.error('Error in POST /opportunities/:id/analyze:', error);
     res.status(500).json({ error: error.message || 'Error al analizar oportunidad con IA' });
+  }
+});
+
+// Endpoints de ImpulseAlerts (Fase BUYER)
+router.get('/alerts', async (req, res) => {
+  try {
+    const alerts = await AlertService.listAlerts(req.query);
+    res.json({ success: true, count: alerts.length, data: alerts });
+  } catch (error: any) {
+    console.error('Error in GET /alerts:', error);
+    res.status(500).json({ error: error.message || 'Error al obtener alertas' });
+  }
+});
+
+router.patch('/alerts/:id/resolve', async (req, res) => {
+  try {
+    const numId = Number(req.params.id);
+    if (isNaN(numId)) return res.status(400).json({ error: 'ID de alerta inválido' });
+    const resolved = await AlertService.resolveAlert(numId, req.body);
+    res.json({ success: true, message: 'Alerta resuelta exitosamente', data: resolved });
+  } catch (error: any) {
+    console.error('Error in PATCH /alerts/:id/resolve:', error);
+    res.status(400).json({ error: error.message || 'Error al resolver alerta' });
+  }
+});
+
+router.post('/alerts/scan-sla', async (req, res) => {
+  try {
+    const threshold = Number(req.body.thresholdMinutes || 15);
+    const result = await AlertService.scanSlaBreaches(threshold);
+    res.json({ success: true, message: 'Escaneo de SLA completado', data: result });
+  } catch (error: any) {
+    console.error('Error in POST /alerts/scan-sla:', error);
+    res.status(500).json({ error: error.message || 'Error al escanear SLA de primera respuesta' });
   }
 });
 
