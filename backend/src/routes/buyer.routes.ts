@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../db';
 import { BuyerService } from '../services/buyerService';
+import { MarketingAgentService } from '../services/ai/MarketingAgentService';
 
 const router = Router();
 
@@ -246,7 +247,43 @@ router.post('/opportunities/:id/convert', async (req, res) => {
   }
 });
 
-// Registrar BUYER e inmediatamente solicitar información (Convertir a LEAD si es único)
+// Endpoint del Agente de Marketing IA para análisis ad-hoc
+router.post('/agent/analyze', async (req, res) => {
+  try {
+    const analysis = await MarketingAgentService.analyzeLead(req.body);
+    res.json({ success: true, data: analysis });
+  } catch (error: any) {
+    console.error('Error in POST /agent/analyze:', error);
+    res.status(500).json({ error: error.message || 'Error al ejecutar análisis de IA' });
+  }
+});
+
+// Endpoint del Agente de Marketing IA para analizar una oportunidad existente
+router.post('/opportunities/:id/analyze', async (req, res) => {
+  try {
+    const numId = Number(req.params.id);
+    if (isNaN(numId)) return res.status(400).json({ error: 'ID de oportunidad inválido' });
+    const op = await BuyerService.getOpportunityDetail(numId);
+    const analysis = await MarketingAgentService.analyzeLead({
+      id_oportunidad: op.id_oportunidad,
+      id_persona: op.id_persona,
+      nombres: op.Persona.nombres,
+      apellidos: op.Persona.apellidos,
+      telefono: op.Persona.numero || undefined,
+      email: op.Persona.email || undefined,
+      consulta: op.necesidad_declarada || 'Consulta odontológica',
+      canal: op.Canal?.nombre,
+      fuente: op.Fuente?.nombre,
+      campana: op.Campana?.nombre,
+      id_usuario: req.body.id_usuario
+    });
+    res.json({ success: true, data: analysis });
+  } catch (error: any) {
+    console.error('Error in POST /opportunities/:id/analyze:', error);
+    res.status(500).json({ error: error.message || 'Error al analizar oportunidad con IA' });
+  }
+});
+
 // Registrar BUYER en la fase BUYER (sin salto forzado a LEAD)
 router.post('/register', async (req, res) => {
   try {
