@@ -331,6 +331,252 @@ router.post('/alerts/scan-sla', async (req, res) => {
   }
 });
 
+// ── ENDPOINTS DE SUPERVISIÓN DEL AGENTE DE MARKETING IA ────────────────────────
+router.get('/agent/history', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit || 50), 100);
+    const decisions = await prisma.decisionesIA.findMany({
+      where: { agente: 'AgenteMarketingBuyer' },
+      orderBy: { fecha_hora: 'desc' },
+      take: limit,
+      include: {
+        Persona: {
+          select: {
+            id_persona: true,
+            nombres: true,
+            apellidos: true,
+            numero: true,
+            email: true,
+          }
+        },
+        Oportunidad: {
+          select: {
+            id_oportunidad: true,
+            estado_oportunidad: true,
+            fecha_registro: true,
+            necesidad_declarada: true,
+          }
+        }
+      }
+    });
+
+    res.json({ success: true, count: decisions.length, data: decisions });
+  } catch (error: any) {
+    console.error('Error in GET /agent/history:', error);
+    res.status(500).json({ error: error.message || 'Error al consultar historial de decisiones IA' });
+  }
+});
+
+router.get('/agent/stats', async (req, res) => {
+  try {
+    const total = await prisma.decisionesIA.count({ where: { agente: 'AgenteMarketingBuyer' } });
+    const llmCount = await prisma.decisionesIA.count({
+      where: { agente: 'AgenteMarketingBuyer', metodo: { not: 'REGLAS_DETERMINISTAS' } }
+    });
+    const rulesCount = total - llmCount;
+    const reviewCount = await prisma.decisionesIA.count({
+      where: { agente: 'AgenteMarketingBuyer', requiere_revision_humana: true }
+    });
+
+    const recentDecisions = await prisma.decisionesIA.findMany({
+      where: { agente: 'AgenteMarketingBuyer' },
+      take: 200,
+      select: { accion: true, decision: true, regla_aplicada: true }
+    });
+
+    const actionCounts: Record<string, number> = {};
+    for (const d of recentDecisions) {
+      const act = d.accion || 'SIN_ACCION';
+      actionCounts[act] = (actionCounts[act] || 0) + 1;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        totalProcessed: total,
+        llmExecuted: llmCount,
+        rulesFallback: rulesCount,
+        requiresHumanReview: reviewCount,
+        actionDistribution: actionCounts,
+        healthStatus: 'OPTIMO',
+        providerActive: 'Groq Llama 3 / Fallback Determinista Local'
+      }
+    });
+  } catch (error: any) {
+    console.error('Error in GET /agent/stats:', error);
+    res.status(500).json({ error: error.message || 'Error al calcular estadísticas de IA' });
+  }
+});
+
+// ── ENDPOINTS DE GESTIÓN DE CAMPAÑAS Y GASTOS (MARKETING BUYER) ─────────────
+router.get('/campaigns', async (_req, res) => {
+  try {
+    const campaigns = await prisma.campanas.findMany({
+      include: {
+        Fuente: true,
+        Canal: true,
+        GastosCampana: {
+          orderBy: { fecha: 'desc' }
+        },
+        _count: {
+          select: { Oportunidades: true }
+        }
+      },
+      orderBy: { id_campana: 'asc' }
+    });
+
+    const formatted = campaigns.map(c => {
+      const totalExpense = c.GastosCampana.reduce((sum, g) => sum + Number(g.importe), 0);
+      const opportunitiesCount = c._count.Oportunidades;
+      const cpl = opportunitiesCount > 0 ? Math.round((totalExpense / opportunitiesCount) * 100) / 100 : 0;
+
+      return {
+        id_campana: c.id_campana,
+        nombre: c.nombre,
+        descripcion: c.descripcion,
+        canal: c.Canal?.nombre || 'Digital',
+        fuente: c.Fuente?.nombre || 'General',
+        fecha_inicio: c.fecha_inicio,
+        fecha_fin: c.fecha_fin,
+        activo: c.activo,
+        totalGasto: totalExpense,
+        totalOportunidades: opportunitiesCount,
+        costoPorContacto: cpl,
+        gastos: c.GastosCampana
+      };
+    });
+
+    res.json({ success: true, count: formatted.length, data: formatted });
+  } catch (error: any) {
+    console.error('Error in GET /campaigns:', error);
+    res.status(500).json({ error: error.message || 'Error al obtener campañas' });
+  }
+});
+
+router.post('/campaigns', async (req, res) => {
+  try {
+    const { nombre, descripcion, id_fuente, id_canal, fecha_inicio, fecha_fin } = req.body;
+    if (!nombre || !nombre.trim()) {
+      return res.status(400).json({ error: 'El nombre de la campaña es obligatorio' });
+    }
+
+    const created = await prisma.campanas.create({
+      data: {
+        nombre: nombre.trim(),
+        descripcion: descripcion?.trim() || null,
+        id_fuente: id_fuente ? Number(id_fuente) : null,
+        id_canal: id_canal ? Number(id_canal) : null,
+        fecha_inicio: fecha_inicio ? new Date(fecha_inicio) : new Date(),
+        fecha_fin: fecha_fin ? new Date(fecha_fin) : null,
+        activo: true
+      }
+    });
+
+    res.status(201).json({ success: true, message: 'Campaña creada exitosamente', data: created });
+  } catch (error: any) {
+    console.error('Error in POST /campaigns:', error);
+    res.status(500).json({ error: error.message || 'Error al registrar campaña' });
+  }
+});
+
+router.post('/campaigns/:id/expenses', async (req, res) => {
+  try {
+    const campaignId = Number(req.params.id);
+    const { importe, fecha, descripcion } = req.body;
+
+    if (isNaN(campaignId)) return res.status(400).json({ error: 'ID de campaña inválido' });
+    if (!importe || isNaN(Number(importe)) || Number(importe) <= 0) {
+      return res.status(400).json({ error: 'El importe debe ser un número positivo mayor a 0' });
+    }
+
+    const expense = await prisma.gastosCampana.create({
+      data: {
+        id_campana: campaignId,
+        importe: Number(importe),
+        fecha: fecha ? new Date(fecha) : new Date(),
+        descripcion: descripcion ? String(descripcion).trim() : 'Gasto publicitario registrado'
+      }
+    });
+
+    res.status(201).json({ success: true, message: 'Gasto publicitario registrado exitosamente', data: expense });
+  } catch (error: any) {
+    console.error('Error in POST /campaigns/:id/expenses:', error);
+    res.status(500).json({ error: error.message || 'Error al registrar gasto publicitario' });
+  }
+});
+
+// ── ENDPOINT DE SEGUIMIENTO COMERCIAL Y BANDEJA DE TRABAJO (BUYER) ──────────
+router.get('/follow-ups', async (req, res) => {
+  try {
+    const opportunities = await prisma.oportunidadesCaptacion.findMany({
+      where: {
+        estado_oportunidad: { in: ['NUEVO', 'EN_CALIFICACION', 'CALIFICADO'] }
+      },
+      orderBy: { fecha_registro: 'desc' },
+      include: {
+        Persona: {
+          select: {
+            id_persona: true,
+            nombres: true,
+            apellidos: true,
+            numero: true,
+            telefono_normalizado: true,
+            email: true,
+            autoriza_contacto: true,
+            estado_calidad: true,
+          }
+        },
+        Canal: true,
+        Fuente: true,
+        Campana: true,
+        SedePreferida: true,
+        ServicioInteres: true,
+        ImpulseAlerts: {
+          where: { estado: 'ACTIVA' }
+        }
+      }
+    });
+
+    const now = new Date();
+    const tasks = opportunities.map(op => {
+      const minutesElapsed = Math.floor((now.getTime() - new Date(op.fecha_registro).getTime()) / 60000);
+      const isSlaBreached = minutesElapsed >= 15 && !op.fecha_primera_respuesta;
+      const isPendingResponse = !op.fecha_primera_respuesta;
+
+      let priority: 'ALTA' | 'MEDIA' | 'BAJA' = 'BAJA';
+      if (isSlaBreached || op.ImpulseAlerts.some(a => a.prioridad === 'ALTA' || a.prioridad === 'CRITICA')) {
+        priority = 'ALTA';
+      } else if (isPendingResponse) {
+        priority = 'MEDIA';
+      }
+
+      return {
+        id_oportunidad: op.id_oportunidad,
+        persona: op.Persona,
+        servicioInteres: op.ServicioInteres?.nombre || 'Consulta General',
+        sedePreferida: op.SedePreferida?.nombre || 'No asignada',
+        canal: op.Canal?.nombre || 'Web',
+        fuente: op.Fuente?.nombre || 'Directo',
+        campana: op.Campana?.nombre || null,
+        estado_oportunidad: op.estado_oportunidad,
+        fecha_registro: op.fecha_registro,
+        minutosEspera: minutesElapsed,
+        isSlaBreached,
+        isPendingResponse,
+        prioridad: priority,
+        alertasActivas: op.ImpulseAlerts.length,
+        alertas: op.ImpulseAlerts,
+        necesidad_declarada: op.necesidad_declarada,
+      };
+    });
+
+    res.json({ success: true, count: tasks.length, data: tasks });
+  } catch (error: any) {
+    console.error('Error in GET /follow-ups:', error);
+    res.status(500).json({ error: error.message || 'Error al obtener lista de seguimiento' });
+  }
+});
+
 // Registrar BUYER en la fase BUYER (sin salto forzado a LEAD)
 router.post('/register', async (req, res) => {
   try {

@@ -1,5 +1,11 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import BuyerPage from '@/modules/buyer/pages/BuyerPage';
+import BuyerOpportunitiesPage from '@/modules/buyer/pages/BuyerOpportunitiesPage';
+import BuyerFollowUpPage from '@/modules/buyer/pages/BuyerFollowUpPage';
+import BuyerCampaignsPage from '@/modules/buyer/pages/BuyerCampaignsPage';
+import BuyerAlertsPage from '@/modules/buyer/pages/BuyerAlertsPage';
+import BuyerAgentPage from '@/modules/buyer/pages/BuyerAgentPage';
+import BuyerAnalyticsPage from '@/modules/buyer/pages/BuyerAnalyticsPage';
 import NewBuyerPage from '@/modules/buyer/pages/NewBuyerPage';
 import BuyerDetailPage from '@/modules/buyer/pages/BuyerDetailPage';
 import BuyerRequestInfoPage from '@/modules/buyer/pages/BuyerRequestInfoPage';
@@ -58,6 +64,30 @@ export const router = createBrowserRouter([
       {
         path: 'buyer',
         element: <BuyerPage />,
+      },
+      {
+        path: 'buyer/oportunidades',
+        element: <BuyerOpportunitiesPage />,
+      },
+      {
+        path: 'buyer/seguimiento',
+        element: <BuyerFollowUpPage />,
+      },
+      {
+        path: 'buyer/campanas',
+        element: <BuyerCampaignsPage />,
+      },
+      {
+        path: 'buyer/alertas',
+        element: <BuyerAlertsPage />,
+      },
+      {
+        path: 'buyer/agente-ia',
+        element: <BuyerAgentPage />,
+      },
+      {
+        path: 'buyer/analitica',
+        element: <BuyerAnalyticsPage />,
       },
       {
         path: 'buyer/nuevo',
