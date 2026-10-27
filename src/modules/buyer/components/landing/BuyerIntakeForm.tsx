@@ -138,8 +138,9 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
         consentimiento_atencion: true,
       });
 
-      const refCode = result.oportunidad?.id_oportunidad
-        ? `OP-${String(result.oportunidad.id_oportunidad).padStart(4, '0')}`
+      const opId = result.data?.oportunidad?.id_oportunidad || result.data?.id_oportunidad || result.oportunidad?.id_oportunidad;
+      const refCode = opId
+        ? `OP-${String(opId).padStart(4, '0')}`
         : `OP-${Math.floor(1000 + Math.random() * 9000)}`;
 
       setSubmittedRef(refCode);

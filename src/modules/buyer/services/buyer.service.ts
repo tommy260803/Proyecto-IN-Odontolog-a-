@@ -98,7 +98,7 @@ export const buyerService = {
       numero: data.telefono,
       email: data.email || null,
       id_canal: 4, // Página Web
-      id_fuente: 4, // Búsqueda Orgánica Web
+      id_fuente: 2, // Búsqueda Orgánica (SEO / Maps)
       id_servicio: data.id_servicio || null,
       id_sede: data.id_sede || null,
       necesidad_declarada: data.motivo_consulta || 'Información de orientación y tratamientos dentales',

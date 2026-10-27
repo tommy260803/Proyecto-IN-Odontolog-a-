@@ -137,9 +137,21 @@ export default function BuyerRequestInfoPage() {
         staffSession={staffSession}
       />
 
-      {/* ── HERO SECTION PRINCIPAL: CLARO, ELEGANTE Y LLAMATIVO ── */}
-      <section className="relative overflow-hidden pt-8 pb-16 lg:pt-14 lg:pb-24 border-b border-slate-200/70 bg-gradient-to-b from-white via-sky-50/20 to-[#FAFCFE]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      {/* ── HERO SECTION PRINCIPAL: CLARO, ELEGANTE Y LLAMATIVO CON IMAGEN CLÍNICA REAL ── */}
+      <section className="relative overflow-hidden pt-10 pb-18 lg:pt-16 lg:pb-26 border-b border-slate-200/70 bg-gradient-to-b from-white via-sky-50/25 to-[#FAFCFE]">
+        {/* Imagen de fondo referente a las instalaciones clínicas de NexoSalud con overlay de alta legibilidad */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none">
+          <img
+            src="/Fondo_NexoSalud.png"
+            alt="Instalaciones NexoSalud Dental"
+            className="w-full h-full object-cover object-right-top lg:object-center opacity-[0.18] filter saturate-[1.15]"
+          />
+          {/* Capas de degradado para contraste y legibilidad perfecta */}
+          <div className="absolute inset-0 bg-gradient-to-r from-white via-white/95 to-white/75" />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/70 via-transparent to-[#FAFCFE]" />
+        </div>
+
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
             
             {/* Columna Izquierda: Mensaje Claro y Sin Sobrecarga */}

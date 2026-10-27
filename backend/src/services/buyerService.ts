@@ -22,6 +22,7 @@ export interface RegisterBuyerDTO {
   id_servicio_interes?: number;
   pref_sede_preferida?: string | number;
   id_sede_preferida?: number;
+  id_sede?: number;
   concreteRequest?: string;
   mensaje_consulta?: string;
   contactAuthorization?: boolean;
@@ -106,33 +107,49 @@ export class BuyerService {
         etapaLead = await tx.etapas.create({ data: { nombre: 'LEAD', descripcion: 'Intención concreta calificada' } });
       }
 
-      // 2. Canales y fuentes predeterminados si no vienen
+      // 2. Canales y fuentes predeterminados si no vienen o no existen en la BD
       let canalId = Number(data.id_canal || data.id_canal_origen || data.channel);
-      if (isNaN(canalId) || canalId <= 0) {
-        let defaultCanal = await tx.canales.findFirst({ where: { activo: true } });
-        canalId = defaultCanal ? defaultCanal.id_canal : 1;
+      let canalObj = !isNaN(canalId) && canalId > 0
+        ? await tx.canales.findUnique({ where: { id_canal: canalId } })
+        : null;
+      if (!canalObj) {
+        canalObj = await tx.canales.findFirst({ where: { activo: true } });
       }
+      canalId = canalObj ? canalObj.id_canal : 1;
 
       let fuenteId = Number(data.id_fuente || data.attractionSource);
-      if (isNaN(fuenteId) || fuenteId <= 0) {
-        let defaultFuente = await tx.fuentes.findFirst({ where: { activo: true } });
-        fuenteId = defaultFuente ? defaultFuente.id_fuente : 1;
+      let fuenteObj = !isNaN(fuenteId) && fuenteId > 0
+        ? await tx.fuentes.findUnique({ where: { id_fuente: fuenteId } })
+        : null;
+      if (!fuenteObj) {
+        fuenteObj = await tx.fuentes.findFirst({ where: { activo: true } });
       }
+      fuenteId = fuenteObj ? fuenteObj.id_fuente : 1;
 
       let campanaId = Number(data.id_campana || data.id_campana_origen);
-      if (isNaN(campanaId) || campanaId <= 0) {
+      if (!isNaN(campanaId) && campanaId > 0) {
+        const campanaObj = await tx.campanas.findUnique({ where: { id_campana: campanaId } });
+        if (!campanaObj) campanaId = null as any;
+      } else {
         campanaId = null as any;
       }
 
       let servicioId = Number(data.id_servicio || data.id_servicio_interes || data.serviceOfInterestId);
-      if (isNaN(servicioId) || servicioId <= 0) {
+      if (!isNaN(servicioId) && servicioId > 0) {
+        const servicioObj = await tx.servicios.findUnique({ where: { id_servicio: servicioId } });
+        if (!servicioObj) servicioId = null as any;
+      } else {
         servicioId = null as any;
       }
 
-      let sedeId = Number(data.id_sede_preferida || data.pref_sede_preferida);
-      if (isNaN(sedeId) || sedeId <= 0) {
-        sedeId = 1; // Sede principal
+      let sedeId = Number(data.id_sede_preferida || data.pref_sede_preferida || data.id_sede);
+      let sedeObj = !isNaN(sedeId) && sedeId > 0
+        ? await tx.sedes.findUnique({ where: { id_sede: sedeId } })
+        : null;
+      if (!sedeObj) {
+        sedeObj = await tx.sedes.findFirst({ where: { activo: true } });
       }
+      sedeId = sedeObj ? sedeObj.id_sede : 1;
 
       // 3. Identificación de Persona existente (por teléfono normalizado, email o DNI)
       let persona = null;
