@@ -11,6 +11,7 @@ import {
   FileText,
   Building2,
   CheckCircle2,
+  TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -125,90 +126,114 @@ export const BuyerCampaignsView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Cabecera y acciones */}
-      <div className="rounded-xl border border-slate-200/90 bg-white p-4.5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      {/* Cabecera con acento formal Verde Esmeralda */}
+      <div className="rounded-2xl border-l-4 border-emerald-600 border border-slate-200/90 bg-white p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <Megaphone className="h-5 w-5 text-sky-700" />
-            <h2 className="text-sm sm:text-base font-semibold text-slate-900">
-              Campañas de Marketing &amp; Registro de Gastos
+            <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-800">
+              <Megaphone className="h-5 w-5" />
+            </div>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900">
+              Campañas de Marketing &amp; Registro de Inversión
             </h2>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Permite la trazabilidad real de costos publicitarios (GastosCampana) para el cálculo exacto del CPL preliminar (B3).
+          <p className="text-xs text-slate-500 mt-1 max-w-2xl">
+            Trazabilidad de gastos publicitarios en <code className="bg-emerald-50 text-emerald-800 px-1 py-0.5 rounded font-mono text-[11px]">GastosCampana</code> para calcular el Costo por Lead real (B3).
           </p>
         </div>
 
         <Button
           size="sm"
           onClick={() => setNewCampaignModalOpen(true)}
-          className="h-9 text-xs bg-slate-900 text-white gap-1.5 hover:bg-slate-800"
+          className="h-9 text-xs bg-emerald-700 text-white gap-1.5 hover:bg-emerald-800 rounded-xl shadow-xs"
         >
           <Plus className="h-3.5 w-3.5" />
           Nueva Campaña
         </Button>
       </div>
 
-      {/* Resumen Financiero de Campañas */}
+      {/* Resumen Financiero con acento esmeralda */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <span className="text-xs font-medium text-slate-500">Inversión Total Registrada</span>
-          <div className="text-2xl font-bold font-mono text-slate-900 mt-1">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Inversión Total Registrada</span>
+            <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700">
+              <DollarSign className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="text-3xl font-extrabold font-mono text-emerald-950 mt-2">
             S/ {totalInvertido.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Suma de todos los comprobantes y pautas</p>
+          <p className="text-xs text-slate-400 mt-1">Suma de pautas y comprobantes en base de datos</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <span className="text-xs font-medium text-slate-500">Contactos Atribuidos</span>
-          <div className="text-2xl font-bold text-slate-900 mt-1">{totalCaptados}</div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Oportunidades originadas en campañas</p>
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Contactos Atribuidos</span>
+            <div className="p-1.5 rounded-lg bg-blue-50 text-blue-700">
+              <Layers className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="text-3xl font-extrabold text-slate-900 mt-2 font-mono">{totalCaptados}</div>
+          <p className="text-xs text-slate-400 mt-1">Oportunidades originadas en campañas activas</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <span className="text-xs font-medium text-slate-500">CPL Preliminar Promedio</span>
-          <div className="text-2xl font-bold font-mono text-sky-700 mt-1">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-bold uppercase tracking-wider text-sky-800">CPL Preliminar Promedio</span>
+            <div className="p-1.5 rounded-lg bg-sky-50 text-sky-700">
+              <TrendingUp className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="text-3xl font-extrabold font-mono text-sky-700 mt-2">
             S/ {cplPromedio}
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Costo por contacto captado (Fase BUYER)</p>
+          <p className="text-xs text-slate-400 mt-1">Costo medio por prospecto captado en BUYER</p>
         </div>
       </div>
 
-      {/* Lista de Campañas */}
-      <div className="rounded-xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
+      {/* Lista de Campañas con cards estilizadas */}
+      <div className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+            Campañas Comerciales Registradas ({campaigns.length})
+          </h3>
+          <span className="text-xs text-slate-500">Monitoreo publicitario activo</span>
+        </div>
+
         {loading ? (
           <div className="flex h-48 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
           </div>
         ) : campaigns.length === 0 ? (
-          <div className="p-12 text-center text-xs text-slate-500">
+          <div className="p-14 text-center text-xs text-slate-500">
             No hay campañas registradas. Haz clic en "Nueva Campaña" para crear la primera.
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
             {campaigns.map((camp) => (
-              <div key={camp.id_campana} className="p-4.5 hover:bg-slate-50/70 transition-colors">
+              <div key={camp.id_campana} className="p-5 hover:bg-emerald-50/20 transition-colors">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-1 max-w-lg">
+                  <div className="space-y-1.5 max-w-lg">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-slate-900">{camp.nombre}</span>
+                      <span className="font-bold text-sm text-slate-900">{camp.nombre}</span>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          camp.activo ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          camp.activo ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600'
                         }`}
                       >
                         {camp.activo ? 'ACTIVA' : 'INACTIVA'}
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 leading-relaxed">
                       {camp.descripcion || 'Sin descripción adicional'}
                     </p>
 
                     <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-1">
-                      <span>Canal: <strong className="text-slate-700">{camp.canal}</strong></span>
+                      <span>Canal: <strong className="text-slate-700 font-semibold">{camp.canal}</strong></span>
                       <span>·</span>
-                      <span>Fuente: <strong className="text-slate-700">{camp.fuente}</strong></span>
+                      <span>Fuente: <strong className="text-slate-700 font-semibold">{camp.fuente}</strong></span>
                       <span>·</span>
                       <span>Inicio: {new Date(camp.fecha_inicio).toLocaleDateString()}</span>
                     </div>
@@ -216,20 +241,20 @@ export const BuyerCampaignsView: React.FC = () => {
 
                   {/* Métricas financieras de la campaña */}
                   <div className="flex items-center gap-6 sm:text-right">
-                    <div>
-                      <span className="text-[10px] uppercase font-semibold text-slate-400 block">
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">
                         Gasto Total
                       </span>
                       <span className="font-mono text-sm font-bold text-slate-900">
                         S/ {Number(camp.totalGasto || 0).toFixed(2)}
                       </span>
                       <span className="text-[10px] text-slate-400 block">
-                        {camp.gastos?.length || 0} desembolsos
+                        {camp.gastos?.length || 0} recibos
                       </span>
                     </div>
 
-                    <div>
-                      <span className="text-[10px] uppercase font-semibold text-slate-400 block">
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">
                         Contactos
                       </span>
                       <span className="font-mono text-sm font-bold text-slate-900">
@@ -238,21 +263,21 @@ export const BuyerCampaignsView: React.FC = () => {
                       <span className="text-[10px] text-slate-400 block">atribuidos</span>
                     </div>
 
-                    <div>
-                      <span className="text-[10px] uppercase font-semibold text-slate-400 block">
+                    <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-100">
+                      <span className="text-[10px] uppercase font-bold text-emerald-700 block">
                         CPL Estimado
                       </span>
-                      <span className="font-mono text-sm font-bold text-sky-700">
+                      <span className="font-mono text-sm font-bold text-emerald-900">
                         S/ {Number(camp.costoPorContacto || 0).toFixed(2)}
                       </span>
                     </div>
 
-                    <div className="shrink-0 pl-2">
+                    <div className="shrink-0 pl-1">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleOpenAddExpense(camp)}
-                        className="h-8 text-xs border-slate-200 text-slate-700 hover:bg-slate-100 gap-1"
+                        className="h-8 text-xs border-emerald-200 text-emerald-800 hover:bg-emerald-50 rounded-xl gap-1 font-semibold"
                       >
                         <Receipt className="h-3 w-3 text-emerald-600" />
                         + Gasto
@@ -270,45 +295,45 @@ export const BuyerCampaignsView: React.FC = () => {
       <Dialog open={newCampaignModalOpen} onOpenChange={setNewCampaignModalOpen}>
         <DialogContent className="sm:max-w-md bg-white">
           <DialogHeader>
-            <DialogTitle className="text-sm font-semibold text-slate-900">
+            <DialogTitle className="text-sm font-bold text-slate-900">
               Registrar Nueva Campaña Comercial
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Crea una campaña para atribuir oportunidades y medir su retorno publicitario.
+              Atribuye prospectos a una campaña y mide el costo por adquisición (CPL).
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleCreateCampaign} className="space-y-3.5 py-2">
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-slate-700">Nombre de la campaña *</Label>
+              <Label className="text-xs font-semibold text-slate-700">Nombre de la campaña *</Label>
               <Input
                 type="text"
                 placeholder="Ej. Meta Ads Ortodoncia Primavera 2026"
                 value={cNombre}
                 onChange={(e) => setCNombre(e.target.value)}
                 required
-                className="h-9 text-xs border-slate-200"
+                className="h-10 text-xs border-slate-200 rounded-xl"
               />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-slate-700">Descripción / Objetivo</Label>
+              <Label className="text-xs font-semibold text-slate-700">Descripción / Objetivo</Label>
               <Input
                 type="text"
                 placeholder="Ej. Captación de pacientes para alineadores y brackets"
                 value={cDescripcion}
                 onChange={(e) => setCDescripcion(e.target.value)}
-                className="h-9 text-xs border-slate-200"
+                className="h-10 text-xs border-slate-200 rounded-xl"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs font-medium text-slate-700">Canal</Label>
+                <Label className="text-xs font-semibold text-slate-700">Canal</Label>
                 <select
                   value={cIdCanal}
                   onChange={(e) => setCIdCanal(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-800"
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-2.5 text-xs text-slate-800"
                 >
                   <option value="">Seleccionar canal</option>
                   {catalogs?.canales.map((c) => (
@@ -320,11 +345,11 @@ export const BuyerCampaignsView: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-medium text-slate-700">Fuente</Label>
+                <Label className="text-xs font-semibold text-slate-700">Fuente</Label>
                 <select
                   value={cIdFuente}
                   onChange={(e) => setCIdFuente(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-800"
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-2.5 text-xs text-slate-800"
                 >
                   <option value="">Seleccionar fuente</option>
                   {catalogs?.fuentes.map((f) => (
@@ -337,12 +362,12 @@ export const BuyerCampaignsView: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-slate-700">Fecha de Inicio</Label>
+              <Label className="text-xs font-semibold text-slate-700">Fecha de Inicio</Label>
               <Input
                 type="date"
                 value={cFechaInicio}
                 onChange={(e) => setCFechaInicio(e.target.value)}
-                className="h-9 text-xs border-slate-200"
+                className="h-10 text-xs border-slate-200 rounded-xl"
               />
             </div>
 
@@ -352,7 +377,7 @@ export const BuyerCampaignsView: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setNewCampaignModalOpen(false)}
-                className="text-xs"
+                className="text-xs rounded-xl"
               >
                 Cancelar
               </Button>
@@ -360,7 +385,7 @@ export const BuyerCampaignsView: React.FC = () => {
                 type="submit"
                 size="sm"
                 disabled={creatingCampaign}
-                className="text-xs bg-slate-900 text-white hover:bg-slate-800"
+                className="text-xs bg-emerald-700 text-white hover:bg-emerald-800 rounded-xl"
               >
                 {creatingCampaign ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Crear Campaña'}
               </Button>
@@ -373,7 +398,7 @@ export const BuyerCampaignsView: React.FC = () => {
       <Dialog open={expenseModalOpen} onOpenChange={setExpenseModalOpen}>
         <DialogContent className="sm:max-w-md bg-white">
           <DialogHeader>
-            <DialogTitle className="text-sm font-semibold text-slate-900">
+            <DialogTitle className="text-sm font-bold text-slate-900">
               Registrar Gasto Publicitario (GastosCampana)
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
@@ -383,9 +408,9 @@ export const BuyerCampaignsView: React.FC = () => {
 
           <form onSubmit={handleAddExpense} className="space-y-3.5 py-2">
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-slate-700">Importe en Soles (S/) *</Label>
+              <Label className="text-xs font-semibold text-slate-700">Importe en Soles (S/) *</Label>
               <div className="relative">
-                <span className="absolute left-3 top-2 text-xs font-bold text-slate-400">S/</span>
+                <span className="absolute left-3.5 top-2.5 text-xs font-bold text-slate-400">S/</span>
                 <Input
                   type="number"
                   step="0.01"
@@ -394,29 +419,29 @@ export const BuyerCampaignsView: React.FC = () => {
                   value={expenseImporte}
                   onChange={(e) => setExpenseImporte(e.target.value)}
                   required
-                  className="pl-8 h-9 text-xs border-slate-200 font-mono"
+                  className="pl-9 h-10 text-xs border-slate-200 font-mono rounded-xl"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-slate-700">Fecha del Desembolso</Label>
+              <Label className="text-xs font-semibold text-slate-700">Fecha del Desembolso</Label>
               <Input
                 type="date"
                 value={expenseFecha}
                 onChange={(e) => setExpenseFecha(e.target.value)}
-                className="h-9 text-xs border-slate-200"
+                className="h-10 text-xs border-slate-200 rounded-xl"
               />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-slate-700">Concepto / Comprobante</Label>
+              <Label className="text-xs font-semibold text-slate-700">Concepto / Comprobante</Label>
               <Input
                 type="text"
                 placeholder="Ej. Factura Meta Ads abril pauta #291"
                 value={expenseDesc}
                 onChange={(e) => setExpenseDesc(e.target.value)}
-                className="h-9 text-xs border-slate-200"
+                className="h-10 text-xs border-slate-200 rounded-xl"
               />
             </div>
 
@@ -426,7 +451,7 @@ export const BuyerCampaignsView: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setExpenseModalOpen(false)}
-                className="text-xs"
+                className="text-xs rounded-xl"
               >
                 Cancelar
               </Button>
@@ -434,7 +459,7 @@ export const BuyerCampaignsView: React.FC = () => {
                 type="submit"
                 size="sm"
                 disabled={addingExpense}
-                className="text-xs bg-slate-900 text-white hover:bg-slate-800"
+                className="text-xs bg-emerald-700 text-white hover:bg-emerald-800 rounded-xl"
               >
                 {addingExpense ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Guardar Gasto'}
               </Button>

@@ -16,6 +16,8 @@ import {
   Loader2,
   Plus,
   RefreshCw,
+  Building2,
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -104,36 +106,46 @@ export const BuyerOpportunitiesView: React.FC = () => {
     return matchesSearch && matchesStatus && matchesSede && matchesChannel;
   });
 
+  const countByStatus = (st: string) => opportunities.filter((o) => o.estado_oportunidad === st).length;
+
   return (
-    <div className="space-y-5">
-      {/* Barra de Búsqueda y Filtros */}
-      <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs space-y-3">
+    <div className="space-y-6">
+      {/* Barra de Búsqueda y Filtros con acento Ocean Blue */}
+      <div className="rounded-2xl border-l-4 border-blue-600 border border-slate-200/90 bg-white p-5 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-          {/* Input de Búsqueda */}
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <Input
-              type="text"
-              placeholder="Buscar por nombre, WhatsApp o OP-ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-9 text-xs rounded-lg border-slate-200"
-            />
+          <div>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+              <Users className="h-4.5 w-4.5 text-blue-600" />
+              Pipeline de Oportunidades &amp; Captación
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {opportunities.length} contactos registrados · {filteredOpportunities.length} resultados filtrados
+            </p>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                type="text"
+                placeholder="Buscar por nombre, celular u OP-XXXX..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-9 text-xs rounded-xl border-slate-200 bg-slate-50/50"
+              />
+            </div>
+
             <Button
               variant="outline"
               size="sm"
               onClick={loadData}
-              className="h-9 text-xs border-slate-200 text-slate-600 gap-1.5"
+              className="h-9 text-xs border-slate-200 text-slate-600 gap-1.5 rounded-xl hover:bg-slate-50"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Actualizar
             </Button>
 
             <Link to="/buyer/nuevo">
-              <Button size="sm" className="h-9 text-xs bg-slate-900 text-white gap-1.5 hover:bg-slate-800">
+              <Button size="sm" className="h-9 text-xs bg-blue-700 text-white gap-1.5 hover:bg-blue-800 rounded-xl shadow-xs">
                 <Plus className="h-3.5 w-3.5" />
                 Nueva Captación
               </Button>
@@ -141,22 +153,32 @@ export const BuyerOpportunitiesView: React.FC = () => {
           </div>
         </div>
 
-        {/* Filtros por chips / selectores */}
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs text-slate-600">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+        {/* Filtros por chips con contadores numéricos */}
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 text-xs">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             Estado:
           </span>
-          {['TODOS', 'NUEVO', 'EN_CALIFICACION', 'CALIFICADO', 'CONVERTIDO', 'DESCARTADO'].map((st) => (
+          {[
+            { id: 'TODOS', label: 'Todos', count: opportunities.length },
+            { id: 'NUEVO', label: 'Nuevo', count: countByStatus('NUEVO') },
+            { id: 'EN_CALIFICACION', label: 'En Calificación', count: countByStatus('EN_CALIFICACION') },
+            { id: 'CALIFICADO', label: 'Calificado', count: countByStatus('CALIFICADO') },
+            { id: 'CONVERTIDO', label: 'Convertido LEAD', count: countByStatus('CONVERTIDO') },
+            { id: 'DESCARTADO', label: 'Descartado', count: countByStatus('DESCARTADO') },
+          ].map((st) => (
             <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
-                statusFilter === st
-                  ? 'bg-slate-900 text-white'
+              key={st.id}
+              onClick={() => setStatusFilter(st.id)}
+              className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                statusFilter === st.id
+                  ? 'bg-blue-700 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              {st}
+              <span>{st.label}</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === st.id ? 'bg-blue-900/50 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                {st.count}
+              </span>
             </button>
           ))}
 
@@ -164,7 +186,7 @@ export const BuyerOpportunitiesView: React.FC = () => {
             <select
               value={sedeFilter}
               onChange={(e) => setSedeFilter(e.target.value)}
-              className="h-7 text-[11px] rounded border border-slate-200 bg-white px-2 text-slate-700"
+              className="h-8 text-xs rounded-xl border border-slate-200 bg-white px-2.5 text-slate-700 font-medium"
             >
               <option value="TODAS">Todas las Sedes</option>
               {catalogs?.sedes.map((s) => (
@@ -177,7 +199,7 @@ export const BuyerOpportunitiesView: React.FC = () => {
             <select
               value={channelFilter}
               onChange={(e) => setChannelFilter(e.target.value)}
-              className="h-7 text-[11px] rounded border border-slate-200 bg-white px-2 text-slate-700"
+              className="h-8 text-xs rounded-xl border border-slate-200 bg-white px-2.5 text-slate-700 font-medium"
             >
               <option value="TODOS">Todos los Canales</option>
               {catalogs?.canales.map((c) => (
@@ -191,26 +213,26 @@ export const BuyerOpportunitiesView: React.FC = () => {
       </div>
 
       {/* Tabla de Oportunidades */}
-      <div className="rounded-xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
+      <div className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
         {loading ? (
           <div className="flex h-48 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
           </div>
         ) : filteredOpportunities.length === 0 ? (
-          <div className="p-12 text-center text-xs text-slate-500">
-            No se encontraron oportunidades que coincidan con los criterios de búsqueda.
+          <div className="p-14 text-center text-xs text-slate-500">
+            No se encontraron oportunidades con los filtros seleccionados.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              <thead className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="py-3 px-4">ID / Registro</th>
-                  <th className="py-3 px-4">Contacto / Paciente</th>
-                  <th className="py-3 px-4">Interés / Declarado</th>
-                  <th className="py-3 px-4">Canal / Sede</th>
-                  <th className="py-3 px-4">Estado</th>
-                  <th className="py-3 px-4 text-right">Acciones</th>
+                  <th className="py-3.5 px-5">ID / Registro</th>
+                  <th className="py-3.5 px-5">Contacto / Paciente</th>
+                  <th className="py-3.5 px-5">Interés &amp; Consulta</th>
+                  <th className="py-3.5 px-5">Canal / Sede</th>
+                  <th className="py-3.5 px-5">Estado</th>
+                  <th className="py-3.5 px-5 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -223,12 +245,12 @@ export const BuyerOpportunitiesView: React.FC = () => {
                     : null;
 
                   return (
-                    <tr key={op.id_oportunidad} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3.5 px-4">
-                        <span className="font-mono font-semibold text-slate-900 block">
+                    <tr key={op.id_oportunidad} className="hover:bg-blue-50/20 transition-colors">
+                      <td className="py-3.5 px-5">
+                        <span className="font-mono font-bold text-slate-900 block">
                           OP-{String(op.id_oportunidad).padStart(4, '0')}
                         </span>
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-[11px] text-slate-400">
                           {new Date(op.fecha_registro).toLocaleString('es-PE', {
                             day: '2-digit',
                             month: 'short',
@@ -238,8 +260,8 @@ export const BuyerOpportunitiesView: React.FC = () => {
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-4">
-                        <div className="font-medium text-slate-900">
+                      <td className="py-3.5 px-5">
+                        <div className="font-bold text-slate-900">
                           {op.Persona ? `${op.Persona.nombres} ${op.Persona.apellidos}` : 'Sin nombre'}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
@@ -251,17 +273,18 @@ export const BuyerOpportunitiesView: React.FC = () => {
                               href={waUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-emerald-600 hover:text-emerald-700 inline-flex items-center"
-                              title="Contactar vía WhatsApp"
+                              className="text-emerald-600 hover:text-emerald-700 inline-flex items-center gap-1 font-semibold text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded"
+                              title="Escribir por WhatsApp"
                             >
-                              <MessageSquare className="h-3.5 w-3.5" />
+                              <MessageSquare className="h-3 w-3" />
+                              <span>WhatsApp</span>
                             </a>
                           )}
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 max-w-xs">
-                        <div className="text-slate-800 font-medium truncate">
+                      <td className="py-3.5 px-5 max-w-xs">
+                        <div className="text-slate-900 font-bold truncate">
                           {op.ServicioInteres?.nombre || op.servicio || 'Orientación General'}
                         </div>
                         <div className="text-[11px] text-slate-500 truncate mt-0.5">
@@ -269,8 +292,8 @@ export const BuyerOpportunitiesView: React.FC = () => {
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4">
-                        <div className="text-slate-800 truncate">
+                      <td className="py-3.5 px-5">
+                        <div className="text-slate-800 font-medium truncate">
                           {op.SedePreferida?.nombre || op.sede || 'No asignada'}
                         </div>
                         <div className="text-[11px] text-slate-500">
@@ -278,35 +301,33 @@ export const BuyerOpportunitiesView: React.FC = () => {
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-5">
                         <button
                           onClick={() => handleOpenStatusModal(op)}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold hover:opacity-80 transition-opacity ${
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold hover:opacity-85 transition-opacity ${
                             op.estado_oportunidad === 'CONVERTIDO'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                               : op.estado_oportunidad === 'EN_CALIFICACION'
-                              ? 'bg-sky-50 text-sky-700 border border-sky-200'
+                              ? 'bg-sky-100 text-sky-800 border border-sky-300'
                               : op.estado_oportunidad === 'CALIFICADO'
-                              ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                              ? 'bg-indigo-100 text-indigo-800 border border-indigo-300'
                               : op.estado_oportunidad === 'DESCARTADO'
-                              ? 'bg-slate-100 text-slate-500'
-                              : 'bg-amber-50 text-amber-700 border border-amber-200'
+                              ? 'bg-slate-100 text-slate-600'
+                              : 'bg-amber-100 text-amber-800 border border-amber-300'
                           }`}
                         >
                           <span>{op.estado_oportunidad}</span>
                         </button>
                       </td>
 
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Link
-                            to={`/buyer/${op.id_oportunidad}`}
-                            className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 transition-colors"
-                          >
-                            Dossier 360°
-                            <ChevronRight className="h-3 w-3" />
-                          </Link>
-                        </div>
+                      <td className="py-3.5 px-5 text-right">
+                        <Link
+                          to={`/buyer/${op.id_oportunidad}`}
+                          className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs transition-colors"
+                        >
+                          Dossier 360°
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Link>
                       </td>
                     </tr>
                   );
@@ -321,8 +342,8 @@ export const BuyerOpportunitiesView: React.FC = () => {
       <Dialog open={statusModalOpen} onOpenChange={setStatusModalOpen}>
         <DialogContent className="sm:max-w-md bg-white">
           <DialogHeader>
-            <DialogTitle className="text-sm font-semibold text-slate-900">
-              Actualizar Estado de Oportunidad OP-{selectedOp?.id_oportunidad}
+            <DialogTitle className="text-sm font-bold text-slate-900">
+              Actualizar Estado — OP-{selectedOp?.id_oportunidad}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
               Contacto: {selectedOp?.Persona?.nombres} {selectedOp?.Persona?.apellidos}
@@ -331,29 +352,29 @@ export const BuyerOpportunitiesView: React.FC = () => {
 
           <div className="space-y-4 py-2">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-700">Nuevo Estado:</label>
+              <label className="text-xs font-semibold text-slate-700">Nuevo Estado Comercial:</label>
               <select
                 value={newStatus}
                 onChange={(e) => setNewStatus(e.target.value)}
-                className="w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-800"
+                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-800 font-medium"
               >
                 <option value="NUEVO">NUEVO (Recién captado)</option>
                 <option value="EN_CALIFICACION">EN_CALIFICACION (En conversación inicial)</option>
                 <option value="CALIFICADO">CALIFICADO (Interés confirmado)</option>
-                <option value="DESCARTADO">DESCARTADO (No interesado / Número erróneo)</option>
+                <option value="DESCARTADO">DESCARTADO (No interesado / Contacto no utilizable)</option>
               </select>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-700">
-                Motivo u observación del cambio:
+              <label className="text-xs font-semibold text-slate-700">
+                Observación o motivo del cambio:
               </label>
               <textarea
                 rows={3}
-                placeholder="Indica la razón de la actualización..."
+                placeholder="Indica la razón de la actualización comercial..."
                 value={statusMotivo}
                 onChange={(e) => setStatusMotivo(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 p-2 text-xs text-slate-800"
+                className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800"
               />
             </div>
           </div>
@@ -364,7 +385,7 @@ export const BuyerOpportunitiesView: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={() => setStatusModalOpen(false)}
-              className="text-xs"
+              className="text-xs rounded-xl"
             >
               Cancelar
             </Button>
@@ -373,7 +394,7 @@ export const BuyerOpportunitiesView: React.FC = () => {
               size="sm"
               onClick={handleSaveStatus}
               disabled={statusSubmitting}
-              className="text-xs bg-slate-900 text-white hover:bg-slate-800"
+              className="text-xs bg-blue-700 text-white hover:bg-blue-800 rounded-xl"
             >
               {statusSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Guardar Estado'}
             </Button>

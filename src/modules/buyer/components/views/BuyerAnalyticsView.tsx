@@ -53,17 +53,19 @@ export const BuyerAnalyticsView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Cabecera Analítica */}
-      <div className="rounded-xl border border-slate-200/90 bg-white p-4.5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      {/* Cabecera con acento formal Deep Teal */}
+      <div className="rounded-2xl border-l-4 border-teal-600 border border-slate-200/90 bg-white p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-emerald-600" />
-            <h2 className="text-sm sm:text-base font-semibold text-slate-900">
-              Analítica de Data Mart &amp; KPIs Oficiales (Fase BUYER)
+            <div className="p-1.5 rounded-lg bg-teal-100 text-teal-800">
+              <BarChart3 className="h-5 w-5" />
+            </div>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900">
+              Business Intelligence &amp; Data Mart Oficial (Fase BUYER)
             </h2>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Métricas dimensionales calculadas desde <code className="font-mono text-[11px] bg-slate-100 px-1 py-0.5 rounded text-slate-700">Fact_OportunidadCaptacion</code> y consolidadas para la metodología IMPULSE.
+          <p className="text-xs text-slate-500 mt-1 max-w-2xl">
+            Métricas calculadas directamente desde <code className="bg-teal-50 text-teal-900 px-1 py-0.5 rounded font-mono text-[11px]">Fact_OportunidadCaptacion</code> para contrastar contra los benchmarks oficiales de IMPULSE.
           </p>
         </div>
 
@@ -71,7 +73,7 @@ export const BuyerAnalyticsView: React.FC = () => {
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900"
+            className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-teal-600"
           >
             <option value="all">Todo el Histórico</option>
             <option value="2026-Q1">2026 - Q1</option>
@@ -85,7 +87,7 @@ export const BuyerAnalyticsView: React.FC = () => {
             size="sm"
             variant="outline"
             onClick={loadAnalytics}
-            className="h-9 text-xs border-slate-200 text-slate-600"
+            className="h-9 text-xs border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           </Button>
@@ -97,22 +99,22 @@ export const BuyerAnalyticsView: React.FC = () => {
           <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
         </div>
       ) : !kpiData ? (
-        <div className="p-12 text-center text-xs text-slate-500 rounded-xl bg-white border border-slate-200">
-          No se pudieron cargar los datos analíticos del Data Mart.
+        <div className="p-14 text-center text-xs text-slate-500 rounded-2xl bg-white border border-slate-200">
+          No se pudieron calcular los indicadores dimensionales del Data Mart.
         </div>
       ) : (
         <>
-          {/* Los 3 KPIs Oficiales de BUYER */}
+          {/* Los 3 KPIs Oficiales con diseño de gauges y barras de meta */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {/* KPI B1: Conversión a Lead en <= 14 días */}
-            <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs space-y-3">
+            {/* KPI B1 */}
+            <div className="rounded-2xl border-t-4 border-sky-600 border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-xs font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-100">
-                  KPI B1
+                <span className="font-mono text-xs font-bold text-sky-800 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">
+                  KPI B1 OFICIAL
                 </span>
                 <span
-                  className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                    b1Ok ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                  className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                    b1Ok ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                   }`}
                 >
                   {b1Ok ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
@@ -121,45 +123,44 @@ export const BuyerAnalyticsView: React.FC = () => {
               </div>
 
               <div>
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Conversión a Lead (&le; 14 días)
                 </h3>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold tracking-tight text-slate-900">
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-4xl font-black tracking-tight text-slate-900 font-mono">
                     {b1.toFixed(1)}%
                   </span>
-                  <span className="text-xs text-slate-400">/ Meta &ge; {b1Target}%</span>
+                  <span className="text-xs text-slate-400 font-medium">/ Meta &ge; {b1Target}%</span>
                 </div>
               </div>
 
-              {/* Barra de progreso */}
-              <div className="space-y-1">
-                <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+              <div className="space-y-1.5">
+                <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${b1Ok ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                    className={`h-full rounded-full transition-all ${b1Ok ? 'bg-sky-600' : 'bg-amber-500'}`}
                     style={{ width: `${Math.min(100, (b1 / b1Target) * 100)}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-[11px] text-slate-400">
-                  <span>{kpiData.conv_14d} en &le;14d</span>
+                <div className="flex justify-between text-[11px] text-slate-400 font-mono">
+                  <span>{kpiData.conv_14d} en &le; 14d</span>
                   <span>{kpiData.total_registrados} captados</span>
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-100 leading-snug">
-                Mide la velocidad y eficacia del triaje comercial inicial para transformar contactos fríos en leads cualificados.
+              <p className="text-[11px] text-slate-500 pt-2 border-t border-slate-100 leading-snug">
+                Capacidad del equipo para clasificar y confirmar intención antes de que el prospecto se enfríe.
               </p>
             </div>
 
-            {/* KPI B2: Tasa de Contactos Utilizables */}
-            <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs space-y-3">
+            {/* KPI B2 */}
+            <div className="rounded-2xl border-t-4 border-emerald-600 border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                  KPI B2
+                <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                  KPI B2 OFICIAL
                 </span>
                 <span
-                  className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                    b2Ok ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                  className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                    b2Ok ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                   }`}
                 >
                   {b2Ok ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
@@ -168,45 +169,44 @@ export const BuyerAnalyticsView: React.FC = () => {
               </div>
 
               <div>
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Contactos Utilizables
                 </h3>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold tracking-tight text-slate-900">
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-4xl font-black tracking-tight text-slate-900 font-mono">
                     {b2.toFixed(1)}%
                   </span>
-                  <span className="text-xs text-slate-400">/ Meta &ge; {b2Target}%</span>
+                  <span className="text-xs text-slate-400 font-medium">/ Meta &ge; {b2Target}%</span>
                 </div>
               </div>
 
-              {/* Barra de progreso */}
-              <div className="space-y-1">
-                <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+              <div className="space-y-1.5">
+                <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${b2Ok ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                    className={`h-full rounded-full transition-all ${b2Ok ? 'bg-emerald-600' : 'bg-amber-500'}`}
                     style={{ width: `${Math.min(100, (b2 / b2Target) * 100)}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-[11px] text-slate-400">
+                <div className="flex justify-between text-[11px] text-slate-400 font-mono">
                   <span>{kpiData.total_utilizables} válidos</span>
-                  <span>{kpiData.total_registrados} totales</span>
+                  <span>{kpiData.total_registrados} captados</span>
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-100 leading-snug">
-                Valida que el número tenga 9 dígitos, consentimiento Ley N° 29733 y sea alcanzable sin rechazo.
+              <p className="text-[11px] text-slate-500 pt-2 border-t border-slate-100 leading-snug">
+                Porcentaje de prospectos con teléfono de 9 dígitos alcanzable y consentimiento informado otorgado.
               </p>
             </div>
 
-            {/* KPI B3: Costo por Lead / Adquisición (CPL) */}
-            <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs space-y-3">
+            {/* KPI B3 */}
+            <div className="rounded-2xl border-t-4 border-teal-600 border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                  KPI B3
+                <span className="font-mono text-xs font-bold text-teal-800 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200">
+                  KPI B3 OFICIAL
                 </span>
                 <span
-                  className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                    b3Ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                  className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                    b3Ok ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                   }`}
                 >
                   {b3Ok ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
@@ -215,60 +215,59 @@ export const BuyerAnalyticsView: React.FC = () => {
               </div>
 
               <div>
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Costo por Lead (CPL)
                 </h3>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold tracking-tight font-mono text-slate-900">
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-4xl font-black tracking-tight text-teal-950 font-mono">
                     S/ {b3.toFixed(2)}
                   </span>
-                  <span className="text-xs text-slate-400">/ Meta &le; S/ {b3Target.toFixed(2)}</span>
+                  <span className="text-xs text-slate-400 font-medium">/ Meta &le; S/ {b3Target.toFixed(2)}</span>
                 </div>
               </div>
 
-              {/* Barra de progreso inverso */}
-              <div className="space-y-1">
-                <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+              <div className="space-y-1.5">
+                <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${b3Ok ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                    className={`h-full rounded-full transition-all ${b3Ok ? 'bg-teal-600' : 'bg-rose-500'}`}
                     style={{ width: `${Math.min(100, (b3Target / Math.max(b3, 1)) * 100)}%` }}
                   />
                 </div>
                 <div className="flex justify-between text-[11px] text-slate-400 font-mono">
                   <span>Gasto: S/ {Number(kpiData.total_costo || 0).toFixed(2)}</span>
-                  <span>{kpiData.total_conversiones} leads</span>
+                  <span>{kpiData.total_conversiones} conversiones</span>
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-100 leading-snug">
-                Inversión publicitaria atribuida (GastosCampana) dividida entre los leads calificados generados.
+              <p className="text-[11px] text-slate-500 pt-2 border-t border-slate-100 leading-snug">
+                Eficiencia de la inversión en captación publicitaria dividida entre prospectos cualificados.
               </p>
             </div>
           </div>
 
-          {/* Fila secundaria: Tiempos y Detalle Dimensional */}
+          {/* Métricas secundarias en paneles formales */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div className="rounded-xl border border-slate-200/90 bg-white p-5 space-y-2">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
+            <div className="rounded-2xl border-l-4 border-slate-800 border border-slate-200/90 bg-white p-5 shadow-xs space-y-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Tiempo Promedio de Conversión (Días)
               </span>
-              <div className="text-3xl font-extrabold font-mono text-slate-900">
+              <div className="text-3xl font-black font-mono text-slate-900 mt-1">
                 {kpiData.avg_tiempo_dias ? `${kpiData.avg_tiempo_dias} días` : '—'}
               </div>
               <p className="text-xs text-slate-500">
-                Tiempo transcurrido desde el registro en el formulario web hasta el pase formal a LEAD.
+                Días promedio que toma calificar un contacto desde su registro hasta la entrega a LEAD.
               </p>
             </div>
 
-            <div className="rounded-xl border border-slate-200/90 bg-white p-5 space-y-2">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
-                Total Conversiones Generadas
+            <div className="rounded-2xl border-l-4 border-emerald-600 border border-slate-200/90 bg-white p-5 shadow-xs space-y-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                Total Conversiones Concretadas
               </span>
-              <div className="text-3xl font-extrabold font-mono text-emerald-700">
+              <div className="text-3xl font-black font-mono text-emerald-700 mt-1">
                 {kpiData.total_conversiones} pacientes
               </div>
               <p className="text-xs text-slate-500">
-                Oportunidades con interés confirmado y cita orientativa en coordinación.
+                Prospectos que aceptaron evaluación presencial y pasaron exitosamente al embudo clínico.
               </p>
             </div>
           </div>

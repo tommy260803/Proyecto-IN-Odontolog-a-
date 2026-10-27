@@ -12,7 +12,10 @@ import {
   AlertCircle,
   Loader2,
   ExternalLink,
-  ChevronDown
+  Sparkles,
+  Lock,
+  ChevronRight,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -28,11 +31,10 @@ import { buyerService } from '../../services/buyer.service';
 import type { SedeCatalogItem, ServicioCatalogItem } from '../../types/buyer.types';
 
 const ORIENTATION_REASONS = [
-  { id: 'tratamientos', label: 'Conocer tratamientos y opciones', icon: MessageSquare },
-  { id: 'precios', label: 'Precios y facilidades de pago', icon: HelpCircle },
-  { id: 'horarios', label: 'Horarios y disponibilidad', icon: Clock },
-  { id: 'molestia', label: 'Consulta o molestia dental', icon: ShieldCheck },
-  { id: 'duda', label: 'Aún no estoy seguro/a de qué necesito', icon: HelpCircle },
+  { id: 'tratamientos', label: 'Conocer tratamientos', icon: Sparkles, desc: 'Alineadores, implantes o estética' },
+  { id: 'precios', label: 'Precios y cuotas', icon: HelpCircle, desc: 'Facilidades de pago y cotizaciones' },
+  { id: 'horarios', label: 'Horarios y citas', icon: Clock, desc: 'Disponibilidad en sedes' },
+  { id: 'molestia', label: 'Consulta o molestia', icon: ShieldCheck, desc: 'Dolor o revisión general' },
 ];
 
 interface BuyerIntakeFormProps {
@@ -51,7 +53,6 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
   const [selectedReason, setSelectedReason] = useState<string>('tratamientos');
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
-  const [email, setEmail] = useState('');
   const [idSede, setIdSede] = useState<number | ''>('');
   const [idServicio, setIdServicio] = useState<number | ''>(preselectedServiceId || '');
   const [consultaBreve, setConsultaBreve] = useState('');
@@ -84,11 +85,10 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
     }
 
     if (rawDigits.length === 9) {
-      // Chequeo en vivo de duplicidad
       try {
         const res = await buyerService.checkDuplicate({ phone: rawDigits });
         if (res.isDuplicate) {
-          setDuplicateWarning('Este número ya tiene una solicitud previa registrada. Tu nueva consulta será asociada para darte seguimiento prioritario.');
+          setDuplicateWarning('¡Hola de nuevo! Ya tenemos registro de tu contacto. Tu nueva consulta será priorizada.');
         }
       } catch (e) {
         // Silencioso
@@ -100,20 +100,16 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (!nombre.trim() || nombre.trim().length < 2) {
-      newErrors.nombre = 'Por favor ingresa tu nombre (mínimo 2 letras)';
+      newErrors.nombre = 'Ingresa tu nombre para saber cómo llamarte';
     }
 
     const cleanPhone = telefono.replace(/\D/g, '');
     if (!cleanPhone || cleanPhone.length !== 9 || !cleanPhone.startsWith('9')) {
-      newErrors.telefono = 'Ingresa un número de celular de 9 dígitos que inicie con 9 (ej. 987654321)';
-    }
-
-    if (email && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      newErrors.email = 'El formato del correo electrónico no es válido';
+      newErrors.telefono = 'Ingresa un celular de 9 dígitos que inicie con 9';
     }
 
     if (!consentimiento) {
-      newErrors.consentimiento = 'Debes aceptar ser contactado/a para que podamos responder tu consulta';
+      newErrors.consentimiento = 'Acepta la autorización de contacto para poder responderte';
     }
 
     setErrors(newErrors);
@@ -131,12 +127,11 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
       const reasonLabel = ORIENTATION_REASONS.find((r) => r.id === selectedReason)?.label || 'Orientación';
       const declaredNeed = consultaBreve.trim()
         ? `[${reasonLabel}] ${consultaBreve.trim()}`
-        : `[${reasonLabel}] Solicitud de información y orientación inicial`;
+        : `[${reasonLabel}] Solicitud de información inicial`;
 
       const result = await buyerService.registerOpportunity({
         nombre: nombre.trim(),
         telefono: telefono.trim(),
-        email: email.trim() || null,
         id_sede: idSede ? Number(idSede) : null,
         id_servicio: idServicio ? Number(idServicio) : null,
         motivo_consulta: declaredNeed,
@@ -150,7 +145,7 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
       setSubmittedRef(refCode);
       if (onSuccess) onSuccess(refCode);
     } catch (err: any) {
-      setErrors({ form: err.message || 'Ocurrió un error al enviar tu consulta. Por favor inténtalo nuevamente.' });
+      setErrors({ form: err.message || 'Error al procesar la solicitud. Intenta nuevamente.' });
     } finally {
       setSubmitting(false);
     }
@@ -160,7 +155,6 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
     setSubmittedRef(null);
     setNombre('');
     setTelefono('');
-    setEmail('');
     setIdSede('');
     setIdServicio('');
     setConsultaBreve('');
@@ -170,126 +164,151 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
 
   if (submittedRef) {
     const waUrl = `https://wa.me/51944612840?text=${encodeURIComponent(
-      `Hola NexoSalud, envié mi solicitud ${submittedRef} y quisiera comunicarme directamente.`
+      `Hola NexoSalud, envié mi solicitud ${submittedRef} (${nombre}) y quisiera recibir orientación directa.`
     )}`;
 
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
-        <div className="text-center space-y-4">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-8 ring-emerald-50/50">
-            <CheckCircle2 className="h-7 w-7" />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="rounded-3xl border border-emerald-100 bg-gradient-to-b from-emerald-50/40 via-white to-white p-7 sm:p-9 shadow-xl shadow-slate-200/50"
+      >
+        <div className="text-center space-y-5">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+            <Check className="h-8 w-8 stroke-[2.5]" />
           </div>
 
-          <div className="space-y-1">
-            <span className="inline-block rounded-full bg-slate-100 px-3 py-1 font-mono text-xs font-semibold text-slate-700">
+          <div className="space-y-1.5">
+            <span className="inline-block rounded-full bg-emerald-100/80 px-3 py-1 font-mono text-xs font-bold text-emerald-800">
               Solicitud #{submittedRef}
             </span>
-            <h3 className="text-xl font-semibold tracking-tight text-slate-900">
-              ¡Gracias por escribirnos, {nombre.split(' ')[0]}!
+            <h3 className="text-2xl font-bold tracking-tight text-slate-900">
+              ¡Mensaje recibido, {nombre.split(' ')[0]}!
             </h3>
-            <p className="text-sm text-slate-600 max-w-sm mx-auto">
-              Hemos recibido tus datos correctamente. Nuestro equipo de orientación te contactará vía WhatsApp o llamada en menos de <strong className="text-slate-900 font-medium">15 minutos</strong> durante nuestro horario de atención (Lun – Sáb 8:00 AM – 8:00 PM).
+            <p className="text-sm text-slate-600 max-w-sm mx-auto leading-relaxed">
+              Un asesor de NexoSalud revisará tu consulta y te responderá por WhatsApp en menos de <strong className="text-slate-900 font-semibold">15 minutos</strong>.
             </p>
           </div>
 
-          <div className="pt-2 pb-2 border-y border-slate-100 my-4 text-xs text-slate-500 space-y-1">
-            <p>✓ Asesor asignado con dedicación personalizada</p>
-            <p>✓ Información sin compromiso de contratación ni cargos ocultos</p>
+          <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-xs text-slate-600 space-y-1.5 text-left max-w-sm mx-auto">
+            <div className="flex items-center gap-2 text-slate-800 font-medium">
+              <Clock className="h-4 w-4 text-sky-600 shrink-0" />
+              <span>Horario de atención: Lun a Sáb 8:00 AM – 8:00 PM</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-800 font-medium">
+              <Lock className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>Tus datos están protegidos bajo la Ley N° 29733</span>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-2.5 sm:flex-row justify-center">
+          <div className="flex flex-col gap-3 pt-2">
             <a
               href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 transition-colors"
+              className="inline-flex items-center justify-center gap-2.5 rounded-2xl bg-[#25D366] px-5 py-3 text-sm font-semibold text-white shadow-md shadow-[#25D366]/20 hover:bg-[#20BD5A] transition-all transform active:scale-98"
             >
-              <MessageSquare className="h-4 w-4" />
-              Escribir por WhatsApp ahora
-              <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+              <MessageSquare className="h-4 w-4 fill-white" />
+              <span>Escribir ahora por WhatsApp con mi código</span>
+              <ExternalLink className="h-3.5 w-3.5 opacity-80" />
             </a>
 
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={handleReset}
-              className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50"
+              className="text-xs text-slate-500 hover:text-slate-800"
             >
               Enviar otra consulta
             </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-sm">
-      <div className="mb-5 space-y-1">
+    <div className="relative rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-xl shadow-slate-200/50 backdrop-blur-sm">
+      {/* Badge superior */}
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2">
-          <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
-          <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
-            Orientación Odontológica Inicial
+          <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-50" />
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+            Orientación Odontológica Inmediata
           </span>
         </div>
-        <h3 className="text-lg font-semibold tracking-tight text-slate-900">
-          ¿En qué podemos orientarte hoy?
+        <div className="flex items-center gap-1 text-[11px] font-semibold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full">
+          <Clock className="h-3 w-3" />
+          <span>&lt; 15 min</span>
+        </div>
+      </div>
+
+      <div className="mb-5">
+        <h3 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+          ¿En qué podemos orientarte?
         </h3>
-        <p className="text-xs text-slate-500">
-          Sin compromiso. Te explicamos opciones, costos y disponibilidad con total honestidad.
+        <p className="text-xs text-slate-500 mt-1">
+          Sin formularios largos. Cuéntanos qué necesitas y te responderemos con claridad.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Motivo de consulta (Chips de bajo esfuerzo) */}
+        {/* Chips de motivo visuales */}
         <div>
-          <Label className="text-xs font-medium text-slate-700 mb-2 block">
-            Selecciona tu principal inquietud:
+          <Label className="text-xs font-semibold text-slate-700 mb-2 block">
+            Selecciona tu consulta principal:
           </Label>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="grid grid-cols-2 gap-2">
             {ORIENTATION_REASONS.map((reason) => {
               const isSelected = selectedReason === reason.id;
+              const Icon = reason.icon;
               return (
                 <button
                   key={reason.id}
                   type="button"
                   onClick={() => setSelectedReason(reason.id)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                  className={`flex items-start gap-2.5 p-2.5 rounded-xl border text-left transition-all ${
                     isSelected
-                      ? 'bg-slate-900 text-white shadow-sm ring-1 ring-slate-900'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
+                      ? 'border-sky-600 bg-sky-50/70 text-sky-950 shadow-xs ring-1 ring-sky-600'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/60'
                   }`}
                 >
-                  {reason.label}
+                  <div className={`p-1 rounded-lg ${isSelected ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-semibold leading-tight">{reason.label}</span>
+                    <span className="block text-[10px] text-slate-400 leading-tight mt-0.5">{reason.desc}</span>
+                  </div>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Nombre y Teléfono */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Nombre y WhatsApp en 2 columnas */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
           <div className="space-y-1">
-            <Label htmlFor="buyer-nombre" className="text-xs font-medium text-slate-700">
+            <Label htmlFor="buyer-nombre" className="text-xs font-semibold text-slate-700">
               ¿Cómo te llamas? <span className="text-rose-500">*</span>
             </Label>
             <Input
               id="buyer-nombre"
               type="text"
-              placeholder="Ej. Carmen Flores"
+              placeholder="Ej. Ana Morales"
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              className={`h-9 text-xs rounded-lg ${errors.nombre ? 'border-rose-400 focus-visible:ring-rose-400' : 'border-slate-200'}`}
+              className={`h-10 text-xs rounded-xl ${errors.nombre ? 'border-rose-400 focus-visible:ring-rose-400 bg-rose-50/30' : 'border-slate-200 bg-slate-50/30'}`}
               disabled={submitting}
             />
-            {errors.nombre && <p className="text-[11px] text-rose-600">{errors.nombre}</p>}
+            {errors.nombre && <p className="text-[11px] text-rose-600 font-medium">{errors.nombre}</p>}
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="buyer-phone" className="text-xs font-medium text-slate-700">
+            <Label htmlFor="buyer-phone" className="text-xs font-semibold text-slate-700">
               WhatsApp / Celular <span className="text-rose-500">*</span>
             </Label>
             <div className="relative">
-              <span className="absolute left-2.5 top-2 text-xs font-medium text-slate-400 select-none">
+              <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400 select-none">
                 +51
               </span>
               <Input
@@ -299,57 +318,55 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
                 value={telefono}
                 onChange={(e) => handlePhoneChange(e.target.value)}
                 maxLength={9}
-                className={`h-9 pl-11 text-xs rounded-lg font-mono ${errors.telefono ? 'border-rose-400 focus-visible:ring-rose-400' : 'border-slate-200'}`}
+                className={`h-10 pl-11 text-xs rounded-xl font-mono ${errors.telefono ? 'border-rose-400 focus-visible:ring-rose-400 bg-rose-50/30' : 'border-slate-200 bg-slate-50/30'}`}
                 disabled={submitting}
               />
             </div>
-            {errors.telefono && <p className="text-[11px] text-rose-600">{errors.telefono}</p>}
+            {errors.telefono && <p className="text-[11px] text-rose-600 font-medium">{errors.telefono}</p>}
           </div>
         </div>
 
         {duplicateWarning && (
-          <div className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800 border border-amber-200/70 flex items-start gap-2">
+          <div className="rounded-xl bg-amber-50 p-2.5 text-xs text-amber-800 border border-amber-200 flex items-start gap-2">
             <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-            <span>{duplicateWarning}</span>
+            <span className="leading-snug">{duplicateWarning}</span>
           </div>
         )}
 
-        {/* Sede y Servicio de Interés (Opcionales) */}
+        {/* Sede preferida & Tratamiento */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
-            <Label htmlFor="buyer-sede" className="text-xs font-medium text-slate-700">
+            <Label htmlFor="buyer-sede" className="text-xs font-semibold text-slate-700">
               Sede preferida en Trujillo <span className="text-slate-400 font-normal">(Opcional)</span>
             </Label>
-            <div className="relative">
-              <select
-                id="buyer-sede"
-                value={idSede}
-                onChange={(e) => setIdSede(e.target.value ? Number(e.target.value) : '')}
-                className="w-full h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900"
-                disabled={submitting}
-              >
-                <option value="">Cualquier sede disponible</option>
-                {sedes.map((s) => (
-                  <option key={s.id_sede} value={s.id_sede}>
-                    {s.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              id="buyer-sede"
+              value={idSede}
+              onChange={(e) => setIdSede(e.target.value ? Number(e.target.value) : '')}
+              className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50/30 px-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-600"
+              disabled={submitting}
+            >
+              <option value="">Cualquiera en Trujillo</option>
+              {sedes.map((s) => (
+                <option key={s.id_sede} value={s.id_sede}>
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="buyer-servicio" className="text-xs font-medium text-slate-700">
+            <Label htmlFor="buyer-servicio" className="text-xs font-semibold text-slate-700">
               Tratamiento de interés <span className="text-slate-400 font-normal">(Opcional)</span>
             </Label>
             <select
               id="buyer-servicio"
               value={idServicio}
               onChange={(e) => setIdServicio(e.target.value ? Number(e.target.value) : '')}
-              className="w-full h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50/30 px-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-600"
               disabled={submitting}
             >
-              <option value="">No lo sé aún / Consulta general</option>
+              <option value="">No lo sé aún / Orientación</option>
               {servicios.map((srv) => (
                 <option key={srv.id_servicio} value={srv.id_servicio}>
                   {srv.nombre}
@@ -359,31 +376,28 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
           </div>
         </div>
 
-        {/* Correo y Consulta breve */}
-        <div className="grid grid-cols-1 gap-3">
-          <div className="space-y-1">
-            <div className="flex justify-between items-center">
-              <Label htmlFor="buyer-consulta" className="text-xs font-medium text-slate-700">
-                ¿Deseas agregar algún detalle adicional? <span className="text-slate-400 font-normal">(Opcional)</span>
-              </Label>
-              <span className="text-[10px] text-slate-400 font-mono">{consultaBreve.length}/250</span>
-            </div>
-            <textarea
-              id="buyer-consulta"
-              rows={2}
-              maxLength={250}
-              placeholder="Ej. Me duele al tomar agua fría, o quisiera saber facilidades de cuotas para brackets..."
-              value={consultaBreve}
-              onChange={(e) => setConsultaBreve(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 p-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 resize-none"
-              disabled={submitting}
-            />
+        {/* Consulta breve */}
+        <div className="space-y-1">
+          <div className="flex justify-between items-center">
+            <Label htmlFor="buyer-consulta" className="text-xs font-semibold text-slate-700">
+              ¿Quieres añadir algún detalle? <span className="text-slate-400 font-normal">(Opcional)</span>
+            </Label>
+            <span className="text-[10px] text-slate-400 font-mono">{consultaBreve.length}/200</span>
           </div>
+          <Input
+            id="buyer-consulta"
+            maxLength={200}
+            placeholder="Ej. Quiero saber de brackets invisibles o costos..."
+            value={consultaBreve}
+            onChange={(e) => setConsultaBreve(e.target.value)}
+            className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/30"
+            disabled={submitting}
+          />
         </div>
 
-        {/* Consentimiento Ley N° 29733 (NO pre-marcada) */}
-        <div className="space-y-1 pt-1">
-          <div className="flex items-start gap-2">
+        {/* Consentimiento Ley N° 29733 */}
+        <div className="pt-1 space-y-1">
+          <div className="flex items-start gap-2.5">
             <input
               id="buyer-consentimiento"
               type="checkbox"
@@ -398,18 +412,18 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
                   });
                 }
               }}
-              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
+              className="mt-0.5 h-4 w-4 rounded-md border-slate-300 text-sky-600 focus:ring-sky-600 cursor-pointer"
               disabled={submitting}
             />
-            <label htmlFor="buyer-consentimiento" className="text-xs text-slate-600 leading-snug cursor-pointer select-none">
-              Autorizo expresamente a NexoSalud a contactarme vía WhatsApp o teléfono para responder mi consulta y brindarme orientación odontológica, conforme a la{' '}
+            <label htmlFor="buyer-consentimiento" className="text-[11px] text-slate-600 leading-snug cursor-pointer select-none">
+              Autorizo a NexoSalud a responder mi consulta por WhatsApp o llamada, respetando mi privacidad bajo la{' '}
               <button
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   setPrivacyModalOpen(true);
                 }}
-                className="font-medium text-slate-900 underline hover:text-sky-700"
+                className="font-medium text-sky-700 underline hover:text-sky-900"
               >
                 Ley N° 29733 de Protección de Datos Personales
               </button>
@@ -417,44 +431,51 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
             </label>
           </div>
           {errors.consentimiento && (
-            <p className="text-[11px] text-rose-600 pl-6">{errors.consentimiento}</p>
+            <p className="text-[11px] text-rose-600 font-medium pl-6">{errors.consentimiento}</p>
           )}
         </div>
 
         {errors.form && (
-          <div className="rounded-lg bg-rose-50 p-2.5 text-xs text-rose-700 border border-rose-200">
+          <div className="rounded-xl bg-rose-50 p-2.5 text-xs text-rose-700 border border-rose-200">
             {errors.form}
           </div>
         )}
 
+        {/* Botón principal */}
         <Button
           type="submit"
           disabled={submitting}
-          className="w-full h-10 rounded-xl bg-slate-900 text-white font-medium hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 text-xs sm:text-sm"
+          className="w-full h-11 rounded-2xl bg-gradient-to-r from-sky-600 to-indigo-700 text-white font-semibold hover:from-sky-700 hover:to-indigo-800 shadow-md shadow-sky-600/20 transition-all text-xs sm:text-sm flex items-center justify-center gap-2 transform active:scale-98"
         >
           {submitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Procesando solicitud...
+              <span>Enviando consulta...</span>
             </>
           ) : (
             <>
-              Recibir orientación sin compromiso
+              <span>Recibir orientación sin compromiso</span>
               <ArrowRight className="h-4 w-4" />
             </>
           )}
         </Button>
 
-        <p className="text-center text-[11px] text-slate-400">
-          Respuesta estimada en menos de 15 minutos en horario comercial. Sin ventas de presión.
-        </p>
+        <div className="flex items-center justify-center gap-4 pt-1 text-[11px] text-slate-400">
+          <span className="flex items-center gap-1">
+            <Lock className="h-3 w-3" /> Cero spam
+          </span>
+          <span>·</span>
+          <span>Sin costos ocultos</span>
+          <span>·</span>
+          <span>Respuesta &lt; 15 min</span>
+        </div>
       </form>
 
-      {/* Modal accesible de Política de Privacidad (Ley N° 29733) */}
+      {/* Modal accesible de Política de Privacidad */}
       <Dialog open={privacyModalOpen} onOpenChange={setPrivacyModalOpen}>
         <DialogContent className="sm:max-w-md bg-white">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-emerald-600" />
               Protección de Datos Personales (Ley N° 29733)
             </DialogTitle>
@@ -463,27 +484,24 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 text-xs text-slate-600 max-h-[60vh] overflow-y-auto pr-1">
+          <div className="space-y-3 text-xs text-slate-600 max-h-[60vh] overflow-y-auto pr-1 leading-relaxed">
             <p>
-              En cumplimiento de la <strong>Ley N° 29733</strong> (Ley de Protección de Datos Personales) y su Reglamento, le informamos que los datos proporcionados a través de este formulario serán tratados por NexoSalud con las siguientes finalidades:
+              En cumplimiento de la <strong>Ley N° 29733</strong>, le informamos que sus datos serán tratados con las siguientes garantías:
             </p>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>
-                <strong>Finalidad exclusiva:</strong> Atender su consulta, responder inquietudes sobre tratamientos dentales, presupuestos y coordinar citas de orientación.
+                <strong>Finalidad exclusiva:</strong> Responder sus dudas sobre tratamientos odontológicos, presupuestos y coordinación de turnos.
               </li>
               <li>
-                <strong>No cesión a terceros:</strong> Sus datos no serán transferidos, vendidos ni cedidos a ninguna empresa externa con fines comerciales ajenos a su atención odontológica.
+                <strong>Cero cesión:</strong> Jamás venderemos ni transferiremos sus datos a empresas terceras o publicidad ajena a su salud dental.
               </li>
               <li>
-                <strong>Seguridad y confidencialidad:</strong> Toda la información se almacena en bases de datos con cifrado y medidas de seguridad técnicas y organizativas para evitar accesos no autorizados.
+                <strong>Seguridad y confidencialidad:</strong> Almacenamiento seguro bajo estricto secreto profesional médico.
               </li>
               <li>
-                <strong>Derechos ARCO:</strong> Usted puede revocar su consentimiento o ejercer sus derechos de Acceso, Rectificación, Cancelación y Oposición en cualquier momento escribiendo a <span className="font-mono text-slate-800">privacidad@nexosalud.pe</span> o contactando a recepción en nuestras sedes de Trujillo.
+                <strong>Derechos ARCO:</strong> Puede solicitar la eliminación o actualización de sus datos en cualquier momento escribiendo a <span className="font-mono text-slate-800">privacidad@nexosalud.pe</span>.
               </li>
             </ul>
-            <p className="text-[11px] text-slate-400 pt-2 border-t border-slate-100">
-              Titular del banco de datos: NexoSalud Odontología Integral S.A.C. · Trujillo, La Libertad.
-            </p>
           </div>
 
           <div className="flex justify-end pt-2">
@@ -492,9 +510,9 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
               variant="outline"
               size="sm"
               onClick={() => setPrivacyModalOpen(false)}
-              className="text-xs"
+              className="text-xs rounded-xl"
             >
-              Entendido y cerrar
+              Cerrar
             </Button>
           </div>
         </DialogContent>
