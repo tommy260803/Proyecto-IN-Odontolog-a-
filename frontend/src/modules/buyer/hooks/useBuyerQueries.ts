@@ -15,7 +15,7 @@ export function useBuyers() {
 export function useBuyer(id: string) {
   return useQuery({
     queryKey: [QUERY_KEYS.BUYERS, id],
-    queryFn: () => buyerService.getAllBuyers().then((buyers: any) => buyers.find((b: any) => b.id === id) || null),
+    queryFn: () => buyerService.getBuyerById(id),
     enabled: !!id,
   });
 }

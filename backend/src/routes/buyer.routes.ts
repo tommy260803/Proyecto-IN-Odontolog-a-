@@ -789,6 +789,241 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Helper para transformar una Oportunidad a la estructura unificada de Buyer
+function mapOpportunityToBuyerEntity(op: any) {
+  const p = op.Persona || {};
+  let state = 'NEW';
+  if (op.estado_oportunidad === 'DESCARTADO') {
+    state = 'DISCARDED';
+  } else if (
+    op.estado_oportunidad === 'CONVERTIDO_LEAD' || 
+    p.Etapa?.nombre === 'LEAD' || 
+    p.Etapa?.nombre === 'PAYER' || 
+    p.Etapa?.nombre === 'CUSTOMER' || 
+    p.Etapa?.nombre === 'TURNED'
+  ) {
+    state = 'CONVERTED';
+  } else if (p.estado_calidad === 'Duplicado') {
+    state = 'DUPLICATED';
+  }
+
+  const prefs = p.Preferencias && p.Preferencias.length > 0 ? p.Preferencias[0] : null;
+  const aca = p.DatosAcademicos && p.DatosAcademicos.length > 0 ? p.DatosAcademicos[0] : null;
+  const lab = p.DatosLaborales && p.DatosLaborales.length > 0 ? p.DatosLaborales[0] : null;
+  const sal = p.SaludOdontologica && p.SaludOdontologica.length > 0 ? p.SaludOdontologica[0] : null;
+
+  const campaignCost = op.Campana?.GastosCampana?.reduce((sum: number, g: any) => sum + Number(g.importe), 0);
+
+  const solicitudesHistory = (p.Solicitudes || []).map((s: any) => ({
+    id: s.id_solicitud.toString(),
+    servicio: s.Servicio?.nombre || 'Consulta General',
+    motivo: s.motivo || 'Sin detalle',
+    fecha: s.fecha_solicitud ? s.fecha_solicitud.toISOString() : undefined,
+  }));
+
+  const interaccionesHistory = (op.Interacciones || p.Interacciones || []).map((i: any) => ({
+    id: i.id_interaccion.toString(),
+    tipo: i.tipo,
+    mensaje: i.mensaje || '',
+    canal: i.Canal?.nombre,
+    fuente: i.Fuente?.nombre,
+    fecha: i.fecha_hora ? i.fecha_hora.toISOString() : new Date().toISOString(),
+  }));
+
+  const canalName = op.Canal?.nombre || p.CanalOrigen?.nombre || 'Página Web / Portal Online';
+  const canalId = op.id_canal ? op.id_canal.toString() : (p.id_canal_origen ? p.id_canal_origen.toString() : '');
+  const fuenteName = op.Fuente?.nombre || 'Formulario Web - Portal NexoSalud';
+  const fuenteId = op.id_fuente ? op.id_fuente.toString() : '';
+
+  const servicioName = op.ServicioInteres?.nombre || op.Solicitud?.Servicio?.nombre || (p.Solicitudes?.[0]?.Servicio?.nombre);
+  const servicioId = op.id_servicio_interes ? op.id_servicio_interes.toString() : (op.Solicitud?.id_servicio ? op.Solicitud.id_servicio.toString() : '');
+
+  const motivo = op.necesidad_declarada || op.Solicitud?.motivo || (p.Solicitudes?.[0]?.motivo) || 'Consulta y orientación odontológica';
+
+  return {
+    id: op.id_oportunidad.toString(),
+    id_oportunidad: op.id_oportunidad,
+    personId: op.id_persona.toString(),
+    person: {
+      id: p.id_persona ? p.id_persona.toString() : undefined,
+      firstName: p.nombres || '',
+      lastName: p.apellidos || '',
+      documentNumber: p.dni || '',
+      phone: p.numero || p.telefono_normalizado || '',
+      email: p.email || p.email_normalizado || '',
+    },
+    channel: canalName,
+    channelId: canalId,
+    attractionSource: fuenteName,
+    attractionSourceId: fuenteId,
+    campaignId: op.id_campana ? op.id_campana.toString() : (p.id_campana_origen ? p.id_campana_origen.toString() : undefined),
+    campaignName: op.Campana?.nombre || p.CampanaOrigen?.nombre,
+    campaignCost,
+    serviceOfInterest: servicioName,
+    serviceOfInterestId: servicioId,
+    contactAuthorization: Boolean(p.consentimiento_atencion ?? p.autoriza_contacto ?? true),
+    qualityStatus: op.estado_oportunidad === 'INCOMPLETO' ? 'Incompleto' : (p.estado_calidad || 'Valido'),
+    concreteRequest: motivo,
+    createdAt: (op.fecha_registro || p.fecha_registro || new Date()).toISOString(),
+    convertedAt: op.fecha_conversion ? op.fecha_conversion.toISOString() : undefined,
+    state,
+    consultasCount: p.Solicitudes?.length || 1,
+    solicitudesHistory,
+    interaccionesHistory,
+
+    pref_id_canal: prefs?.id_canal?.toString() || op.id_canal?.toString() || '',
+    pref_id_horario: prefs?.id_horario?.toString() || '',
+    pref_id_modalidad: prefs?.id_modalidad?.toString() || '',
+    pref_sede_preferida: op.SedePreferida?.nombre || prefs?.sede_preferida || '',
+    pref_profesional_preferido: prefs?.profesional_preferido || '',
+
+    estudianteAplica: aca?.aplica || false,
+    universidad: aca?.universidad || '',
+    carrera: aca?.carrera || '',
+    ciclo: aca?.ciclo || '',
+
+    laboralAplica: lab?.aplica || false,
+    ocupacion: lab?.ocupacion || '',
+    empresa: lab?.empresa || '',
+    modalidadLaboral: lab?.modalidad || '',
+    disponibilidadLaboral: lab?.disponibilidad || '',
+
+    ultima_visita_odontologica: sal?.ultima_visita_odontologica || '',
+    tratamiento_previo: sal?.tratamiento_previo || '',
+    nivel_dolor: sal?.nivel_dolor || '',
+    presenta_sensibilidad: sal?.presenta_sensibilidad || '',
+    sangrado_o_inflamacion: sal?.sangrado_o_inflamacion || '',
+    usa_aparato_o_protesis: sal?.usa_aparato_o_protesis || '',
+    condicion_atencion_especial: sal?.condicion_atencion_especial || '',
+
+    oportunidadDetallada: op
+  };
+}
+
+// Obtener un BUYER por ID (soporta id_oportunidad o id_persona)
+router.get('/:id', async (req, res) => {
+  try {
+    const rawId = req.params.id;
+    const numId = Number(rawId);
+    if (isNaN(numId)) {
+      return res.status(400).json({ error: 'ID de prospecto inválido' });
+    }
+
+    // 1. Buscar primero en OportunidadesCaptacion por id_oportunidad
+    const op = await prisma.oportunidadesCaptacion.findUnique({
+      where: { id_oportunidad: numId },
+      include: {
+        Persona: {
+          include: {
+            Etapa: true,
+            CanalOrigen: true,
+            CampanaOrigen: { include: { GastosCampana: true } },
+            Preferencias: { include: { Canal: true } },
+            DatosAcademicos: true,
+            DatosLaborales: true,
+            SaludOdontologica: true,
+            Solicitudes: { include: { Servicio: true }, orderBy: { id_solicitud: 'desc' } },
+            Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'desc' } },
+            EventosEtapa: { include: { EtapaOrigen: true, EtapaDestino: true }, orderBy: { fecha_hora: 'asc' } },
+          }
+        },
+        Canal: true,
+        Fuente: true,
+        Campana: { include: { GastosCampana: true } },
+        ServicioInteres: true,
+        SedePreferida: true,
+        Solicitud: { include: { Servicio: true, Opciones: true, Reservas: true } },
+        Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'desc' } },
+        DecisionesIA: { orderBy: { id_decision: 'desc' } },
+        ImpulseAlerts: { orderBy: { fecha_generacion: 'desc' } }
+      }
+    });
+
+    if (op) {
+      return res.json(mapOpportunityToBuyerEntity(op));
+    }
+
+    // 2. Si no es id_oportunidad, buscar si corresponde a id_persona
+    const opPorPersona = await prisma.oportunidadesCaptacion.findFirst({
+      where: { id_persona: numId },
+      orderBy: { id_oportunidad: 'desc' },
+      include: {
+        Persona: {
+          include: {
+            Etapa: true,
+            CanalOrigen: true,
+            CampanaOrigen: { include: { GastosCampana: true } },
+            Preferencias: { include: { Canal: true } },
+            DatosAcademicos: true,
+            DatosLaborales: true,
+            SaludOdontologica: true,
+            Solicitudes: { include: { Servicio: true }, orderBy: { id_solicitud: 'desc' } },
+            Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'desc' } },
+            EventosEtapa: { include: { EtapaOrigen: true, EtapaDestino: true }, orderBy: { fecha_hora: 'asc' } },
+          }
+        },
+        Canal: true,
+        Fuente: true,
+        Campana: { include: { GastosCampana: true } },
+        ServicioInteres: true,
+        SedePreferida: true,
+        Solicitud: { include: { Servicio: true, Opciones: true, Reservas: true } },
+        Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'desc' } },
+        DecisionesIA: { orderBy: { id_decision: 'desc' } },
+        ImpulseAlerts: { orderBy: { fecha_generacion: 'desc' } }
+      }
+    });
+
+    if (opPorPersona) {
+      return res.json(mapOpportunityToBuyerEntity(opPorPersona));
+    }
+
+    // 3. Si la persona existe pero no tiene oportunidad asociada, buscarla directamente
+    const persona = await prisma.personas.findUnique({
+      where: { id_persona: numId },
+      include: {
+        Etapa: true,
+        CanalOrigen: true,
+        CampanaOrigen: { include: { GastosCampana: true } },
+        EventosEtapa: { include: { EtapaDestino: true }, orderBy: { fecha_hora: 'asc' } },
+        Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'desc' } },
+        Solicitudes: { include: { Servicio: true }, orderBy: { id_solicitud: 'desc' } },
+        Preferencias: { include: { Canal: true } },
+        DatosAcademicos: true,
+        DatosLaborales: true,
+        SaludOdontologica: true,
+      }
+    });
+
+    if (persona) {
+      // Ensamblar oportunidad virtual para mantener formato uniforme
+      const fakeOp = {
+        id_oportunidad: persona.id_persona,
+        id_persona: persona.id_persona,
+        Persona: persona,
+        Canal: persona.CanalOrigen,
+        Fuente: null,
+        Campana: persona.CampanaOrigen,
+        ServicioInteres: persona.Solicitudes?.[0]?.Servicio,
+        SedePreferida: null,
+        Solicitud: persona.Solicitudes?.[0],
+        Interacciones: persona.Interacciones,
+        estado_oportunidad: persona.Etapa?.nombre === 'BUYER' ? 'NUEVO' : 'CONVERTIDO_LEAD',
+        necesidad_declarada: persona.Solicitudes?.[0]?.motivo || 'Orientación odontológica',
+        fecha_registro: persona.fecha_registro,
+        fecha_conversion: persona.fecha_actualizacion
+      };
+      return res.json(mapOpportunityToBuyerEntity(fakeOp));
+    }
+
+    // 4. No existe
+    return res.status(404).json({ error: 'No se encontró la ficha del prospecto solicitado.' });
+  } catch (error) {
+    console.error('Error in GET /buyer/:id:', error);
+    res.status(500).json({ error: 'Error interno al cargar la ficha del prospecto.' });
+  }
+});
+
 // Crear un BUYER (Dashboard)
 router.post('/', async (req, res) => {
   const { 

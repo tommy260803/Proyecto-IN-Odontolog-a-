@@ -303,6 +303,37 @@ export const buyerService = {
   },
 
   // ── COMPATIBILIDAD CON VISTAS LEGACY ────────────────────────────────
+  getBuyerById: async (id: string | number) => {
+    if (!useApi) {
+      const all = await buyerUseCases.getAllBuyers();
+      return all.find((b: any) => String(b.id) === String(id) || String(b.personId) === String(id)) || null;
+    }
+    try {
+      const res = await fetch(`${API_URL}/buyer/${id}`);
+      if (res.ok) {
+        return res.json();
+      }
+    } catch (e) {
+      console.warn('Error fetching buyer by id directly, trying fallback:', e);
+    }
+    // Fallback: buscar en la lista completa por id, personId o id_oportunidad
+    try {
+      const allRes = await fetch(`${API_URL}/buyer`);
+      if (allRes.ok) {
+        const list = await allRes.json();
+        return (
+          list.find(
+            (b: any) =>
+              String(b.id) === String(id) ||
+              String(b.personId) === String(id) ||
+              String(b.id_oportunidad) === String(id)
+          ) || null
+        );
+      }
+    } catch (_) {}
+    return null;
+  },
+
   getAllBuyers: async () => {
     if (!useApi) return buyerUseCases.getAllBuyers();
     const res = await fetch(`${API_URL}/buyer`);
