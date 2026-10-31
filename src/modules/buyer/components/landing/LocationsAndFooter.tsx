@@ -80,7 +80,7 @@ export function LocationsAndFooter({
       {/* Sección de Sedes Físicas */}
       <section
         id="sedes"
-        className="scroll-mt-20 border-t border-slate-200/80 bg-white py-16 sm:py-20"
+        className="scroll-mt-20 border-t border-[#e1e6dc] bg-[#f1f3eb] py-16 sm:py-24"
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -91,20 +91,22 @@ export function LocationsAndFooter({
             className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"
           >
             <div className="max-w-2xl">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ECFDF5] px-2.5 py-0.5 text-[11px] font-semibold text-[#065F46]">
-                <MapPin className="h-3 w-3 text-[#0F766E]" aria-hidden />
-                Red Clínica en Trujillo
+              <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#52705b]">
+                <span className="h-px w-7 bg-[#7e9c81]" />
+                Una clínica cerca de ti
               </span>
-              <h2 className="mt-2.5 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-                Tres sedes equipadas e interconectadas
+              <h2 className="mt-3 text-3xl font-semibold leading-[1.08] tracking-[-0.045em] text-[#203c32] sm:text-4xl">
+                Tres espacios.
+                <span className="block font-normal italic text-[#64806a]">
+                  El mismo cuidado.
+                </span>
               </h2>
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                Tu historia clínica digital y radiografías están sincronizadas en tiempo real entre todas
-                nuestras sedes de Trujillo. Elige tu ubicación preferida para preseleccionarla en tu cita.
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#68736a]">
+                Elige la sede que mejor acompaña tu día. Tu historia clínica está disponible en toda nuestra red.
               </p>
             </div>
-            <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-[#ECFDF5] px-3 py-1 text-xs font-medium text-[#065F46]">
-              <span className="h-2 w-2 rounded-full bg-[#0F766E] animate-pulse" aria-hidden />
+            <span className="inline-flex items-center gap-2 self-start rounded-full border border-[#d6e0d4] bg-[#f8f8f1] px-3.5 py-2 text-xs font-medium text-[#47664e]">
+              <span className="h-2 w-2 rounded-full bg-[#568b64]" aria-hidden />
               Atención hoy hasta las 21:00 hrs
             </span>
           </motion.div>
@@ -116,7 +118,7 @@ export function LocationsAndFooter({
             viewport={{ once: true, margin: '-40px' }}
             className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3"
           >
-            {locations.map((loc) => {
+            {locations.map((loc, index) => {
               const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${loc.mapsQuery}`;
               const isSelected =
                 Boolean(selectedSede) &&
@@ -127,57 +129,63 @@ export function LocationsAndFooter({
                   key={loc.id}
                   variants={CARD_REVEAL}
                   whileHover={{ y: -4 }}
-                  className={`flex flex-col justify-between rounded-2xl border p-6 transition-all duration-200 ${
+                  className={`relative flex flex-col justify-between overflow-hidden rounded-[1.65rem] border p-5 transition-all duration-300 sm:p-6 ${
                     isSelected
-                      ? 'border-[#0F766E] bg-white ring-2 ring-teal-600/15 shadow-md'
-                      : 'border-slate-200/90 bg-[#F8FAFC] hover:border-[#0F766E]/40 hover:bg-white hover:shadow-md'
+                      ? 'border-[#5c8a68] bg-[#fbfcf7] ring-2 ring-[#6e956f]/15 shadow-[0_20px_50px_-36px_rgba(27,62,47,0.5)]'
+                      : 'border-[#dfe4d9] bg-[#fbfcf7] hover:border-[#a9c0a8] hover:shadow-[0_20px_50px_-36px_rgba(27,62,47,0.45)]'
                   }`}
                 >
+                  <span
+                    className="pointer-events-none absolute -right-2 -top-8 font-serif text-[108px] leading-none text-[#edf0e7]"
+                    aria-hidden="true"
+                  >
+                    0{index + 1}
+                  </span>
                   <div>
                     <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <span className="text-[11px] font-medium text-slate-500">
+                      <div className="relative">
+                        <span className="text-[11px] font-medium text-[#7b8179]">
                           {loc.neighborhood}
                         </span>
-                        <h3 className="mt-0.5 text-lg font-semibold tracking-tight text-slate-900 flex items-center gap-2">
+                        <h3 className="mt-1 flex items-center gap-2 text-lg font-semibold tracking-tight text-[#243d32]">
                           <span>{loc.name}</span>
                           {isSelected && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[#ECFDF5] px-2 py-0.5 text-[10px] font-semibold text-[#065F46]">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#e6f0e5] px-2 py-0.5 text-[10px] font-semibold text-[#42694e]">
                               <Check className="h-2.5 w-2.5 stroke-[3]" />
                               Activa
                             </span>
                           )}
                         </h3>
                       </div>
-                      <span className="rounded-lg bg-[#ECFDF5] px-2.5 py-1 text-[10.5px] font-semibold text-[#065F46]">
+                      <span className="relative max-w-[48%] rounded-full border border-[#e0e8dc] bg-[#f3f5ec] px-2.5 py-1 text-right text-[10px] font-medium leading-snug text-[#596e56]">
                         {loc.specialtiesBadge}
                       </span>
                     </div>
 
-                    <dl className="mt-5 space-y-3 border-t border-slate-200/70 pt-4 text-xs">
+                    <dl className="mt-5 space-y-4 border-t border-[#e6e9df] pt-4 text-xs">
                       <div className="flex items-start gap-2.5">
-                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#0F766E]" aria-hidden />
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#64866a]" aria-hidden />
                         <div>
                           <dt className="sr-only">Dirección</dt>
-                          <dd className="font-medium text-slate-800">{loc.address}</dd>
-                          <dd className="text-[11px] text-slate-500">{loc.parkingInfo}</dd>
+                          <dd className="font-medium text-[#34483b]">{loc.address}</dd>
+                          <dd className="mt-0.5 text-[11px] leading-relaxed text-[#798077]">{loc.parkingInfo}</dd>
                         </div>
                       </div>
 
                       <div className="flex items-start gap-2.5">
-                        <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[#0F766E]" aria-hidden />
+                        <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[#64866a]" aria-hidden />
                         <div>
                           <dt className="sr-only">Horario de atención</dt>
-                          <dd className="font-mono text-slate-800">{loc.scheduleWeekdays}</dd>
-                          <dd className="font-mono text-[11px] text-slate-500">{loc.scheduleSaturday}</dd>
+                          <dd className="font-mono text-[#34483b]">{loc.scheduleWeekdays}</dd>
+                          <dd className="mt-0.5 font-mono text-[11px] text-[#798077]">{loc.scheduleSaturday}</dd>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2.5">
-                        <Phone className="h-4 w-4 shrink-0 text-[#0F766E]" aria-hidden />
+                        <Phone className="h-4 w-4 shrink-0 text-[#64866a]" aria-hidden />
                         <div>
                           <dt className="sr-only">Teléfono</dt>
-                          <dd className="font-mono font-medium text-slate-800">
+                          <dd className="font-mono font-medium text-[#34483b]">
                             Central directa: {loc.phone}
                           </dd>
                         </div>
@@ -190,10 +198,10 @@ export function LocationsAndFooter({
                       href={mapsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98]"
+                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-[#dfe5da] bg-white px-3 text-xs font-medium text-[#45564a] transition-colors hover:border-[#adc2ac] hover:bg-[#f5f7f0] active:scale-[0.98]"
                     >
                       <span>Google Maps</span>
-                      <ExternalLink className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+                      <ExternalLink className="h-3.5 w-3.5 text-[#718475]" aria-hidden />
                     </a>
 
                     <motion.button
@@ -204,7 +212,7 @@ export function LocationsAndFooter({
                         e.preventDefault();
                         onSelectBranchAndBook(loc.name);
                       }}
-                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#0F766E] px-3 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[#115E59] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-600/25 cursor-pointer"
+                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-[#285c46] px-3 text-xs font-semibold text-white shadow-[0_5px_15px_-9px_rgba(40,92,70,0.75)] transition-colors hover:bg-[#1d4b39] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#68896d]/30 cursor-pointer"
                     >
                       <Calendar className="h-3.5 w-3.5 shrink-0" aria-hidden />
                       <span>Agendar aquí</span>
@@ -219,7 +227,7 @@ export function LocationsAndFooter({
       </section>
 
       {/* Footer Institucional */}
-      <footer className="border-t border-slate-200/90 bg-white text-slate-600">
+      <footer className="border-t border-[#294c3b] bg-[#183d32] text-[#d3dfd3]">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
             {/* Columna 1: Identidad Institucional */}
@@ -228,17 +236,17 @@ export function LocationsAndFooter({
                 <img
                   src="/Logo_NexoSalud.png"
                   alt="NexoSalud Dental"
-                  className="h-8 w-8 rounded-lg border border-slate-200 bg-white object-contain p-0.5"
+                  className="h-9 w-9 rounded-xl border border-white/15 bg-white object-contain p-1"
                 />
-                <span className="text-base font-semibold tracking-tight text-slate-900">
-                  NexoSalud <span className="text-[#0F766E]">Dental</span>
+                <span className="text-base font-semibold tracking-tight text-white">
+                  NexoSalud <span className="text-[#a9c5a9]">Dental</span>
                 </span>
               </div>
-              <p className="max-w-sm text-xs leading-relaxed text-slate-500">
+              <p className="max-w-sm text-xs leading-relaxed text-[#bdcbbf]">
                 Red de clínicas odontológicas especializadas en diagnóstico digital 3D, rehabilitación oral,
                 ortodoncia y estética dental bajo estándares internacionales de bioseguridad.
               </p>
-              <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] font-mono text-slate-400">
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] font-mono text-[#8fa594]">
                 <span>RUC: 20609841251</span>
                 <span>·</span>
                 <span>RENIPRESS: 00028491</span>
@@ -247,7 +255,7 @@ export function LocationsAndFooter({
 
             {/* Columna 2: Navegación Rápida */}
             <div className="md:col-span-3 space-y-2.5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-900">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white">
                 Navegación Clínica
               </p>
               <ul className="space-y-2 text-xs">
@@ -255,7 +263,7 @@ export function LocationsAndFooter({
                   <button
                     type="button"
                     onClick={() => onScrollToSection('agendar-cita')}
-                    className="text-slate-500 hover:text-[#0F766E] cursor-pointer"
+                    className="text-[#bdcbbf] transition-colors hover:text-white cursor-pointer"
                   >
                     Agendar evaluación
                   </button>
@@ -264,7 +272,7 @@ export function LocationsAndFooter({
                   <button
                     type="button"
                     onClick={() => onScrollToSection('tratamientos')}
-                    className="text-slate-500 hover:text-[#0F766E] cursor-pointer"
+                    className="text-[#bdcbbf] transition-colors hover:text-white cursor-pointer"
                   >
                     Especialidades médicas
                   </button>
@@ -273,7 +281,7 @@ export function LocationsAndFooter({
                   <button
                     type="button"
                     onClick={() => onScrollToSection('tecnologia')}
-                    className="text-slate-500 hover:text-[#0F766E] cursor-pointer"
+                    className="text-[#bdcbbf] transition-colors hover:text-white cursor-pointer"
                   >
                     Tecnología 3D y Rayos X
                   </button>
@@ -282,7 +290,7 @@ export function LocationsAndFooter({
                   <button
                     type="button"
                     onClick={() => onScrollToSection('sedes')}
-                    className="text-slate-500 hover:text-[#0F766E] cursor-pointer"
+                    className="text-[#bdcbbf] transition-colors hover:text-white cursor-pointer"
                   >
                     Sedes y horarios en Trujillo
                   </button>
@@ -292,7 +300,7 @@ export function LocationsAndFooter({
                     <button
                       type="button"
                       onClick={onOpenStaffLogin}
-                      className="inline-flex items-center gap-1.5 font-semibold text-[#0F766E] hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1.5 font-semibold text-[#a9c5a9] hover:text-white hover:underline cursor-pointer"
                     >
                       <Lock className="h-3 w-3" aria-hidden />
                       <span>Acceso Personal Clínico / BI</span>
@@ -304,26 +312,26 @@ export function LocationsAndFooter({
 
             {/* Columna 3: Cumplimiento Normativo y Libro de Reclamaciones */}
             <div className="md:col-span-4 space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-900">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white">
                 Transparencia y Normativa de Salud
               </p>
-              <ul className="space-y-2 text-xs text-slate-500">
+              <ul className="space-y-2 text-xs text-[#bdcbbf]">
                 <li className="flex items-center gap-2">
-                  <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[#0F766E]" aria-hidden />
+                  <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[#a9c5a9]" aria-hidden />
                   <button
                     type="button"
                     onClick={() => setPrivacyModalOpen(true)}
-                    className="text-left hover:text-slate-900 hover:underline cursor-pointer"
+                    className="text-left hover:text-white hover:underline cursor-pointer"
                   >
                     Política de Privacidad y Datos Clínicos (Ley N° 29733)
                   </button>
                 </li>
                 <li className="flex items-center gap-2">
-                  <FileCheck2 className="h-3.5 w-3.5 shrink-0 text-[#0F766E]" aria-hidden />
+                  <FileCheck2 className="h-3.5 w-3.5 shrink-0 text-[#a9c5a9]" aria-hidden />
                   <span>Supervisado por SUSALUD · Norma Técnica MINSA N° 139</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <Building2 className="h-3.5 w-3.5 shrink-0 text-[#0F766E]" aria-hidden />
+                  <Building2 className="h-3.5 w-3.5 shrink-0 text-[#a9c5a9]" aria-hidden />
                   <span>Colegio Odontológico del Perú — Región La Libertad</span>
                 </li>
               </ul>
@@ -336,12 +344,12 @@ export function LocationsAndFooter({
                     setClaimSent(false);
                     setClaimsModalOpen(true);
                   }}
-                  className="inline-flex items-center gap-2.5 rounded-xl border border-slate-200 bg-[#F8FAFC] px-3.5 py-2 text-left text-xs font-semibold text-slate-800 transition-colors hover:border-[#0F766E]/40 hover:bg-[#ECFDF5]/40 active:scale-[0.98] cursor-pointer"
+                  className="inline-flex items-center gap-2.5 rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-2 text-left text-xs font-semibold text-white transition-colors hover:border-[#a9c5a9]/50 hover:bg-white/[0.1] active:scale-[0.98] cursor-pointer"
                 >
-                  <BookOpen className="h-4 w-4 text-[#0F766E]" aria-hidden />
+                  <BookOpen className="h-4 w-4 text-[#a9c5a9]" aria-hidden />
                   <div>
                     <span className="block leading-none">Libro de Reclamaciones</span>
-                    <span className="mt-0.5 block text-[10px] font-normal text-slate-500">
+                    <span className="mt-0.5 block text-[10px] font-normal text-[#bdcbbf]">
                       Conforme al Código de Protección al Consumidor · INDECOPI / SUSALUD
                     </span>
                   </div>
@@ -350,7 +358,7 @@ export function LocationsAndFooter({
             </div>
           </div>
 
-          <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-6 text-xs text-slate-400 sm:flex-row">
+          <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/15 pt-6 text-xs text-[#9eb0a1] sm:flex-row">
             <p>© 2026 NexoSalud Dental S.A.C. Todos los derechos reservados.</p>
             <p>Atención odontológica sujeta a evaluación diagnóstica presencial por profesional colegiado.</p>
           </div>

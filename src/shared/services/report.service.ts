@@ -61,6 +61,11 @@ export interface ReportPeriodOption {
 }
 
 export const reportService = {
+  sync: async (): Promise<{ success: boolean; message: string }> => {
+    const res = await fetch(`${API_URL}/reports/sync`, { method: 'POST' });
+    if (!res.ok) throw new Error('Error al sincronizar Data Mart');
+    return res.json();
+  },
   getStatus: async (): Promise<MartStatus> => {
     const res = await fetch(`${API_URL}/reports/status`);
     if (!res.ok) throw new Error('Error al consultar estado de NexoSalud_Mart');

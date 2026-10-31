@@ -49,7 +49,7 @@ export class BuyerUseCases {
     return res.json();
   }
 
-  async convertToLead(buyerId: string): Promise<Lead> {
+  async convertToLead(buyerId: string | number): Promise<Lead> {
     const res = await fetch(`${API_URL}/buyer/${buyerId}/convert`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }

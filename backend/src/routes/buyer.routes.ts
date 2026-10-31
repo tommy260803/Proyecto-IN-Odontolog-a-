@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../db';
+import { MartSyncService } from '../services/martSyncService';
 
 const router = Router();
 
@@ -224,6 +225,21 @@ router.post('/register', async (req, res) => {
     let etapaLead = await prisma.etapas.findFirst({ where: { nombre: 'LEAD' } });
     if (!etapaLead) etapaLead = await prisma.etapas.create({ data: { nombre: 'LEAD', descripcion: 'Intención concreta' } });
 
+    const rawNombres = (nombres || req.body.firstName || req.body.fullName || req.body.name || '').trim();
+    const rawApellidos = (apellidos || req.body.lastName || '').trim();
+
+    let resolvedNombres = rawNombres;
+    let resolvedApellidos = rawApellidos;
+
+    if (!resolvedApellidos && resolvedNombres.includes(' ')) {
+      const parts = resolvedNombres.split(/\s+/);
+      resolvedNombres = parts[0];
+      resolvedApellidos = parts.slice(1).join(' ');
+    }
+
+    if (!resolvedNombres) resolvedNombres = 'Prospecto';
+    if (!resolvedApellidos) resolvedApellidos = 'General';
+
     const rawDigits = numero ? String(numero).replace(/\D/g, '') : '';
     const cleanPhone = rawDigits.length >= 9 ? rawDigits.slice(-9) : (rawDigits.length >= 7 ? rawDigits : null);
     const cleanEmail = email ? String(email).trim().toLowerCase() : null;
@@ -320,8 +336,8 @@ router.post('/register', async (req, res) => {
         // Paciente nuevo: Creamos el registro único
         persona = await tx.personas.create({
           data: {
-            nombres,
-            apellidos,
+            nombres: resolvedNombres,
+            apellidos: resolvedApellidos,
             email: email ? String(email).trim() : null,
             numero: numero ? String(numero).trim() : null,
             autoriza_contacto: autoriza_contacto || false,
@@ -348,10 +364,17 @@ router.post('/register', async (req, res) => {
 
       // Detalle de la duda o consulta específica ingresada por el paciente
       const prefix = isNewPersonConfirmed ? '[Contacto Compartido] ' : '';
-      const motivoRaw = req.body.duda_especifica 
-        ? `[Consulta #${totalConsultas}] ${req.body.duda_especifica}`
+      const rawInquiry = req.body.motivo_consulta || req.body.necesidad_declarada || req.body.duda_especifica;
+      const motivoRaw = rawInquiry 
+        ? `[Consulta #${totalConsultas}] ${rawInquiry}`
         : (req.body.concreteRequest || (isDuplicate ? `Consulta recurrente #${totalConsultas} desde portal web` : 'Solicitud de información desde formulario web'));
       const motivoConsulta = String(prefix + motivoRaw).slice(0, 195);
+
+      let resolvedSede = sede_preferida || req.body.sede || null;
+      if (!resolvedSede && req.body.id_sede) {
+        const foundSede = await tx.sedes.findUnique({ where: { id_sede: Number(req.body.id_sede) } });
+        if (foundSede) resolvedSede = foundSede.nombre;
+      }
 
       // 1. Guardar la nueva Solicitud en su historial
       const solicitud = await tx.solicitudes.create({
@@ -370,13 +393,13 @@ router.post('/register', async (req, res) => {
           id_fuente: validFuente,
           tipo: isDuplicate ? `Consulta Web Recurrente (#${totalConsultas})` : 'Registro y Solicitud de Info (Consulta #1)',
           mensaje: isDuplicate 
-            ? `El usuario reiteró consulta vía web (Intento #${totalConsultas}). Duda/Motivo: ${motivoConsulta}. Sede preferida: ${sede_preferida || 'No especificada'}.`
+            ? `El usuario reiteró consulta vía web (Intento #${totalConsultas}). Duda/Motivo: ${motivoConsulta}. Sede preferida: ${resolvedSede || 'No especificada'}.`
             : `El usuario llenó el formulario público de solicitud de información. Duda/Motivo: ${motivoConsulta}.`
         }
       });
 
       // 3. Preferencias del paciente (Upsert)
-      if (sede_preferida || validCanal || validServicioInteres) {
+      if (resolvedSede || validCanal || validServicioInteres) {
         const existingPref = await tx.personaPreferencias.findFirst({ where: { id_persona: persona.id_persona } });
         if (existingPref) {
           await tx.personaPreferencias.update({
@@ -384,7 +407,7 @@ router.post('/register', async (req, res) => {
             data: {
               id_canal: validCanal || existingPref.id_canal,
               id_servicio_interes: validServicioInteres || existingPref.id_servicio_interes,
-              sede_preferida: sede_preferida || existingPref.sede_preferida,
+              sede_preferida: resolvedSede || existingPref.sede_preferida,
             }
           });
         } else {
@@ -393,13 +416,21 @@ router.post('/register', async (req, res) => {
               id_persona: persona.id_persona,
               id_canal: validCanal,
               id_servicio_interes: validServicioInteres,
-              sede_preferida: sede_preferida || null,
+              sede_preferida: resolvedSede || null,
             }
           });
         }
       }
 
-      return { persona, solicitud, isDuplicate, existingPerson, totalConsultas, isNewPersonWithSharedContact: isNewPersonConfirmed };
+      return { 
+        persona, 
+        solicitud, 
+        oportunidad: { id_oportunidad: solicitud.id_solicitud, id_persona: persona.id_persona },
+        isDuplicate, 
+        existingPerson, 
+        totalConsultas, 
+        isNewPersonWithSharedContact: isNewPersonConfirmed 
+      };
     });
 
     if (result.isDuplicate) {
@@ -425,6 +456,7 @@ router.post('/register', async (req, res) => {
       });
     }
 
+    MartSyncService.syncBuyer().catch(err => console.warn('[AutoSync] Error:', err.message));
     res.status(201).json({ 
       success: true, 
       isDuplicate: false, 
@@ -635,11 +667,37 @@ router.post('/', async (req, res) => {
     ultima_visita_odontologica, tratamiento_previo, nivel_dolor, presenta_sensibilidad, sangrado_o_inflamacion, usa_aparato_o_protesis, condicion_atencion_especial
   } = req.body;
   try {
-    const dniToSave = documentNumber ? documentNumber.trim() : null;
+    let resolvedFirstName = (firstName || req.body.nombres || req.body.fullName || req.body.name || '').trim();
+    let resolvedLastName = (lastName || req.body.apellidos || '').trim();
+
+    if (!resolvedLastName && resolvedFirstName.includes(' ')) {
+      const parts = resolvedFirstName.split(/\s+/);
+      resolvedFirstName = parts[0];
+      resolvedLastName = parts.slice(1).join(' ');
+    }
+
+    if (!resolvedFirstName) resolvedFirstName = 'Prospecto';
+    if (!resolvedLastName) resolvedLastName = 'General';
+
+    const rawDni = documentNumber || req.body.dni || '';
+    const dniToSave = rawDni ? String(rawDni).trim() : null;
     if (dniToSave && dniToSave.length > 8) return res.status(400).json({ error: 'El DNI no puede superar los 8 caracteres.' });
 
-    const phoneToSave = phone ? phone.trim() : null;
+    const rawPhone = phone || req.body.numero || '';
+    const phoneToSave = rawPhone ? String(rawPhone).trim() : null;
     if (phoneToSave && phoneToSave.length > 20) return res.status(400).json({ error: 'El teléfono no puede superar los 20 caracteres.' });
+
+    const rawEmail = email || req.body.correo || null;
+    const emailToSave = rawEmail ? String(rawEmail).trim().toLowerCase() : null;
+
+    const authContact = contactAuthorization !== undefined 
+      ? Boolean(contactAuthorization) 
+      : (req.body.autoriza_contacto !== undefined ? Boolean(req.body.autoriza_contacto) : false);
+
+    const rawCanalOrigen = id_canal_origen || channel || req.body.id_canal;
+    const rawFuenteOrigen = attractionSource || req.body.id_fuente;
+    const rawServicio = serviceOfInterestId || req.body.id_servicio || req.body.id_servicio_interes;
+    const rawRequest = concreteRequest || req.body.duda_especifica || req.body.motivo;
 
     let etapaBuyer = await prisma.etapas.findFirst({ where: { nombre: 'BUYER' } });
     if (!etapaBuyer) etapaBuyer = await prisma.etapas.create({ data: { nombre: 'BUYER', descripcion: 'Contacto inicial' } });
@@ -653,7 +711,7 @@ router.post('/', async (req, res) => {
       const dupChecks: any[] = [];
       if (last9) dupChecks.push({ numero: { contains: last9 } });
       if (dniToSave) dupChecks.push({ dni: dniToSave });
-      if (email && email.trim()) dupChecks.push({ email: email.trim() });
+      if (emailToSave) dupChecks.push({ email: emailToSave });
 
       if (dupChecks.length > 0) {
         const existing = await tx.personas.findFirst({
@@ -665,10 +723,10 @@ router.post('/', async (req, res) => {
       }
 
       const validCampana = await getValidCampanaId(tx, id_campana_origen);
-      const validCanalOrigen = await getValidCanalId(tx, id_canal_origen);
-      const validChannel = await getValidCanalId(tx, channel);
-      const validAttractionSource = await getValidFuenteId(tx, attractionSource);
-      const validService = await getValidServicioId(tx, serviceOfInterestId);
+      const validCanalOrigen = await getValidCanalId(tx, rawCanalOrigen);
+      const validChannel = await getValidCanalId(tx, channel || req.body.id_canal);
+      const validAttractionSource = await getValidFuenteId(tx, rawFuenteOrigen);
+      const validService = await getValidServicioId(tx, rawServicio);
       const validPrefCanal = await getValidCanalId(tx, pref_id_canal);
       const validPrefHorario = await getValidHorarioId(tx, pref_id_horario);
       const validPrefModalidad = await getValidModalidadId(tx, pref_id_modalidad);
@@ -677,13 +735,13 @@ router.post('/', async (req, res) => {
 
       const persona = await tx.personas.create({
         data: {
-          nombres: firstName,
-          apellidos: lastName,
-          email: email || null,
+          nombres: resolvedFirstName,
+          apellidos: resolvedLastName,
+          email: emailToSave,
           numero: phoneToSave,
           dni: dniToSave,
-          autoriza_contacto: contactAuthorization || false,
-          fecha_autorizacion: contactAuthorization ? new Date() : null,
+          autoriza_contacto: authContact,
+          fecha_autorizacion: authContact ? new Date() : null,
           id_campana_origen: validCampana,
           id_canal_origen: validCanalOrigen,
           tipo_persona: tipo_persona || 'Adulto General',
@@ -692,11 +750,11 @@ router.post('/', async (req, res) => {
         }
       });
 
-      if (validChannel || validAttractionSource) {
+      if (validChannel || validCanalOrigen || validAttractionSource) {
         await tx.interacciones.create({
           data: {
             id_persona: persona.id_persona,
-            id_canal: validChannel,
+            id_canal: validChannel || validCanalOrigen,
             id_fuente: validAttractionSource,
             tipo: 'Registro Inicial',
             mensaje: 'Creación de BUYER desde Dashboard'
@@ -704,12 +762,12 @@ router.post('/', async (req, res) => {
         });
       }
 
-      if (concreteRequest || validService) {
+      if (rawRequest || validService) {
         await tx.solicitudes.create({
           data: {
             id_persona: persona.id_persona,
             id_servicio: validService,
-            motivo: concreteRequest || 'Solicitud de información general'
+            motivo: rawRequest || 'Solicitud de información general'
           }
         });
       }
@@ -772,9 +830,10 @@ router.post('/', async (req, res) => {
         });
       }
 
-      return { ...persona, isDuplicate };
+      return { ...persona, id: persona.id_persona, isDuplicate };
     });
 
+    MartSyncService.syncBuyer().catch(err => console.warn('[AutoSync] Error:', err.message));
     res.status(201).json(result);
   } catch (error: any) {
     console.error(error);

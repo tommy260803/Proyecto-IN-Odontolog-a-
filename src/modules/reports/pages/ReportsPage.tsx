@@ -35,7 +35,7 @@ export default function ReportsPage() {
 
   const rawTab = searchParams.get('tab') as ReportView | null;
   const activeView: ReportView = rawTab && VALID_VIEWS.has(rawTab) ? rawTab : 'buyer';
-  const period = searchParams.get('period') || '2026-09';
+  const period = searchParams.get('period') || 'all';
 
   const [measures, setMeasures] = useState<Record<ReportStage, string>>({
     buyer: STAGE_BY_ID.buyer.defaultMeasure,

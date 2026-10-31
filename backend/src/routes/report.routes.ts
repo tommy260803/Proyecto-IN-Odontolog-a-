@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { queryMart } from '../db/mart';
+import { MartSyncService } from '../services/martSyncService';
 
 const router = Router();
 
@@ -279,6 +280,17 @@ function buildDynamicMatrix(
   };
 }
 
+// ── POST /api/reports/sync ──────────────────────────────────────────────────
+router.post('/sync', async (_req: Request, res: Response) => {
+  try {
+    await MartSyncService.syncAll(true);
+    res.json({ success: true, message: 'Data Mart sincronizado exitosamente' });
+  } catch (error: any) {
+    console.error('Error al sincronizar Data Mart:', error);
+    res.status(500).json({ error: 'Error al sincronizar Data Mart', details: error.message });
+  }
+});
+
 // ── GET /api/reports/status ──────────────────────────────────────────────────
 router.get('/status', async (_req: Request, res: Response) => {
   try {
@@ -349,36 +361,36 @@ router.get('/periods', async (_req: Request, res: Response) => {
 
 // ── BUILDER: BUYER MATRIX (DINÁMICO) ─────────────────────────────────────────
 async function getBuyerMatrix(measure: string = 'contacto_registrado', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
-  let measureSQL = 'SUM(fc.ContactosRegistrados)';
+  let measureSQL = 'SUM(fc.contacto_registrado)';
   let isCurrency = false;
   let metricTitle = 'contacto_registrado';
 
   switch (measure) {
     case 'contacto_utilizable':
     case 'contactos_utilizables':
-      measureSQL = 'SUM(fc.ContactosUtilizables)';
+      measureSQL = 'SUM(fc.contacto_utilizable)';
       metricTitle = 'contacto_utilizable';
       break;
     case 'conversion_lead':
     case 'conversiones_lead':
-      measureSQL = 'SUM(fc.ConversionesALead)';
+      measureSQL = 'SUM(fc.conversion_lead)';
       metricTitle = 'conversion_lead';
       break;
     case 'tiempo_conversion_dia':
     case 'tiempo_conversion':
-      measureSQL = 'ROUND(AVG(CAST(fc.TiempoConversionDias AS FLOAT)), 1)';
+      measureSQL = 'ROUND(AVG(CAST(fc.tiempo_conversion_dia AS FLOAT)), 1)';
       metricTitle = 'tiempo_conversion_dia';
       break;
     case 'costo_atribuido_captacion':
     case 'costo_atribuido':
-      measureSQL = 'SUM(fc.CostoAtribuidoCaptacion)';
+      measureSQL = 'SUM(fc.costo_atribuido_captacion)';
       metricTitle = 'costo_atribuido_captacion';
       isCurrency = true;
       break;
     case 'contacto_registrado':
     case 'contactos_registrados':
     default:
-      measureSQL = 'SUM(fc.ContactosRegistrados)';
+      measureSQL = 'SUM(fc.contacto_registrado)';
       metricTitle = 'contacto_registrado';
       break;
   }
@@ -421,39 +433,39 @@ async function getBuyerMatrix(measure: string = 'contacto_registrado', range: Pe
 
 // ── BUILDER: LEAD MATRIX (DINÁMICO) ──────────────────────────────────────────
 async function getLeadMatrix(measure: string = 'cohorte_evaluable', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
-  let measureSQL = 'SUM(f.LeadsCohorteEvaluable)';
+  let measureSQL = 'SUM(f.cohorte_evaluable)';
   let metricTitle = 'cohorte_evaluable';
 
   switch (measure) {
     case 'conversion_payer_14_dia':
     case 'leads_convertidos_14d':
-      measureSQL = 'SUM(f.LeadsConvertidosPayer14Dias)';
+      measureSQL = 'SUM(f.conversion_payer_14_dia)';
       metricTitle = 'conversion_payer_14_dia';
       break;
     case 'solicitud_requiere_respuesta':
     case 'leads_requieren_resp':
-      measureSQL = 'SUM(f.LeadsRequierenRespuesta)';
+      measureSQL = 'SUM(f.solicitud_requiere_respuesta)';
       metricTitle = 'solicitud_requiere_respuesta';
       break;
     case 'respuesta_util_15_min':
     case 'leads_resp_15m':
-      measureSQL = 'SUM(f.LeadsRespuestaUtil15Min)';
+      measureSQL = 'SUM(f.respuesta_util_15_min)';
       metricTitle = 'respuesta_util_15_min';
       break;
     case 'negociacion_finalizada':
     case 'leads_resultado_final':
-      measureSQL = 'SUM(f.LeadsResultadoFinal)';
+      measureSQL = 'SUM(f.negociacion_finalizada)';
       metricTitle = 'negociacion_finalizada';
       break;
     case 'negociacion_abandonada':
     case 'leads_abandonados':
-      measureSQL = 'SUM(f.LeadsAbandonados)';
+      measureSQL = 'SUM(f.negociacion_abandonada)';
       metricTitle = 'negociacion_abandonada';
       break;
     case 'cohorte_evaluable':
     case 'leads_cohorte':
     default:
-      measureSQL = 'SUM(f.LeadsCohorteEvaluable)';
+      measureSQL = 'SUM(f.cohorte_evaluable)';
       metricTitle = 'cohorte_evaluable';
       break;
   }
@@ -497,47 +509,47 @@ async function getLeadMatrix(measure: string = 'cohorte_evaluable', range: Perio
 
 // ── BUILDER: PAYER MATRIX (DINÁMICO) ─────────────────────────────────────────
 async function getPayerMatrix(measure: string = 'pago_registrado', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
-  let measureSQL = 'SUM(f.PagosRegistrados)';
+  let measureSQL = 'SUM(f.pago_registrado)';
   let metricTitle = 'pago_registrado';
   let isCurrency = false;
 
   switch (measure) {
     case 'pago_validado':
     case 'pagos_validados':
-      measureSQL = 'SUM(f.PagosValidados)';
+      measureSQL = 'SUM(f.pago_validado)';
       metricTitle = 'pago_validado';
       break;
     case 'pago_rechazado':
     case 'pagos_rechazados':
-      measureSQL = 'SUM(f.PagosRechazados)';
+      measureSQL = 'SUM(f.pago_rechazado)';
       metricTitle = 'pago_rechazado';
       break;
     case 'conversion_customer':
     case 'conversiones_customer':
-      measureSQL = 'SUM(f.ConversionesACustomer)';
+      measureSQL = 'SUM(f.conversion_customer)';
       metricTitle = 'conversion_customer';
       break;
     case 'costo_transaccion':
     case 'costo_transacciones':
-      measureSQL = 'SUM(f.CostoTotalTransacciones)';
+      measureSQL = 'SUM(f.costo_transaccion)';
       metricTitle = 'costo_transaccion';
       isCurrency = true;
       break;
     case 'tiempo_validacion_minuto':
     case 'tiempo_validacion':
-      measureSQL = 'ROUND(AVG(CAST(f.TiempoTotalValidacionMin AS FLOAT)), 1)';
+      measureSQL = 'ROUND(AVG(CAST(f.tiempo_validacion_minuto AS FLOAT)), 1)';
       metricTitle = 'tiempo_validacion_minuto';
       break;
     case 'importe_total_cobro':
     case 'importe_total':
-      measureSQL = 'SUM(f.ImporteTotalCobro)';
+      measureSQL = 'SUM(f.importe_total_cobro)';
       metricTitle = 'importe_total_cobro';
       isCurrency = true;
       break;
     case 'pago_registrado':
     case 'pagos_registrados':
     default:
-      measureSQL = 'SUM(f.PagosRegistrados)';
+      measureSQL = 'SUM(f.pago_registrado)';
       metricTitle = 'pago_registrado';
       break;
   }
@@ -585,34 +597,34 @@ async function getPayerMatrix(measure: string = 'pago_registrado', range: Period
 
 // ── BUILDER: CUSTOMER MATRIX (DINÁMICO) ──────────────────────────────────────
 async function getCustomerMatrix(measure: string = 'cita_evaluable', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
-  let measureSQL = 'SUM(fa.CitasEvaluables)';
+  let measureSQL = 'SUM(fa.cita_evaluable)';
   let metricTitle = 'cita_evaluable';
 
   switch (measure) {
     case 'atencion_realizada':
     case 'atenciones_realizadas':
-      measureSQL = 'SUM(fa.AtencionesRealizadas)';
+      measureSQL = 'SUM(fa.atencion_realizada)';
       metricTitle = 'atencion_realizada';
       break;
     case 'cita_inasistencia':
     case 'citas_inasistencia':
-      measureSQL = 'SUM(fa.CitasConInasistencia)';
+      measureSQL = 'SUM(fa.cita_inasistencia)';
       metricTitle = 'cita_inasistencia';
       break;
     case 'tiempo_sillon_dental_minuto':
     case 'tiempo_sillon':
-      measureSQL = 'ROUND(AVG(CAST(fa.TiempoEnSillonDentalMin AS FLOAT)), 1)';
+      measureSQL = 'ROUND(AVG(CAST(fa.tiempo_sillon_dental_minuto AS FLOAT)), 1)';
       metricTitle = 'tiempo_sillon_dental_minuto';
       break;
     case 'atencion_finalizada_conforme':
     case 'atenciones_conformes':
-      measureSQL = 'SUM(fa.AtencionesFinalizadasConformes)';
+      measureSQL = 'SUM(fa.atencion_finalizada_conforme)';
       metricTitle = 'atencion_finalizada_conforme';
       break;
     case 'cita_evaluable':
     case 'citas_evaluables':
     default:
-      measureSQL = 'SUM(fa.CitasEvaluables)';
+      measureSQL = 'SUM(fa.cita_evaluable)';
       metricTitle = 'cita_evaluable';
       break;
   }
@@ -655,40 +667,40 @@ async function getCustomerMatrix(measure: string = 'cita_evaluable', range: Peri
 
 // ── BUILDER: TURNED MATRIX (DINÁMICO) ─────────────────────────────────────────
 async function getTurnedMatrix(measure: string = 'seguimiento_registrado', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
-  let measureSQL = 'SUM(ft.SeguimientosRegistrados)';
+  let measureSQL = 'SUM(ft.seguimiento_registrado)';
   let metricTitle = 'seguimiento_registrado';
 
   switch (measure) {
     case 'seguimiento_efectivo':
     case 'seguimientos_efectivos':
-      measureSQL = 'SUM(ft.SeguimientosEfectivos)';
+      measureSQL = 'SUM(ft.seguimiento_efectivo)';
       metricTitle = 'seguimiento_efectivo';
       break;
     case 'incidencia_reportada':
     case 'incidencias_reportadas':
-      measureSQL = 'SUM(ft.IncidenciasReportadas)';
+      measureSQL = 'SUM(ft.incidencia_reportada)';
       metricTitle = 'incidencia_reportada';
       break;
     case 'incidencia_resuelta_24_hora':
     case 'incidencias_resueltas':
-      measureSQL = 'SUM(ft.IncidenciasResueltas24h)';
+      measureSQL = 'SUM(ft.incidencia_resuelta_24_hora)';
       metricTitle = 'incidencia_resuelta_24_hora';
       break;
     case 'retorno_cohorte_90_dia':
     case 'retornos_cohorte':
     case 'retornos_90dias':
-      measureSQL = 'SUM(ft.RetornosCohorte90Dias)';
+      measureSQL = 'SUM(ft.retorno_cohorte_90_dia)';
       metricTitle = 'retorno_cohorte_90_dia';
       break;
     case 'paciente_elegible_retorno':
     case 'pacientes_elegibles':
-      measureSQL = 'SUM(ft.PacientesElegiblesRetorno)';
+      measureSQL = 'SUM(ft.paciente_elegible_retorno)';
       metricTitle = 'paciente_elegible_retorno';
       break;
     case 'seguimiento_registrado':
     case 'seguimientos_registrados':
     default:
-      measureSQL = 'SUM(ft.SeguimientosRegistrados)';
+      measureSQL = 'SUM(ft.seguimiento_registrado)';
       metricTitle = 'seguimiento_registrado';
       break;
   }
@@ -739,6 +751,7 @@ const BUILDERS: Record<'buyer' | 'lead' | 'payer' | 'customer' | 'turned', Matri
 // ── GET /api/reports/executive/:stage?measure=&period= ──────────────────────
 router.get('/executive/:stage', async (req: Request, res: Response) => {
   try {
+    await MartSyncService.syncAll(false);
     const stage = String(req.params.stage || '').toLowerCase() as keyof typeof BUILDERS;
     const measure = req.query.measure ? String(req.query.measure) : undefined;
     const builder = BUILDERS[stage];
@@ -756,6 +769,7 @@ router.get('/executive/:stage', async (req: Request, res: Response) => {
 // ── GET /api/reports/all-executive ──────────────────────────────────────────
 router.get('/all-executive', async (req: Request, res: Response) => {
   try {
+    await MartSyncService.syncAll(false);
     const buyerMeasure = req.query.buyerMeasure ? String(req.query.buyerMeasure) : undefined;
     const leadMeasure = req.query.leadMeasure ? String(req.query.leadMeasure) : undefined;
     const payerMeasure = req.query.payerMeasure ? String(req.query.payerMeasure) : undefined;

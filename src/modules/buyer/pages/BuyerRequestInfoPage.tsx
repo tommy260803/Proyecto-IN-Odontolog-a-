@@ -1,1034 +1,616 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion, useMotionValue } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import {
-  AlertCircle,
-  ArrowRight,
-  Check,
-  Clock,
-  HeartPulse,
-  Loader2,
-  MapPin,
-  Phone,
-  ScanLine,
-  ShieldAlert,
+  ArrowUpRight,
   ShieldCheck,
-  Sparkles,
   Stethoscope,
-  UserCheck,
-  UserPlus,
+  MapPin,
+  Clock,
+  ArrowRight,
+  PhoneCall,
+  CheckCircle2,
+  Sparkles,
+  MessageSquare,
+  Smile,
+  HeartPulse,
+  Award,
+  ChevronDown,
+  Building2,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/components/ui/dialog';
-import { Input } from '@/shared/components/ui/input';
-import { Label } from '@/shared/components/ui/label';
 import { Toaster } from '@/shared/components/ui/toaster';
-import { LoadingState } from '@/shared/components/feedback/LoadingState';
-import { useToast } from '@/shared/hooks/use-toast';
-import { analyzeIdentityResolutionWithAI } from '@/shared/services/groqService';
-import { patientAuthApi, type PatientSession } from '@/shared/services/patientAuthService';
 import { staffAuthService, type StaffSession } from '@/shared/services/staffAuthService';
 import { buyerService } from '../services/buyer.service';
-import { HeroIntakeWidget } from '../components/landing/HeroIntakeWidget';
-import { HeroSpotlight } from '../components/landing/HeroSpotlight';
-import { InteractiveScannerCard } from '../components/landing/InteractiveScannerCard';
-import { HeroBenefitCard } from '../components/landing/HeroBenefitCard';
 import { LandingNavbar } from '../components/landing/LandingNavbar';
-import { LocationsAndFooter } from '../components/landing/LocationsAndFooter';
-import { SocialProofSection } from '../components/landing/SocialProofSection';
-import { SpecialtiesTechSection } from '../components/landing/SpecialtiesTechSection';
+import { BuyerIntakeForm } from '../components/landing/BuyerIntakeForm';
 import { StaffLoginModal } from '../components/landing/StaffLoginModal';
-import { InteractiveJourneyFlowSection } from '../components/landing/InteractiveJourneyFlowSection';
-import {
-  REASON_CHIPS,
-  TIME_SLOT_CHIPS,
-  normalizeBranchKey,
-  type ReasonChipOption,
-} from '../components/landing/landingData';
+import { LocationsAndFooter } from '../components/landing/LocationsAndFooter';
+import type { SedeCatalogItem, ServicioCatalogItem } from '../types/buyer.types';
 
-const HERO_CONTAINER_VARIANTS = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.05,
-    },
+const POPULAR_TREATMENTS = [
+  {
+    id: 'ortodoncia',
+    title: 'Ortodoncia Invisible & Brackets',
+    subtitle: 'Alinea tu sonrisa cómodamente',
+    tag: 'Más solicitado',
+    detail: 'Alineación a tu ritmo',
+    icon: Smile,
+    tone: 'sage',
+    serviceKeyword: 'ortodoncia',
   },
-};
-
-const HERO_ITEM_VARIANTS = {
-  hidden: { opacity: 0, y: 16 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] as const },
+  {
+    id: 'estetica',
+    title: 'Diseño de Sonrisa & Carillas',
+    subtitle: 'Estética natural de alta precisión',
+    tag: 'Estética',
+    detail: 'Un resultado que se siente tuyo',
+    icon: Sparkles,
+    tone: 'sand',
+    serviceKeyword: 'diseño',
   },
-};
-
-const LIVE_NOTICES = [
-  'Sede California: 2 cupos para hoy con escáner 3D sin costo adicional',
-  'Mariana R. de Trujillo completó su diagnóstico preliminar hace 12 min',
-  'Sede El Golf: Turnos extendidos de 6:00 PM a 9:00 PM disponibles',
-  '99.4% de satisfacción en procedimientos sin dolor en Trujillo en 2026',
+  {
+    id: 'implantes',
+    title: 'Implantes Dentales Guiados',
+    subtitle: 'Recupera piezas fijas sin dolor',
+    tag: 'Especialidad',
+    detail: 'Planificación digital 3D',
+    icon: ShieldCheck,
+    tone: 'stone',
+    serviceKeyword: 'implante',
+  },
+  {
+    id: 'general',
+    title: 'Alivio del Dolor & Limpieza',
+    subtitle: 'Atención oportuna y profilaxis',
+    tag: 'Cuidado Integral',
+    detail: 'Prevención y atención cercana',
+    icon: HeartPulse,
+    tone: 'clay',
+    serviceKeyword: 'evaluación',
+  },
 ];
+
+const TREATMENT_TONES = {
+  sage: {
+    icon: 'bg-[#dcece1] text-[#23644e]',
+    label: 'bg-[#eaf3eb] text-[#28634d]',
+    wash: 'from-[#f6faf5] via-white to-[#edf5ee]',
+    mark: 'text-[#cbded0]',
+  },
+  sand: {
+    icon: 'bg-[#f3e8d5] text-[#82613a]',
+    label: 'bg-[#f8f0e2] text-[#80613c]',
+    wash: 'from-[#fbf8f0] via-white to-[#f7efe0]',
+    mark: 'text-[#eadcc5]',
+  },
+  stone: {
+    icon: 'bg-[#e5e9e3] text-[#53684f]',
+    label: 'bg-[#edf0e9] text-[#576a50]',
+    wash: 'from-[#f8f9f5] via-white to-[#eef1e8]',
+    mark: 'text-[#d9e0d4]',
+  },
+  clay: {
+    icon: 'bg-[#f1e2d9] text-[#875943]',
+    label: 'bg-[#f7ede6] text-[#895f49]',
+    wash: 'from-[#faf6f2] via-white to-[#f6ebe3]',
+    mark: 'text-[#ead8cc]',
+  },
+} as const;
 
 export default function BuyerRequestInfoPage() {
   const navigate = useNavigate();
-  const { toast } = useToast();
-
-  const [liveNoticeIndex, setLiveNoticeIndex] = useState(0);
-  const [showStickyBar, setShowStickyBar] = useState(false);
-
-  // Física de cursor para Spotlight reactivo en el Hero
-  const heroMouseX = useMotionValue(500);
-  const heroMouseY = useMotionValue(300);
-
-  const handleHeroMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLElement>) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      heroMouseX.set(e.clientX - rect.left);
-      heroMouseY.set(e.clientY - rect.top);
-    },
-    [heroMouseX, heroMouseY]
-  );
-
-  useEffect(() => {
-    const noticeInterval = setInterval(() => {
-      setLiveNoticeIndex((prev) => (prev + 1) % LIVE_NOTICES.length);
-    }, 4500);
-
-    const handleScroll = () => {
-      setShowStickyBar(window.scrollY > 480);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      clearInterval(noticeInterval);
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
+  const shouldReduceMotion = useReducedMotion();
 
   const [catalogs, setCatalogs] = useState<{
-    servicios: any[];
-    sedes: any[];
+    servicios: ServicioCatalogItem[];
+    sedes: SedeCatalogItem[];
     canales: any[];
     fuentes: any[];
-  }>({ servicios: [], sedes: [], canales: [], fuentes: [] });
+  }>({
+    servicios: [],
+    sedes: [],
+    canales: [],
+    fuentes: [],
+  });
 
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [submittedSuccess, setSubmittedSuccess] = useState(false);
-  const [isRecurringSubmitted, setIsRecurringSubmitted] = useState(false);
-  const [isNewSharedSubmitted, setIsNewSharedSubmitted] = useState(false);
-  const [consultationCount, setConsultationCount] = useState<number>(1);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-
-  // Sesión de Staff / Sistema Interno
-  const [staffSession, setStaffSession] = useState<StaffSession | null>(() =>
-    staffAuthService.getSession()
-  );
-  const [staffLoginOpen, setStaffLoginOpen] = useState(false);
-
-  // Feedback animado cuando se hace clic en "Agendar aquí" o en un tratamiento
-  const [highlightTrigger, setHighlightTrigger] = useState(0);
-  const [preselectionNotice, setPreselectionNotice] = useState<string | null>(null);
-
-  // Verificación inteligente de identidad con IA
-  const [resolvingIdentity, setResolvingIdentity] = useState(false);
-  const [identityModalOpen, setIdentityModalOpen] = useState(false);
-  const [identityModalData, setIdentityModalData] = useState<{
-    matchedType: 'phone' | 'email';
-    registeredPerson?: any;
-    aiReason?: string;
-  } | null>(null);
-
-  // Estado del evaluador interactivo progresivo (Paso 1 a 4)
-  const [step, setStep] = useState<number>(1);
-  const [selectedReasonChip, setSelectedReasonChip] = useState<ReasonChipOption['id'] | ''>('ortodoncia');
-  const [serviceId, setServiceId] = useState('');
-  const [sede, setSede] = useState('Sede California');
-  const [timeSlot, setTimeSlot] = useState('1');
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [dudaEspecifica, setDudaEspecifica] = useState('');
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Modo del widget: 'new' (Primera visita) vs 'registered' (Ya soy paciente)
-  const [portalMode, setPortalMode] = useState<'new' | 'registered'>('new');
-
-  // Estados de inicio de sesión de pacientes registrados
-  const [loginDni, setLoginDni] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [patientSession, setPatientSession] = useState<PatientSession | null>(null);
-
-  // Estados para Acceso Express con Código OTP por WhatsApp
-  const [otpModalOpen, setOtpModalOpen] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-  const [otpSending, setOtpSending] = useState(false);
-  const [otpVerifying, setOtpVerifying] = useState(false);
-  const [otpMaskedPhone, setOtpMaskedPhone] = useState('');
-  const [otpDebugCode, setOtpDebugCode] = useState('');
-  const [otpError, setOtpError] = useState<string | null>(null);
-
-  // Estados para Solicitud de Cita Express (Paciente Autenticado)
-  const [expressServiceId, setExpressServiceId] = useState('');
-  const [expressSede, setExpressSede] = useState('Sede California');
-  const [expressTimeSlot, setExpressTimeSlot] = useState('1');
-  const [expressDuda, setExpressDuda] = useState('');
-  const [expressSubmitting, setExpressSubmitting] = useState(false);
-  const [expressSuccess, setExpressSuccess] = useState(false);
-
-  // Enlaza un chip de motivo con el servicio correspondiente del catálogo real
-  const matchCatalogServiceId = useCallback(
-    (chipId: ReasonChipOption['id'], serviciosList: any[]): string => {
-      const chip = REASON_CHIPS.find((c) => c.id === chipId);
-      if (!chip || !serviciosList || serviciosList.length === 0) return '';
-      const matched = serviciosList.find((s: any) => {
-        const name = String(s.nombre || '').toLowerCase();
-        return chip.keywords.some((kw) => name.includes(kw.toLowerCase()));
-      });
-      return matched ? String(matched.id_servicio) : String(serviciosList[0]?.id_servicio ?? '');
-    },
-    []
-  );
+  const [staffSession, setStaffSession] = useState<StaffSession | null>(null);
+  const [staffModalOpen, setStaffModalOpen] = useState(false);
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
+  const [isBookingVisible, setIsBookingVisible] = useState(false);
 
   useEffect(() => {
+    setStaffSession(staffAuthService.getSession());
+
     buyerService
       .getCatalogs()
       .then((data) => {
-        setCatalogs(data);
-        if (data.servicios?.length > 0) {
-          const initialId = matchCatalogServiceId('ortodoncia', data.servicios);
-          if (initialId) setServiceId(initialId);
-        }
-        if (data.sedes?.length > 0 && data.sedes[0]?.nombre) {
-          const preferred =
-            data.sedes.find((s: any) => normalizeBranchKey(s.nombre).includes('california'))?.nombre ||
-            data.sedes[0].nombre;
-          setSede(preferred);
-          setExpressSede(preferred);
-        }
+        setCatalogs({
+          servicios: data.servicios || [],
+          sedes: data.sedes || [],
+          canales: data.canales || [],
+          fuentes: data.fuentes || [],
+        });
       })
-      .catch((err) => console.error('Error cargando catálogos:', err))
-      .finally(() => setInitialLoading(false));
-  }, [matchCatalogServiceId]);
-
-  const handleSelectReasonChip = useCallback(
-    (chipId: ReasonChipOption['id']) => {
-      setSelectedReasonChip(chipId);
-      const matchedId = matchCatalogServiceId(chipId, catalogs.servicios);
-      if (matchedId) setServiceId(matchedId);
-    },
-    [catalogs.servicios, matchCatalogServiceId]
-  );
-
-  const scrollToSection = useCallback((sectionId: string) => {
-    const el = document.getElementById(sectionId);
-    if (!el) return;
-    const headerOffset = 84;
-    const rect = el.getBoundingClientRect();
-    const offsetTop = rect.top + window.scrollY - headerOffset;
-    window.scrollTo({
-      top: Math.max(0, offsetTop),
-      behavior: 'smooth',
-    });
+      .catch((err) => {
+        console.warn('Catálogos base:', err);
+      });
   }, []);
 
-  const triggerWidgetHighlight = useCallback((noticeText: string) => {
-    setHighlightTrigger((c) => c + 1);
-    setPreselectionNotice(noticeText);
-  }, []);
+  useEffect(() => {
+    const bookingSection = document.getElementById('formulario-captacion');
+    if (!bookingSection) return;
 
-  const focusBookingForm = useCallback(() => {
-    setSubmittedSuccess(false);
-    scrollToSection('agendar-cita');
-    triggerWidgetHighlight('Completa tu motivo de consulta y sede para continuar');
-  }, [scrollToSection, triggerWidgetHighlight]);
-
-  const handleSelectTreatmentAndBook = useCallback(
-    (reasonId: ReasonChipOption['id'], treatmentTitle?: string) => {
-      if (!patientSession) {
-        setPortalMode('new');
-      }
-      setSubmittedSuccess(false);
-      handleSelectReasonChip(reasonId);
-      const matchedId = matchCatalogServiceId(reasonId, catalogs.servicios);
-      if (matchedId) setExpressServiceId(matchedId);
-      setStep(1);
-      setErrors((prev) => ({ ...prev, reason: '' }));
-      scrollToSection('agendar-cita');
-      const label =
-        treatmentTitle ||
-        REASON_CHIPS.find((c) => c.id === reasonId)?.label ||
-        'Evaluación especializada';
-      triggerWidgetHighlight(`Especialidad seleccionada: ${label}`);
-      toast({
-        title: 'Especialidad preseleccionada',
-        description: `Se seleccionó "${label}" en tu solicitud de cita.`,
-      });
-    },
-    [
-      catalogs.servicios,
-      handleSelectReasonChip,
-      matchCatalogServiceId,
-      patientSession,
-      scrollToSection,
-      toast,
-      triggerWidgetHighlight,
-    ]
-  );
-
-  const handleSelectBranchAndBook = useCallback(
-    (branchName: string) => {
-      // Resolver el nombre exacto de la sede en `catalogs.sedes` (normalizando tildes y mayúsculas)
-      const targetKey = normalizeBranchKey(branchName);
-      const matchedCatalogSede = catalogs.sedes?.find(
-        (s: any) => normalizeBranchKey(s.nombre) === targetKey
-      )?.nombre;
-
-      const resolvedBranchName = matchedCatalogSede || branchName;
-
-      if (!patientSession) {
-        setPortalMode('new');
-      }
-      setSubmittedSuccess(false);
-      setSede(resolvedBranchName);
-      setExpressSede(resolvedBranchName);
-      setErrors((prev) => ({ ...prev, sede: '' }));
-      setStep(1);
-
-      scrollToSection('agendar-cita');
-      triggerWidgetHighlight(`Sede seleccionada: ${resolvedBranchName}`);
-      toast({
-        title: `${resolvedBranchName} seleccionada`,
-        description: 'Completa tus preferencias clínicas arriba para confirmar tu cita.',
-      });
-    },
-    [catalogs.sedes, patientSession, scrollToSection, toast, triggerWidgetHighlight]
-  );
-
-  const handleStaffSuccessLogin = (session: StaffSession, destinationPath: string) => {
-    setStaffSession(session);
-    setStaffLoginOpen(false);
-    toast({
-      title: `Bienvenido(a), ${session.nombres}`,
-      description: `Accediendo a ${destinationPath.replace('/', '').toUpperCase() || 'BUYER'}…`,
-    });
-    navigate(destinationPath || '/buyer');
-  };
-
-  const handleLoginWithPassword = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const cleanDni = loginDni.trim().replace(/\D/g, '');
-    if (!cleanDni || cleanDni.length !== 8) {
-      setLoginError('Por favor ingresa un número de DNI válido de 8 dígitos.');
-      return;
-    }
-    if (!loginPassword) {
-      setLoginError('Por favor escribe tu contraseña personal.');
-      return;
-    }
-
-    setLoginLoading(true);
-    setLoginError(null);
-    try {
-      const session = await patientAuthApi.loginWithPassword(cleanDni, loginPassword);
-      setPatientSession(session);
-      setExpressSede(session.sede_preferida || sede || 'Sede California');
-      toast({
-        title: `Bienvenido(a), ${session.nombres}`,
-        description: 'Expediente clínico verificado con éxito.',
-      });
-    } catch (err: any) {
-      setLoginError(
-        err.message || 'No se pudo iniciar sesión. Verifica tus datos o usa el código por WhatsApp.'
-      );
-    } finally {
-      setLoginLoading(false);
-    }
-  };
-
-  const handleSendOtp = async () => {
-    const cleanDni = loginDni.trim().replace(/\D/g, '');
-    if (!cleanDni || cleanDni.length !== 8) {
-      setLoginError('Ingresa primero tu DNI de 8 dígitos para enviarte el código por WhatsApp.');
-      return;
-    }
-
-    setOtpSending(true);
-    setOtpError(null);
-    try {
-      const res = await patientAuthApi.sendOtp(cleanDni);
-      setOtpMaskedPhone(res.maskedPhone);
-      setOtpDebugCode(res.debugOtp || '');
-      setOtpCode('');
-      setOtpModalOpen(true);
-      toast({
-        title: 'Código enviado por WhatsApp',
-        description: `Enviamos un código de 4 dígitos al número ${res.maskedPhone}`,
-      });
-    } catch (err: any) {
-      setLoginError(err.message || 'Verifica que el DNI pertenezca a un paciente registrado.');
-    } finally {
-      setOtpSending(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanDni = loginDni.trim().replace(/\D/g, '');
-    const cleanOtp = otpCode.trim().replace(/\D/g, '');
-
-    if (!cleanOtp || cleanOtp.length !== 4) {
-      setOtpError('Ingresa el código completo de 4 dígitos.');
-      return;
-    }
-
-    setOtpVerifying(true);
-    setOtpError(null);
-    try {
-      const session = await patientAuthApi.verifyOtp(cleanDni, cleanOtp);
-      setPatientSession(session);
-      setExpressSede(session.sede_preferida || sede || 'Sede California');
-      setOtpModalOpen(false);
-      toast({
-        title: `Bienvenido(a), ${session.nombres}`,
-        description: 'Acceso express validado correctamente.',
-      });
-    } catch (err: any) {
-      setOtpError(err.message || 'Código incorrecto o expirado.');
-    } finally {
-      setOtpVerifying(false);
-    }
-  };
-
-  const handleExpressSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!patientSession) return;
-
-    const slotLabel =
-      TIME_SLOT_CHIPS.find((t) => t.id === expressTimeSlot)?.fullLabel ||
-      'Turno Mañana (08:00 AM – 01:00 PM)';
-
-    setExpressSubmitting(true);
-    try {
-      await patientAuthApi.createExpressAppointment({
-        id_persona: patientSession.id_persona,
-        id_servicio: expressServiceId ? Number(expressServiceId) : undefined,
-        sede_preferida: expressSede || patientSession.sede_preferida || 'Sede California',
-        horario_preferido: slotLabel,
-        duda_especifica: expressDuda.trim() || undefined,
-      });
-      setExpressSuccess(true);
-      toast({
-        title: 'Solicitud prioritaria registrada',
-        description: 'Recepción clínica te contactará por WhatsApp en breves minutos.',
-      });
-    } catch (err: any) {
-      toast({
-        title: 'No se pudo registrar la solicitud',
-        description: err.message || 'Inténtalo nuevamente en unos segundos.',
-        variant: 'destructive',
-      });
-    } finally {
-      setExpressSubmitting(false);
-    }
-  };
-
-  const handleLogout = () => {
-    setPatientSession(null);
-    setLoginPassword('');
-    setExpressSuccess(false);
-  };
-
-  const validateStep2Form = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!fullName.trim() || fullName.trim().length < 3) {
-      newErrors.fullName = 'Ingresa tus nombres y apellidos completos.';
-    }
-
-    const cleanPhone = phone.trim().replace(/\D/g, '');
-    if (!cleanPhone) {
-      newErrors.phone = 'Ingresa tu número de WhatsApp.';
-    } else if (cleanPhone.length !== 9) {
-      newErrors.phone = 'El número de WhatsApp debe tener 9 dígitos.';
-    }
-
-    if (email.trim().length > 0) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email.trim())) {
-        newErrors.email = 'Ingresa un correo electrónico válido.';
-      }
-    }
-
-    if (!termsAccepted) {
-      newErrors.terms = 'Autoriza el contacto clínico para agendar tu evaluación.';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const executeRegistration = async (isNewPersonConfirmed: boolean = false) => {
-    setLoading(true);
-    setSubmitError(null);
-    try {
-      const nameParts = fullName.trim().split(/\s+/);
-      const firstName = nameParts[0] || 'Prospecto';
-      const lastName = nameParts.slice(1).join(' ') || 'Web';
-
-      const foundWebCanal = catalogs.canales.find(
-        (c: any) =>
-          c.nombre.toLowerCase().includes('web') ||
-          c.nombre.toLowerCase().includes('portal') ||
-          c.nombre.toLowerCase().includes('online')
-      )?.id_canal;
-
-      const foundWebFuente = catalogs.fuentes.find(
-        (f: any) =>
-          f.nombre.toLowerCase().includes('web') ||
-          f.nombre.toLowerCase().includes('formulario') ||
-          f.nombre.toLowerCase().includes('meta') ||
-          f.nombre.toLowerCase().includes('orgánica')
-      )?.id_fuente;
-
-      const slotDescription =
-        TIME_SLOT_CHIPS.find((t) => t.id === timeSlot)?.fullLabel || 'Horario flexible';
-
-      const chipLabel = REASON_CHIPS.find((c) => c.id === selectedReasonChip)?.label;
-
-      const res = await buyerService.registerAndConvert({
-        nombres: firstName,
-        apellidos: lastName,
-        email: email.trim() || undefined,
-        numero: phone.trim(),
-        autoriza_contacto: true,
-        id_canal: foundWebCanal,
-        id_canal_origen: foundWebCanal,
-        id_fuente: foundWebFuente,
-        id_servicio: serviceId ? Number(serviceId) : undefined,
-        id_servicio_interes: serviceId ? Number(serviceId) : undefined,
-        sede_preferida: sede || undefined,
-        tipo_persona: 'Adulto General',
-        estado_calidad: 'Valido',
-        duda_especifica: dudaEspecifica.trim() || undefined,
-        concreteRequest: dudaEspecifica.trim()
-          ? `[Consulta Web · ${chipLabel || 'Evaluación'}] ${dudaEspecifica.trim()} | Sede: ${sede || 'Por definir'} | ${slotDescription}`
-          : `Solicitud de Evaluación Odontológica (${chipLabel || 'General'}). Sede: ${sede || 'Por definir'}. Horario: ${slotDescription}`,
-        isNewPersonConfirmed,
-      });
-
-      const isRec = Boolean(res?.isRecurring || res?.isDuplicate);
-      const isNewShared = Boolean(res?.isNewPersonWithSharedContact || isNewPersonConfirmed);
-      const count = res?.consultationCount || (isRec ? 2 : 1);
-
-      setConsultationCount(count);
-      setIsRecurringSubmitted(isRec && !isNewShared);
-      setIsNewSharedSubmitted(isNewShared);
-      setSubmittedSuccess(true);
-      setIdentityModalOpen(false);
-    } catch (error: any) {
-      const errMsg =
-        error?.message || 'Hubo un inconveniente al registrar tu solicitud. Inténtalo nuevamente.';
-      setSubmitError(errMsg);
-    } finally {
-      setLoading(false);
-      setResolvingIdentity(false);
-    }
-  };
-
-  const handleSubmitNewPatient = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!validateStep2Form()) return;
-
-    const cleanDigits = phone.replace(/\D/g, '');
-    const cleanMail = email.trim();
-
-    setResolvingIdentity(true);
-    setSubmitError(null);
-
-    try {
-      const dupRes = await buyerService.checkDuplicate({
-        phone: cleanDigits.length >= 9 ? cleanDigits : undefined,
-        email: cleanMail.includes('@') ? cleanMail : undefined,
-      });
-
-      if (dupRes?.isDuplicate && dupRes?.person) {
-        const registeredName = `${dupRes.person.firstName || ''} ${dupRes.person.lastName || ''}`.trim();
-
-        const aiAnalysis = await analyzeIdentityResolutionWithAI({
-          enteredFullName: fullName.trim(),
-          registeredFullName: registeredName,
-        });
-
-        if (aiAnalysis.isSamePerson && aiAnalysis.confidence >= 0.8) {
-          await executeRegistration(false);
-          return;
-        }
-
-        setIdentityModalData({
-          matchedType: dupRes.matchedBy === 'email' ? 'email' : 'phone',
-          registeredPerson: dupRes.person,
-          aiReason: aiAnalysis.reason,
-        });
-        setResolvingIdentity(false);
-        setIdentityModalOpen(true);
-        return;
-      }
-
-      await executeRegistration(false);
-    } catch (err) {
-      console.error('Error durante la validación de identidad:', err);
-      setSubmitError('No se pudo verificar el contacto. Revisa tus datos e inténtalo nuevamente.');
-    } finally {
-      setResolvingIdentity(false);
-    }
-  };
-
-  const handleResetNewPatient = () => {
-    setSubmittedSuccess(false);
-    setIsRecurringSubmitted(false);
-    setIsNewSharedSubmitted(false);
-    setConsultationCount(1);
-    setFullName('');
-    setPhone('');
-    setEmail('');
-    setDudaEspecifica('');
-    setTermsAccepted(false);
-    setPreselectionNotice(null);
-    setStep(1);
-  };
-
-  if (initialLoading) {
-    return (
-      <div className="flex min-h-[100dvh] w-full flex-col items-center justify-center bg-[#F8FAFC] p-4">
-        <LoadingState />
-      </div>
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsBookingVisible(entry.isIntersecting),
+      { rootMargin: '-10% 0px -15% 0px' },
     );
-  }
+
+    observer.observe(bookingSection);
+    return () => observer.disconnect();
+  }, []);
+
+  const handleScrollToSection = (sectionId: string) => {
+    const el = document.getElementById(sectionId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleFocusBooking = () => {
+    const el = document.getElementById('formulario-captacion');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const firstInput = el.querySelector('input') as HTMLInputElement | null;
+      if (firstInput) firstInput.focus();
+    }
+  };
+
+  const handlePickTreatment = (keyword: string) => {
+    const matched = catalogs.servicios.find((s) =>
+      s.nombre.toLowerCase().includes(keyword.toLowerCase())
+    );
+    if (matched) {
+      setSelectedServiceId(matched.id_servicio);
+    }
+    handleFocusBooking();
+  };
 
   return (
-    <div
-      id="inicio"
-      className="min-h-[100dvh] w-full bg-[#F8FAFC] text-slate-900 selection:bg-[#ECFDF5] selection:text-[#065F46]"
-    >
-      {/* 1. Navbar Minimalista con Acceso a Inicio de Sesión del Sistema */}
+    <div id="inicio" className="min-h-screen bg-[#FAFCFE] text-slate-900 font-sans selection:bg-sky-100 selection:text-sky-900">
+      {/* Barra de Navegación Pública */}
       <LandingNavbar
-        onScrollToSection={scrollToSection}
-        onFocusBooking={focusBookingForm}
-        onOpenStaffLogin={() => setStaffLoginOpen(true)}
+        onScrollToSection={handleScrollToSection}
+        onFocusBooking={handleFocusBooking}
+        onOpenStaffLogin={() => setStaffModalOpen(true)}
         onEnterSystem={() => navigate('/buyer')}
         staffSession={staffSession}
       />
 
-      {/* 2. Hero Section Luminosa y Empática con Spotlight Reactivo al Cursor */}
-      <section
-        onMouseMove={handleHeroMouseMove}
-        className="relative overflow-hidden bg-gradient-to-b from-white via-white to-[#F8FAFC] pt-8 pb-16 sm:pt-12 sm:pb-24"
-      >
-        {/* Spotlight dinámico que sigue suavemente el cursor */}
-        <HeroSpotlight mouseX={heroMouseX} mouseY={heroMouseY} />
+      {/* ── HERO SECTION PRINCIPAL: CLARO, ELEGANTE Y LLAMATIVO CON IMAGEN CLÍNICA REAL ── */}
+      <section className="relative overflow-hidden border-b border-[#dfe8df] bg-[radial-gradient(ellipse_at_14%_22%,rgba(210,228,211,0.55),transparent_38%),radial-gradient(ellipse_at_88%_72%,rgba(225,232,210,0.55),transparent_34%),linear-gradient(135deg,#fafaf5_0%,#f2f6ef_55%,#e9f1e9_100%)] pb-14 pt-0 sm:pb-18 lg:pb-24">
+        {/* Imagen de fondo referente a las instalaciones clínicas de NexoSalud con overlay de alta legibilidad */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none">
+          <img
+            src="/Fondo_NexoSalud.png"
+            alt="Instalaciones NexoSalud Dental"
+            className="h-full w-full object-cover object-right-top opacity-[0.13] saturate-[0.8] mix-blend-multiply lg:object-center"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#fafaf5]/95 via-[#f6f7f1]/85 to-[#edf3e9]/65" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#fafaf5]/25 via-transparent to-[#f1f5ed]/90" />
+        </div>
 
-        {/* Luz ambiental clínica muy sutil */}
-        <div
-          className="pointer-events-none absolute -top-24 right-1/4 h-96 w-96 rounded-full bg-[#ECFDF5]/80 blur-3xl"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute top-1/2 -left-24 h-80 w-80 rounded-full bg-teal-50/70 blur-3xl"
-          aria-hidden
-        />
-
-        <motion.div
-          variants={HERO_CONTAINER_VARIANTS}
-          initial="hidden"
-          animate="visible"
-          className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 items-start gap-10 px-4 sm:px-6 lg:grid-cols-12 lg:gap-12 lg:px-8"
-        >
-          {/* Columna Izquierda: Copywriting médico empático y con autoridad */}
-          <div className="lg:col-span-7 lg:pt-2 space-y-5">
-            <motion.div variants={HERO_ITEM_VARIANTS} className="space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-700/15 bg-[#ECFDF5] px-3 py-0.5 text-xs font-medium text-[#065F46]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#0F766E] animate-pulse" aria-hidden />
-                <span>Odontología de Especialidades · Trujillo</span>
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 items-center gap-8 sm:gap-10 lg:grid-cols-12 lg:gap-10">
+            
+            {/* Columna Izquierda: Mensaje Claro y Sin Sobrecarga */}
+            <div className="space-y-5 sm:space-y-6 lg:col-span-7">
+              
+              {/* Badge llamativo */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#d6e4d7] bg-white/80 px-3.5 py-1.5 text-[11px] font-semibold tracking-wide text-[#43694e] shadow-[0_4px_14px_-12px_rgba(27,62,47,0.5)] backdrop-blur-sm">
+                <span className="flex h-2 w-2 rounded-full bg-[#548c65] shadow-[0_0_0_3px_rgba(84,140,101,0.12)]" />
+                <span>Odontología Especializada en Trujillo</span>
               </div>
 
-              <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:text-[42px] lg:leading-[1.12]">
-                Odontología precisa, humana y pensada para tu tranquilidad.
+              {/* Título de alto impacto */}
+              <h1 className="max-w-[13ch] text-[2.15rem] font-semibold leading-[1.04] tracking-[-0.055em] text-[#203c32] sm:text-5xl lg:text-[3.55rem]">
+                Tu sonrisa en manos expertas.
+                <span className="mt-1 block font-normal italic tracking-[-0.045em] text-[#5b8062]">
+                  Cuidado moderno, claro y sin dolor.
+                </span>
               </h1>
 
-              <p className="max-w-xl text-sm leading-relaxed text-slate-600 font-normal">
-                Diagnóstico digital 3D sin dolor, especialistas colegiados y presupuestos claros en nuestras 3 sedes de Trujillo.
+              {/* Párrafo sintético y tranquilizador */}
+              <p className="max-w-xl text-[15px] leading-[1.75] text-[#657168] sm:text-base">
+                Te orientamos con honestidad sobre tratamientos, opciones de cuotas y disponibilidad en Trujillo. Sin términos complicados ni ventas de presión.
               </p>
-            </motion.div>
 
-            {/* Showcase Visual: Escáner 3D Interactivo con Tilt Card y Luz Holográfica */}
-            <motion.div variants={HERO_ITEM_VARIANTS} className="relative max-w-xl">
-              <InteractiveScannerCard />
-            </motion.div>
+              {/* 3 Beneficios Clave en Píldoras Visuales */}
+              <div className="grid grid-cols-1 gap-2.5 pt-1 sm:grid-cols-3 sm:gap-2">
+                <div className="group flex items-center gap-2.5 rounded-2xl border border-[#e1e8de] bg-white/75 p-3 shadow-[0_8px_24px_-22px_rgba(27,62,47,0.55)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#c2d5c1] hover:bg-white">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eaf2e9] text-[#4c7656] transition-colors group-hover:bg-[#deebde]">
+                    <Stethoscope className="h-4.5 w-4.5" strokeWidth={1.8} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold text-[#2d4536]">Especialistas RNE</h4>
+                    <p className="text-[11px] text-[#7a8378]">Colegiados COP</p>
+                  </div>
+                </div>
 
-            {/* 4 Pilares clínicos con Border Beam reactivo al hover */}
-            <motion.div
-              variants={HERO_ITEM_VARIANTS}
-              className="grid grid-cols-2 gap-2.5 max-w-xl"
-            >
-              <HeroBenefitCard icon={ScanLine} title="Diagnóstico 3D en pantalla" />
-              <HeroBenefitCard icon={HeartPulse} title="Protocolo 100% sin dolor" />
-              <HeroBenefitCard icon={MapPin} title="3 sedes en Trujillo" />
-              <HeroBenefitCard icon={Clock} title="Confirmación en < 15 min" />
-            </motion.div>
+                <div className="group flex items-center gap-2.5 rounded-2xl border border-[#e1e8de] bg-white/75 p-3 shadow-[0_8px_24px_-22px_rgba(27,62,47,0.55)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#c2d5c1] hover:bg-white">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eaf2e9] text-[#4c7656] transition-colors group-hover:bg-[#deebde]">
+                    <Clock className="h-4.5 w-4.5" strokeWidth={1.8} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold text-[#2d4536]">Respuesta Rápida</h4>
+                    <p className="text-[11px] text-[#7a8378]">&lt; 15 min por WhatsApp</p>
+                  </div>
+                </div>
 
-            {/* Respaldo médico */}
-            <motion.div
-              variants={HERO_ITEM_VARIANTS}
-              className="flex items-center gap-2 text-xs text-slate-500 pt-0.5"
-            >
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#ECFDF5] text-[#065F46] font-mono text-[10px] font-semibold">
-                COP
-              </span>
-              <span>Staff colegiado con RNE vigente · Facilidades de pago y convenios</span>
-            </motion.div>
+                <div className="group flex items-center gap-2.5 rounded-2xl border border-[#e1e8de] bg-white/75 p-3 shadow-[0_8px_24px_-22px_rgba(27,62,47,0.55)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#c2d5c1] hover:bg-white">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eaf2e9] text-[#4c7656] transition-colors group-hover:bg-[#deebde]">
+                    <MapPin className="h-4.5 w-4.5" strokeWidth={1.8} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold text-[#2d4536]">3 Sedes Trujillo</h4>
+                    <p className="text-[11px] text-[#7a8378]">California · El Golf · Centro</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botón rápido para WhatsApp directo */}
+              <div className="flex items-center gap-3 pt-1 sm:pt-2">
+                <a
+                  href="https://wa.me/51944612840?text=Hola%20NexoSalud%2C%20quisiera%20recibir%20orientaci%C3%B3n%20sobre%20tratamientos."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#238c4f] bg-[#218a4b] px-5 py-3 text-xs font-semibold text-white shadow-[0_10px_24px_-14px_rgba(28,110,62,0.7)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#197641] hover:shadow-[0_14px_28px_-14px_rgba(28,110,62,0.75)] active:translate-y-0 sm:text-sm"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Escribir por WhatsApp directamente</span>
+                </a>
+                <span className="hidden text-xs font-medium text-[#788378] sm:inline">o completa el formulario</span>
+              </div>
+            </div>
+
+            {/* Columna Derecha: Formulario Intuitivo y Atractivo */}
+            <div id="formulario-captacion" className="scroll-mt-24 lg:col-span-5 lg:translate-y-1">
+              <BuyerIntakeForm
+                sedes={catalogs.sedes}
+                servicios={catalogs.servicios}
+                preselectedServiceId={selectedServiceId}
+              />
+            </div>
+
           </div>
-
-          {/* Columna Derecha: Formulario Progresivo Integrado en el Hero */}
-          <motion.div
-            id="agendar-cita"
-            variants={HERO_ITEM_VARIANTS}
-            className="scroll-mt-24 lg:col-span-5 w-full"
-          >
-            <HeroIntakeWidget
-              catalogs={catalogs}
-              portalMode={portalMode}
-              setPortalMode={setPortalMode}
-              selectedReasonChip={selectedReasonChip}
-              onSelectReasonChip={handleSelectReasonChip}
-              serviceId={serviceId}
-              setServiceId={setServiceId}
-              sede={sede}
-              setSede={setSede}
-              timeSlot={timeSlot}
-              setTimeSlot={setTimeSlot}
-              fullName={fullName}
-              setFullName={setFullName}
-              phone={phone}
-              setPhone={setPhone}
-              email={email}
-              setEmail={setEmail}
-              dudaEspecifica={dudaEspecifica}
-              setDudaEspecifica={setDudaEspecifica}
-              termsAccepted={termsAccepted}
-              setTermsAccepted={setTermsAccepted}
-              errors={errors}
-              setErrors={setErrors}
-              loading={loading}
-              resolvingIdentity={resolvingIdentity}
-              submitError={submitError}
-              onSubmitNewPatient={handleSubmitNewPatient}
-              submittedSuccess={submittedSuccess}
-              isRecurringSubmitted={isRecurringSubmitted}
-              isNewSharedSubmitted={isNewSharedSubmitted}
-              consultationCount={consultationCount}
-              onResetNewPatient={handleResetNewPatient}
-              onBackToDashboard={() => {
-                if (staffSession) {
-                  navigate('/buyer');
-                } else {
-                  setStaffLoginOpen(true);
-                }
-              }}
-              patientSession={patientSession}
-              loginDni={loginDni}
-              setLoginDni={setLoginDni}
-              loginPassword={loginPassword}
-              setLoginPassword={setLoginPassword}
-              loginLoading={loginLoading}
-              loginError={loginError}
-              setLoginError={setLoginError}
-              onLoginWithPassword={handleLoginWithPassword}
-              otpSending={otpSending}
-              onSendOtp={handleSendOtp}
-              onLogout={handleLogout}
-              expressServiceId={expressServiceId}
-              setExpressServiceId={setExpressServiceId}
-              expressSede={expressSede}
-              setExpressSede={setExpressSede}
-              expressTimeSlot={expressTimeSlot}
-              setExpressTimeSlot={setExpressTimeSlot}
-              expressDuda={expressDuda}
-              setExpressDuda={setExpressDuda}
-              expressSubmitting={expressSubmitting}
-              expressSuccess={expressSuccess}
-              setExpressSuccess={setExpressSuccess}
-              onExpressSubmit={handleExpressSubmit}
-              step={step}
-              setStep={setStep}
-              highlightTrigger={highlightTrigger}
-              preselectionNotice={preselectionNotice}
-            />
-          </motion.div>
-        </motion.div>
+        </div>
       </section>
 
-      {/* 2.5 Flujo Clínico Interactivo y Transparente: 4 Fases Orquestadas */}
-      <InteractiveJourneyFlowSection onSelectStageAction={() => scrollToSection('agendar-cita')} />
-
-      {/* 3. Sección de Autoridad, Prueba Social y Testimonios */}
-      <SocialProofSection />
-
-      {/* 4. Sección de Especialidades y Tecnología 3D */}
-      <SpecialtiesTechSection onSelectTreatmentAndBook={handleSelectTreatmentAndBook} />
-
-      {/* 5. Sección de Sedes Físicas y Footer Institucional */}
-      <LocationsAndFooter
-        catalogSedes={catalogs.sedes}
-        selectedSede={portalMode === 'registered' && patientSession ? expressSede : sede}
-        onSelectBranchAndBook={handleSelectBranchAndBook}
-        onScrollToSection={scrollToSection}
-        onOpenStaffLogin={() => setStaffLoginOpen(true)}
-      />
-
-      {/* Modal de Inicio de Sesión del Sistema (Staff / Doctores / BI) */}
-      <StaffLoginModal
-        open={staffLoginOpen}
-        onOpenChange={setStaffLoginOpen}
-        onSuccessLogin={handleStaffSuccessLogin}
-        onSwitchToPatientPortal={() => {
-          setPortalMode('registered');
-          scrollToSection('agendar-cita');
-          triggerWidgetHighlight('Ingresa con tu DNI o recibe un código por WhatsApp');
-        }}
-      />
-
-      {/* Modal de Confirmación de Identidad y Contacto (Deduplicación inteligente con IA) */}
-      <Dialog open={identityModalOpen} onOpenChange={setIdentityModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl border border-slate-200 bg-white p-0 overflow-hidden text-slate-900 shadow-2xl">
-          <div className="border-b border-slate-100 bg-[#F8FAFC] px-6 py-5">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ECFDF5] px-2.5 py-0.5 text-[11px] font-semibold text-[#065F46]">
-              <ShieldCheck className="h-3.5 w-3.5 text-[#0F766E]" />
-              Protección de Historia Clínica
-            </span>
-            <DialogTitle className="mt-2 text-base font-semibold text-slate-900">
-              Confirmación de titularidad del contacto
-            </DialogTitle>
-            <DialogDescription className="mt-1 text-xs text-slate-500 leading-relaxed">
-              El {identityModalData?.matchedType === 'email' ? 'correo electrónico' : 'número de WhatsApp'} ingresado ya
-              está asociado a un expediente en nuestra clínica.
-            </DialogDescription>
-          </div>
-
-          <div className="p-6 space-y-4">
-            <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 p-3.5 text-xs text-amber-950 flex items-start gap-2.5">
-              <ShieldAlert className="h-4 w-4 shrink-0 text-amber-700 mt-0.5" />
-              <p className="leading-relaxed">
-                Para resguardar la confidencialidad médica y no mezclar historiales clínicos, indícanos cómo
-                deseas continuar:
-              </p>
-            </div>
-
-            <div className="space-y-2.5">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => executeRegistration(false)}
-                className="w-full rounded-xl border border-[#0F766E]/40 bg-[#ECFDF5]/40 p-3.5 text-left transition-all hover:border-[#0F766E] hover:bg-[#ECFDF5]/80 active:scale-[0.98] flex items-start gap-3 cursor-pointer"
-              >
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#0F766E] text-white">
-                  <UserCheck className="h-4 w-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-slate-900">
-                      Sí, soy yo (Anexar a mi historia)
-                    </span>
-                    <span className="rounded-full bg-[#ECFDF5] px-2 py-0.5 text-[10px] font-semibold text-[#065F46]">
-                      Paciente registrado
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[11px] text-slate-600 leading-relaxed">
-                    Ya me he atendido o consultado antes en NexoSalud Dental.
-                  </p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => executeRegistration(true)}
-                className="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-left transition-all hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98] flex items-start gap-3 cursor-pointer"
-              >
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-white">
-                  <UserPlus className="h-4 w-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-slate-900">
-                      Soy un familiar o paciente distinto
-                    </span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
-                      Nuevo expediente
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[11px] text-slate-600 leading-relaxed">
-                    Comparto este número o correo con un familiar y deseo abrir mi propia historia clínica.
-                  </p>
-                </div>
-              </button>
-            </div>
-
-            <div className="border-t border-slate-100 pt-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIdentityModalOpen(false);
-                  if (identityModalData?.matchedType === 'email') {
-                    setEmail('');
-                  } else {
-                    setPhone('');
-                  }
-                }}
-                className="w-full h-9 rounded-xl border-slate-200 text-xs font-medium text-slate-600 hover:text-slate-900"
-              >
-                Corregir el {identityModalData?.matchedType === 'email' ? 'correo' : 'número de WhatsApp'} ingresado
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal de Validación de Código OTP por WhatsApp */}
-      <Dialog open={otpModalOpen} onOpenChange={setOtpModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-          <DialogHeader className="text-center space-y-2">
-            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-[#ECFDF5] text-[#0F766E]">
-              <Phone className="h-5 w-5" />
-            </div>
-            <DialogTitle className="text-base font-semibold text-slate-900">
-              Código de verificación por WhatsApp
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500 leading-relaxed">
-              Ingresa el código de 4 dígitos enviado al número <strong>{otpMaskedPhone}</strong> (DNI {loginDni}).
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleVerifyOtp} className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="otpCodeInput" className="block text-center text-xs font-medium text-slate-700">
-                Código de seguridad (4 dígitos)
-              </Label>
-              <div className="flex justify-center">
-                <Input
-                  id="otpCodeInput"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={4}
-                  placeholder="• • • •"
-                  value={otpCode}
-                  onChange={(e) => {
-                    setOtpCode(e.target.value.replace(/\D/g, ''));
-                    setOtpError(null);
-                  }}
-                  autoFocus
-                  className="h-12 w-40 rounded-xl border-slate-300 bg-slate-50 text-center font-mono text-xl font-semibold tracking-[0.5em] text-slate-900 focus:border-[#0F766E] focus:ring-2 focus:ring-teal-600/20"
-                />
-              </div>
-            </div>
-
-            {otpDebugCode && (
-              <div className="flex items-center justify-center gap-1.5 rounded-xl border border-emerald-600/20 bg-[#ECFDF5] p-2.5 text-center text-xs text-[#065F46]">
-                <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#0F766E]" />
-                <span>
-                  Código de simulación: <strong className="font-mono font-semibold">{otpDebugCode}</strong>
-                </span>
-              </div>
-            )}
-
-            {otpError && (
-              <div className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-center text-xs text-rose-700">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                <span>{otpError}</span>
-              </div>
-            )}
-
-            <div className="space-y-2 pt-1">
-              <button
-                type="submit"
-                disabled={otpVerifying || otpCode.length !== 4}
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#0F766E] text-xs font-semibold text-white transition-all hover:bg-[#115E59] active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-              >
-                {otpVerifying ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Verificando…</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4" />
-                    <span>Validar y acceder a mi expediente</span>
-                  </>
-                )}
-              </button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleSendOtp}
-                disabled={otpSending}
-                className="w-full text-xs text-slate-500 hover:text-slate-800"
-              >
-                ¿No recibiste el código? Reenviar a mi WhatsApp
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Barra Flotante Interactiva de Captación al hacer Scroll (Persuasiva y no invasiva) */}
-      <AnimatePresence>
-        {showStickyBar && (
+      <section
+        id="tratamientos"
+        className="scroll-mt-20 border-b border-[#e6e9df] bg-[#f7f7f1] py-16 sm:py-24"
+      >
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <motion.div
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 80, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 120, damping: 20 }}
-            className="fixed bottom-4 inset-x-4 max-w-lg mx-auto z-40 rounded-2xl border border-teal-200/90 bg-white/95 p-3 shadow-[0_15px_35px_-10px_rgba(15,23,42,0.2)] backdrop-blur-md flex items-center justify-between gap-3"
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }}
+            whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-70px' }}
+            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+            className="mb-9 grid gap-5 sm:mb-12 sm:grid-cols-[1fr_auto] sm:items-end"
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#ECFDF5] text-[#0F766E] border border-teal-100">
-                <Sparkles className="h-4 w-4" />
+            <div className="max-w-2xl">
+              <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#52705b]">
+                <span className="h-px w-7 bg-[#7e9c81]" />
+                Atención a tu manera
               </span>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-slate-900 truncate">
-                  Evaluador de Sonrisa 3D
-                </p>
-                <p className="text-[11px] text-slate-500 truncate">
-                  Diagnóstico preliminar en 40s · Escáner 3D inicial sin costo
-                </p>
-              </div>
+              <h2 className="mt-3 text-3xl font-semibold leading-[1.08] tracking-[-0.045em] text-[#203c32] sm:text-4xl lg:text-5xl">
+                Una sonrisa.{' '}
+                <span className="font-normal italic text-[#64806a]">Muchas formas de cuidarla.</span>
+              </h2>
             </div>
+            <p className="max-w-sm text-sm leading-relaxed text-[#68736a] sm:pb-1">
+              Explora por dónde empezar. Si todavía tienes dudas, te ayudamos a encontrar el camino.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-50px' }}
+            variants={{
+              hidden: {},
+              visible: {
+                transition: { staggerChildren: shouldReduceMotion ? 0 : 0.1 },
+              },
+            }}
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:gap-4"
+          >
+            {POPULAR_TREATMENTS.map((treatment, index) => {
+              const Icon = treatment.icon;
+              const tone = TREATMENT_TONES[treatment.tone as keyof typeof TREATMENT_TONES];
+              const gridSpan =
+                index === 0 || index === 3
+                  ? 'lg:col-span-7'
+                  : 'lg:col-span-5';
+
+              return (
+                <motion.button
+                  key={treatment.id}
+                  type="button"
+                  variants={{
+                    hidden: shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 },
+                    visible: {
+                      opacity: 1,
+                      y: 0,
+                      transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] },
+                    },
+                  }}
+                  whileHover={shouldReduceMotion ? undefined : { y: -4 }}
+                  whileTap={shouldReduceMotion ? undefined : { scale: 0.99 }}
+                  onClick={() => handlePickTreatment(treatment.serviceKeyword)}
+                  className={`group relative isolate flex min-h-[220px] w-full flex-col overflow-hidden rounded-[1.65rem] border border-[#e5e8de] bg-gradient-to-br ${tone.wash} p-5 text-left shadow-[0_8px_24px_-22px_rgba(27,62,47,0.55)] transition-[border-color,box-shadow] duration-300 hover:border-[#afc6b1] hover:shadow-[0_22px_50px_-30px_rgba(31,83,60,0.42)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#527f63] focus-visible:ring-offset-2 sm:min-h-[235px] sm:p-7 ${gridSpan}`}
+                >
+                  <span
+                    className={`pointer-events-none absolute -right-7 -top-9 select-none font-serif text-[190px] leading-none opacity-60 transition-transform duration-500 ease-out group-hover:rotate-6 group-hover:scale-110 ${tone.mark}`}
+                    aria-hidden="true"
+                  >
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <span
+                    className={`relative flex h-12 w-12 items-center justify-center rounded-[17px] ${tone.icon} transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105`}
+                  >
+                    <Icon className="h-5 w-5" strokeWidth={1.7} aria-hidden="true" />
+                  </span>
+                  <div className="relative mt-5 flex flex-wrap items-center gap-2">
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wide ${tone.label}`}>
+                      {treatment.tag}
+                    </span>
+                    <span className="text-[11px] text-[#7b8179]">
+                      {treatment.detail}
+                    </span>
+                  </div>
+                  <h3 className="relative mt-2 max-w-[28rem] text-lg font-semibold leading-snug tracking-[-0.025em] text-[#243d32] transition-colors group-hover:text-[#176b5b] sm:text-xl">
+                    {treatment.title}
+                  </h3>
+                  <div className="relative mt-auto flex items-center justify-between gap-3 pt-4">
+                    <p className="text-xs leading-relaxed text-[#6c756c]">{treatment.subtitle}</p>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#dce4d9] bg-white/80 text-[#42664d] transition-all duration-300 group-hover:translate-x-1 group-hover:border-[#527f63] group-hover:bg-[#28634d] group-hover:text-white">
+                      <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  </div>
+                </motion.button>
+              );
+            })}
+          </motion.div>
+        </div>
+      </section>
+
+      <section
+        id="tu-experiencia"
+        className="relative isolate overflow-hidden border-b border-[#355548] bg-[#183d32] py-16 text-[#f4f4e9] sm:py-24"
+      >
+        <div
+          className="pointer-events-none absolute -right-28 top-0 -z-10 h-96 w-96 rounded-full border border-white/[0.07] sm:right-8 sm:top-1/2 sm:-translate-y-1/2"
+          aria-hidden="true"
+        >
+          <div className="absolute inset-8 rounded-full border border-white/[0.06]" />
+          <div className="absolute inset-16 rounded-full border border-white/[0.05]" />
+        </div>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }}
+            whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-70px' }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="mb-10 flex flex-col gap-5 sm:mb-14 sm:flex-row sm:items-end sm:justify-between"
+          >
+            <div className="max-w-xl">
+              <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a9c5a9]">
+                <span className="h-px w-7 bg-[#a9c5a9]" />
+                Sin presión, a tu ritmo
+              </span>
+              <h2 className="mt-3 text-3xl font-semibold leading-[1.08] tracking-[-0.04em] sm:text-4xl">
+                Primero escuchamos.
+                <span className="block font-normal italic text-[#b8cdb5]">Luego, tú decides.</span>
+              </h2>
+            </div>
+            <p className="max-w-sm text-sm leading-relaxed text-[#c2d0c4]">
+              Atención clara desde el primer mensaje hasta que encuentres el momento adecuado para visitarnos.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-50px' }}
+            variants={{
+              hidden: {},
+              visible: {
+                transition: { staggerChildren: shouldReduceMotion ? 0 : 0.12 },
+              },
+            }}
+            className="relative grid grid-cols-1 gap-0 border-t border-white/15 sm:grid-cols-3"
+          >
+            <div
+              className="pointer-events-none absolute left-[16.66%] right-[16.66%] top-8 hidden h-px bg-gradient-to-r from-[#9ab99c]/20 via-[#9ab99c]/70 to-[#9ab99c]/20 sm:block"
+              aria-hidden="true"
+            />
+            {[
+              {
+                number: '01',
+                title: 'Cuéntanos tu inquietud',
+                detail: 'Un mensaje basta para empezar. Sin cuestionarios médicos ni compromiso.',
+                marker: 'Te escuchamos',
+              },
+              {
+                number: '02',
+                title: 'Recibe orientación',
+                detail: 'Un asesor aclara opciones, rangos de precio y especialistas contigo.',
+                marker: 'Cerca de ti',
+              },
+              {
+                number: '03',
+                title: 'Tú eliges el siguiente paso',
+                detail: 'Si lo deseas, coordinamos una evaluación en la sede y horario que prefieras.',
+                marker: 'A tu manera',
+              },
+            ].map((step) => (
+              <motion.article
+                key={step.number}
+                variants={{
+                  hidden: shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 },
+                  visible: {
+                    opacity: 1,
+                    y: 0,
+                    transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] },
+                  },
+                }}
+                whileHover={shouldReduceMotion ? undefined : { y: -3 }}
+                className="group relative border-b border-white/15 px-1 py-6 last:border-b-0 sm:border-b-0 sm:px-6 sm:py-0 sm:first:pl-0 sm:last:pr-0"
+              >
+                <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full border border-[#71917a]/55 bg-[#214a3b] font-mono text-sm text-[#d9e4d7] shadow-[0_0_0_8px_#183d32] transition-colors duration-300 group-hover:border-[#b8cdb5] group-hover:bg-[#2b5946]">
+                  {step.number}
+                </div>
+                <p className="mt-6 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#a9c5a9]">
+                  {step.marker}
+                </p>
+                <h3 className="mt-2 text-lg font-medium tracking-tight text-white sm:text-xl">
+                  {step.title}
+                </h3>
+                <p className="mt-2 max-w-sm text-sm leading-relaxed text-[#c2d0c4]">
+                  {step.detail}
+                </p>
+              </motion.article>
+            ))}
+          </motion.div>
+
+          <motion.button
+            type="button"
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
+            whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            onClick={handleFocusBooking}
+            className="mt-9 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#e6eee0] px-5 py-2.5 text-sm font-semibold text-[#214b3b] transition-all hover:bg-white active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#183d32]"
+          >
+            Comenzar con una consulta
+            <ArrowRight className="h-4 w-4" />
+          </motion.button>
+        </div>
+      </section>
+
+      <section className="border-b border-[#e7e9e1] bg-[#fbfaf6] py-16 sm:py-24">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16 lg:px-8">
+          <motion.div
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+            whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:sticky lg:top-28 lg:self-start"
+          >
+            <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#52705b]">
+              <span className="h-px w-7 bg-[#7e9c81]" />
+              Antes de escribirnos
+            </span>
+            <h2 className="mt-3 text-3xl font-semibold leading-[1.08] tracking-[-0.045em] text-[#203c32] sm:text-4xl">
+              Lo que necesitas saber.
+            </h2>
+            <p className="mt-3 max-w-sm text-sm leading-relaxed text-[#68736a]">
+              Queremos que decidas con tranquilidad. Aquí respondemos lo más importante.
+            </p>
             <button
               type="button"
-              onClick={() => scrollToSection('agendar-cita')}
-              className="shrink-0 h-9 px-3.5 rounded-xl bg-[#0F766E] text-xs font-semibold text-white hover:bg-[#115E59] active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              onClick={handleFocusBooking}
+              className="mt-6 inline-flex min-h-10 items-center gap-2 rounded-full border border-[#d4dfd4] bg-white px-4 text-xs font-semibold text-[#315b44] transition-colors hover:border-[#9db79f] hover:bg-[#f1f6ef] active:scale-[0.98]"
             >
-              <span>Evaluar</span>
+              Hablar con un asesor
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </motion.div>
-        )}
-      </AnimatePresence>
+
+          <div className="divide-y divide-[#e3e7df] border-y border-[#e3e7df]">
+            {[
+              {
+                question: '¿Tiene algún costo enviar mi consulta?',
+                answer:
+                  'No. Esta solicitud es gratuita y sin compromiso. Te explicaremos opciones, costos y modalidades antes de que decidas acudir a una cita.',
+              },
+              {
+                question: '¿Ofrecen planes en cuotas para tratamientos?',
+                answer:
+                  'Sí. Para tratamientos como ortodoncia o implantes dentales, contamos con financiamiento directo en cuotas mensuales sin intereses, además de pagos con tarjeta de crédito.',
+              },
+              {
+                question: '¿Qué hacen con mis datos personales?',
+                answer:
+                  'Bajo la Ley N.° 29733, tus datos están protegidos y solo se usan para responder tu consulta. Nunca enviamos spam ni compartimos tu número con terceros.',
+              },
+            ].map((item, index) => (
+              <motion.details
+                key={item.question}
+                initial={shouldReduceMotion ? false : { opacity: 0, x: 14 }}
+                whileInView={shouldReduceMotion ? undefined : { opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{
+                  duration: 0.4,
+                  delay: shouldReduceMotion ? 0 : index * 0.08,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+                open={index === 0 ? true : undefined}
+                className="group py-1"
+              >
+                <summary className="flex min-h-[64px] cursor-pointer list-none items-center justify-between gap-5 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#527f63] [&::-webkit-details-marker]:hidden">
+                  <span className="flex items-start gap-4">
+                    <span className="pt-0.5 font-mono text-[11px] text-[#789078]">
+                      0{index + 1}
+                    </span>
+                    <span className="text-sm font-medium leading-relaxed text-[#2c4336] sm:text-base">
+                      {item.question}
+                    </span>
+                  </span>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-[#65826c] transition-transform duration-200 group-open:rotate-180" />
+                </summary>
+                <p className="max-w-2xl pb-5 pl-10 pr-8 text-sm leading-relaxed text-[#68736a]">
+                  {item.answer}
+                </p>
+              </motion.details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── SEDES VERIFICADAS EN TRUJILLO Y FOOTER ── */}
+      <LocationsAndFooter
+        catalogSedes={catalogs.sedes}
+        onSelectBranchAndBook={() => handleFocusBooking()}
+        onScrollToSection={handleScrollToSection}
+        onOpenStaffLogin={() => setStaffModalOpen(true)}
+      />
+
+      {/* Botón Flotante de WhatsApp para Contacto Inmediato */}
+      {!isBookingVisible && (
+        <a
+          href="https://wa.me/51944612840?text=Hola%20NexoSalud%2C%20quisiera%20hacer%20una%20consulta%20directa."
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 text-xs font-bold text-white shadow-xl shadow-[#25D366]/30 transition-all hover:scale-105 hover:bg-[#20BD5A] active:scale-[0.98]"
+          title="Consultar por WhatsApp ahora"
+        >
+          <MessageSquare className="h-4 w-4 fill-white" />
+          <span className="hidden sm:inline">¿Dudas? Escríbenos por WhatsApp</span>
+        </a>
+      )}
+
+      {/* Modal de Acceso para Personal de la Clínica */}
+      <StaffLoginModal
+        open={staffModalOpen}
+        onOpenChange={setStaffModalOpen}
+        onSuccessLogin={(_session, dest) => {
+          setStaffSession(staffAuthService.getSession());
+          setStaffModalOpen(false);
+          navigate(dest || '/buyer');
+        }}
+      />
 
       <Toaster />
     </div>

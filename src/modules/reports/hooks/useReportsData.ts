@@ -65,10 +65,14 @@ export function useReportsData(measures: Record<ReportStage, string>, period: st
     return stamps.length ? Math.max(...stamps) : null;
   }, [matrixQueries]);
 
-  const refresh = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: reportKeys.all }),
-    [queryClient]
-  );
+  const refresh = useCallback(async () => {
+    try {
+      await reportService.sync();
+    } catch (e) {
+      console.warn('[Reports] Error al sincronizar:', e);
+    }
+    return queryClient.invalidateQueries({ queryKey: reportKeys.all });
+  }, [queryClient]);
 
   return {
     reports,
