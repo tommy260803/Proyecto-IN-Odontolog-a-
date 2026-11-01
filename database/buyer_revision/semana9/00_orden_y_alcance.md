@@ -21,14 +21,14 @@ Si se eligió empezar desde cero, eliminar primero `NexoSalud_Mart` y después `
 | 1 | `init_oltp.sql` | Crear el transaccional y su extensión Buyer. |
 | 2 | `01_catalogos.sql` | Cargar los datos sintéticos originales una sola vez. |
 | 3 | `init_mart.sql` | Crear el dimensional, incluido Buyer atómico. |
-| 4 | `poblamiento_merge_mart.sql` | Cargar dimensiones necesarias y SOLO el hecho Buyer. |
+| 4 | `poblamiento_merge_mart.sql` | Cargar Buyer revisado y los bloques heredados de las otras cuatro fases. |
 | 5 | `02_validacion.sql` | Contrastar medidas, eventos y gastos. |
 | 6 | `03_indicadores_y_reporte_buyer.sql` | Consultar B1, B2, B3 y la matriz. |
 | 7 | `04_pruebas_reglas_buyer.sql` | Probar límites temporales y reparto exacto de céntimos con datos de sesión. |
 
 **No ejecutar `migracion_buyer.sql` si se está creando desde cero.** Tampoco ejecutar los archivos de documentación.
 
-Los otros cuatro hechos se crean, pero este ETL no los puebla. Sus tablas dimensionales vacías no son un fallo de la carga Buyer. El seed sí contiene operaciones transaccionales de esas otras fases.
+El poblamiento completo incluye ahora las cinco fases. Si ya se ejecutó la carga Buyer anterior, basta ejecutar `05_poblamiento_otras_fases.sql` y luego `02_validacion.sql`: no es necesario eliminar ni recrear las bases. El complemento no escribe el hecho Buyer. Las otras fases conservan sus reglas heredadas, salvo la corrección del JOIN de fuente de PAYER que multiplicaba pagos; su rediseño sigue fuera de alcance.
 
 ## Alternativa: conservar una copia existente
 

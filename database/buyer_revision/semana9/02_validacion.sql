@@ -58,7 +58,7 @@ GROUP BY zona
 ORDER BY registros DESC;
 
 -- ================================================================
--- VALIDACIONES BUYER: ejecutar DESPUES del ETL exclusivo de esta carpeta.
+-- VALIDACIONES BUYER: ejecutar DESPUES del ETL Buyer o del poblamiento completo de esta carpeta.
 -- Coincidir valida datos observados; no reconstruye calidad historica ausente.
 -- ================================================================
 GO
@@ -134,4 +134,46 @@ FROM gasto g LEFT JOIN atribuido a
 -- Falta de evidencia de costo: NULL no equivale a gasto cero.
 SELECT COUNT(*) AS contactos_sin_costo_verificable
 FROM NexoSalud_Mart.dbo.fact_captacion_buyer WHERE costo_atribuido_captacion IS NULL;
+GO
+
+-- ================================================================
+-- RECONCILIACION BASICA DE TODAS LAS FASES.
+-- Despues del poblamiento completo, diferencias deben ser cero.
+-- No valida por si sola todas las reglas de negocio de las otras fases.
+-- ================================================================
+;WITH totales AS (
+    SELECT 'BUYER: contactos' AS medida,
+        (SELECT COUNT_BIG(*) FROM NexoSaludDB.dbo.Personas) AS transaccional,
+        (SELECT COALESCE(SUM(CAST(contacto_registrado AS BIGINT)),0)
+         FROM NexoSalud_Mart.dbo.fact_captacion_buyer) AS dimensional
+    UNION ALL SELECT 'LEAD: solicitudes',
+        (SELECT COUNT_BIG(*) FROM NexoSaludDB.dbo.Solicitudes),
+        (SELECT COALESCE(SUM(CAST(cohorte_evaluable AS BIGINT)),0)
+         FROM NexoSalud_Mart.dbo.fact_negociacion_lead)
+    UNION ALL SELECT 'PAYER: pagos',
+        (SELECT COUNT_BIG(*) FROM NexoSaludDB.dbo.Pagos),
+        (SELECT COALESCE(SUM(CAST(pago_registrado AS BIGINT)),0)
+         FROM NexoSalud_Mart.dbo.fact_gestion_payer)
+    UNION ALL SELECT 'PAYER: pagos validados',
+        (SELECT COUNT_BIG(*) FROM NexoSaludDB.dbo.Pagos
+         WHERE UPPER(estado) IN ('VALIDATED','VALIDADO','CONFIRMADO')),
+        (SELECT COALESCE(SUM(CAST(pago_validado AS BIGINT)),0)
+         FROM NexoSalud_Mart.dbo.fact_gestion_payer)
+    UNION ALL SELECT 'CUSTOMER: citas',
+        (SELECT COUNT_BIG(*) FROM NexoSaludDB.dbo.Atenciones),
+        (SELECT COALESCE(SUM(CAST(cita_evaluable AS BIGINT)),0)
+         FROM NexoSalud_Mart.dbo.fact_atencion_customer)
+    UNION ALL SELECT 'TURNED: seguimientos',
+        (SELECT COUNT_BIG(*) FROM NexoSaludDB.dbo.Seguimientos),
+        (SELECT COALESCE(SUM(CAST(seguimiento_registrado AS BIGINT)),0)
+         FROM NexoSalud_Mart.dbo.fact_seguimiento_turned)
+)
+SELECT medida,transaccional,dimensional,dimensional-transaccional AS diferencia
+FROM totales;
+
+SELECT 'TRANSACCIONAL' AS origen,COALESCE(SUM(importe),0) AS importe_validado
+FROM NexoSaludDB.dbo.Pagos WHERE UPPER(estado) IN ('VALIDATED','VALIDADO','CONFIRMADO')
+UNION ALL
+SELECT 'DIMENSIONAL',COALESCE(SUM(importe_total_cobro),0)
+FROM NexoSalud_Mart.dbo.fact_gestion_payer;
 GO
