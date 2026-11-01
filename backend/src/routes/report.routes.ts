@@ -751,7 +751,6 @@ const BUILDERS: Record<'buyer' | 'lead' | 'payer' | 'customer' | 'turned', Matri
 // ── GET /api/reports/executive/:stage?measure=&period= ──────────────────────
 router.get('/executive/:stage', async (req: Request, res: Response) => {
   try {
-    await MartSyncService.syncAll(false);
     const stage = String(req.params.stage || '').toLowerCase() as keyof typeof BUILDERS;
     const measure = req.query.measure ? String(req.query.measure) : undefined;
     const builder = BUILDERS[stage];
@@ -769,7 +768,6 @@ router.get('/executive/:stage', async (req: Request, res: Response) => {
 // ── GET /api/reports/all-executive ──────────────────────────────────────────
 router.get('/all-executive', async (req: Request, res: Response) => {
   try {
-    await MartSyncService.syncAll(false);
     const buyerMeasure = req.query.buyerMeasure ? String(req.query.buyerMeasure) : undefined;
     const leadMeasure = req.query.leadMeasure ? String(req.query.leadMeasure) : undefined;
     const payerMeasure = req.query.payerMeasure ? String(req.query.payerMeasure) : undefined;
