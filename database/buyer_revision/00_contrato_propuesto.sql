@@ -1,3 +1,8 @@
+/* ACTUALIZACION: la carpeta semana9/ implementa una primera version MINIMA.
+   Sigue con 5 medidas y 3 indicadores. CaptacionesBuyer es OLTP por persona;
+   OportunidadesCaptacion, medidas auxiliares persistidas y Fact_GastoCampana
+   quedan como alternativas posteriores, no requisitos de esta implementacion.
+   Leer semana9/00_orden_y_alcance.sql antes de ejecutar. */
 /*
 NEXOSALUD / BUYER -- DECISIONES DE DISENO PARA REVISION CON DANIEL Y GERMAIN
 ESTADO: propuesta, no migracion. Este archivo no modifica datos ni esquemas.

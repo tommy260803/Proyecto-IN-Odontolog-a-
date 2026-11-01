@@ -1,0 +1,202 @@
+-- MIGRACION PARA COPIAS EXISTENTES DE SEMANA 9. Ejecutar por bloques y detenerse ante errores.
+-- No aplicar al esquema de main/PascalCase sin resolver primero la homologacion.
+-- Preserva el hecho anterior para comparacion; no migra automaticamente sus totales.
+-- Ejecutar luego poblamiento_merge_mart.sql (version exclusiva Buyer de esta carpeta).
+-- EXTENSION BUYER: una captacion inicial por persona, sin cambiar otras fases.
+-- Los historicos sin evidencia de sede/servicio permanecen NULL.
+USE NexoSaludDB;
+GO
+IF OBJECT_ID('dbo.CaptacionesBuyer','U') IS NULL
+CREATE TABLE dbo.CaptacionesBuyer (
+    id_captacion INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_CaptacionesBuyer PRIMARY KEY,
+    id_persona INT NOT NULL,
+    fecha_captacion DATETIME2 NOT NULL,
+    id_canal INT NULL REFERENCES dbo.Canales(id_canal),
+    id_fuente INT NULL REFERENCES dbo.Fuentes(id_fuente),
+    id_campana INT NULL REFERENCES dbo.Campanas(id_campana),
+    id_sede INT NULL REFERENCES dbo.Sedes(id_sede),
+    id_servicio INT NULL REFERENCES dbo.Servicios(id_servicio),
+    motivo_consulta NVARCHAR(500) NULL,
+    estado_calidad VARCHAR(20) NOT NULL,
+    autoriza_contacto BIT NOT NULL CONSTRAINT DF_CaptacionesBuyer_Autoriza DEFAULT 0,
+    fecha_autorizacion DATETIME2 NULL,
+    origen_datos VARCHAR(30) NOT NULL,
+    fecha_observacion DATETIME2 NOT NULL CONSTRAINT DF_CaptacionesBuyer_Observacion DEFAULT SYSDATETIME(),
+    CONSTRAINT UQ_CaptacionesBuyer_Persona UNIQUE (id_persona),
+    CONSTRAINT FK_CaptacionesBuyer_Persona FOREIGN KEY (id_persona) REFERENCES dbo.Personas(id_persona),
+    CONSTRAINT CK_CaptacionesBuyer_Calidad CHECK
+        (estado_calidad IN ('Valido','Incompleto','Duplicado','Rechazado')),
+    CONSTRAINT CK_CaptacionesBuyer_Origen CHECK
+        (origen_datos IN ('REGISTRO_DIRECTO','HISTORICO_OBSERVADO'))
+);
+GO
+IF COL_LENGTH('dbo.EventosEtapa','id_captacion') IS NULL
+    ALTER TABLE dbo.EventosEtapa ADD id_captacion INT NULL
+        CONSTRAINT FK_EventosEtapa_CaptacionBuyer REFERENCES dbo.CaptacionesBuyer(id_captacion);
+GO
+IF COL_LENGTH('dbo.EventosEtapa','id_solicitud') IS NULL
+    ALTER TABLE dbo.EventosEtapa ADD id_solicitud INT NULL
+        CONSTRAINT FK_EventosEtapa_SolicitudBuyer REFERENCES dbo.Solicitudes(id_solicitud);
+GO
+IF COL_LENGTH('dbo.EventosEtapa','clave_operacion_buyer') IS NULL
+    ALTER TABLE dbo.EventosEtapa ADD clave_operacion_buyer VARCHAR(80) NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('dbo.EventosEtapa')
+               AND name='UQ_EventosEtapa_OperacionBuyer')
+    CREATE UNIQUE INDEX UQ_EventosEtapa_OperacionBuyer
+    ON dbo.EventosEtapa(clave_operacion_buyer) WHERE clave_operacion_buyer IS NOT NULL;
+GO
+-- Campos opcionales para enlazar las recomendaciones futuras del agente.
+IF COL_LENGTH('dbo.DecisionesIA','id_captacion') IS NULL
+    ALTER TABLE dbo.DecisionesIA ADD id_captacion INT NULL
+        CONSTRAINT FK_DecisionesIA_CaptacionBuyer REFERENCES dbo.CaptacionesBuyer(id_captacion);
+GO
+IF COL_LENGTH('dbo.DecisionesIA','id_interaccion') IS NULL
+    ALTER TABLE dbo.DecisionesIA ADD id_interaccion INT NULL
+        CONSTRAINT FK_DecisionesIA_InteraccionBuyer REFERENCES dbo.Interacciones(id_interaccion);
+GO
+-- Consulta de preparacion: no usa Solicitudes ni etapa actual para convertir.
+CREATE OR ALTER VIEW dbo.v_DatosCaptacionBuyer AS
+SELECT c.id_captacion,c.id_persona,c.fecha_captacion,c.id_canal,COALESCE(c.id_fuente,ca.id_fuente) AS id_fuente,
+       c.id_campana,c.id_sede,c.id_servicio,c.estado_calidad,c.autoriza_contacto,
+       c.origen_datos,ev.id_evento_etapa AS id_evento_conversion,
+       ev.fecha_hora AS fecha_conversion,
+       contacto_registrado=1,
+       contacto_utilizable=CASE WHEN c.estado_calidad='Valido' AND c.autoriza_contacto=1
+           AND NULLIF(LTRIM(RTRIM(p.nombres)),'') IS NOT NULL
+           AND NULLIF(LTRIM(RTRIM(p.apellidos)),'') IS NOT NULL
+           AND (NULLIF(LTRIM(RTRIM(p.numero)),'') IS NOT NULL
+                OR NULLIF(LTRIM(RTRIM(p.email)),'') IS NOT NULL)
+           THEN 1 ELSE 0 END
+FROM dbo.CaptacionesBuyer c
+JOIN dbo.Personas p ON p.id_persona=c.id_persona
+LEFT JOIN dbo.Campanas ca ON ca.id_campana=c.id_campana
+OUTER APPLY (
+    SELECT TOP (1) e.id_evento_etapa,e.fecha_hora
+    FROM dbo.EventosEtapa e
+    JOIN dbo.Etapas eo ON eo.id_etapa=e.etapa_origen AND eo.nombre='BUYER'
+    JOIN dbo.Etapas ed ON ed.id_etapa=e.etapa_destino AND ed.nombre='LEAD'
+    WHERE e.id_persona=c.id_persona AND e.fecha_hora>=c.fecha_captacion
+      AND (e.id_captacion=c.id_captacion OR e.id_captacion IS NULL)
+    ORDER BY e.fecha_hora,e.id_evento_etapa
+) ev;
+GO
+-- Operacion futura del backend: escritura atomica y reintentos idempotentes.
+-- No la invoca automaticamente el ETL ni concede autorizacion.
+CREATE OR ALTER PROCEDURE dbo.usp_ConvertirBuyerALead
+    @id_captacion INT,
+    @id_servicio INT,
+    @motivo NVARCHAR(200),
+    @id_usuario INT=NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        DECLARE @persona INT,@buyer INT,@lead INT,@actual INT,@solicitud INT,
+                @evento INT,@fecha DATETIME2=SYSDATETIME(),@captacion DATETIME2;
+        SELECT @persona=c.id_persona,@captacion=c.fecha_captacion
+        FROM dbo.CaptacionesBuyer c WITH (UPDLOCK,HOLDLOCK)
+        WHERE c.id_captacion=@id_captacion;
+        IF @persona IS NULL THROW 51001,'Captacion inexistente.',1;
+        IF @captacion>@fecha THROW 51008,'La captacion tiene fecha futura.',1;
+        SELECT @buyer=id_etapa FROM dbo.Etapas WHERE nombre='BUYER';
+        SELECT @lead=id_etapa FROM dbo.Etapas WHERE nombre='LEAD';
+        IF @buyer IS NULL OR @lead IS NULL THROW 51002,'Faltan etapas BUYER/LEAD.',1;
+        SELECT TOP (1) @evento=id_evento_etapa,@solicitud=id_solicitud
+        FROM dbo.EventosEtapa WHERE id_persona=@persona
+          AND etapa_origen=@buyer AND etapa_destino=@lead
+          AND fecha_hora>=@captacion AND fecha_hora<=@fecha
+          AND (id_captacion=@id_captacion OR id_captacion IS NULL)
+        ORDER BY fecha_hora,id_evento_etapa;
+        IF @evento IS NOT NULL
+        BEGIN
+            COMMIT;
+            SELECT @evento AS id_evento_etapa,@solicitud AS id_solicitud,1 AS ya_convertido;
+            RETURN;
+        END;
+        SELECT @actual=id_etapa_actual FROM dbo.Personas WITH (UPDLOCK,HOLDLOCK)
+        WHERE id_persona=@persona;
+        IF @actual<>@buyer THROW 51003,'La persona no esta en BUYER; no retroceder fases.',1;
+        IF NOT EXISTS (SELECT 1 FROM dbo.v_DatosCaptacionBuyer
+                       WHERE id_captacion=@id_captacion AND contacto_utilizable=1)
+            THROW 51004,'Captacion sin datos minimos o autorizacion verificable.',1;
+        IF NOT EXISTS (SELECT 1 FROM dbo.Personas WHERE id_persona=@persona
+                       AND autoriza_contacto=1 AND estado_calidad='Valido')
+            THROW 51005,'Autorizacion revocada o calidad actual no valida.',1;
+        IF NULLIF(LTRIM(RTRIM(@motivo)),'') IS NULL
+            THROW 51006,'Se requiere motivo de intencion concreta.',1;
+        IF NOT EXISTS (SELECT 1 FROM dbo.Servicios WHERE id_servicio=@id_servicio AND activo=1)
+            THROW 51007,'Servicio no valido.',1;
+        INSERT dbo.Solicitudes (id_persona,id_servicio,motivo,estado,fecha_solicitud)
+        VALUES (@persona,@id_servicio,@motivo,'Abierta',@fecha);
+        SET @solicitud=SCOPE_IDENTITY();
+        INSERT dbo.EventosEtapa
+            (id_persona,etapa_origen,etapa_destino,fecha_hora,id_usuario,motivo,evidencia,
+             id_captacion,id_solicitud,clave_operacion_buyer)
+        VALUES (@persona,@buyer,@lead,@fecha,@id_usuario,@motivo,
+                'Conversion validada desde captacion inicial',@id_captacion,@solicitud,
+                'BUYER_LEAD:'+CAST(@id_captacion AS VARCHAR(20)));
+        SET @evento=SCOPE_IDENTITY();
+        UPDATE dbo.Personas SET id_etapa_actual=@lead,fecha_actualizacion=@fecha
+        WHERE id_persona=@persona;
+        COMMIT;
+        SELECT @evento AS id_evento_etapa,@solicitud AS id_solicitud,0 AS ya_convertido;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT>0 ROLLBACK;
+        THROW;
+    END CATCH;
+END;
+GO
+
+USE NexoSalud_Mart;
+GO
+IF OBJECT_ID('dbo.Fact_CaptacionBuyer','U') IS NOT NULL
+    THROW 51101,'Se detecto el esquema PascalCase de main. Esta migracion es para Semana 9.',1;
+GO
+IF OBJECT_ID('dbo.fact_captacion_buyer','U') IS NOT NULL
+   AND COL_LENGTH('dbo.fact_captacion_buyer','id_persona') IS NULL
+BEGIN
+    IF OBJECT_ID('dbo.fact_captacion_buyer_legacy_semana9','U') IS NOT NULL
+        THROW 51102,'Ya existe un archivo legacy. Revisar antes de migrar.',1;
+    EXEC sys.sp_rename 'dbo.fact_captacion_buyer','fact_captacion_buyer_legacy_semana9';
+END;
+GO
+-- 2.1 Hecho BUYER: UNA fila por captacion inicial/persona.
+IF OBJECT_ID('dbo.fact_captacion_buyer','U') IS NULL
+CREATE TABLE dbo.fact_captacion_buyer (
+    id_persona INT NOT NULL CONSTRAINT PK_FactBuyer_Atomico PRIMARY KEY,
+    id_captacion INT NOT NULL CONSTRAINT UQ_FactBuyer_Captacion UNIQUE,
+    KeyTiempo INT NOT NULL REFERENCES dbo.Dim_Tiempo(KeyTiempo),
+    KeyTiempoConversion INT NULL REFERENCES dbo.Dim_Tiempo(KeyTiempo),
+    KeySede INT NOT NULL REFERENCES dbo.Dim_Sede(KeySede),
+    KeyServicio INT NOT NULL REFERENCES dbo.Dim_Servicio(KeyServicio),
+    KeyCanal INT NOT NULL REFERENCES dbo.Dim_Canal(KeyCanal),
+    KeyFuente INT NOT NULL REFERENCES dbo.Dim_Fuente(KeyFuente),
+    KeyTipoPersona INT NOT NULL REFERENCES dbo.Dim_TipoPersona(KeyTipoPersona),
+    KeyEstadoRegistro INT NOT NULL REFERENCES dbo.Dim_EstadoRegistro(KeyEstadoRegistro),
+    contacto_registrado INT NOT NULL CONSTRAINT CK_FactBuyer_Registrado CHECK (contacto_registrado=1),
+    contacto_utilizable INT NOT NULL CONSTRAINT CK_FactBuyer_Utilizable CHECK (contacto_utilizable IN (0,1)),
+    conversion_lead INT NOT NULL CONSTRAINT CK_FactBuyer_Conversion CHECK (conversion_lead IN (0,1)),
+    tiempo_conversion_dia DECIMAL(18,6) NULL,
+    costo_atribuido_captacion DECIMAL(14,2) NULL,
+    fecha_captacion DATETIME2 NOT NULL,
+    fecha_conversion DATETIME2 NULL,
+    id_evento_conversion INT NULL,
+    origen_datos VARCHAR(30) NOT NULL,
+    fecha_corte_etl DATETIME2 NOT NULL,
+    CONSTRAINT CK_FactBuyer_Evidencia CHECK (
+        (conversion_lead=0 AND fecha_conversion IS NULL AND id_evento_conversion IS NULL
+         AND tiempo_conversion_dia IS NULL AND KeyTiempoConversion IS NULL)
+        OR (conversion_lead=1 AND fecha_conversion IS NOT NULL
+            AND tiempo_conversion_dia IS NOT NULL AND fecha_conversion>=fecha_captacion
+            AND id_evento_conversion IS NOT NULL AND tiempo_conversion_dia>=0
+            AND KeyTiempoConversion IS NOT NULL)
+    )
+);
+GO
+IF COL_LENGTH('dbo.fact_captacion_buyer','id_persona') IS NULL
+    THROW 51100,'Existe el hecho agregado antiguo: ejecutar migracion_buyer.sql primero.',1;
+GO
