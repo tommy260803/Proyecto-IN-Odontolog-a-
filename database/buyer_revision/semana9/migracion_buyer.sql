@@ -83,6 +83,10 @@ OUTER APPLY (
 GO
 -- Operacion futura del backend: escritura atomica y reintentos idempotentes.
 -- No la invoca automaticamente el ETL ni concede autorizacion.
+SET ANSI_NULLS ON;
+GO
+SET QUOTED_IDENTIFIER ON;
+GO
 CREATE OR ALTER PROCEDURE dbo.usp_ConvertirBuyerALead
     @id_captacion INT,
     @id_servicio INT,
