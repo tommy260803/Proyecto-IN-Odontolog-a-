@@ -1,5 +1,7 @@
 # NexoSalud
 
+> **Revisión de Buyer en esta rama:** Germain debe comenzar por la [guía de BD y ETL](database/buyer_revision/README.md). Allí están los scripts revisados de Semana 9, sus pruebas, pendientes y recomendaciones. El backend antiguo aún requiere adaptación; no mezclar sus SQL de instalación con este paquete.
+
 **NexoSalud** es una aplicación web empresarial orientada a gestionar el recorrido comercial, clínico y operativo de un paciente interesado en servicios odontológicos privados.
 
 Este proyecto implementa una arquitectura basada en Clean Architecture (simplificada) para el frontend y simula toda la capa de persistencia utilizando los repositorios locales (`localStorage`), con el fin de proporcionar un prototipo plenamente funcional que puede utilizarse para validar el modelo de negocio, demostrar la trazabilidad del cliente y facilitar futuras integraciones con una API backend real.

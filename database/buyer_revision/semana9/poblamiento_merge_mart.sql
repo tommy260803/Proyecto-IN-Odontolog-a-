@@ -1,11 +1,13 @@
 /* ETL COMPLETO -- revision de Semana 9.
    Primer bloque: Buyer revisado. Segundo bloque: demas fases heredadas.
-   El archivo 05_poblamiento_otras_fases.sql permite cargar solo estas ultimas.
+   Fuente unica del ETL de esta revision: no hay complemento duplicado.
+   Ver ../README.md y ../docs/EJECUCION_SQL_SERVER.md para seleccionar bloques.
    Estilo de laboratorio: preparar SELECT, MERGE de dimensiones, DELETE + INSERT del hecho.
    Ejecutar despues de init_oltp/init_mart nuevos O de migracion_buyer.sql.
    Detener el syncBuyer antiguo del backend antes de cargar este esquema.
    No infiere sede desde zona ni conversion desde Solicitudes/etapa actual.
 */
+-- ===== BLOQUE 1 DE 2: BUYER REVISADO =====
 USE NexoSaludDB;
 GO
 SET NOCOUNT ON;
@@ -323,7 +325,8 @@ END CATCH;
 GO
 
 
-/* COMPLEMENTO SEMANA 9: LEAD, PAYER, CUSTOMER Y TURNED.
+-- ===== BLOQUE 2 DE 2: OTRAS FASES HEREDADAS =====
+/* CARGA SEMANA 9: LEAD, PAYER, CUSTOMER Y TURNED.
    Puede ejecutarse despues de haber cargado Buyer, sin recrear ni borrar bases.
    No modifica el hecho Buyer ni CaptacionesBuyer.
    Conserva calculos originales de estas fases (incluidos limites heredados:
