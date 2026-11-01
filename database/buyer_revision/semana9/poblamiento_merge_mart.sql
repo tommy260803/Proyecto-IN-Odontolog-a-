@@ -104,8 +104,8 @@ MERGE [NexoSalud_Mart].[dbo].[Dim_Sede] AS dim USING
     SELECT 
         id_sede,
         nombre AS Sede,
-        COALESCE(zona, 'Trujillo') AS Distrito,
-        COALESCE(zona, 'Centro') AS Zona
+        COALESCE(NULLIF(LTRIM(RTRIM(zona)), ''), 'No especificado') AS Distrito,
+        COALESCE(NULLIF(LTRIM(RTRIM(zona)), ''), 'No especificada') AS Zona
     FROM dbo.Sedes
 ) AS oltp
 ON oltp.id_sede = dim.id_sede
@@ -126,7 +126,9 @@ MERGE [NexoSalud_Mart].[dbo].[Dim_Servicio] AS dim USING
             WHEN nombre LIKE '%Ortodoncia%' OR nombre LIKE '%Brackets%' THEN 'Ortodoncia'
             WHEN nombre LIKE '%Profilaxis%' OR nombre LIKE '%Limpieza%' THEN 'Odontología Preventiva'
             WHEN nombre LIKE '%Curación%' OR nombre LIKE '%Restauración%' THEN 'Odontología Restauradora'
-            ELSE 'Odontología General'
+            WHEN nombre LIKE '%Evaluaci%' OR nombre LIKE '%Control%' OR nombre LIKE '%Fluori%'
+                 THEN 'Odontología General'
+            ELSE 'No clasificado'
         END,
         COALESCE(descripcion, nombre) AS Procedimiento
     FROM dbo.Servicios
@@ -145,9 +147,10 @@ MERGE [NexoSalud_Mart].[dbo].[Dim_Canal] AS dim USING
         id_canal,
         nombre AS NombreCanal,
         TipoMedio = CASE 
-            WHEN nombre IN ('WhatsApp', 'Web', 'Facebook', 'Instagram') THEN 'Digital'
+            WHEN nombre LIKE '%WhatsApp%' OR nombre IN
+                 ('Web', 'Página Web', 'Formulario Web', 'Facebook', 'Instagram', 'Correo Electrónico') THEN 'Digital'
             WHEN nombre LIKE '%Llamada%' THEN 'Telefónico'
-            ELSE 'Presencial / Físico'
+            ELSE 'No clasificado'
         END
     FROM dbo.Canales
 ) AS oltp
@@ -163,7 +166,7 @@ MERGE [NexoSalud_Mart].[dbo].[Dim_TipoPersona] AS dim USING
 (
     SELECT 
         id_persona,
-        COALESCE(tipo_persona, 'Particular') AS Ocupacion,
+        COALESCE(NULLIF(LTRIM(RTRIM(tipo_persona)), ''), 'No especificado') AS Ocupacion,
         RangoEdad = CASE 
             WHEN fecha_nacimiento IS NULL THEN 'No Especificado'
             WHEN DATEDIFF(YEAR, fecha_nacimiento, GETDATE()) < 18 THEN 'Menor de 18'
