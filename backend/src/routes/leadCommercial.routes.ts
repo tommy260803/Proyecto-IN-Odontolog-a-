@@ -469,8 +469,9 @@ async function payerReadiness(tx: Prisma.TransactionClient, row: Awaited<ReturnT
       inconsistent ? 'Hay una reserva con referencias inconsistentes. Requiere revisión.' :
         'Ya existe una reserva o un evento PAYER para esta solicitud. Requiere revisar ese flujo antes de reintentar.');
 
-    const [storage] = leadStaffAuthEnabled() ? await tx.$queryRaw<{ habilitado: number }[]>`
-      SELECT 1 AS habilitado WHERE DB_NAME() = N'NexoSalud_LeadPruebas'
+    const [storage] = leadStaffAuthEnabled() ? await tx.$queryRaw<{ permite_traspaso: boolean }[]>`
+      SELECT CAST(CASE WHEN COL_LENGTH('dbo.AutorizacionesReservaLead', 'id_reserva') IS NULL THEN 0 ELSE 1 END AS bit) AS permite_traspaso
+      WHERE DB_NAME() = N'NexoSalud_LeadPruebas'
         AND OBJECT_ID(N'dbo.AutorizacionesReservaLead', N'U') IS NOT NULL
     ` : [];
     const reference = storage && coherent && slot && option && proposal && checks.every(item => item.estado === 'cumple')
@@ -485,8 +486,15 @@ async function payerReadiness(tx: Prisma.TransactionClient, row: Awaited<ReturnT
       estado: authorization ? 'cumple' : 'pendiente', detalle: authorization
         ? 'Hay una autorización expresa registrada para estas condiciones.'
         : 'Falta una autorización expresa comprobable para las condiciones vigentes.' });
-    return { estado: authorization ? 'preparado' : 'bloqueado', requisitos: checks,
-      condiciones_autorizables: reference, autorizacion: authorization ?? null };
+    const [transfer] = storage?.permite_traspaso ? await tx.$queryRaw<{ id_reserva: number }[]>`
+      SELECT TOP (1) r.id_reserva FROM dbo.AutorizacionesReservaLead a
+      JOIN dbo.Reservas r ON r.id_reserva = a.id_reserva AND r.id_solicitud = a.id_solicitud AND r.id_opcion = a.id_opcion
+      WHERE a.id_solicitud = ${row.id_solicitud} AND r.id_persona = ${row.id_persona}
+      ORDER BY a.id_autorizacion DESC
+    ` : [];
+    return { estado: transfer ? 'traspasado' : authorization ? 'preparado' : 'bloqueado', requisitos: checks,
+      condiciones_autorizables: reference, autorizacion: authorization ?? null, traspaso: transfer ?? null,
+      puede_traspasar: Boolean(storage?.permite_traspaso && authorization && !transfer) };
 }
 
 router.get('/opportunities/:id/payer-readiness', route(async (req, res) => {
@@ -532,6 +540,58 @@ router.post('/opportunities/:id/staff/reservation-authorization', route(async (r
     return saved;
   }, serializable);
   res.json(result);
+}));
+
+router.post('/opportunities/:id/staff/payer-transfer', route(async (req, res) => {
+  if (!leadStaffAuthEnabled()) return res.sendStatus(404);
+  res.set('Cache-Control', 'no-store');
+  if (req.body?.confirmado !== true) throw new InputError('Confirma el traspaso a PAYER.');
+  const authorizationId = id(req.body.id_autorizacion);
+  const result = await prisma.$transaction(async tx => {
+    const { row, user } = await staffOpportunity(tx, req);
+    const readiness = await payerReadiness(tx, row);
+    if (readiness.traspaso) {
+      const [same] = await tx.$queryRaw<{ coincide: number }[]>`
+        SELECT 1 AS coincide FROM dbo.AutorizacionesReservaLead
+        WHERE id_autorizacion = ${authorizationId} AND id_solicitud = ${row.id_solicitud}
+          AND id_reserva = ${readiness.traspaso.id_reserva}
+      `;
+      if (!same) throw new InputError('La solicitud ya fue traspasada con otra autorización.', 409);
+      return { ...readiness.traspaso, reutilizada: true };
+    }
+    const reference = readiness.condiciones_autorizables;
+    if (!readiness.puede_traspasar || !reference || readiness.autorizacion?.id_autorizacion !== authorizationId) {
+      throw new InputError('Los requisitos o la autorización ya no están vigentes. Verifica la preparación para PAYER.', 409);
+    }
+    const stages = await tx.etapas.findMany({ where: { nombre: { in: ['LEAD', 'PAYER'] } } });
+    const lead = stages.find(stage => stage.nombre === 'LEAD');
+    const payer = stages.find(stage => stage.nombre === 'PAYER');
+    if (!lead || !payer) throw new InputError('No están configuradas las etapas LEAD y PAYER.', 409);
+    const option = await tx.opciones.findUniqueOrThrow({ where: { id_opcion: reference.id_opcion } });
+    const slot = await tx.disponibilidad.updateMany({
+      where: { id_disponibilidad: option.id_disponibilidad, estado: 'Disponible' }, data: { estado: 'Ocupado' },
+    });
+    const moved = await tx.personas.updateMany({
+      where: { id_persona: row.id_persona, id_etapa_actual: lead.id_etapa },
+      data: { id_etapa_actual: payer.id_etapa },
+    });
+    if (slot.count !== 1 || moved.count !== 1) throw new InputError('Cambió el horario o la etapa. Verifica el diagnóstico.', 409);
+    const reservation = await tx.reservas.create({ data: {
+      id_persona: row.id_persona, id_solicitud: row.id_solicitud, id_opcion: option.id_opcion, estado: 'Pendiente',
+    } });
+    await tx.$executeRaw`
+      INSERT dbo.EventosEtapa (id_persona,id_solicitud,etapa_origen,etapa_destino,id_usuario,motivo,evidencia)
+      VALUES (${row.id_persona},${row.id_solicitud},${lead.id_etapa},${payer.id_etapa},${user.id_usuario},
+        N'Traspaso desde LEAD con autorización previa',${'Autorización #' + authorizationId})
+    `;
+    const linked = await tx.$executeRaw`
+      UPDATE dbo.AutorizacionesReservaLead SET id_reserva = ${reservation.id_reserva}
+      WHERE id_autorizacion = ${authorizationId} AND id_solicitud = ${row.id_solicitud} AND id_reserva IS NULL
+    `;
+    if (linked !== 1) throw new InputError('La autorización ya fue utilizada.', 409);
+    return { id_reserva: reservation.id_reserva, reutilizada: false };
+  }, serializable);
+  res.status(result.reutilizada ? 200 : 201).json(result);
 }));
 
 router.get('/opportunities/:id/availability', route(async (req, res) => {

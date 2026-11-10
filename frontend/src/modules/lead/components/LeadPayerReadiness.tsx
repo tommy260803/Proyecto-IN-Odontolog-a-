@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { leadCommercialService } from '../services/leadCommercial.service';
 
 const labels = { cumple: 'Cumple', bloqueado: 'Bloqueado', pendiente: 'Pendiente de verificación' };
@@ -9,6 +9,8 @@ export default function LeadPayerReadiness({ requestId, token }: { requestId: st
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [confirmTransfer, setConfirmTransfer] = useState<number | null>(null);
+  const client = useQueryClient();
   const query = useQuery({
     queryKey: ['lead', 'payer-readiness', requestId],
     queryFn: ({ signal }) => leadCommercialService.payerReadiness(requestId, signal),
@@ -29,19 +31,61 @@ export default function LeadPayerReadiness({ requestId, token }: { requestId: st
         <>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             <p className="font-semibold" role="status">
-              {query.isFetching ? 'Actualizando diagnóstico…' : query.data.estado === 'preparado' ? 'Requisitos verificados' : 'Traspaso bloqueado'}
+              {query.isFetching ? 'Actualizando diagnóstico…' : query.data.estado === 'traspasado' ? 'Traspaso a PAYER registrado' :
+                query.data.estado === 'preparado' ? 'Requisitos verificados' : 'Traspaso bloqueado'}
             </p>
             <button type="button" className="underline disabled:opacity-50" disabled={query.isFetching} onClick={() => void query.refetch()}>Volver a verificar</button>
           </div>
-          <ul className="mt-2 divide-y">
+          {!query.data.traspaso && <ul className="mt-2 divide-y">
             {query.data.requisitos.map(check => (
               <li className="py-2" key={check.codigo}>
                 <p className="font-medium">{check.etiqueta} · {labels[check.estado]}</p>
                 <p>{check.detalle}</p>
               </li>
             ))}
-          </ul>
+          </ul>}
+          {query.data.traspaso && <p>Reserva #{query.data.traspaso.id_reserva}.</p>}
           {query.data.autorizacion && <p>Autorización registrada #{query.data.autorizacion.id_autorizacion}.</p>}
+          {token && query.data.puede_traspasar && query.data.autorizacion && reference && (
+            <div className="mt-3 space-y-2 rounded border p-3">
+              {confirmTransfer !== query.data.autorizacion.id_autorizacion ? (
+                <button type="button" className="rounded border px-3 py-2" onClick={() => {
+                  setError(''); setConfirmTransfer(query.data!.autorizacion!.id_autorizacion);
+                }}>
+                  Traspasar a PAYER
+                </button>
+              ) : (
+                <>
+                  <p>Se creará una reserva pendiente para el {reference.dia}, de {reference.inicio} a {reference.fin}, en {reference.sede}.</p>
+                  <div className="flex flex-wrap gap-3">
+                    <button type="button" className="rounded border px-3 py-2" disabled={busy || query.isFetching}
+                      onClick={async () => {
+                        setBusy(true); setError('');
+                        try {
+                          const response = await fetch(root + `/opportunities/${requestId}/staff/payer-transfer`, {
+                            method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ confirmado: true, id_autorizacion: confirmTransfer }),
+                          });
+                          const body = await response.json().catch(() => null);
+                          if (!response.ok) {
+                            if (response.status === 409) await query.refetch();
+                            throw new Error(typeof body?.error === 'string' ? body.error : 'No se pudo registrar el traspaso.');
+                          }
+                          setConfirmTransfer(null);
+                          await Promise.all([
+                            query.refetch(), client.invalidateQueries({ queryKey: ['lead', 'opportunity', requestId] }),
+                            client.invalidateQueries({ queryKey: ['lead', 'opportunities'] }),
+                          ]);
+                        } catch (failure) {
+                          setError(failure instanceof Error ? failure.message : 'No se pudo registrar el traspaso.');
+                        } finally { setBusy(false); }
+                      }}>Confirmar traspaso</button>
+                    <button type="button" className="underline" disabled={busy} onClick={() => setConfirmTransfer(null)}>Volver</button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           {canRegister && reference && (
             <form key={reference.revision} className="mt-3 space-y-2 rounded border p-3" onSubmit={async event => {
               event.preventDefault();
@@ -77,9 +121,9 @@ export default function LeadPayerReadiness({ requestId, token }: { requestId: st
                 El paciente autorizó expresamente la reserva bajo estas condiciones.
               </label>
               <button type="submit" className="rounded border px-3 py-2" disabled={busy || query.isFetching}>Guardar autorización</button>
-              {error && <p role="alert">{error}</p>}
             </form>
           )}
+          {error && <p role="alert">{error}</p>}
         </>
       )}
     </details>

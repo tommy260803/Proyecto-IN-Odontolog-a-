@@ -108,7 +108,9 @@ interface RecordedInteraction {
 }
 
 interface PayerReadiness {
-  estado: 'preparado' | 'bloqueado';
+  estado: 'preparado' | 'bloqueado' | 'traspasado';
+  traspaso: { id_reserva: number } | null;
+  puede_traspasar: boolean;
   condiciones_autorizables: {
     revision: string; id_opcion: number; id_propuesta: number; dia: string;
     inicio: string; fin: string; sede: string; profesional: string; precio: string;
