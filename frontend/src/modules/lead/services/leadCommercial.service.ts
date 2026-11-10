@@ -96,6 +96,7 @@ export interface Candidate {
 }
 
 interface RecordedInteraction {
+  ultima_interaccion_id: number;
   id_interaccion: number;
   tipo: string;
   mensaje: string | null;
@@ -159,6 +160,7 @@ export const leadCommercialService = {
       `/opportunities/${id}/availability?${new URLSearchParams({ fecha: day, pagina: String(page) })}`, signal,
     ),
   filters: (signal: AbortSignal) => get<{
+    canales: { id_canal: number; nombre: string }[];
     servicios: { id_servicio: number; nombre: string }[];
     negociadores: { id_usuario: number; nombre: string }[];
   }>('/opportunity-filters', signal),

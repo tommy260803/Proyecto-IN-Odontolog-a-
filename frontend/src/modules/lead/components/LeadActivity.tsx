@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { commercialStatus, formatFollowUp, leadCommercialService, type OpportunityDetail } from '../services/leadCommercial.service';
 
 function commercialEvents(data: OpportunityDetail) {
@@ -30,9 +30,78 @@ function commercialEvents(data: OpportunityDetail) {
   return events.sort((left, right) => right.day.localeCompare(left.day));
 }
 
-export default function LeadActivity({ data, requestId }: { data: OpportunityDetail; requestId: string }) {
+const root = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api') + '/lead/commercial';
+
+function InteractionForm({ requestId, token, latest, onSaved }: {
+  requestId: string; token: string; latest: number | null; onSaved: () => void;
+}) {
+  const client = useQueryClient();
+  const [expected, setExpected] = useState(latest);
+  const [type, setType] = useState('Nota de contacto');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [conflict, setConflict] = useState(false);
+  const filters = useQuery({ queryKey: ['lead', 'opportunity-filters'],
+    queryFn: ({ signal }) => leadCommercialService.filters(signal) });
+  return (
+    <form className="my-3 space-y-2 rounded border p-3" onSubmit={async event => {
+      event.preventDefault();
+      const fields = new FormData(event.currentTarget);
+      setBusy(true); setError('');
+      try {
+        const response = await fetch(root + `/opportunities/${requestId}/staff/interactions`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tipo: type, id_canal: fields.get('canal'), mensaje: fields.get('mensaje'),
+            es_respuesta_util: fields.has('util'), ultima_interaccion_esperada: expected }),
+        });
+        const body = await response.json().catch(() => null);
+        if (!response.ok) {
+          if (response.status === 409) {
+            setConflict(true);
+            await client.invalidateQueries({ queryKey: ['lead', 'activity', requestId] });
+          }
+          throw new Error(typeof body?.error === 'string' ? body.error : 'No se pudo registrar la interacción.');
+        }
+        onSaved();
+        await Promise.all([
+          client.invalidateQueries({ queryKey: ['lead', 'activity', requestId] }),
+          client.invalidateQueries({ queryKey: ['lead', 'opportunity', requestId] }),
+          client.invalidateQueries({ queryKey: ['lead', 'opportunities'] }),
+        ]);
+      } catch (failure) {
+        setError(failure instanceof Error ? failure.message : 'No se pudo registrar la interacción.');
+      } finally { setBusy(false); }
+    }}>
+      <label className="grid max-w-xs gap-1">Tipo de interacción
+        <select className="rounded border p-2" value={type} onChange={event => setType(event.target.value)}>
+          <option>Nota de contacto</option><option>Respuesta del paciente</option>
+        </select>
+      </label>
+      <label className="grid max-w-xs gap-1">Canal
+        <select className="rounded border p-2" name="canal" required defaultValue="">
+          <option value="">{filters.isFetching ? 'Cargando canales…' : 'Selecciona un canal'}</option>
+          {filters.data?.canales?.map(channel => <option key={channel.id_canal} value={channel.id_canal}>{channel.nombre}</option>)}
+        </select>
+      </label>
+      {filters.isError && <button type="button" className="underline" onClick={() => void filters.refetch()}>Reintentar carga de canales</button>}
+      <label className="grid gap-1">Nota de la interacción
+        <textarea name="mensaje" required maxLength={4000} className="rounded border p-2" />
+      </label>
+      {type === 'Respuesta del paciente' && <label className="flex gap-2"><input name="util" type="checkbox" /> La respuesta aporta información útil para continuar.</label>}
+      <button type="submit" className="rounded border px-3 py-2" disabled={busy || conflict}>Guardar interacción</button>
+      {error && <p role="alert">{error}</p>}
+      {conflict && <button type="button" className="underline" disabled={busy} onClick={() => {
+        setExpected(latest); setConflict(false); setError('');
+      }}>Usar la bitácora actual como referencia</button>}
+    </form>
+  );
+}
+
+export default function LeadActivity({ data, requestId, token }: { data: OpportunityDetail; requestId: string; token?: string }) {
   const [expanded, setExpanded] = useState(false);
   const [page, setPage] = useState(1);
+  const [saved, setSaved] = useState(false);
+  const [writing, setWriting] = useState(false);
   const query = useQuery({
     queryKey: ['lead', 'activity', requestId, page],
     queryFn: ({ signal }) => leadCommercialService.activity(requestId, page, signal),
@@ -57,6 +126,17 @@ export default function LeadActivity({ data, requestId }: { data: OpportunityDet
       <section className="mt-4 border-t pt-3" aria-label="Bitácora de interacciones">
         <h3 className="font-semibold">Bitácora de interacciones</h3>
         <p className="text-sm">Una entrada registra una interacción. La entrega de mensajes requiere confirmación del canal.</p>
+        {saved && <p role="status">Interacción registrada.</p>}
+        {!inactive && token && page === 1 && query.data && (
+          <>
+            <button type="button" className="underline" onClick={() => { setWriting(value => !value); setSaved(false); }}>
+              {writing ? 'Cerrar formulario' : 'Registrar interacción'}
+            </button>
+            {writing && <InteractionForm requestId={requestId} token={token}
+              latest={query.data.interacciones[0]?.ultima_interaccion_id ?? null}
+              onSaved={() => { setWriting(false); setSaved(true); }} />}
+          </>
+        )}
         {expanded && query.isPending && <p role="status">Cargando interacciones…</p>}
         {query.isError && <p role="alert">{query.error.message} <button className="underline" onClick={() => void query.refetch()}>Reintentar</button></p>}
         {query.data && (
@@ -76,7 +156,7 @@ export default function LeadActivity({ data, requestId }: { data: OpportunityDet
               <nav className="flex gap-3" aria-label="Páginas de actividad">
                 <button className="underline disabled:opacity-50" disabled={page === 1} onClick={() => setPage(page - 1)}>Anterior</button>
                 <span>Página {page}</span>
-                <button className="underline disabled:opacity-50" disabled={!query.data.hay_siguiente} onClick={() => setPage(page + 1)}>Siguiente</button>
+                <button className="underline disabled:opacity-50" disabled={writing || !query.data.hay_siguiente} onClick={() => setPage(page + 1)}>Siguiente</button>
               </nav>
             )}
           </>

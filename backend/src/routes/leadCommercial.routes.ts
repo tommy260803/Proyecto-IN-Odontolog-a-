@@ -205,7 +205,7 @@ router.get('/opportunities', route(async (req, res) => {
 }));
 
 router.get('/opportunity-filters', route(async (_req, res) => {
-  const [servicios, negociadores] = await Promise.all([
+  const [servicios, negociadores, canales] = await Promise.all([
     prisma.servicios.findMany({ select: { id_servicio: true, nombre: true }, orderBy: { nombre: 'asc' } }),
     prisma.$queryRaw`
       SELECT u.id_usuario, CONCAT(u.nombres, ' ', u.apellidos) AS nombre
@@ -213,8 +213,9 @@ router.get('/opportunity-filters', route(async (_req, res) => {
       WHERE EXISTS (SELECT 1 FROM dbo.Solicitudes s WHERE s.id_negociador = u.id_usuario)
       ORDER BY nombre, u.id_usuario
     `,
+    prisma.canales.findMany({ where: { activo: true }, select: { id_canal: true, nombre: true }, orderBy: { nombre: 'asc' } }),
   ]);
-  res.json({ servicios, negociadores });
+  res.json({ servicios, negociadores, canales });
 }));
 
 router.post('/opportunities', route(async (req, res) => {
@@ -353,6 +354,7 @@ router.get('/opportunities/:id/activity', route(async (req, res) => {
     const row = await opportunity(tx, req.params.id, false);
     return tx.$queryRaw<Record<string, unknown>[]>(Prisma.sql`
       SELECT i.id_interaccion, i.tipo, i.mensaje, i.es_respuesta_util,
+        MAX(i.id_interaccion) OVER () AS ultima_interaccion_id,
         CONVERT(char(10), i.fecha_hora, 23) AS dia_registrado,
         CONVERT(char(8), i.fecha_hora, 108) AS hora_registrada,
         c.nombre AS canal,
@@ -676,6 +678,49 @@ router.patch('/opportunities/:id/alternatives/:option', route(async (req, res) =
     return updated;
   }, serializable);
   res.json(result);
+}));
+
+router.post('/opportunities/:id/staff/interactions', route(async (req, res) => {
+  if (!leadStaffAuthEnabled()) return res.sendStatus(404);
+  res.set('Cache-Control', 'no-store');
+  const body = req.body;
+  const type = body?.tipo;
+  if (!['Nota de contacto', 'Respuesta del paciente'].includes(type)) throw new InputError('Selecciona un tipo de interacción.');
+  const channel = id(body.id_canal);
+  const message = requiredText(body.mensaje, 4000);
+  const expected = body.ultima_interaccion_esperada === null ? null : id(body.ultima_interaccion_esperada);
+  const useful = body.es_respuesta_util === true;
+  if (useful && type !== 'Respuesta del paciente') throw new InputError('Solo una respuesta del paciente puede marcarse como útil.');
+  const result = await prisma.$transaction(async tx => {
+    const { row, user } = await staffOpportunity(tx, req);
+    if (row.archivada_lead_en || ['ACEPTADA', 'CERRADA_SIN_ACUERDO'].includes(row.resultado_comercial_lead ?? '')) {
+      throw new InputError('La oportunidad ya está cerrada o archivada.', 409);
+    }
+    const scope = { id_solicitud: row.id_solicitud, id_persona: row.id_persona };
+    const [latest, previous] = await tx.interacciones.findMany({
+      where: scope, orderBy: { id_interaccion: 'desc' }, take: 2,
+    });
+    if ((latest?.id_interaccion ?? null) !== expected) {
+      if (latest && (previous?.id_interaccion ?? null) === expected && latest.id_usuario === user.id_usuario &&
+          latest.id_canal === channel && latest.tipo === type && latest.mensaje === message && latest.es_respuesta_util === useful) {
+        return { interaccion: latest, reutilizada: true };
+      }
+      throw new InputError('La bitácora cambió. Revisa la última interacción antes de guardar.', 409);
+    }
+    if (!await tx.canales.findFirst({ where: { id_canal: channel, activo: true }, select: { id_canal: true } })) {
+      throw new InputError('Selecciona un canal activo.');
+    }
+    const interaccion = await tx.interacciones.create({ data: {
+      ...scope, id_usuario: user.id_usuario, id_canal: channel, tipo: type, mensaje: message, es_respuesta_util: useful,
+    } });
+    if (useful && !row.fecha_primera_respuesta) {
+      await tx.solicitudes.update({
+        where: { id_solicitud: row.id_solicitud }, data: { fecha_primera_respuesta: interaccion.fecha_hora },
+      });
+    }
+    return { interaccion, reutilizada: false };
+  }, serializable);
+  res.status(result.reutilizada ? 200 : 201).json(result);
 }));
 
 router.post('/opportunities/:id/interactions', route(async (req, res) => {
