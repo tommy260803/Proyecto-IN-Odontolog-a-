@@ -6,6 +6,7 @@ import LeadActivity from '../components/LeadActivity';
 import LeadPayerReadiness from '../components/LeadPayerReadiness';
 import LeadStaffAccess from '../components/LeadStaffAccess';
 import LeadProposals from '../components/LeadProposals';
+import LeadOutcome from '../components/LeadOutcome';
 import { commercialStatus, formatFollowUp, leadCommercialService, validLeadId } from '../services/leadCommercial.service';
 
 export default function LeadOpportunityPage() {
@@ -19,6 +20,9 @@ export default function LeadOpportunityPage() {
     retry: false,
   });
   const data = query.data;
+  const open = data && !data.oportunidad.archivada_lead_en &&
+    !['ACEPTADA', 'CERRADA_SIN_ACUERDO'].includes(data.oportunidad.resultado_comercial_lead ?? '');
+  const editAccess = open && access?.requestId === idSolicitud ? access : undefined;
 
   return (
     <main className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
@@ -50,9 +54,8 @@ export default function LeadOpportunityPage() {
           </section>
           <LeadAlternatives key={`alternatives-${idSolicitud}`} data={data} requestId={idSolicitud}
             token={access?.requestId === idSolicitud ? access.token : null} />
-          <LeadProposals key={`proposals-${idSolicitud}`} data={data}
-            access={access?.requestId === idSolicitud && !data.oportunidad.archivada_lead_en &&
-              !['ACEPTADA', 'CERRADA_SIN_ACUERDO'].includes(data.oportunidad.resultado_comercial_lead ?? '') ? access : undefined} />
+          <LeadProposals key={`proposals-${idSolicitud}`} data={data} access={editAccess} />
+          <LeadOutcome key={`outcome-${idSolicitud}`} data={data} access={editAccess} />
           <LeadActivity key={`activity-${idSolicitud}`} data={data} requestId={idSolicitud} />
           <LeadPayerReadiness key={`payer-${idSolicitud}`} requestId={idSolicitud} />
           {import.meta.env.VITE_LEAD_STAFF_AUTH_QA === 'true' &&

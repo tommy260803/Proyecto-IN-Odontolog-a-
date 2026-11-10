@@ -892,6 +892,50 @@ router.post('/opportunities/:id/proposals/:proposal/decision', route(async (req,
   res.json(result);
 }));
 
+router.post('/opportunities/:id/staff/outcome', route(async (req, res) => {
+  if (!leadStaffAuthEnabled()) return res.sendStatus(404);
+  res.set('Cache-Control', 'no-store');
+  const body = req.body;
+  const outcome = body?.resultado;
+  if (body?.confirmado !== true || !['ACEPTADA', 'CERRADA_SIN_ACUERDO'].includes(outcome)) {
+    throw new InputError('Confirma el resultado comercial antes de guardarlo.');
+  }
+  const proposalId = outcome === 'ACEPTADA' ? id(body.id_propuesta) : null;
+  const reason = outcome === 'CERRADA_SIN_ACUERDO' ? requiredText(body.motivo, 400) : null;
+  const result = await prisma.$transaction(async tx => {
+    const { row } = await staffOpportunity(tx, req);
+    if (row.archivada_lead_en) throw new InputError('La oportunidad está archivada.', 409);
+    if (['ACEPTADA', 'CERRADA_SIN_ACUERDO'].includes(row.resultado_comercial_lead ?? '')) {
+      if (row.resultado_comercial_lead === outcome && row.fecha_decision_comercial_lead &&
+          row.id_propuesta_aceptada_lead === proposalId && row.motivo_cierre_lead === reason) {
+        return { oportunidad: row, reutilizada: true };
+      }
+      throw new InputError('La solicitud ya tiene un resultado comercial registrado.', 409);
+    }
+    const now = new Date();
+    let data: Prisma.SolicitudesUncheckedUpdateInput;
+    if (proposalId != null) {
+      const { proposal } = await currentProposal(tx, proposalId, row.id_solicitud);
+      if (proposal.estado !== 'Aceptada' || !proposal.fecha_decision || proposal.id_servicio !== row.id_servicio) {
+        throw new InputError('Selecciona una versión vigente aceptada del tratamiento de esta solicitud.', 409);
+      }
+      data = { resultado_comercial_lead: 'ACEPTADA', fecha_decision_comercial_lead: now,
+        id_propuesta_aceptada_lead: proposal.id_propuesta, valor_acordado_lead: proposal.precio_cotizado, motivo_cierre_lead: null };
+    } else {
+      const reservation = await tx.reservas.findFirst({
+        where: { OR: [{ id_solicitud: row.id_solicitud }, { Opcion: { id_solicitud: row.id_solicitud } }] },
+        select: { id_reserva: true },
+      });
+      if (reservation) throw new InputError('Hay una reserva vinculada. Revisa ese flujo antes de cerrar la solicitud.', 409);
+      data = { resultado_comercial_lead: 'CERRADA_SIN_ACUERDO', fecha_decision_comercial_lead: now,
+        motivo_cierre_lead: reason, estado: 'Abandonada', fecha_cierre: now };
+    }
+    const oportunidad = await tx.solicitudes.update({ where: { id_solicitud: row.id_solicitud }, data });
+    return { oportunidad, reutilizada: false };
+  }, serializable);
+  res.json(result);
+}));
+
 router.post('/opportunities/:id/outcome', route(async (req, res) => {
   const result = await prisma.$transaction(async tx => {
     const row = await opportunity(tx, req.params.id, true);
