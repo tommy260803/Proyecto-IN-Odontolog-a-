@@ -14,6 +14,8 @@ En el detalle, «Alternativas» distingue las preferencias del paciente, las ofe
 
 En QA, el personal autorizado puede registrar cotizaciones ya presentadas y añadir versiones a una propuesta vigente. Se registra el precio declarado y se conserva el nombre de la promoción al presentar la versión. Los cambios no reescriben cotizaciones anteriores. Un reintento con las mismas condiciones y la misma lista de versiones puede recuperar el registro ya creado.
 
+La aceptación o el rechazo de una cotización se registra sobre su versión vigente, tras confirmar que el paciente comunicó la decisión. Un rechazo requiere un motivo activo de ámbito `PROPUESTA`. Una decisión guardada se conserva al repetirla y bloquea una decisión distinta sobre la misma versión. La aceptación de la cotización es un paso separado del acuerdo comercial de la solicitud.
+
 «Actividad y seguimiento» carga la bitácora por solicitud al abrir la sección. Muestra canal, autor y la clasificación registrada cuando existen. Una entrada en la bitácora no acredita entrega de un mensaje. Los hitos comerciales se muestran por fecha registrada, separados de la hora de Lima del próximo seguimiento. La consulta conserva el historial de solicitudes cerradas o archivadas.
 
 «Preparación para PAYER» consulta la etapa, el acuerdo, la versión vigente, la alternativa seleccionada, la disponibilidad y posibles reservas o eventos previos. La autorización previa de reserva queda pendiente de verificación: el consentimiento de contacto y la confirmación de una reserva ya creada no la sustituyen. El diagnóstico es de solo lectura. Habilitar el traspaso requiere una fuente aprobada de evidencia previa, permisos del personal y un contrato transaccional coordinado con PAYER.

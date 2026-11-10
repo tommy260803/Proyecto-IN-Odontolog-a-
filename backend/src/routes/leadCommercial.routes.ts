@@ -851,6 +851,33 @@ async function decision(tx: Prisma.TransactionClient, body: Request['body'], sco
   return { state: body.estado as string, reason, date: new Date() };
 }
 
+router.post('/opportunities/:id/staff/proposals/:proposal/decision', route(async (req, res) => {
+  if (!leadStaffAuthEnabled()) return res.sendStatus(404);
+  res.set('Cache-Control', 'no-store');
+  const result = await prisma.$transaction(async tx => {
+    const { row } = await staffOpportunity(tx, req);
+    if (row.archivada_lead_en || ['ACEPTADA', 'CERRADA_SIN_ACUERDO'].includes(row.resultado_comercial_lead ?? '')) {
+      throw new InputError('La oportunidad ya está cerrada o archivada.', 409);
+    }
+    if (req.body?.decision_explicita !== true) throw new InputError('Confirma la decisión comunicada por el paciente.');
+    const { proposal } = await currentProposal(tx, id(req.params.proposal), row.id_solicitud);
+    const reason = optionalId(req.body.id_motivo_rechazo_lead);
+    if (proposal.estado !== 'Pendiente') {
+      if (proposal.fecha_decision && proposal.estado === req.body.estado && proposal.id_motivo_rechazo_lead === reason) {
+        return { propuesta: proposal, reutilizada: true };
+      }
+      throw new InputError('La versión ya tiene una decisión registrada.', 409);
+    }
+    const outcome = await decision(tx, req.body, 'PROPUESTA');
+    const updated = await tx.propuestasEconomicasLead.update({
+      where: { id_propuesta: proposal.id_propuesta },
+      data: { estado: outcome.state, fecha_decision: outcome.date, id_motivo_rechazo_lead: outcome.reason },
+    });
+    return { propuesta: updated, reutilizada: false };
+  }, serializable);
+  res.json(result);
+}));
+
 router.post('/opportunities/:id/proposals/:proposal/decision', route(async (req, res) => {
   const result = await prisma.$transaction(async tx => {
     const row = await opportunity(tx, req.params.id, true);

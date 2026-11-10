@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import type { OpportunityDetail } from '../services/leadCommercial.service';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { leadCommercialService, type OpportunityDetail } from '../services/leadCommercial.service';
 
 const root = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api') + '/lead/commercial';
 type Proposal = OpportunityDetail['propuestas'][number];
@@ -81,11 +81,70 @@ function ProposalForm({ data, previous, requestId, token, finish }: {
   );
 }
 
+function ProposalDecision({ proposal, requestId, token, finish }: {
+  proposal: Proposal; requestId: string; token: string; finish: (saved: boolean) => void;
+}) {
+  const [state, setState] = useState('Aceptada');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const client = useQueryClient();
+  const reasons = useQuery({
+    queryKey: ['lead', 'proposal-reasons'],
+    queryFn: ({ signal }) => leadCommercialService.reasons(signal),
+    enabled: state === 'Rechazada',
+  });
+  const options = reasons.data?.motivos.filter(reason => reason.ambito === 'PROPUESTA') ?? [];
+  return (
+    <form className="my-3 space-y-2 rounded border p-3" onSubmit={async event => {
+      event.preventDefault();
+      const fields = new FormData(event.currentTarget);
+      setBusy(true); setError('');
+      try {
+        const response = await fetch(root + `/opportunities/${requestId}/staff/proposals/${proposal.id_propuesta}/decision`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ estado: state, decision_explicita: fields.has('confirmada'),
+            id_motivo_rechazo_lead: state === 'Rechazada' ? fields.get('motivo') : null }),
+        });
+        const body = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(typeof body?.error === 'string' ? body.error : 'No se pudo registrar la decisión.');
+        await client.invalidateQueries({ queryKey: ['lead', 'opportunity', requestId] });
+        finish(true);
+      } catch (failure) {
+        setError(failure instanceof Error ? failure.message : 'No se pudo registrar la decisión.');
+      } finally { setBusy(false); }
+    }}>
+      <p className="font-semibold">Decisión para la versión {proposal.numero_version}</p>
+      <label className="grid max-w-xs gap-1">Decisión del paciente
+        <select className="rounded border p-2" value={state} onChange={event => setState(event.target.value)}>
+          <option value="Aceptada">Aceptó la cotización</option><option value="Rechazada">Rechazó la cotización</option>
+        </select>
+      </label>
+      {state === 'Rechazada' && (
+        <label className="grid max-w-xs gap-1">Motivo de rechazo
+          <select className="rounded border p-2" name="motivo" required>
+            <option value="">{reasons.isFetching ? 'Cargando motivos…' : options.length ? 'Selecciona un motivo' : 'Sin motivos activos'}</option>
+            {options.map(reason => <option key={reason.id_motivo_rechazo} value={reason.id_motivo_rechazo}>{reason.motivo}</option>)}
+          </select>
+        </label>
+      )}
+      {state === 'Rechazada' && reasons.isError && <button type="button" className="underline" onClick={() => void reasons.refetch()}>Reintentar carga de motivos</button>}
+      <label className="flex gap-2"><input name="confirmada" type="checkbox" required /> Confirmo que el paciente comunicó esta decisión.</label>
+      <div className="flex flex-wrap gap-3">
+        <button className="rounded border px-3 py-2" type="submit" disabled={busy || (state === 'Rechazada' && !options.length)}>Guardar decisión</button>
+        <button className="underline" type="button" disabled={busy} onClick={() => finish(false)}>Cerrar formulario</button>
+      </div>
+      {error && <p role="alert">{error}</p>}
+    </form>
+  );
+}
+
 export default function LeadProposals({ data, access }: {
   data: ProposalsData; access?: { requestId: string; token: string };
 }) {
   const [draft, setDraft] = useState<{ previous: Proposal | null } | null>(null);
   const [saved, setSaved] = useState(false);
+  const [decisionFor, setDecisionFor] = useState<number | null>(null);
+  const [decisionSaved, setDecisionSaved] = useState(false);
   const start = (previous: Proposal | null) => { setSaved(false); setDraft({ previous }); };
   const roots = new Map<number, Proposal[]>();
   for (const proposal of data.propuestas) {
@@ -114,6 +173,7 @@ export default function LeadProposals({ data, access }: {
             finish={confirmed => { setDraft(null); setSaved(confirmed); }} />
         )}
         {saved && <p role="status">Cotización registrada.</p>}
+        {decisionSaved && <p role="status">Decisión registrada.</p>}
         {roots.size === 0 && <p>No hay propuestas registradas.</p>}
         <ul className="divide-y">
           {[...roots].map(([root, versions]) => {
@@ -124,6 +184,15 @@ export default function LeadProposals({ data, access }: {
                 <ProposalVersion proposal={current} agreed={current.id_propuesta === agreedId} />
                 {access && current.estado !== 'Aceptada' && (
                   <button type="button" className="underline" onClick={() => start(current)}>Crear nueva versión</button>
+                )}
+                {access && current.estado === 'Pendiente' && decisionFor !== current.id_propuesta && (
+                  <button type="button" className="ml-3 underline" onClick={() => { setDecisionSaved(false); setDecisionFor(current.id_propuesta); }}>
+                    Registrar decisión
+                  </button>
+                )}
+                {access && decisionFor === current.id_propuesta && (
+                  <ProposalDecision key={current.id_propuesta} proposal={current} {...access}
+                    finish={confirmed => { setDecisionFor(null); setDecisionSaved(confirmed); }} />
                 )}
                 {history.length > 0 && (
                   <details>
