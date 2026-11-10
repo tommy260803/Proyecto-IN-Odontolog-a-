@@ -12,6 +12,8 @@ En el detalle, «Alternativas» distingue las preferencias del paciente, las ofe
 
 «Propuestas económicas» agrupa las versiones por propuesta raíz. Presenta la versión vigente y sus antecedentes con precio cotizado, promoción registrada y decisión. La tarifa de referencia se toma del servicio activo y su período de vigencia. Las promociones de catálogo son activas y compatibles con ese servicio. La pantalla separa esas referencias del importe cotizado y del acuerdo registrado.
 
+En QA, el personal autorizado puede registrar cotizaciones ya presentadas y añadir versiones a una propuesta vigente. Se registra el precio declarado y se conserva el nombre de la promoción al presentar la versión. Los cambios no reescriben cotizaciones anteriores. Un reintento con las mismas condiciones y la misma lista de versiones puede recuperar el registro ya creado.
+
 «Actividad y seguimiento» carga la bitácora por solicitud al abrir la sección. Muestra canal, autor y la clasificación registrada cuando existen. Una entrada en la bitácora no acredita entrega de un mensaje. Los hitos comerciales se muestran por fecha registrada, separados de la hora de Lima del próximo seguimiento. La consulta conserva el historial de solicitudes cerradas o archivadas.
 
 «Preparación para PAYER» consulta la etapa, el acuerdo, la versión vigente, la alternativa seleccionada, la disponibilidad y posibles reservas o eventos previos. La autorización previa de reserva queda pendiente de verificación: el consentimiento de contacto y la confirmación de una reserva ya creada no la sustituyen. El diagnóstico es de solo lectura. Habilitar el traspaso requiere una fuente aprobada de evidencia previa, permisos del personal y un contrato transaccional coordinado con PAYER.

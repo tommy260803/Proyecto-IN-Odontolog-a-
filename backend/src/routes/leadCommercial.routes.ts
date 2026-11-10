@@ -761,6 +761,64 @@ async function currentProposal(tx: Prisma.TransactionClient, proposalId: number,
   return { proposal, root };
 }
 
+router.post('/opportunities/:id/staff/proposals', route(async (req, res) => {
+  if (!leadStaffAuthEnabled()) return res.sendStatus(404);
+  res.set('Cache-Control', 'no-store');
+  const body = req.body;
+  if (body?.presentada !== true) throw new InputError('Confirma que la cotización fue presentada al paciente.');
+  const quotedPrice = price(body.precio_cotizado);
+  const previousId = optionalId(body.id_version_anterior);
+  const promotionId = optionalId(body.id_promocion_lead);
+  if (!Array.isArray(body.versiones_esperadas) || body.versiones_esperadas.length > 5000) {
+    throw new InputError('Actualiza el detalle antes de registrar la cotización.');
+  }
+  const expected = new Set<number>(body.versiones_esperadas.map(id));
+  if (expected.size !== body.versiones_esperadas.length || (previousId != null && !expected.has(previousId))) {
+    throw new InputError('La referencia de versiones no corresponde a la cotización consultada.');
+  }
+  const result = await prisma.$transaction(async tx => {
+    const { row } = await staffOpportunity(tx, req);
+    if (row.archivada_lead_en || ['ACEPTADA', 'CERRADA_SIN_ACUERDO'].includes(row.resultado_comercial_lead ?? '')) {
+      throw new InputError('La oportunidad ya está cerrada o archivada.', 409);
+    }
+    if (row.id_servicio == null || !await tx.servicios.findFirst({
+      where: { id_servicio: row.id_servicio, activo: true }, select: { id_servicio: true },
+    })) throw new InputError('La oportunidad debe tener un tratamiento activo.');
+    const versions = await tx.propuestasEconomicasLead.findMany({ where: { id_solicitud: row.id_solicitud } });
+    const previous = previousId == null ? null : versions.find(version => version.id_propuesta === previousId);
+    if (previousId != null && !previous) throw new InputError('La propuesta no corresponde a la oportunidad.', 404);
+    const root = previous ? previous.id_propuesta_raiz ?? previous.id_propuesta : null;
+    const number = (previous?.numero_version ?? 0) + 1;
+    const extra = versions.filter(version => !expected.has(version.id_propuesta));
+    const missing = versions.length - extra.length !== expected.size;
+    if (missing || extra.length) {
+      const replay = extra.length === 1 ? extra[0] : null;
+      if (!missing && replay && replay.estado === 'Pendiente' && replay.id_servicio === row.id_servicio &&
+          replay.id_propuesta_raiz === root && replay.numero_version === number &&
+          replay.id_promocion_lead === promotionId && replay.id_sede_lead === (previous?.id_sede_lead ?? null) &&
+          replay.precio_cotizado.equals(quotedPrice)) return { propuesta: replay, reutilizada: true };
+      throw new InputError('Cambiaron las versiones de la solicitud. Actualiza el detalle antes de confirmar.', 409);
+    }
+    if (previous) {
+      const { proposal } = await currentProposal(tx, previous.id_propuesta, row.id_solicitud);
+      if (proposal.estado === 'Aceptada') throw new InputError('La versión vigente ya está aceptada.', 409);
+    }
+    const promotion = promotionId == null ? null : await tx.promocionesLead.findFirst({
+      where: { id_promocion: promotionId, activo: true, OR: [{ id_servicio: null }, { id_servicio: row.id_servicio }] },
+      select: { nombre: true },
+    });
+    if (promotionId != null && !promotion) throw new InputError('Promoción inactiva o incompatible con el tratamiento.');
+    const propuesta = await tx.propuestasEconomicasLead.create({ data: {
+      id_solicitud: row.id_solicitud, id_servicio: row.id_servicio,
+      id_propuesta_raiz: root, numero_version: number, precio_cotizado: quotedPrice,
+      id_promocion_lead: promotionId, promocion_aplicada: promotion?.nombre ?? null,
+      id_sede_lead: previous?.id_sede_lead ?? null,
+    } });
+    return { propuesta, reutilizada: false };
+  }, serializable);
+  res.status(result.reutilizada ? 200 : 201).json(result);
+}));
+
 router.post('/opportunities/:id/proposals', route(async (req, res) => {
   const body = req.body;
   const result = await prisma.$transaction(async tx => {

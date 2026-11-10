@@ -50,7 +50,9 @@ export default function LeadOpportunityPage() {
           </section>
           <LeadAlternatives key={`alternatives-${idSolicitud}`} data={data} requestId={idSolicitud}
             token={access?.requestId === idSolicitud ? access.token : null} />
-          <LeadProposals data={data} />
+          <LeadProposals key={`proposals-${idSolicitud}`} data={data}
+            access={access?.requestId === idSolicitud && !data.oportunidad.archivada_lead_en &&
+              !['ACEPTADA', 'CERRADA_SIN_ACUERDO'].includes(data.oportunidad.resultado_comercial_lead ?? '') ? access : undefined} />
           <LeadActivity key={`activity-${idSolicitud}`} data={data} requestId={idSolicitud} />
           <LeadPayerReadiness key={`payer-${idSolicitud}`} requestId={idSolicitud} />
           {import.meta.env.VITE_LEAD_STAFF_AUTH_QA === 'true' &&
