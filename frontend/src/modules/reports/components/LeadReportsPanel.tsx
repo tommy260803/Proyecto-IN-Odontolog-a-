@@ -6,7 +6,7 @@ type Report = 'R1' | 'R2' | 'R3';
 type Row = Record<string, string | number | boolean | null | undefined>;
 type Catalogs = Record<string, Row[] | string | null>;
 type Filters = Record<string, string>;
-type ReportData = { rows: Row[]; summary?: Row };
+type ReportData = { queryKey: string; rows: Row[]; summary?: Row; cutoff: string | null; start: string; endExclusive: string };
 const titles = {
   R1: 'Resultados de Negociaciones Comerciales',
   R2: 'Precios, Promociones y Motivos de Rechazo',
@@ -14,6 +14,9 @@ const titles = {
 };
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const decimal = new Intl.NumberFormat('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const cutoffLima = new Intl.DateTimeFormat('es-PE', {
+  timeZone: 'America/Lima', dateStyle: 'short', timeStyle: 'medium',
+});
 
 export function leadPercent(value: Row[string]) {
   return value == null ? 'No calculable' : decimal.format(Number(value)) + ' %';
@@ -60,11 +63,14 @@ function schedule(day: Row[string], shift: Row[string], start: Row[string], end:
     {date && dayLabel && <span className="block text-xs text-slate-500">{dateLabel(date)}</span>}</>;
 }
 
-function ReportTable({ columns, children, footer }: { columns: string[]; children: ReactNode; footer?: ReactNode }) {
-  return <div className="overflow-auto">
+function ReportTable({ label, columns, children, footer }: {
+  label: string; columns: string[]; children: ReactNode; footer?: ReactNode;
+}) {
+  return <div className="max-w-full overflow-x-auto rounded-md border focus-visible:outline focus-visible:outline-2"
+    tabIndex={0} role="region" aria-label={label}>
     <table className="w-full text-left text-sm">
       <thead className="border-b bg-slate-50 dark:bg-slate-900"><tr>
-        {columns.map(column => <th key={column} scope="col" className="px-3 py-2">{column}</th>)}
+        {columns.map(column => <th key={column} scope="col" className="whitespace-nowrap px-3 py-2">{column}</th>)}
       </tr></thead>
       <tbody className="divide-y">{children}</tbody>
       {footer && <tfoot className="border-t font-semibold">{footer}</tfoot>}
@@ -73,7 +79,18 @@ function ReportTable({ columns, children, footer }: { columns: string[]; childre
 }
 
 const cell = 'px-3 py-2';
-const control = 'rounded-md border bg-transparent px-2 py-1.5 text-sm';
+const control = 'min-w-0 max-w-full rounded-md border bg-transparent px-2 py-1.5 text-sm';
+
+function ReportTotals({ label, values }: { label: string; values: [string, ReactNode][] }) {
+  return <section aria-label={label} className="space-y-2">
+    <h3 className="font-semibold">{label}</h3>
+    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      {values.map(([key, value]) => <div key={key} className="min-w-0 rounded-md border p-2">
+        <dt className="break-words text-sm">{key}</dt><dd className="font-semibold tabular-nums">{value ?? '—'}</dd>
+      </div>)}
+    </dl>
+  </section>;
+}
 
 function reportGroups(report: 'R2' | 'R3', rows: Row[], sedeName: (id: Row[string]) => string) {
   const grouped = new Map<string, { labels: string[]; total: number }>();
@@ -81,7 +98,9 @@ function reportGroups(report: 'R2' | 'R3', rows: Row[], sedeName: (id: Row[strin
     const labels = report === 'R2'
       ? [String(row.Tratamiento ?? 'Sin tratamiento'), row.ConPromocion ? 'Con promoción' : 'Sin promoción', String(row.Resultado ?? 'Sin evidencia')]
       : [sedeName(row.id_sede),
-         [days[Number(row.DiaOfrecido) - 1], row.ofr_turno_lead, timeLabel(row.HoraInicioOfrecida) + '–' + timeLabel(row.HoraFinOfrecida)].filter(Boolean).join(' · '),
+         [days[Number(row.DiaOfrecido) - 1], row.ofr_turno_lead,
+           [timeLabel(row.HoraInicioOfrecida), timeLabel(row.HoraFinOfrecida)].filter(Boolean).join('–'),
+         ].filter(Boolean).join(' · ') || 'Sin especificar',
          String(row.Resultado ?? 'Sin evidencia')];
     const key = JSON.stringify(labels);
     const group = grouped.get(key) ?? { labels, total: 0 };
@@ -91,11 +110,11 @@ function reportGroups(report: 'R2' | 'R3', rows: Row[], sedeName: (id: Row[strin
   return Array.from(grouped.values()).sort((a, b) => a.labels.join(' ').localeCompare(b.labels.join(' '), 'es'));
 }
 
-async function readJson<T>(path: string, signal: AbortSignal): Promise<T> {
+async function readReportResponse<T>(path: string, signal: AbortSignal): Promise<{ body: T; headers: Headers }> {
   const response = await fetch(root + path, { signal });
   const body = await response.json();
   if (!response.ok) throw new Error(body.error || 'No fue posible cargar el reporte.');
-  return body;
+  return { body, headers: response.headers };
 }
 
 export function LeadReportsPanel() {
@@ -105,15 +124,19 @@ export function LeadReportsPanel() {
   const [filters, setFilters] = useState<Filters>(defaults);
   const [catalogs, setCatalogs] = useState<Catalogs>({});
   const [catalogError, setCatalogError] = useState('');
-  const [result, setResult] = useState<ReportData | null>(null);
+  const [loadedResult, setResult] = useState<ReportData | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
+  const queryKey = JSON.stringify([report, filters]);
+  const result = loadedResult?.queryKey === queryKey ? loadedResult : null;
 
   useEffect(() => {
     const controller = new AbortController();
     setCatalogError('');
-    readJson<Catalogs>('/report-catalogs', controller.signal).then(setCatalogs).catch(err => {
+    readReportResponse<Catalogs>('/report-catalogs', controller.signal).then(({ body }) => {
+      if (!controller.signal.aborted) setCatalogs(body);
+    }).catch(err => {
       if (!controller.signal.aborted) setCatalogError(err.message);
     });
     return () => controller.abort();
@@ -128,18 +151,25 @@ export function LeadReportsPanel() {
       setLoading(false);
       return () => controller.abort();
     }
-    readJson<Row[] | { detalle: Row[]; resumen: Row[] }>(
-      '/reports/' + report + '?' + leadReportQuery(report, filters), controller.signal,
-    ).then(data => {
+    const query = leadReportQuery(report, filters);
+    readReportResponse<Row[] | { detalle: Row[]; resumen: Row[] }>(
+      '/reports/' + report + '?' + query, controller.signal,
+    ).then(({ body, headers }) => {
       if (controller.signal.aborted) return;
-      setResult(Array.isArray(data) ? { rows: data } : { rows: data.detalle, summary: data.resumen[0] });
+      setResult({
+        queryKey,
+        ...(Array.isArray(body) ? { rows: body } : { rows: body.detalle, summary: body.resumen[0] }),
+        cutoff: headers.get('X-Lead-Cutoff-Utc') ?? query.get('corte_utc'),
+        start: query.get('inicio')!,
+        endExclusive: query.get('fin_exclusivo')!,
+      });
     }).catch(err => {
       if (!controller.signal.aborted) setError(err.message);
     }).finally(() => {
       if (!controller.signal.aborted) setLoading(false);
     });
     return () => controller.abort();
-  }, [filters, report, retry]);
+  }, [filters, report, queryKey, retry]);
 
   function field(key: string, value: string) {
     setFilters(current => ({ ...current, [key]: value }));
@@ -167,7 +197,7 @@ export function LeadReportsPanel() {
     const shifts = [...new Set(catalog('horarios').map(item => item[prefix + '_turno_lead']).filter(Boolean).map(String))].sort();
     return <fieldset className="rounded-md border p-2">
       <legend className="px-1 text-sm">{label}</legend>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         {select('Día ' + label.toLowerCase(), prefix + '_dia', days.map((name, index) => ({ id: String(index + 1), name })))}
         {select('Franja ' + label.toLowerCase(), prefix + '_turno', shifts.map(name => ({ id: name, name })))}
       </div>
@@ -181,14 +211,17 @@ export function LeadReportsPanel() {
   const professionals = Array.from(new Map(catalog('horarios').map(item => [
     String(item.id_profesional), { id: String(item.id_profesional), name: String(item.profesional) },
   ])).values());
-  const summaryLabel = filters.id_motivo ? 'Totales del indicador con los demás filtros, para conservar el denominador' : 'Totales';
   const names = new Map(catalog('sedes').map(item => [String(item.id_sede), String(item.nombre)]));
   const groups = report === 'R1' ? [] : reportGroups(report, rows, id => names.get(String(id)) ?? 'Sin sede');
+  const cutoff = result?.cutoff ? new Date(result.cutoff) : null;
+  const validCutoff = cutoff != null && Number.isFinite(cutoff.getTime());
+  const hasDetail = report === 'R1' ? rows.some(row => !row.EsTotal) : rows.length > 0;
 
-  return <section aria-label="Reportes LEAD" className="space-y-4 rounded-xl border p-4">
+  return <section aria-label="Reportes LEAD" className="min-w-0 space-y-4 rounded-xl border p-3 sm:p-4">
     <div aria-label="Reportes de la etapa LEAD" className="flex flex-wrap gap-2">
       {(Object.keys(titles) as Report[]).map(key => <button type="button" key={key}
-        className={control} aria-pressed={report === key} onClick={() => { setReport(key); setFilters(defaults); }}>
+        className={control + ' aria-pressed:border-sky-600 aria-pressed:font-semibold'} aria-pressed={report === key}
+        onClick={() => { setReport(key); setFilters(defaults); }}>
         {key}
       </button>)}
     </div>
@@ -211,7 +244,7 @@ export function LeadReportsPanel() {
           ...catalog('promociones').map(item => ({ id: String(item.id_promocion), name: String(item.nombre) })),
         ], 'Todas')}
         <fieldset className="rounded-md border p-2"><legend className="px-1 text-sm">Rango de precios (S/)</legend>
-          <div className="grid grid-cols-2 gap-2">{['min', 'max'].map((key, index) =>
+          <div className="grid gap-2 sm:grid-cols-2">{['min', 'max'].map((key, index) =>
             <label className="grid gap-1 text-sm" key={key}>{index === 0 ? 'Mínimo' : 'Máximo'}
               <input type="number" min="0" step="0.01" className={control} value={filters['precio_' + key] ?? ''}
                 onChange={e => field('precio_' + key, e.target.value)} />
@@ -238,10 +271,21 @@ export function LeadReportsPanel() {
     {(error || catalogError) && <p role="alert">{error || catalogError} <button type="button" className={control}
       onClick={() => setRetry(retry + 1)}>Reintentar</button></p>}
     {result && <>
-      {rows.length === 0 && <p>Sin registros para los filtros seleccionados.</p>}
+      <dl className="grid gap-2 rounded-md border p-3 text-sm sm:grid-cols-2" aria-label="Período y corte aplicados">
+        <div>
+          <dt className="font-semibold">Período consultado</dt>
+          <dd>Desde {dateLabel(result.start)} hasta antes del {dateLabel(result.endExclusive)}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold">Corte aplicado</dt>
+          <dd>{validCutoff ? <><time dateTime={result.cutoff!}>{cutoffLima.format(cutoff)} (Lima)</time>
+            <span className="block break-all text-xs">{result.cutoff} (UTC)</span></> : 'Sin corte informado por la API'}</dd>
+        </div>
+      </dl>
+      {!hasDetail && <p>Sin registros para los filtros seleccionados.</p>}
       {report === 'R1' && <>
         <p className="font-semibold">L1 · Tasa de aceptación de oportunidades comerciales: {leadPercent(r1Total?.AceptacionPorcentaje)}</p>
-        <ReportTable columns={['Tratamiento', ...(filters.desglosar_canal ? ['Canal de origen'] : []), 'Ingresadas',
+        <ReportTable label="Resultados de negociaciones comerciales" columns={['Tratamiento', ...(filters.desglosar_canal ? ['Canal de origen'] : []), 'Ingresadas',
           'Aceptadas', 'Cerradas sin acuerdo', 'Pendientes', 'Aceptación %', 'Valor acordado (S/)']}
           footer={r1Total && <R1Row row={r1Total} channel={filters.desglosar_canal === 'true' ? '—' : undefined} />}>
           {rows.filter(row => !row.EsTotal).map(row => <R1Row key={[row.Mes, row.Tratamiento, row.IdCanal].join('|')}
@@ -253,19 +297,28 @@ export function LeadReportsPanel() {
       </>}
       {report === 'R2' && <>
         <p className="font-semibold">L2 · Tasa de rechazo por motivos económicos: {leadPercent(summary?.L2Porcentaje)}</p>
-        <ReportTable columns={['Fecha / Propuesta', 'Tratamiento', 'Precio cotizado (S/)', 'Promoción aplicada', 'Resultado', 'Motivo de rechazo']}>
+        {summary && <ReportTotals label="Totales de propuestas" values={[
+          ['Presentadas', summary.Presentadas], ['Aceptadas', summary.Aceptadas], ['Rechazadas', summary.Rechazadas],
+          ['Pendientes', summary.Pendientes], ['Aceptación', leadPercent(summary.AceptacionPorcentaje)],
+        ]} />}
+        {filters.id_motivo && <p className="text-sm">El motivo filtra el detalle y su desglose. El indicador y los totales conservan la población definida por los demás filtros.</p>}
+        <ReportTable label="Detalle de propuestas por raíz" columns={['Fecha / Propuesta', 'Tratamiento', 'Precio cotizado (S/)', 'Promoción aplicada', 'Resultado', 'Motivo de rechazo']}>
           {rows.map(row => <tr key={String(row.id_propuesta_logica)}>
             <td className={cell}>PROP-{row.id_propuesta_logica}<br />{dateLabel(row.fecha_presentacion)}</td>
             <td className={cell}>{row.Tratamiento}</td><td className={cell}>{money(row.PrecioCotizado)}</td>
-            <td className={cell}>{row.PromocionAplicada}</td><td className={cell}>{row.Resultado ?? 'Sin evidencia'}</td>
+            <td className={cell}>{row.ConPromocion === false ? 'Sin promoción' : row.PromocionAplicada}</td><td className={cell}>{row.Resultado ?? 'Sin evidencia'}</td>
             <td className={cell}>{row.MotivoRechazo ?? '—'}</td>
           </tr>)}
         </ReportTable>
-        {summary && <p>{summaryLabel} · Presentadas {summary.Presentadas} · Aceptadas {summary.Aceptadas} · Rechazadas {summary.Rechazadas} · Pendientes {summary.Pendientes} · Aceptación {leadPercent(summary.AceptacionPorcentaje)}</p>}
       </>}
       {report === 'R3' && <>
         <p className="font-semibold">L3 · Tasa de rechazo por incompatibilidad: {leadPercent(summary?.L3Porcentaje)}</p>
-        <ReportTable columns={['Solicitud / Alternativa', 'Horario preferido', 'Horario ofrecido', 'Resultado', 'Motivo de rechazo', 'N.º cambios']}>
+        {summary && <ReportTotals label="Totales de alternativas" values={[
+          ['Presentadas', summary.Presentadas], ['Aceptadas', summary.Aceptadas], ['Rechazadas', summary.Rechazadas],
+          ['Pendientes', summary.Pendientes], ['Modificadas', summary.Modificadas],
+        ]} />}
+        {filters.id_motivo && <p className="text-sm">El motivo filtra el detalle y su desglose. El indicador y los totales conservan la población definida por los demás filtros.</p>}
+        <ReportTable label="Detalle de alternativas" columns={['Solicitud / Alternativa', 'Horario preferido', 'Horario ofrecido', 'Resultado', 'Motivo de rechazo', 'N.º cambios']}>
           {rows.map(row => <tr key={String(row.id_opcion)}>
             <td className={cell}>SOL-{row.id_solicitud} / ALT-{row.id_opcion}<br />{dateLabel(row.fecha_ofrecida)}</td>
             <td className={cell}>{schedule(row.pref_dia_semana_lead, row.pref_turno_lead, row.pref_hora_inicio_lead, row.pref_hora_fin_lead, row.pref_fecha_lead)}</td>
@@ -274,11 +327,10 @@ export function LeadReportsPanel() {
             <td className={cell}>{row.NumeroCambios ?? 0}</td>
           </tr>)}
         </ReportTable>
-        {summary && <p>{summaryLabel} · Presentadas {summary.Presentadas} · Aceptadas {summary.Aceptadas} · Rechazadas {summary.Rechazadas} · Pendientes {summary.Pendientes} · Modificadas {summary.Modificadas}</p>}
       </>}
       {groups.length > 0 && <details>
         <summary>{report === 'R2' ? 'Desglose por tratamiento, promoción y resultado' : 'Desglose por sede, horario ofrecido y resultado'}</summary>
-        <ReportTable columns={report === 'R2' ? ['Tratamiento', 'Condición comercial', 'Resultado', 'Propuestas'] : ['Sede', 'Horario ofrecido', 'Resultado', 'Alternativas']}>
+        <ReportTable label={report === 'R2' ? 'Desglose de propuestas' : 'Desglose de alternativas'} columns={report === 'R2' ? ['Tratamiento', 'Condición comercial', 'Resultado', 'Propuestas'] : ['Sede', 'Horario ofrecido', 'Resultado', 'Alternativas']}>
           {groups.map(group => <tr key={JSON.stringify(group.labels)}>{group.labels.map((value, i) =>
             <td key={i} className={cell}>{value}</td>)}<td className={cell}>{group.total}</td></tr>)}
         </ReportTable>
