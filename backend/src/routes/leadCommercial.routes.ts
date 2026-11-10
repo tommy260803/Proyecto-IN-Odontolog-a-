@@ -370,9 +370,7 @@ router.get('/opportunities/:id/activity', route(async (req, res) => {
   res.json({ interacciones: rows.slice(0, pageSize), hay_siguiente: rows.length > pageSize });
 }));
 
-router.get('/opportunities/:id/payer-readiness', route(async (req, res) => {
-  const result = await prisma.$transaction(async tx => {
-    const row = await opportunity(tx, req.params.id, false);
+async function payerReadiness(tx: Prisma.TransactionClient, row: Awaited<ReturnType<typeof opportunity>>) {
     const checks: { codigo: string; etiqueta: string; estado: 'cumple' | 'bloqueado' | 'pendiente'; detalle: string }[] = [];
     function check(codigo: string, etiqueta: string, ok: boolean, pass: string, fail: string) {
       checks.push({ codigo, etiqueta, estado: ok ? 'cumple' : 'bloqueado', detalle: ok ? pass : fail });
@@ -422,8 +420,13 @@ router.get('/opportunities/:id/payer-readiness', route(async (req, res) => {
       'La alternativa está vinculada a la versión aceptada y su importe coincide.',
       'No se comprobó el vínculo y la coincidencia de importe entre la alternativa y la versión aceptada.');
 
-    const [slot] = !validOption || row.id_servicio == null ? [] : await tx.$queryRaw<{ elegible: number }[]>`
-      SELECT 1 AS elegible
+    const [slot] = !validOption || row.id_servicio == null ? [] : await tx.$queryRaw<{
+      revision: string; dia: string; inicio: string; fin: string; sede: string; profesional: string;
+    }[]>`
+      SELECT CONVERT(varchar(20), h.id_historial) AS revision,
+        CONVERT(char(10), d.fecha, 23) AS dia, CONVERT(char(8), d.hora_inicio, 108) AS inicio,
+        CONVERT(char(8), d.hora_fin, 108) AS fin, s.nombre AS sede,
+        CONCAT(p.nombres, ' ', p.apellidos) AS profesional
       FROM dbo.Disponibilidad d
       JOIN dbo.Sedes s ON s.id_sede = d.id_sede AND s.activo = 1
       JOIN dbo.Profesionales p ON p.id_profesional = d.id_profesional AND p.activo = 1
@@ -450,9 +453,6 @@ router.get('/opportunities/:id/payer-readiness', route(async (req, res) => {
       'El horario ofrecido coincide con la agenda actual y sigue disponible y elegible.',
       'No se comprobó un horario futuro, elegible, libre y coincidente con la oferta auditada.');
 
-    checks.push({ codigo: 'autorizacion', etiqueta: 'Autorización previa de reserva', estado: 'pendiente',
-      detalle: 'El esquema actual no permite verificar una autorización previa vinculada a esta solicitud y alternativa.' });
-
     const reservations = await tx.reservas.findMany({
       where: { OR: [{ id_solicitud: row.id_solicitud }, { Opcion: { id_solicitud: row.id_solicitud } }] },
       select: { id_reserva: true, id_persona: true, id_solicitud: true, Opcion: { select: { id_solicitud: true } } },
@@ -469,7 +469,67 @@ router.get('/opportunities/:id/payer-readiness', route(async (req, res) => {
       inconsistent ? 'Hay una reserva con referencias inconsistentes. Requiere revisión.' :
         'Ya existe una reserva o un evento PAYER para esta solicitud. Requiere revisar ese flujo antes de reintentar.');
 
-    return { estado: checks.every(item => item.estado === 'cumple') ? 'preparado' : 'bloqueado', requisitos: checks };
+    const [storage] = leadStaffAuthEnabled() ? await tx.$queryRaw<{ habilitado: number }[]>`
+      SELECT 1 AS habilitado WHERE DB_NAME() = N'NexoSalud_LeadPruebas'
+        AND OBJECT_ID(N'dbo.AutorizacionesReservaLead', N'U') IS NOT NULL
+    ` : [];
+    const reference = storage && coherent && slot && option && proposal && checks.every(item => item.estado === 'cumple')
+      ? { ...slot, id_opcion: option.id_opcion, id_propuesta: proposal.id_propuesta, precio: proposal.precio_cotizado.toString() }
+      : null;
+    const [authorization] = reference ? await tx.$queryRaw<{ id_autorizacion: number; registrada_utc: Date }[]>`
+      SELECT id_autorizacion, registrada_utc FROM dbo.AutorizacionesReservaLead
+      WHERE id_solicitud = ${row.id_solicitud} AND id_opcion = ${reference.id_opcion}
+        AND id_propuesta = ${reference.id_propuesta} AND id_historial_opcion = ${BigInt(reference.revision)}
+    ` : [];
+    checks.push({ codigo: 'autorizacion', etiqueta: 'Autorización previa de reserva',
+      estado: authorization ? 'cumple' : 'pendiente', detalle: authorization
+        ? 'Hay una autorización expresa registrada para estas condiciones.'
+        : 'Falta una autorización expresa comprobable para las condiciones vigentes.' });
+    return { estado: authorization ? 'preparado' : 'bloqueado', requisitos: checks,
+      condiciones_autorizables: reference, autorizacion: authorization ?? null };
+}
+
+router.get('/opportunities/:id/payer-readiness', route(async (req, res) => {
+  const result = await prisma.$transaction(async tx =>
+    payerReadiness(tx, await opportunity(tx, req.params.id, false)), serializable);
+  res.json(result);
+}));
+
+router.post('/opportunities/:id/staff/reservation-authorization', route(async (req, res) => {
+  if (!leadStaffAuthEnabled()) return res.sendStatus(404);
+  res.set('Cache-Control', 'no-store');
+  const body = req.body;
+  if (body?.confirmada !== true) throw new InputError('Confirma que el paciente autorizó expresamente la reserva.');
+  const channel = id(body.id_canal);
+  const evidence = requiredText(body.referencia_evidencia, 300);
+  const result = await prisma.$transaction(async tx => {
+    const { row, user } = await staffOpportunity(tx, req);
+    const readiness = await payerReadiness(tx, row);
+    const reference = readiness.condiciones_autorizables;
+    if (!reference || body.revision !== reference.revision || id(body.id_opcion) !== reference.id_opcion ||
+        id(body.id_propuesta) !== reference.id_propuesta) {
+      throw new InputError('Las condiciones no están vigentes. Actualiza la preparación para PAYER.', 409);
+    }
+    if (readiness.autorizacion) {
+      const [sameEvidence] = await tx.$queryRaw<{ coincide: number }[]>`
+        SELECT 1 AS coincide FROM dbo.AutorizacionesReservaLead
+        WHERE id_autorizacion = ${readiness.autorizacion.id_autorizacion}
+          AND id_canal = ${channel} AND referencia_evidencia = ${evidence}
+      `;
+      if (sameEvidence) return readiness.autorizacion;
+      throw new InputError('Estas condiciones ya tienen una autorización registrada.', 409);
+    }
+    if (!await tx.canales.findFirst({ where: { id_canal: channel, activo: true }, select: { id_canal: true } })) {
+      throw new InputError('Selecciona un canal activo.');
+    }
+    const [saved] = await tx.$queryRaw<{ id_autorizacion: number; registrada_utc: Date }[]>`
+      INSERT dbo.AutorizacionesReservaLead
+        (id_solicitud,id_opcion,id_propuesta,id_historial_opcion,id_usuario,id_canal,referencia_evidencia)
+      OUTPUT inserted.id_autorizacion, inserted.registrada_utc
+      VALUES (${row.id_solicitud},${reference.id_opcion},${reference.id_propuesta},${BigInt(reference.revision)},
+        ${user.id_usuario},${channel},${evidence})
+    `;
+    return saved;
   }, serializable);
   res.json(result);
 }));

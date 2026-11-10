@@ -109,6 +109,11 @@ interface RecordedInteraction {
 
 interface PayerReadiness {
   estado: 'preparado' | 'bloqueado';
+  condiciones_autorizables: {
+    revision: string; id_opcion: number; id_propuesta: number; dia: string;
+    inicio: string; fin: string; sede: string; profesional: string; precio: string;
+  } | null;
+  autorizacion: { id_autorizacion: number; registrada_utc: string } | null;
   requisitos: {
     codigo: string;
     etiqueta: string;

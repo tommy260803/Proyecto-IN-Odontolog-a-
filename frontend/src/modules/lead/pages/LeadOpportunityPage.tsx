@@ -57,7 +57,8 @@ export default function LeadOpportunityPage() {
           <LeadProposals key={`proposals-${idSolicitud}`} data={data} access={editAccess} />
           <LeadOutcome key={`outcome-${idSolicitud}`} data={data} access={editAccess} />
           <LeadActivity key={`activity-${idSolicitud}`} data={data} requestId={idSolicitud} token={editAccess?.token} />
-          <LeadPayerReadiness key={`payer-${idSolicitud}`} requestId={idSolicitud} />
+          <LeadPayerReadiness key={`payer-${idSolicitud}`} requestId={idSolicitud}
+            token={access?.requestId === idSolicitud ? access.token : undefined} />
           {import.meta.env.VITE_LEAD_STAFF_AUTH_QA === 'true' &&
             <LeadStaffAccess key={`staff-${idSolicitud}`} requestId={idSolicitud}
               onToken={token => setAccess(token ? { requestId: idSolicitud, token } : null)}
