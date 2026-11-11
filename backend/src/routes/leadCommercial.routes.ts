@@ -1184,6 +1184,52 @@ router.get('/catalogs', route(async (_req, res) => {
   res.json({ promociones, motivos });
 }));
 
+router.post('/opportunities/:id/interactions/:interaction/analyze', route(async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const context = await prisma.$transaction(async tx => {
+    const row = await opportunity(tx, req.params.id, true);
+    const interaction = await tx.interacciones.findFirst({
+      where: { id_interaccion: id(req.params.interaction), id_solicitud: row.id_solicitud, id_persona: row.id_persona },
+    });
+    if (!interaction?.mensaje) throw new InputError('No se encontró una interacción con texto.', 404);
+    const now = new Date();
+    const tarifa = row.id_servicio == null ? null : await tx.tarifas.findFirst({
+      where: { id_servicio: row.id_servicio, activo: true, fecha_inicio: { lte: now },
+        OR: [{ fecha_fin: null }, { fecha_fin: { gte: now } }] },
+      orderBy: { fecha_inicio: 'desc' },
+    });
+    const promociones = row.id_servicio == null ? [] : await tx.promocionesLead.findMany({
+      where: { activo: true, OR: [{ id_servicio: null }, { id_servicio: row.id_servicio }] },
+      select: { nombre: true },
+    });
+    const proposal = await tx.propuestasEconomicasLead.findFirst({
+      where: { id_solicitud: row.id_solicitud, estado: 'Pendiente', fecha_vigencia_hasta_utc_lead: { gt: now } },
+      orderBy: [{ fecha_presentacion: 'desc' }, { id_propuesta: 'desc' }],
+    });
+    return { message: interaction.mensaje, tarifa, promociones, proposal };
+  });
+  if (geminiBusy) throw new InputError('Hay otro análisis en curso. Intenta de nuevo.', 429);
+  geminiBusy = true;
+  try {
+    const analysis = await classifyLeadChat([{ remitente: 'nota del asesor', texto: context.message }], {
+      key: process.env.GEMINI_API_KEY ?? '', model: process.env.LEAD_GEMINI_MODEL || 'gemini-3.5-flash-lite',
+    }, fetch, true);
+    const sugerencia = analysis.objecion_economica || analysis.intencion === 'PRECIO'
+      ? context.proposal
+        ? `La propuesta vigente es de S/ ${context.proposal.precio_cotizado.toFixed(2)}. ¿Qué parte de la propuesta te gustaría revisar?`
+        : context.tarifa
+        ? `La tarifa vigente de referencia es S/ ${context.tarifa.precio.toFixed(2)}. ¿Qué parte de la propuesta te gustaría revisar?`
+        : 'Confirma la tarifa vigente con el asesor antes de responder sobre el precio.'
+      : analysis.sugerencia;
+    res.json({ ...analysis, sugerencia, promociones: context.promociones.map(p => p.nombre) });
+  } catch (error) {
+    if (error instanceof LeadGeminiError) throw new InputError(error.message, error.status);
+    throw error;
+  } finally {
+    geminiBusy = false;
+  }
+}));
+
 router.get('/report-catalogs', route(async (_req, res) => {
   const [servicios, sedes, canales, fuentes, negociadores, promociones, motivos, audit, horarios] = await Promise.all([
     prisma.servicios.findMany({ select: { id_servicio: true, nombre: true }, orderBy: { nombre: 'asc' } }),

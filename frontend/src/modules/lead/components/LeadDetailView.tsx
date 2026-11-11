@@ -52,6 +52,7 @@ import { useToast } from '@/shared/hooks/use-toast';
 import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { ErrorState } from '@/shared/components/feedback/ErrorState';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
+import { LeadInteraction, type LeadInteractionAnalysis } from './LeadInteraction';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import {
   predictLeadNegotiationStrategy,
@@ -94,6 +95,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   });
   const [loading, setLoading] = useState(true);
   const [reserving, setReserving] = useState(false);
+  const [interactionAnalysis, setInteractionAnalysis] = useState<{ requestId: number; result: LeadInteractionAnalysis } | null>(null);
   const [abandonOpen, setAbandonOpen] = useState(false);
   const [abandonReason, setAbandonReason] = useState('');
   const [abandoning, setAbandoning] = useState(false);
@@ -552,6 +554,17 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     ['Abandonada', 'Perdida', 'Cancelada'].includes(ultimaSolicitud?.estado) ||
     ['Descartado', 'Rechazado'].includes(lead.estado_calidad);
   const isConverted = lead.Etapa?.nombre === 'PAYER' || ultimaSolicitud?.estado === 'Convertida';
+  const analysis = interactionAnalysis?.requestId === ultimaSolicitud?.id_solicitud ? interactionAnalysis?.result : null;
+  const suggestedSlots = analysis && (analysis.dia || analysis.turno)
+    ? eligibleOfferSlots.filter((slot: any) => {
+      const weekday = new Intl.DateTimeFormat('es-PE', { weekday: 'long', timeZone: 'UTC' })
+        .format(new Date(slot.fecha)).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const time = String(slot.hora_inicio).slice(11, 16);
+      const shift = time < '13:00' ? 'mañana' : time < '18:00' ? 'tarde' : 'noche';
+      return time >= '08:00' && time < '20:00' &&
+        (!analysis.dia || weekday === analysis.dia) && (!analysis.turno || shift === analysis.turno);
+    }).slice(0, 5)
+    : [];
   const canAbandon = Boolean(ultimaSolicitud?.id_solicitud) && lead.Etapa?.nombre === 'LEAD' &&
     !isAbandoned && !isConverted &&
     (!ultimaSolicitud.resultado_comercial_lead || ultimaSolicitud.resultado_comercial_lead === 'PENDIENTE');
@@ -1442,6 +1455,10 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
           {/* Bloque 2: Configuración de Oferta Comercial y Tablero de Propuestas */}
           <div className="divide-y divide-slate-200/80 dark:divide-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs overflow-hidden">
             {/* Sección 1: Configurar Nueva Propuesta Comercial */}
+            {canAbandon && (
+              <LeadInteraction key={ultimaSolicitud.id_solicitud} requestId={ultimaSolicitud.id_solicitud}
+                onAnalysis={(result) => setInteractionAnalysis(result ? { requestId: ultimaSolicitud.id_solicitud, result } : null)} />
+            )}
             <section className="p-6 space-y-5">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -1730,6 +1747,24 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
 
                 <div className="flex flex-col items-stretch justify-end gap-3 sm:flex-row sm:items-end">
                   <div className="text-xs">
+                    {analysis && (analysis.dia || analysis.turno) && (
+                      <div className="mb-3 space-y-1">
+                        <p className="font-semibold">Horarios sugeridos</p>
+                        {!suggestedSlots.length && <p>No hay coincidencias para la preferencia con este servicio y sede.</p>}
+                        {suggestedSlots.map((slot: any) => {
+                          const time = String(slot.hora_inicio).slice(11, 16);
+                          return <button type="button" key={slot.id_disponibilidad} className="block rounded border px-2 py-1"
+                            onClick={() => {
+                              setSelectedProfesionalId(String(slot.id_profesional));
+                              setSelectedFranja(time < '13:00' ? `Turno Mañana (${openTime} – 01:00 PM)` :
+                                time < '18:00' ? 'Turno Tarde (01:00 PM – 06:00 PM)' : `Turno Noche (06:00 PM – ${closeTime})`);
+                              setSelectedDisponibilidadId(String(slot.id_disponibilidad));
+                            }}>
+                            {String(slot.fecha).slice(0, 10)} · {time} · {slot.Sede?.nombre} · {slot.Profesional?.apellidos}
+                          </button>;
+                        })}
+                      </div>
+                    )}
                     <label htmlFor="lead-offered-availability" className="mb-1 block font-semibold">
                       Elige el horario que quieres ofrecer
                     </label>
@@ -2141,6 +2176,15 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                   </span>
                 </div>
 
+                {analysis && (
+                  <div className="space-y-1 rounded border border-teal-200 p-3 text-xs">
+                    <p className="font-semibold">Sugerencia para la interacción registrada</p>
+                    <p>{analysis.sugerencia}</p>
+                    {analysis.promociones.length > 0 && (
+                      <p>Promociones activas para revisar: {analysis.promociones.join(', ')}.</p>
+                    )}
+                  </div>
+                )}
                 {/* Selector de Objeciones (Pills Responsivas) */}
                 <div className="grid grid-cols-3 gap-1 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[11px] font-semibold">
                   <button
