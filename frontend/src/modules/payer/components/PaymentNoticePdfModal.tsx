@@ -200,9 +200,18 @@ export function PaymentNoticePdfModal({
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const contentType = res.headers && typeof res.headers.get === 'function' ? (res.headers.get('content-type') || '') : 'application/json';
+      let data: any = null;
+      if (contentType.includes('application/json') || typeof res.json === 'function') {
+        data = await res.json().catch(() => null);
+      }
+      if (!data && typeof res.text === 'function') {
+        const text = await res.text().catch(() => '');
+        throw new Error(text.slice(0, 160) || `Error ${res.status}: ${res.statusText}`);
+      }
+
       if (!res.ok) {
-        throw new Error(data.error || 'Error al enviar el correo');
+        throw new Error(data?.error || 'Error al enviar el correo');
       }
 
       toast({

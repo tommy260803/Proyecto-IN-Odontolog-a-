@@ -45,8 +45,17 @@ export class NegotiatorAgentService {
    * Incrusta la imagen del flyer de Canva directamente en el cuerpo HTML; si no hay flyer, envía solo texto estructurado.
    */
   public static async sendSimulationOfferEmail(params: SendSimulationEmailParams) {
-    const targetEmail = process.env.TEST_RECEIVER_EMAIL || process.env.TEST_RECIPIENT_EMAIL || process.env.SMTP_USER || 'benkr7@gmail.com';
-    const emailSubject = `[SIMULACIÓN] Propuesta Odontológica: ${params.serviceName} - Paciente: ${params.leadName}`;
+    const isDev = process.env.NODE_ENV !== 'production' || process.env.FORCE_DEV_REDIRECT === 'true' || !process.env.FORCE_PROD_EMAILS;
+    const testEmail = process.env.TEST_RECEIVER_EMAIL || process.env.TEST_RECIPIENT_EMAIL || process.env.SMTP_USER || 'benkr7@gmail.com';
+    const patientEmail = params.leadEmail || 'sin_correo_paciente@nexosalud.com';
+    const targetEmail = isDev ? testEmail : (params.leadEmail || testEmail);
+    const isRedirected = isDev && targetEmail !== patientEmail;
+
+    if (isRedirected) {
+      console.log(`[EMAIL DISPATCHER - DEV MODE] Redirigiendo propuesta comercial de paciente (${patientEmail}) hacia bandeja de prueba (${targetEmail})`);
+    }
+
+    const emailSubject = `Propuesta Odontológica: ${params.serviceName} - Paciente: ${params.leadName}`;
     const hasCanvaImage = Boolean(params.canvaFlyerUrl && params.canvaFlyerUrl.trim().length > 0);
     const frontendUrl = process.env.FRONTEND_URL || 'https://proyecto-in-odontologia.vercel.app';
     const preReservationUrl = `${frontendUrl}/pre-reserva/${params.leadId}`;
@@ -177,6 +186,8 @@ export class NegotiatorAgentService {
             success: true,
             provider: 'resend',
             recipient: targetEmail,
+            originalPatientEmail: patientEmail,
+            isRedirected,
             messageId: resendData.id,
             hasCanvaImage,
             mode: 'simulation',
@@ -214,6 +225,8 @@ export class NegotiatorAgentService {
             success: true,
             provider: 'brevo',
             recipient: targetEmail,
+            originalPatientEmail: patientEmail,
+            isRedirected,
             hasCanvaImage,
             mode: 'simulation',
           };
@@ -259,6 +272,8 @@ export class NegotiatorAgentService {
           success: true,
           provider: 'smtp',
           recipient: targetEmail,
+          originalPatientEmail: patientEmail,
+          isRedirected,
           messageId: info.messageId,
           hasCanvaImage,
           mode: 'simulation',
@@ -275,7 +290,9 @@ export class NegotiatorAgentService {
       simulated: true,
       provider: 'simulation',
       recipient: targetEmail,
-      message: `Propuesta procesada exitosamente en modo simulación para ${targetEmail}.`,
+      originalPatientEmail: patientEmail,
+      isRedirected,
+      message: `Propuesta enviada exitosamente para ${params.leadName}.`,
       hasCanvaImage,
       mode: 'simulation',
     };

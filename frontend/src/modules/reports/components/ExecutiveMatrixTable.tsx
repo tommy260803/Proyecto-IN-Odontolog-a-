@@ -59,7 +59,11 @@ export const ExecutiveMatrixTable: React.FC<ExecutiveMatrixTableProps> = ({
     () =>
       measureProp
         ? getMeasure(stage.id, measureProp)
-        : stage.measures.find((m) => data.metric.toLowerCase().includes(m.label.toLowerCase())) ?? stage.measures[0],
+        : stage.measures.find(
+            (m) =>
+              data.metric.toLowerCase().includes(m.value.toLowerCase()) ||
+              data.metric.toLowerCase().includes(m.label.toLowerCase())
+          ) ?? stage.measures[0],
     [stage, measureProp, data.metric]
   );
 
@@ -97,7 +101,7 @@ export const ExecutiveMatrixTable: React.FC<ExecutiveMatrixTableProps> = ({
   return (
     <div
       id={id}
-      className="relative overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+      className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)] dark:border-slate-800 dark:bg-slate-900"
     >
       {/* Barra de progreso sutil durante recargas en segundo plano */}
       {isFetching && (
@@ -111,8 +115,8 @@ export const ExecutiveMatrixTable: React.FC<ExecutiveMatrixTableProps> = ({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 space-y-0.5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                {stage.index} · {stage.role}
+              <span className="inline-flex items-center rounded-lg bg-teal-50 px-2 py-0.5 font-mono text-[11px] font-bold text-teal-700 dark:bg-teal-950/60 dark:text-teal-300">
+                {stage.index}
               </span>
               <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-white">
                 {stage.label}

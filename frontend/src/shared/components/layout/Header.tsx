@@ -39,7 +39,7 @@ type OpenMenuId = 'datamart' | 'quick-settings' | 'notifications' | 'profile' | 
 const INITIAL_NOTIFICATIONS = [
   {
     id: 'n1',
-    title: '3 nuevos prospectos en Buyer',
+    title: '3 nuevos prospectos web',
     detail: 'Solicitudes recibidas desde el Portal Web · Sede California',
     time: 'Hace 4 min',
     to: '/buyer',
@@ -48,7 +48,7 @@ const INITIAL_NOTIFICATIONS = [
   {
     id: 'n2',
     title: 'Comprobante pendiente de validación',
-    detail: 'Orden de pago registrada en módulo Payer',
+    detail: 'Orden de pago registrada en Caja y Cobranzas',
     time: 'Hace 18 min',
     to: '/payer',
     unread: true,
@@ -56,7 +56,7 @@ const INITIAL_NOTIFICATIONS = [
   {
     id: 'n3',
     title: 'Corte analítico actualizado',
-    detail: 'Matrices de conversión sincronizadas sin incidencias',
+    detail: 'Tablero consolidado sincronizado con el DataMart',
     time: 'Hace 32 min',
     to: '/reportes?tab=all',
     unread: false,

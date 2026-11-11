@@ -45,7 +45,7 @@ export default function CohortsAnalyticsPage() {
 
     return [
       {
-        stage: 'Buyer',
+        stage: 'Prospectos Web',
         subtitle: 'Captación Inicial',
         count: bCount,
         stepConversion: 100,
@@ -53,23 +53,23 @@ export default function CohortsAnalyticsPage() {
         to: '/buyer',
       },
       {
-        stage: 'Lead',
-        subtitle: 'Mesa de Negociación',
+        stage: 'Cotizaciones',
+        subtitle: 'Presupuestos & Citas',
         count: lCount,
         stepConversion: Number(((lCount / bCount) * 100).toFixed(1)),
         cumulativeConversion: Number(((lCount / bCount) * 100).toFixed(1)),
         to: '/lead',
       },
       {
-        stage: 'Payer',
-        subtitle: 'Pago Validado',
+        stage: 'Caja & Cobranzas',
+        subtitle: 'Pagos Validados',
         count: pCount,
         stepConversion: Number(((pCount / Math.max(lCount, 1)) * 100).toFixed(1)),
         cumulativeConversion: Number(((pCount / bCount) * 100).toFixed(1)),
         to: '/payer',
       },
       {
-        stage: 'Customer',
+        stage: 'Atención Clínica',
         subtitle: 'Atención en Sillón',
         count: cCount,
         stepConversion: Number(((cCount / Math.max(pCount, 1)) * 100).toFixed(1)),
@@ -77,7 +77,7 @@ export default function CohortsAnalyticsPage() {
         to: '/customer',
       },
       {
-        stage: 'Turned',
+        stage: 'Fidelización',
         subtitle: 'Paciente Fidelizado',
         count: tCount,
         stepConversion: Number(((tCount / Math.max(cCount, 1)) * 100).toFixed(1)),
@@ -126,14 +126,14 @@ export default function CohortsAnalyticsPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
-              Análisis de Cohortes y Retención del Embudo
+              Análisis de Cohortes y Retención del Flujo de Pacientes
             </h1>
             <span className="rounded-full bg-[#ECFDF5] dark:bg-teal-950/60 px-2.5 py-0.5 font-mono text-xs font-semibold text-[#065F46] dark:text-teal-300">
               DataMart BI
             </span>
           </div>
           <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Tasa de avance inter-etapa (Buyer → Turned) y matriz de retención por canal de adquisición ({activeBranch}).
+            Tasa de retención y progresión asistencial por canal de adquisición ({activeBranch}).
           </p>
         </div>
 
@@ -181,7 +181,7 @@ export default function CohortsAnalyticsPage() {
           <div>
             <h2 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
               <Layers className="h-4 w-4 text-[#0f766e]" />
-              <span>Cascada de Conversión del Embudo (5 Etapas)</span>
+              <span>Progresión del Flujo Asistencial (5 Fases)</span>
             </h2>
             <p className="text-xs text-slate-500">
               Progresión acumulada y tasa de paso entre etapas consecutivas.
@@ -260,11 +260,11 @@ export default function CohortsAnalyticsPage() {
             <thead>
               <tr className="border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-800/60 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 <th className="py-3 px-4 text-left">Cohorte / Canal de Origen</th>
-                <th className="py-3 px-4 text-right">1. Buyer (Base)</th>
-                <th className="py-3 px-4 text-right">2. Lead</th>
-                <th className="py-3 px-4 text-right">3. Payer</th>
-                <th className="py-3 px-4 text-right">4. Customer</th>
-                <th className="py-3 px-4 text-right">5. Turned</th>
+                <th className="py-3 px-4 text-right">1. Prospectos (Base)</th>
+                <th className="py-3 px-4 text-right">2. Cotizaciones</th>
+                <th className="py-3 px-4 text-right">3. Caja & Cobranzas</th>
+                <th className="py-3 px-4 text-right">4. Atención Clínica</th>
+                <th className="py-3 px-4 text-right">5. Fidelización</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/70 dark:divide-slate-800">

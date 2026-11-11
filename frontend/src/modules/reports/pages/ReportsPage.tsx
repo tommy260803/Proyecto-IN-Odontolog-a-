@@ -111,8 +111,8 @@ export default function ReportsPage() {
 
   const exportScopeLabel =
     activeView === 'all'
-      ? 'Consolidado del embudo (4 etapas)'
-      : `Etapa ${STAGE_BY_ID[activeView].index}: ${STAGE_BY_ID[activeView].label}`;
+      ? 'Consolidado General (Flujo de Pacientes)'
+      : `${STAGE_BY_ID[activeView].index} · ${STAGE_BY_ID[activeView].label}`;
 
   const segmentedOptions = useMemo<SegmentedOption<ReportView>[]>(
     () =>
@@ -120,11 +120,11 @@ export default function ReportsPage() {
         if (opt.id === 'all') {
           return {
             value: 'all',
-            ariaLabel: 'Consolidado (todas las etapas)',
+            ariaLabel: 'Consolidado General',
             label: (
               <span className="inline-flex items-center gap-1.5">
                 <Layers className="h-3.5 w-3.5 text-slate-400" aria-hidden />
-                <span>Consolidado</span>
+                <span>Consolidado General</span>
               </span>
             ),
           };
@@ -150,7 +150,7 @@ export default function ReportsPage() {
     <TooltipProvider delayDuration={180}>
       <div className="space-y-6 pb-8">
         {/* Cabecera limpia de página con estado de sincronización y acciones primarias */}
-        {activeView !== 'lead' && <ReportsPageHeader
+        <ReportsPageHeader
           period={period}
           periods={periodOptions}
           onPeriodChange={handlePeriodChange}
@@ -162,7 +162,8 @@ export default function ReportsPage() {
           getExportSections={getExportSections}
           exportScopeLabel={exportScopeLabel}
           displayMode={displayMode}
-        />}
+          showControls={activeView !== 'lead'}
+        />
 
         {/* Alerta sobria en caso de fallo de conexión */}
         {error && activeView !== 'lead' && (
@@ -185,10 +186,10 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {/* 4 Tarjetas KPI sobrias (borde 1px slate-200, fondo blanco, variación vs período anterior) */}
-        <section aria-label="Indicadores clave por etapa del embudo">
+        {/* 4 Tarjetas KPI sobrias con diseño limpio y variación vs período anterior */}
+        <section aria-label="Indicadores clave del flujo de pacientes">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {KPI_STAGES.filter(stage => stage.id !== 'lead').map((stage) => (
+            {KPI_STAGES.map((stage) => (
               <KpiCard
                 key={stage.id}
                 stage={stage}
@@ -205,7 +206,7 @@ export default function ReportsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="overflow-x-auto no-scrollbar">
             <SegmentedControl<ReportView>
-              ariaLabel="Etapas del embudo de pacientes"
+              ariaLabel="Etapas del flujo asistencial y comercial"
               controls="reports-stage-panel"
               value={activeView}
               onChange={handleViewChange}
@@ -215,8 +216,8 @@ export default function ReportsPage() {
 
           <p className="text-xs text-slate-400 dark:text-slate-500">
             {activeView === 'all'
-              ? 'Mostrando las 4 matrices del embudo en simultáneo'
-              : `Vista detallada · Etapa ${STAGE_BY_ID[activeView].index} (${STAGE_BY_ID[activeView].label})`}
+              ? 'Mostrando el consolidado integral de matrices en simultáneo'
+              : `Vista detallada · ${STAGE_BY_ID[activeView].index} (${STAGE_BY_ID[activeView].label})`}
           </p>
         </div>
 

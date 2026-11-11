@@ -9,14 +9,14 @@ const statusDictionary: Record<string, { label: string; defaultVariant: StatusVa
   // ── 1. BUYER (Captación) ─────────────────────────────────
   NEW: { label: 'Nuevo', defaultVariant: 'warning' },
   CONTACTED: { label: 'Contactado', defaultVariant: 'primary' },
-  CONVERTED: { label: 'Convertido a LEAD', defaultVariant: 'success' },
+  CONVERTED: { label: 'Pase a Cotización', defaultVariant: 'success' },
   DISCARDED: { label: 'Descartado', defaultVariant: 'error' },
   DUPLICATED: { label: 'Duplicado', defaultVariant: 'purple' },
 
   // ── 2. LEAD (Negociación) ────────────────────────────────
   IN_NEGOTIATION: { label: 'En Negociación', defaultVariant: 'warning' },
   ALTERNATIVE_SELECTED: { label: 'Alternativa Elegida', defaultVariant: 'primary' },
-  PAYMENT_REQUESTED: { label: 'Convertido a PAYER', defaultVariant: 'success' },
+  PAYMENT_REQUESTED: { label: 'Pase a Caja y Cobranza', defaultVariant: 'success' },
   LOST: { label: 'Descartado', defaultVariant: 'error' },
 
   // ── 3. PAYER (Cobro y Validación) ───────────────────────
@@ -56,12 +56,12 @@ const statusDictionary: Record<string, { label: string; defaultVariant: StatusVa
   LOYALTY_PROGRAM: { label: 'Programa de Fidelización', defaultVariant: 'purple' },
   DORMANT: { label: 'Inactivo', defaultVariant: 'neutral' },
 
-  // ── Fases del Embudo ────────────────────────────────────
-  BUYER: { label: 'Etapa BUYER', defaultVariant: 'primary' },
-  LEAD: { label: 'Etapa LEAD', defaultVariant: 'primary' },
-  PAYER: { label: 'Etapa PAYER', defaultVariant: 'primary' },
-  CUSTOMER: { label: 'Etapa CUSTOMER', defaultVariant: 'primary' },
-  TURNED: { label: 'Etapa TURNED', defaultVariant: 'primary' },
+  // ── Fases del Flujo de Pacientes ─────────────────────────
+  BUYER: { label: 'Prospectos Web', defaultVariant: 'primary' },
+  LEAD: { label: 'Cotizaciones', defaultVariant: 'primary' },
+  PAYER: { label: 'Caja & Cobranzas', defaultVariant: 'primary' },
+  CUSTOMER: { label: 'Atención Clínica', defaultVariant: 'primary' },
+  TURNED: { label: 'Fidelización', defaultVariant: 'primary' },
 };
 
 const variantStyles: Record<StatusVariant, { pill: string; dot: string }> = {

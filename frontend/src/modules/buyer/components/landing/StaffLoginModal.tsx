@@ -5,6 +5,7 @@ import {
   ArrowRight,
   BarChart3,
   Check,
+  CreditCard,
   Eye,
   EyeOff,
   KeyRound,
@@ -37,10 +38,11 @@ interface StaffLoginModalProps {
 }
 
 const DESTINATION_MODULES = [
-  { path: '/buyer', label: 'Embudo BUYER (Captación)', icon: Users },
-  { path: '/lead', label: 'Mesa de Negociación (LEAD)', icon: UserCheck },
-  { path: '/customer', label: 'Atención Clínica (CUSTOMER)', icon: Stethoscope },
-  { path: '/reportes', label: 'Reportes Matriciales (BI)', icon: BarChart3 },
+  { path: '/buyer', label: 'Prospectos Web (Captación)', icon: Users },
+  { path: '/lead', label: 'Cotizaciones & Negociación', icon: UserCheck },
+  { path: '/payer', label: 'Caja & Cobranzas', icon: CreditCard },
+  { path: '/customer', label: 'Atención Clínica (Box)', icon: Stethoscope },
+  { path: '/reportes', label: 'Dashboard Analítico & BI', icon: BarChart3 },
   { path: '/configuracion', label: 'Configuración de Clínica', icon: Settings },
 ];
 

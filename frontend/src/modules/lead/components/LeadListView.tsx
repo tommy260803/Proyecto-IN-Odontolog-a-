@@ -40,7 +40,7 @@ export const LEAD_STATE_META: Record<
   { label: string; badgeClass: string; dotClass: string }
 > = {
   [LeadState.CONVERTED]: {
-    label: 'Convertido a PAYER',
+    label: 'Pase a Caja y Cobranza',
     badgeClass:
       'bg-emerald-50 text-emerald-700 border border-emerald-200/50 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/60',
     dotClass: 'bg-emerald-500',
@@ -239,14 +239,19 @@ export function LeadListView() {
         return false;
       }
 
-      if (startDate && l.createdAt) {
+      const rawDate = l.createdAt || l.fecha_hora_solicitud || l.fecha_registro;
+      if (startDate) {
+        if (!rawDate) return false;
+        const itemDate = typeof rawDate === 'string' ? parseISO(rawDate) : new Date(rawDate);
         const start = startOfDay(parseISO(startDate));
-        if (isBefore(parseISO(l.createdAt), start)) return false;
+        if (isBefore(itemDate, start)) return false;
       }
 
-      if (endDate && l.createdAt) {
+      if (endDate) {
+        if (!rawDate) return false;
+        const itemDate = typeof rawDate === 'string' ? parseISO(rawDate) : new Date(rawDate);
         const end = endOfDay(parseISO(endDate));
-        if (isAfter(parseISO(l.createdAt), end)) return false;
+        if (isAfter(itemDate, end)) return false;
       }
 
       return true;
@@ -370,7 +375,7 @@ export function LeadListView() {
     await queryClient.refetchQueries({ queryKey: [QUERY_KEYS.LEADS] });
     toast({
       title: 'Oportunidad eliminada',
-      description: `El registro de ${deleteTarget.person.firstName} ${deleteTarget.person.lastName} fue removido del módulo LEAD.`,
+      description: `El registro de ${deleteTarget.person.firstName} ${deleteTarget.person.lastName} fue removido de la lista de cotizaciones.`,
     });
     setIsDeleting(false);
     setDeleteTarget(null);
@@ -391,10 +396,10 @@ export function LeadListView() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">
-            Mesa de Negociación y Agenda (LEAD)
+            Cotizaciones y Agenda de Citas
           </h1>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            Gestión de propuestas comerciales odontológicas, vigencia promocional y conversión hacia PAYER.
+            Gestión de propuestas comerciales odontológicas, vigencia promocional y pase a caja y cobranzas.
           </p>
         </div>
 
@@ -1032,9 +1037,9 @@ export function LeadListView() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
         isLoading={isDeleting}
-        title="¿Eliminar oportunidad (LEAD)?"
+        title="¿Eliminar cotización?"
         description={`Esta acción eliminará el registro de negociación de ${deleteTarget?.person.firstName} ${deleteTarget?.person.lastName}.`}
-        confirmText="Eliminar LEAD"
+        confirmText="Eliminar cotización"
         cancelText="Cancelar"
         variant="destructive"
       />

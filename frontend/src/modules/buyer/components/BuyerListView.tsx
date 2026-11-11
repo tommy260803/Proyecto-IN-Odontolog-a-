@@ -39,7 +39,7 @@ const BUYER_STATE_META: Record<
   { label: string; badgeClass: string; dotClass: string }
 > = {
   [BuyerState.CONVERTED]: {
-    label: 'Convertido a LEAD',
+    label: 'Pase a Cotización',
     badgeClass:
       'bg-emerald-50 text-emerald-700 border border-emerald-200/50 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/60',
     dotClass: 'bg-emerald-500',
@@ -213,14 +213,19 @@ export function BuyerListView() {
         return false;
       }
 
-      if (startDate && b.createdAt) {
+      const rawDate = b.createdAt || b.fecha_registro;
+      if (startDate) {
+        if (!rawDate) return false;
+        const itemDate = typeof rawDate === 'string' ? parseISO(rawDate) : new Date(rawDate);
         const start = startOfDay(parseISO(startDate));
-        if (isBefore(parseISO(b.createdAt), start)) return false;
+        if (isBefore(itemDate, start)) return false;
       }
 
-      if (endDate && b.createdAt) {
+      if (endDate) {
+        if (!rawDate) return false;
+        const itemDate = typeof rawDate === 'string' ? parseISO(rawDate) : new Date(rawDate);
         const end = endOfDay(parseISO(endDate));
-        if (isAfter(parseISO(b.createdAt), end)) return false;
+        if (isAfter(itemDate, end)) return false;
       }
 
       return true;
@@ -398,7 +403,7 @@ export function BuyerListView() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">
-            Prospectos de Admisión (BUYER)
+            Prospectos Web de Admisión
           </h1>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
             Gestión comercial de prospectos captados, atribución de origen y calificación hacia la etapa LEAD.
@@ -1056,7 +1061,7 @@ export function BuyerListView() {
         onConfirm={handleConfirmDelete}
         isLoading={isDeleting}
         title="¿Eliminar prospecto del sistema?"
-        description={`Esta acción removerá de forma permanente a ${deleteTarget?.person.firstName} ${deleteTarget?.person.lastName} de la etapa BUYER.`}
+        description={`Esta acción removerá de forma permanente a ${deleteTarget?.person.firstName} ${deleteTarget?.person.lastName} de la lista de prospectos.`}
         confirmText="Eliminar Prospecto"
         cancelText="Cancelar"
         variant="destructive"

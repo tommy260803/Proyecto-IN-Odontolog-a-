@@ -68,13 +68,13 @@ export const SIDEBAR_NAV_GROUPS: NavGroupConfig[] = [
     ],
   },
   {
-    id: 'embudo-admision',
-    label: 'EMBUDO DE ADMISIÓN',
+    id: 'flujo-admision',
+    label: 'ADMISIONES & PACIENTES',
     items: [
       {
         id: 'funnel-buyer',
         to: '/buyer',
-        label: 'Buyer',
+        label: 'Prospectos Web',
         icon: UserPlus,
         matchPath: '/buyer',
         badgeKey: 'buyers_pending',
@@ -82,7 +82,7 @@ export const SIDEBAR_NAV_GROUPS: NavGroupConfig[] = [
       {
         id: 'funnel-lead',
         to: '/lead',
-        label: 'Lead',
+        label: 'Cotizaciones',
         icon: UserCheck,
         matchPath: '/lead',
         badgeKey: 'leads_pending',
@@ -90,7 +90,7 @@ export const SIDEBAR_NAV_GROUPS: NavGroupConfig[] = [
       {
         id: 'funnel-payer',
         to: '/payer',
-        label: 'Payer',
+        label: 'Caja y Cobranzas',
         icon: CreditCard,
         matchPath: '/payer',
         badgeKey: 'payers_pending',
@@ -98,14 +98,14 @@ export const SIDEBAR_NAV_GROUPS: NavGroupConfig[] = [
       {
         id: 'funnel-customer',
         to: '/customer',
-        label: 'Customer',
+        label: 'Atención Clínica',
         icon: Stethoscope,
         matchPath: '/customer',
       },
       {
         id: 'funnel-turned',
         to: '/turned',
-        label: 'Turned',
+        label: 'Fidelización',
         icon: HeartHandshake,
         matchPath: '/turned',
       },
@@ -219,100 +219,100 @@ export function resolveBreadcrumbs(pathname: string, search: string): Breadcrumb
   if (pathname.startsWith('/reportes')) {
     const tab = params.get('tab') || 'buyer';
     const tabLabels: Record<string, string> = {
-      all: 'Reportes Ejecutivos Matriciales',
-      buyer: 'Reportes Ejecutivos Matriciales · Buyer',
-      lead: 'Reportes Ejecutivos Matriciales · Lead',
-      payer: 'Reportes Ejecutivos Matriciales · Payer',
-      customer: 'Reportes Ejecutivos Matriciales · Customer',
-      turned: 'Reportes Ejecutivos Matriciales · Turned',
+      all: 'Dashboard Consolidado · Visión General',
+      buyer: 'Dashboard Analítico · Prospectos Web',
+      lead: 'Dashboard Analítico · Cotizaciones y Citas',
+      payer: 'Dashboard Analítico · Caja y Cobranzas',
+      customer: 'Dashboard Analítico · Atención Clínica',
+      turned: 'Dashboard Analítico · Fidelización y Retorno',
     };
     return [
       { label: 'Analítica & BI', to: '/reportes' },
-      { label: tabLabels[tab] || 'Reportes Ejecutivos Matriciales' },
+      { label: tabLabels[tab] || 'Dashboard Ejecutivo y Analítica' },
     ];
   }
 
   if (pathname.startsWith('/buyer')) {
     if (pathname === '/buyer/new' || pathname === '/buyer/nuevo') {
       return [
-        { label: 'Embudo de Admisión', to: '/buyer' },
-        { label: 'Buyer', to: '/buyer' },
+        { label: 'Admisiones & Pacientes', to: '/buyer' },
+        { label: 'Prospectos Web', to: '/buyer' },
         { label: 'Nuevo Prospecto' },
       ];
     }
     if (pathname !== '/buyer') {
       return [
-        { label: 'Embudo de Admisión', to: '/buyer' },
-        { label: 'Buyer', to: '/buyer' },
+        { label: 'Admisiones & Pacientes', to: '/buyer' },
+        { label: 'Prospectos Web', to: '/buyer' },
         { label: 'Ficha de Prospecto' },
       ];
     }
     return [
-      { label: 'Embudo de Admisión', to: '/buyer' },
-      { label: 'Buyer · Captación de Pacientes' },
+      { label: 'Admisiones & Pacientes', to: '/buyer' },
+      { label: 'Prospectos Web · Captación de Pacientes' },
     ];
   }
 
   if (pathname.startsWith('/lead')) {
     if (pathname.includes('/negotiation')) {
       return [
-        { label: 'Embudo de Admisión', to: '/lead' },
-        { label: 'Lead', to: '/lead' },
-        { label: 'Mesa de Negociación' },
+        { label: 'Admisiones & Pacientes', to: '/lead' },
+        { label: 'Cotizaciones', to: '/lead' },
+        { label: 'Mesa de Presupuestos' },
       ];
     }
     if (pathname !== '/lead') {
       return [
-        { label: 'Embudo de Admisión', to: '/lead' },
-        { label: 'Lead', to: '/lead' },
+        { label: 'Admisiones & Pacientes', to: '/lead' },
+        { label: 'Cotizaciones', to: '/lead' },
         { label: 'Detalle de Oportunidad' },
       ];
     }
     return [
-      { label: 'Embudo de Admisión', to: '/lead' },
-      { label: 'Lead · Negociación y Agenda' },
+      { label: 'Admisiones & Pacientes', to: '/lead' },
+      { label: 'Cotizaciones · Propuestas y Agenda' },
     ];
   }
 
   if (pathname.startsWith('/payer')) {
     if (pathname !== '/payer') {
       return [
-        { label: 'Embudo de Admisión', to: '/payer' },
-        { label: 'Payer', to: '/payer' },
+        { label: 'Admisiones & Pacientes', to: '/payer' },
+        { label: 'Caja y Cobranzas', to: '/payer' },
         { label: 'Validación de Comprobante' },
       ];
     }
     return [
-      { label: 'Embudo de Admisión', to: '/payer' },
-      { label: 'Payer · Cobros y Validación' },
+      { label: 'Admisiones & Pacientes', to: '/payer' },
+      { label: 'Caja y Cobranzas · Validación de Pagos' },
     ];
   }
 
   if (pathname.startsWith('/customer')) {
     if (pathname !== '/customer') {
       return [
-        { label: 'Embudo de Admisión', to: '/customer' },
-        { label: 'Customer', to: '/customer' },
+        { label: 'Admisiones & Pacientes', to: '/customer' },
+        { label: 'Atención Clínica', to: '/customer' },
         { label: 'Atención en Sillón e Historia Clínica' },
       ];
     }
     return [
-      { label: 'Embudo de Admisión', to: '/customer' },
-      { label: 'Customer · Atención Clínica Activa' },
+      { label: 'Admisiones & Pacientes', to: '/customer' },
+      { label: 'Atención Clínica · Box y Procedimientos' },
     ];
   }
 
   if (pathname.startsWith('/turned')) {
     if (pathname !== '/turned') {
       return [
-        { label: 'Embudo de Admisión', to: '/turned' },
-        { label: 'Turned', to: '/turned' },
-        { label: 'Seguimiento de Fidelización' },
+        { label: 'Admisiones & Pacientes', to: '/turned' },
+        { label: 'Fidelización', to: '/turned' },
+        { label: 'Seguimiento de Paciente' },
       ];
     }
     return [
-      { label: 'Embudo de Admisión', to: '/turned' },
-      { label: 'Turned · Fidelización y Retorno' },
+      { label: 'Admisiones & Pacientes', to: '/turned' },
+      { label: 'Fidelización · Recall y Retorno' },
     ];
   }
 
@@ -342,7 +342,7 @@ export interface QuickCommandItem {
   id: string;
   title: string;
   subtitle: string;
-  category: 'Navegación Clínica' | 'Embudo de Admisión' | 'Analítica & BI' | 'Configuración';
+  category: 'Navegación Clínica' | 'Admisiones & Pacientes' | 'Analítica & BI' | 'Configuración';
   to: string;
   icon: LucideIcon;
   keywords: string;
@@ -378,66 +378,66 @@ export const STATIC_COMMAND_ITEMS: QuickCommandItem[] = [
   },
   {
     id: 'cmd-buyer',
-    title: 'Módulo Buyer — Captación de Prospectos',
-    subtitle: 'Embudo de Admisión · Solicitudes web y WhatsApp',
-    category: 'Embudo de Admisión',
+    title: 'Prospectos Web — Solicitudes y Captación',
+    subtitle: 'Admisiones & Pacientes · Solicitudes web y WhatsApp',
+    category: 'Admisiones & Pacientes',
     to: '/buyer',
     icon: UserPlus,
-    keywords: 'buyer prospectos captacion interesados',
+    keywords: 'buyer prospectos captacion interesados web admision',
   },
   {
     id: 'cmd-lead',
-    title: 'Módulo Lead — Mesa de Negociación',
-    subtitle: 'Embudo de Admisión · Propuestas y agendamiento',
-    category: 'Embudo de Admisión',
+    title: 'Cotizaciones — Presupuestos y Citas',
+    subtitle: 'Admisiones & Pacientes · Propuestas comerciales y agendamiento',
+    category: 'Admisiones & Pacientes',
     to: '/lead',
     icon: UserCheck,
-    keywords: 'lead negociacion propuesta agenda',
+    keywords: 'lead negociacion propuesta agenda cotizacion presupuestos',
   },
   {
     id: 'cmd-payer',
-    title: 'Módulo Payer — Cobros y Validación',
-    subtitle: 'Embudo de Admisión · Órdenes de pago y comprobantes',
-    category: 'Embudo de Admisión',
+    title: 'Caja y Cobranzas — Pagos y Validación',
+    subtitle: 'Admisiones & Pacientes · Comprobantes de pago y conciliación',
+    category: 'Admisiones & Pacientes',
     to: '/payer',
     icon: CreditCard,
-    keywords: 'payer pagos cobros recibos facturacion',
+    keywords: 'payer pagos cobros recibos facturacion caja recaudacion',
   },
   {
     id: 'cmd-customer',
-    title: 'Módulo Customer — Atención en Sillón',
-    subtitle: 'Embudo de Admisión · Ejecución de tratamientos y alta clínica',
-    category: 'Embudo de Admisión',
+    title: 'Atención Clínica — Box y Procedimientos',
+    subtitle: 'Admisiones & Pacientes · Ejecución en sillón y alta clínica',
+    category: 'Admisiones & Pacientes',
     to: '/customer',
     icon: Stethoscope,
-    keywords: 'customer atencion sillon tratamiento ejecucion',
+    keywords: 'customer atencion sillon tratamiento ejecucion box odontologia',
   },
   {
     id: 'cmd-turned',
-    title: 'Módulo Turned — Fidelización y Controles',
-    subtitle: 'Embudo de Admisión · Retorno, NPS y referidos',
-    category: 'Embudo de Admisión',
+    title: 'Fidelización — Recall y Seguimiento',
+    subtitle: 'Admisiones & Pacientes · Retorno de pacientes, encuestas y NPS',
+    category: 'Admisiones & Pacientes',
     to: '/turned',
     icon: HeartHandshake,
-    keywords: 'turned fidelizacion postventa controles',
+    keywords: 'turned fidelizacion postventa controles recall seguimiento',
   },
   {
     id: 'cmd-reportes-all',
-    title: 'Reportes Ejecutivos Matriciales',
-    subtitle: 'Analítica & BI · Consolidado multidimensional del embudo',
+    title: 'Dashboard Ejecutivo y Analítica',
+    subtitle: 'Analítica & BI · Tablero multidimensional del flujo de pacientes',
     category: 'Analítica & BI',
     to: '/reportes',
     icon: BarChart3,
-    keywords: 'reportes bi matriz ejecutiva kpi datamart',
+    keywords: 'reportes bi matriz ejecutiva kpi datamart dashboard flujo',
   },
   {
     id: 'cmd-reportes-cohortes',
     title: 'Análisis de Cohortes y Retención Longitudinal',
-    subtitle: 'Analítica & BI · Cascada de conversión Buyer → Turned por canal',
+    subtitle: 'Analítica & BI · Retención y avance inter-etapas por canal',
     category: 'Analítica & BI',
     to: '/analitica/cohortes',
     icon: Activity,
-    keywords: 'cohortes canales sedes conversion embudo retencion',
+    keywords: 'cohortes canales sedes conversion retencion pacientes',
   },
   {
     id: 'cmd-reportes-rendimiento',

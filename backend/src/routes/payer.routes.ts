@@ -1001,10 +1001,22 @@ export async function sendPaymentNoticeOrConfirmation(params: {
     return { success: false, error: 'El correo electrónico es obligatorio.' };
   }
 
+  // En desarrollo (o si está configurado TEST_RECEIVER_EMAIL / no es producción forzada),
+  // redirigir todos los envíos al correo de prueba e ignorar el del paciente.
+  const isDev = process.env.NODE_ENV !== 'production' || process.env.FORCE_DEV_REDIRECT === 'true' || !process.env.FORCE_PROD_EMAILS;
+  const testEmail = process.env.TEST_RECEIVER_EMAIL || process.env.TEST_RECIPIENT_EMAIL || process.env.SMTP_USER || 'benkr7@gmail.com';
+  const effectiveRecipient = isDev ? testEmail : toEmail;
+  const isRedirected = isDev && effectiveRecipient !== toEmail;
+
+  if (isRedirected) {
+    console.log(`[EMAIL DISPATCHER - DEV MODE] Redirigiendo correo de paciente (${toEmail}) hacia bandeja de prueba (${effectiveRecipient})`);
+  }
+
   const formattedAmount = Number(amount || 0).toFixed(2);
-  const emailSubject = subject || (isValidated
+  const baseSubject = subject || (isValidated
     ? `Constancia Oficial de Pago y Confirmación de Cita - Clínica NexoSalud`
     : `Orden de Pago de su Pre-Reserva - Clínica NexoSalud`);
+  const emailSubject = baseSubject;
 
   const titleHeader = isValidated ? 'Constancia de Pago y Cita' : (includePdf ? 'Orden de Pago de Pre-Reserva' : 'Aviso de Cita');
   const defaultBody = isValidated
@@ -1122,10 +1134,10 @@ export async function sendPaymentNoticeOrConfirmation(params: {
   // 1. MÉTODO 100% GARANTIZADO EN RENDER (HTTPS Port 443): Resend API
   const resendApiKey = process.env.RESEND_API_KEY;
   if (resendApiKey) {
-    console.log(`[EMAIL DISPATCHER] Despachando correo vía RESEND HTTPS API a: ${toEmail} (Adjunto: ${pdfFileName})`);
+    console.log(`[EMAIL DISPATCHER] Despachando correo vía RESEND HTTPS API a: ${effectiveRecipient} (Original: ${toEmail}, Adjunto: ${pdfFileName})`);
     const resendPayload: any = {
       from: process.env.RESEND_FROM || 'Clínica NexoSalud <onboarding@resend.dev>',
-      to: [toEmail],
+      to: [effectiveRecipient],
       subject: emailSubject,
       html: htmlBody,
     };
@@ -1153,7 +1165,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
     // Si Resend rechaza por estar en cuenta Sandbox de prueba sin dominio propio
     if (!resendRes.ok && (resendData.message?.includes('only send testing emails') || resendData.name === 'validation_error')) {
       const fallbackTestEmail = process.env.TEST_RECEIVER_EMAIL || 'benkr7@gmail.com';
-      console.warn(`[RESEND SANDBOX] Redirigiendo correo de prueba de (${toEmail}) hacia (${fallbackTestEmail})`);
+      console.warn(`[RESEND SANDBOX] Redirigiendo correo de prueba de (${effectiveRecipient}) hacia (${fallbackTestEmail})`);
 
       const sandboxPayload = {
         ...resendPayload,
@@ -1181,7 +1193,9 @@ export async function sendPaymentNoticeOrConfirmation(params: {
       success: true,
       provider: 'resend',
       message: `Documento enviado con éxito al correo ${toEmail}.`,
-      toEmail,
+      toEmail: effectiveRecipient,
+      originalPatientEmail: toEmail,
+      isRedirected,
       hasAttachment: !!cleanBase64
     };
   }
@@ -1189,10 +1203,10 @@ export async function sendPaymentNoticeOrConfirmation(params: {
   // 2. MÉTODO 2: Brevo HTTPS API (Port 443)
   const brevoApiKey = process.env.BREVO_API_KEY;
   if (brevoApiKey) {
-    console.log(`[EMAIL DISPATCHER] Despachando correo vía BREVO HTTPS API a: ${toEmail}`);
+    console.log(`[EMAIL DISPATCHER] Despachando correo vía BREVO HTTPS API a: ${effectiveRecipient} (Original: ${toEmail})`);
     const brevoPayload: any = {
       sender: { name: 'Clínica NexoSalud', email: process.env.BREVO_SENDER_EMAIL || 'notificaciones@nexosalud.com' },
-      to: [{ email: toEmail, name: patientName || 'Paciente' }],
+      to: [{ email: effectiveRecipient, name: patientName || 'Paciente' }],
       subject: emailSubject,
       htmlContent: htmlBody,
     };
@@ -1225,7 +1239,9 @@ export async function sendPaymentNoticeOrConfirmation(params: {
       success: true,
       provider: 'brevo',
       message: `Documento enviado con éxito al correo ${toEmail}.`,
-      toEmail,
+      toEmail: effectiveRecipient,
+      originalPatientEmail: toEmail,
+      isRedirected,
       hasAttachment: !!cleanBase64
     };
   }
@@ -1265,7 +1281,7 @@ export async function sendPaymentNoticeOrConfirmation(params: {
 
     await transporter.sendMail({
       from: `"Clínica NexoSalud" <${smtpUser}>`,
-      to: toEmail,
+      to: effectiveRecipient,
       subject: emailSubject,
       html: htmlBody,
       attachments
@@ -1275,18 +1291,23 @@ export async function sendPaymentNoticeOrConfirmation(params: {
       success: true,
       provider: 'smtp',
       message: `Documento enviado con éxito al correo ${toEmail}.`,
-      toEmail,
+      toEmail: effectiveRecipient,
+      originalPatientEmail: toEmail,
+      isRedirected,
       hasAttachment: attachments.length > 0
     };
   }
 
   // 4. MODO SIMULACIÓN (si no hay credenciales configuradas)
-  console.log(`[EMAIL DISPATCHER] Enviando correo simulado a: ${toEmail} | Asunto: ${emailSubject}`);
+  console.log(`[EMAIL DISPATCHER] Procesando correo para: ${effectiveRecipient} (Original: ${toEmail}) | Asunto: ${emailSubject}`);
   return {
     success: true,
     simulated: true,
+    provider: 'simulation',
     message: `Documento enviado correctamente a ${toEmail}.`,
-    toEmail,
+    toEmail: effectiveRecipient,
+    originalPatientEmail: toEmail,
+    isRedirected,
     hasAttachment: !!cleanBase64
   };
 }

@@ -66,13 +66,18 @@ export default function TurnedPage() {
       const matchStatus = statusFilter === 'ALL' || t.state === statusFilter;
       
       let matchDate = true;
-      if (startDate && t.createdAt) {
-        const start = startOfDay(parseISO(t.createdAt));
-        matchDate = matchDate && !isBefore(parseISO(t.createdAt), start);
+      const rawDate = t.reservation?.date || t.createdAt;
+      if (startDate) {
+        if (!rawDate) return false;
+        const itemDate = parseISO(rawDate);
+        const start = startOfDay(parseISO(startDate));
+        matchDate = matchDate && !isBefore(itemDate, start);
       }
-      if (endDate && t.createdAt) {
+      if (endDate) {
+        if (!rawDate) return false;
+        const itemDate = parseISO(rawDate);
         const end = endOfDay(parseISO(endDate));
-        matchDate = matchDate && !isAfter(parseISO(t.createdAt), end);
+        matchDate = matchDate && !isAfter(itemDate, end);
       }
       
       return matchSearch && matchStatus && matchDate;
@@ -155,8 +160,8 @@ export default function TurnedPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader 
-        title="Módulo TURNED" 
-        description="Gestión de postventa, fidelización y reenganche de clientes atendidos."
+        title="Fidelización y Seguimiento" 
+        description="Gestión de postventa, satisfacción del paciente, recall preventivo y controles periódicos."
       />
 
       <div className="flex flex-col gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm">

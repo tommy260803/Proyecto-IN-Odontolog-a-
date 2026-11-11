@@ -42,7 +42,7 @@ export default function CustomerPage() {
 
   const periodCustomers = useMemo(() => {
     return customers?.filter((c: CustomerWithDetails) => {
-      const appointmentDate = parseCleanDate(c.reservation?.date);
+      const appointmentDate = parseCleanDate(c.reservation?.date || c.attention?.startTime || c.createdAt);
       if (!appointmentDate || !isValid(appointmentDate)) return !startDate && !endDate;
       if (startDate && isBefore(appointmentDate, startOfDay(parseISO(startDate)))) return false;
       if (endDate && isAfter(appointmentDate, endOfDay(parseISO(endDate)))) return false;
@@ -189,8 +189,8 @@ export default function CustomerPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader 
-        title="Módulo CUSTOMER" 
-        description="Gestión de citas confirmadas y flujo de atención clínica básica."
+        title="Atención Clínica" 
+        description="Gestión de citas asistenciales, box odontológico y tratamientos en sillón."
         actions={
           <Link
             to="/reportes?tab=customer"

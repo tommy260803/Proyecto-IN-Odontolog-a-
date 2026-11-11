@@ -37,60 +37,62 @@ export function KpiCard({ stage, measure, report, active, onSelect }: KpiCardPro
       onClick={onSelect}
       aria-pressed={active}
       className={cn(
-        'group relative flex w-full flex-col rounded-xl border bg-white p-4 text-left shadow-sm transition-[border-color,box-shadow,transform] duration-200 min-w-0 overflow-hidden',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/40 active:scale-[0.99]',
+        'group relative flex w-full flex-col rounded-2xl border bg-white p-5 text-left shadow-[0_4px_20px_-4px_rgba(0,0,0,0.04)] transition-all duration-200 min-w-0 overflow-hidden',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/40 active:scale-[0.98] hover:-translate-y-0.5 hover:shadow-md',
         'dark:bg-slate-900',
         active
-          ? 'border-teal-700/40 ring-1 ring-teal-700/15 dark:border-teal-500/40'
+          ? 'border-teal-600/50 ring-2 ring-teal-600/10 dark:border-teal-400/50 dark:ring-teal-400/10'
           : 'border-slate-200/80 hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-700'
       )}
     >
       {active && (
         <motion.span
           layoutId="kpi-active-indicator"
-          className="absolute inset-x-4 top-0 h-[2px] rounded-b-full bg-teal-700 dark:bg-teal-400"
+          className="absolute inset-x-5 top-0 h-[3px] rounded-b-full bg-teal-600 dark:bg-teal-400"
           transition={{ type: 'spring', stiffness: 400, damping: 36 }}
           aria-hidden
         />
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
-          <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500">{stage.index}</span>
-          {stage.label}
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <span className="font-mono text-[11px] text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60 px-1.5 py-0.5 rounded font-bold">
+            {stage.index}
+          </span>
+          <span>{stage.label}</span>
         </span>
         <span
           className={cn(
-            'flex h-6 w-6 items-center justify-center rounded-md transition-colors',
+            'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
             active
-              ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300'
-              : 'bg-slate-50 text-slate-400 group-hover:text-slate-600 dark:bg-slate-800 dark:text-slate-500'
+              ? 'bg-teal-100/70 text-teal-800 dark:bg-teal-950/80 dark:text-teal-300'
+              : 'bg-slate-100 text-slate-400 group-hover:text-slate-600 dark:bg-slate-800 dark:text-slate-500'
           )}
           aria-hidden
         >
-          <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+          <Icon className="h-4 w-4" strokeWidth={1.75} />
         </span>
       </div>
 
-      <p className="mt-3 truncate text-xs text-slate-500 dark:text-slate-400" title={measure.label}>
+      <p className="mt-2.5 truncate text-xs font-medium text-slate-500 dark:text-slate-400" title={measure.label}>
         {measure.label}
       </p>
 
       <div className="mt-1 flex items-baseline gap-2 min-w-0">
         {report && report.grandTotal === null ? (
-          <span className="text-2xl font-semibold">—</span>
+          <span className="text-3xl font-bold font-mono tracking-tight text-slate-400">—</span>
         ) : report ? (
           <AnimatedNumber
             value={report.grandTotal ?? 0}
             format={fmt}
-            className="text-2xl font-semibold tracking-tight tabular-nums text-slate-900 dark:text-white truncate"
+            className="text-2xl sm:text-3xl font-bold font-mono tracking-tight tabular-nums text-slate-900 dark:text-white truncate"
           />
         ) : (
-          <span className="ns-skeleton h-8 w-28" />
+          <span className="ns-skeleton h-9 w-28" />
         )}
       </div>
 
-      <div className="mt-2 flex min-h-[20px] items-center gap-1.5 text-xs min-w-0 overflow-hidden">
+      <div className="mt-2 flex min-h-[22px] items-center gap-1.5 text-xs min-w-0 overflow-hidden">
         <DeltaBadge delta={delta} polarity={measure.polarity} />
       </div>
 

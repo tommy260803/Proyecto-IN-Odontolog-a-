@@ -1,4 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { cn } from '@/shared/utils/index';
+import { Calendar, Filter, RotateCcw, TrendingUp } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 const root = API + '/lead/commercial';
@@ -11,6 +13,11 @@ const titles = {
   R1: 'Resultados de Negociaciones Comerciales',
   R2: 'Precios, Promociones y Motivos de Rechazo',
   R3: 'Preferencias y Alternativas de Atención',
+};
+const tabFriendlyNames: Record<Report, string> = {
+  R1: 'Resultados de Negociación',
+  R2: 'Precios y Rechazos',
+  R3: 'Horarios y Disponibilidad',
 };
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const decimal = new Intl.NumberFormat('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -61,19 +68,19 @@ function schedule(day: Row[string], shift: Row[string], start: Row[string], end:
 }
 
 function ReportTable({ columns, children, footer }: { columns: string[]; children: ReactNode; footer?: ReactNode }) {
-  return <div className="overflow-auto">
-    <table className="w-full text-left text-sm">
-      <thead className="border-b bg-slate-50 dark:bg-slate-900"><tr>
-        {columns.map(column => <th key={column} scope="col" className="px-3 py-2">{column}</th>)}
+  return <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+    <table className="w-full text-left text-xs">
+      <thead className="border-b border-slate-200/80 bg-slate-50/90 font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300"><tr>
+        {columns.map(column => <th key={column} scope="col" className="px-3.5 py-2.5">{column}</th>)}
       </tr></thead>
-      <tbody className="divide-y">{children}</tbody>
-      {footer && <tfoot className="border-t font-semibold">{footer}</tfoot>}
+      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">{children}</tbody>
+      {footer && <tfoot className="border-t-2 border-slate-200 font-semibold bg-slate-50/70 dark:border-slate-700 dark:bg-slate-800/40">{footer}</tfoot>}
     </table>
   </div>;
 }
 
-const cell = 'px-3 py-2';
-const control = 'rounded-md border bg-transparent px-2 py-1.5 text-sm';
+const cell = 'px-3.5 py-2.5 text-xs text-slate-700 dark:text-slate-300';
+const control = 'rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 shadow-2xs';
 
 function reportGroups(report: 'R2' | 'R3', rows: Row[], sedeName: (id: Row[string]) => string) {
   const grouped = new Map<string, { labels: string[]; total: number }>();
@@ -151,7 +158,7 @@ export function LeadReportsPanel() {
   }
 
   function select(label: string, key: string, options: { id: string; name: string }[], all = 'Todos') {
-    return <label className="grid gap-1 text-sm">{label}
+    return <label className="grid gap-1 text-xs font-medium text-slate-600 dark:text-slate-300">{label}
       <select className={control} value={filters[key] ?? ''} onChange={e => field(key, e.target.value)}>
         <option value="">{all}</option>
         {options.map(option => <option key={option.id} value={option.id}>{option.name}</option>)}
@@ -165,9 +172,9 @@ export function LeadReportsPanel() {
 
   function hours(prefix: 'pref' | 'ofr', label: string) {
     const shifts = [...new Set(catalog('horarios').map(item => item[prefix + '_turno_lead']).filter(Boolean).map(String))].sort();
-    return <fieldset className="rounded-md border p-2">
-      <legend className="px-1 text-sm">{label}</legend>
-      <div className="grid grid-cols-2 gap-2">
+    return <fieldset className="rounded-xl border border-slate-200/80 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+      <legend className="px-1 text-xs font-semibold text-slate-700 dark:text-slate-300">{label}</legend>
+      <div className="grid grid-cols-2 gap-2 mt-1">
         {select('Día ' + label.toLowerCase(), prefix + '_dia', days.map((name, index) => ({ id: String(index + 1), name })))}
         {select('Franja ' + label.toLowerCase(), prefix + '_turno', shifts.map(name => ({ id: name, name })))}
       </div>
@@ -185,111 +192,303 @@ export function LeadReportsPanel() {
   const names = new Map(catalog('sedes').map(item => [String(item.id_sede), String(item.nombre)]));
   const groups = report === 'R1' ? [] : reportGroups(report, rows, id => names.get(String(id)) ?? 'Sin sede');
 
-  return <section aria-label="Reportes LEAD" className="space-y-4 rounded-xl border p-4">
-    <div aria-label="Reportes de la etapa LEAD" className="flex flex-wrap gap-2">
-      {(Object.keys(titles) as Report[]).map(key => <button type="button" key={key}
-        className={control} aria-pressed={report === key} onClick={() => { setReport(key); setFilters(defaults); }}>
-        {key}
-      </button>)}
-    </div>
-    <h2 className="text-lg font-semibold">{report}. {titles[report]}</h2>
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Filtros del reporte">
-      <label className="grid gap-1 text-sm">{report === 'R1' ? 'Período de ingreso a LEAD' : 'Período de presentación'}
-        <input className={control} type="month" value={filters.periodo} onChange={e => field('periodo', e.target.value)} />
-      </label>
-      {report === 'R1' && <label className="grid gap-1 text-sm">Fecha de corte
-        <input className={control} type="date" max={today} value={filters.corte} onChange={e => field('corte', e.target.value)} />
-      </label>}
-      {catalogSelect('Tratamiento', 'id_servicio', 'servicios')}
-      {report === 'R1' && catalogSelect('Canal de origen', 'id_canal', 'canales')}
-      {report === 'R1' && catalogSelect('Fuente de captación', 'id_fuente', 'fuentes')}
-      {catalogSelect(report === 'R1' ? 'Sede de interés' : report === 'R3' ? 'Sede ofrecida' : 'Sede', 'id_sede', 'sedes')}
-      {report === 'R1' && catalogSelect('Negociador', 'id_negociador', 'negociadores', 'nombre', 'id_usuario')}
-      {report === 'R2' && <>
-        {select('Promoción aplicada', 'id_promocion', [
-          { id: 'sin-promocion', name: 'Sin promoción' },
-          ...catalog('promociones').map(item => ({ id: String(item.id_promocion), name: String(item.nombre) })),
-        ], 'Todas')}
-        <fieldset className="rounded-md border p-2"><legend className="px-1 text-sm">Rango de precios (S/)</legend>
-          <div className="grid grid-cols-2 gap-2">{['min', 'max'].map((key, index) =>
-            <label className="grid gap-1 text-sm" key={key}>{index === 0 ? 'Mínimo' : 'Máximo'}
-              <input type="number" min="0" step="0.01" className={control} value={filters['precio_' + key] ?? ''}
-                onChange={e => field('precio_' + key, e.target.value)} />
-            </label>)}</div>
-        </fieldset>
-      </>}
-      {report === 'R3' && <>
-        {select('Profesional ofrecido', 'id_profesional', professionals)}
-        {hours('pref', 'Horario preferido')}
-        {hours('ofr', 'Horario ofrecido')}
-      </>}
-      {report !== 'R1' && select('Motivo de rechazo', 'id_motivo', reasonOptions.map(row => ({
-        id: String(row.id_motivo_rechazo), name: String(row.motivo),
-      })))}
-    </div>
-    <div className="flex flex-wrap gap-4 text-sm">
-      <button type="button" className={control} onClick={() => setFilters(defaults)}>Limpiar</button>
-      {report === 'R1' && <label className="flex items-center gap-2"><input type="checkbox"
-        checked={filters.desglosar_canal === 'true'} onChange={e => field('desglosar_canal', e.target.checked ? 'true' : '')} />
-        Desglosar por canal de origen
-      </label>}
-    </div>
-    {loading && <p role="status">Cargando reporte…</p>}
-    {(error || catalogError) && <p role="alert">{error || catalogError} <button type="button" className={control}
-      onClick={() => setRetry(retry + 1)}>Reintentar</button></p>}
-    {result && <>
-      {rows.length === 0 && <p>Sin registros para los filtros seleccionados.</p>}
-      {report === 'R1' && <>
-        <p className="font-semibold">L1 · Tasa de aceptación de oportunidades comerciales: {leadPercent(r1Total?.AceptacionPorcentaje)}</p>
-        <ReportTable columns={['Tratamiento', ...(filters.desglosar_canal ? ['Canal de origen'] : []), 'Ingresadas',
-          'Aceptadas', 'Cerradas sin acuerdo', 'Pendientes', 'Aceptación %', 'Valor acordado (S/)']}
-          footer={r1Total && <R1Row row={r1Total} channel={filters.desglosar_canal === 'true' ? '—' : undefined} />}>
-          {rows.filter(row => !row.EsTotal).map(row => <R1Row key={[row.Mes, row.Tratamiento, row.IdCanal].join('|')}
-            row={row} channel={filters.desglosar_canal === 'true'
-              ? String(catalog('canales').find(c => c.id_canal === row.IdCanal)?.nombre ?? 'Sin canal') : undefined} />)}
-        </ReportTable>
-        {Number(r1Total?.SinResultadoDocumentado ?? 0) > 0 &&
-          <p className="text-sm text-slate-500">Sin resultado documentado: {r1Total?.SinResultadoDocumentado}.</p>}
-      </>}
-      {report === 'R2' && <>
-        <p className="font-semibold">L2 · Tasa de rechazo por motivos económicos: {leadPercent(summary?.L2Porcentaje)}</p>
-        <ReportTable columns={['Fecha / Propuesta', 'Tratamiento', 'Precio cotizado (S/)', 'Promoción aplicada', 'Resultado', 'Motivo de rechazo']}>
-          {rows.map(row => <tr key={String(row.id_propuesta_logica)}>
-            <td className={cell}>PROP-{row.id_propuesta_logica}<br />{dateLabel(row.fecha_presentacion)}</td>
-            <td className={cell}>{row.Tratamiento}</td><td className={cell}>{money(row.PrecioCotizado)}</td>
-            <td className={cell}>{row.PromocionAplicada}</td><td className={cell}>{row.Resultado ?? 'Sin evidencia'}</td>
-            <td className={cell}>{row.MotivoRechazo ?? '—'}</td>
-          </tr>)}
-        </ReportTable>
-        {summary && <p>{summaryLabel} · Presentadas {summary.Presentadas} · Aceptadas {summary.Aceptadas} · Rechazadas {summary.Rechazadas} · Pendientes {summary.Pendientes} · Aceptación {leadPercent(summary.AceptacionPorcentaje)}</p>}
-      </>}
-      {report === 'R3' && <>
-        <p className="font-semibold">L3 · Tasa de rechazo por incompatibilidad: {leadPercent(summary?.L3Porcentaje)}</p>
-        <ReportTable columns={['Solicitud / Alternativa', 'Horario preferido', 'Horario ofrecido', 'Resultado', 'Motivo de rechazo', 'N.º cambios']}>
-          {rows.map(row => <tr key={String(row.id_opcion)}>
-            <td className={cell}>SOL-{row.id_solicitud} / ALT-{row.id_opcion}<br />{dateLabel(row.fecha_ofrecida)}</td>
-            <td className={cell}>{schedule(row.pref_dia_semana_lead, row.pref_turno_lead, row.pref_hora_inicio_lead, row.pref_hora_fin_lead, row.pref_fecha_lead)}</td>
-            <td className={cell}>{schedule(row.DiaOfrecido, row.ofr_turno_lead, row.HoraInicioOfrecida, row.HoraFinOfrecida, row.FechaAtencionOfrecida)}</td>
-            <td className={cell}>{row.Resultado ?? 'Sin evidencia'}</td><td className={cell}>{row.MotivoRechazo ?? '—'}</td>
-            <td className={cell}>{row.NumeroCambios ?? 0}</td>
-          </tr>)}
-        </ReportTable>
-        {summary && <p>{summaryLabel} · Presentadas {summary.Presentadas} · Aceptadas {summary.Aceptadas} · Rechazadas {summary.Rechazadas} · Pendientes {summary.Pendientes} · Modificadas {summary.Modificadas}</p>}
-      </>}
-      {groups.length > 0 && <details>
-        <summary>{report === 'R2' ? 'Desglose por tratamiento, promoción y resultado' : 'Desglose por sede, horario ofrecido y resultado'}</summary>
-        <ReportTable columns={report === 'R2' ? ['Tratamiento', 'Condición comercial', 'Resultado', 'Propuestas'] : ['Sede', 'Horario ofrecido', 'Resultado', 'Alternativas']}>
-          {groups.map(group => <tr key={JSON.stringify(group.labels)}>{group.labels.map((value, i) =>
-            <td key={i} className={cell}>{value}</td>)}<td className={cell}>{group.total}</td></tr>)}
-        </ReportTable>
-      </details>}
-    </>}
-  </section>;
+  return (
+    <section aria-label="Reportes LEAD" className="space-y-5 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)] dark:border-slate-800 dark:bg-slate-900">
+      {/* Selector de sub-reporte */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+        <div aria-label="Reportes de la etapa LEAD" className="flex flex-wrap gap-2">
+          {(Object.keys(titles) as Report[]).map(key => (
+            <button
+              type="button"
+              key={key}
+              aria-label={key}
+              aria-pressed={report === key}
+              onClick={() => { setReport(key); setFilters(defaults); }}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer select-none',
+                report === key
+                  ? 'bg-teal-700 text-white shadow-sm dark:bg-teal-600'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+              )}
+            >
+              <span className="font-mono">{key}</span>
+              <span className="hidden sm:inline">· {tabFriendlyNames[key]}</span>
+            </button>
+          ))}
+        </div>
+
+        <span className="text-xs text-slate-400">
+          Mesa de Cotizaciones & Agenda
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center rounded-lg bg-teal-50 px-2 py-0.5 font-mono text-xs font-bold text-teal-700 dark:bg-teal-950/60 dark:text-teal-300">
+          {report}
+        </span>
+        <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-white">
+          {report}. {titles[report]}
+        </h2>
+      </div>
+
+      {/* Grid de Filtros */}
+      <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/40 space-y-3">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <Filter className="h-3.5 w-3.5" />
+          <span>Filtros de Análisis</span>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Filtros del reporte">
+          <label className="grid gap-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+            {report === 'R1' ? 'Período de ingreso a LEAD' : 'Período de presentación'}
+            <input className={control} type="month" value={filters.periodo} onChange={e => field('periodo', e.target.value)} />
+          </label>
+          {report === 'R1' && <label className="grid gap-1 text-xs font-medium text-slate-600 dark:text-slate-300">Fecha de corte
+            <input className={control} type="date" max={today} value={filters.corte} onChange={e => field('corte', e.target.value)} />
+          </label>}
+          {catalogSelect('Tratamiento', 'id_servicio', 'servicios')}
+          {report === 'R1' && catalogSelect('Canal de origen', 'id_canal', 'canales')}
+          {report === 'R1' && catalogSelect('Fuente de captación', 'id_fuente', 'fuentes')}
+          {catalogSelect(report === 'R1' ? 'Sede de interés' : report === 'R3' ? 'Sede ofrecida' : 'Sede', 'id_sede', 'sedes')}
+          {report === 'R1' && catalogSelect('Negociador', 'id_negociador', 'negociadores', 'nombre', 'id_usuario')}
+          {report === 'R2' && <>
+            {select('Promoción aplicada', 'id_promocion', [
+              { id: 'sin-promocion', name: 'Sin promoción' },
+              ...catalog('promociones').map(item => ({ id: String(item.id_promocion), name: String(item.nombre) })),
+            ], 'Todas')}
+            <fieldset className="rounded-xl border border-slate-200/80 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+              <legend className="px-1 text-xs font-semibold text-slate-700 dark:text-slate-300">Rango de precios (S/)</legend>
+              <div className="grid grid-cols-2 gap-2 mt-1">{['min', 'max'].map((key, index) =>
+                <label className="grid gap-1 text-xs text-slate-600 dark:text-slate-300" key={key}>{index === 0 ? 'Mínimo' : 'Máximo'}
+                  <input type="number" min="0" step="0.01" className={control} value={filters['precio_' + key] ?? ''}
+                    onChange={e => field('precio_' + key, e.target.value)} />
+                </label>)}</div>
+            </fieldset>
+          </>}
+          {report === 'R3' && <>
+            {select('Profesional ofrecido', 'id_profesional', professionals)}
+            {hours('pref', 'Horario preferido')}
+            {hours('ofr', 'Horario ofrecido')}
+          </>}
+          {report !== 'R1' && select('Motivo de rechazo', 'id_motivo', reasonOptions.map(row => ({
+            id: String(row.id_motivo_rechazo), name: String(row.motivo),
+          })))}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 shadow-2xs"
+            onClick={() => setFilters(defaults)}
+          >
+            <RotateCcw className="h-3 w-3" />
+            <span>Limpiar filtros</span>
+          </button>
+
+          {report === 'R1' && (
+            <label className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+              <input
+                type="checkbox"
+                className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                checked={filters.desglosar_canal === 'true'}
+                onChange={e => field('desglosar_canal', e.target.checked ? 'true' : '')}
+              />
+              <span>Desglosar por canal de origen</span>
+            </label>
+          )}
+        </div>
+      </div>
+
+      {loading && (
+        <div className="flex items-center gap-2 py-8 text-sm text-slate-500 justify-center">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-teal-600 border-t-transparent" />
+          <p role="status">Cargando reporte…</p>
+        </div>
+      )}
+
+      {(error || catalogError) && (
+        <div role="alert" className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50/70 p-3 text-xs text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">
+          <span>{error || catalogError}</span>
+          <button type="button" className={control} onClick={() => setRetry(retry + 1)}>
+            Reintentar
+          </button>
+        </div>
+      )}
+
+      {result && (
+        <div className="space-y-4">
+          {rows.length === 0 && (
+            <p className="py-6 text-center text-xs text-slate-500">
+              Sin registros para los filtros seleccionados.
+            </p>
+          )}
+
+          {report === 'R1' && (
+            <>
+              <div className="flex items-center justify-between rounded-xl border border-teal-200/70 bg-teal-50/60 p-3.5 dark:border-teal-800/60 dark:bg-teal-950/40">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-teal-700 dark:text-teal-400" />
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    L1 · Tasa de aceptación de oportunidades comerciales: {leadPercent(r1Total?.AceptacionPorcentaje)}
+                  </p>
+                </div>
+              </div>
+
+              <ReportTable
+                columns={[
+                  'Tratamiento',
+                  ...(filters.desglosar_canal ? ['Canal de origen'] : []),
+                  'Ingresadas',
+                  'Aceptadas',
+                  'Cerradas sin acuerdo',
+                  'Pendientes',
+                  'Aceptación %',
+                  'Valor acordado (S/)',
+                ]}
+                footer={r1Total && <R1Row row={r1Total} channel={filters.desglosar_canal === 'true' ? '—' : undefined} />}
+              >
+                {rows.filter(row => !row.EsTotal).map(row => (
+                  <R1Row
+                    key={[row.Mes, row.Tratamiento, row.IdCanal].join('|')}
+                    row={row}
+                    channel={filters.desglosar_canal === 'true'
+                      ? String(catalog('canales').find(c => c.id_canal === row.IdCanal)?.nombre ?? 'Sin canal')
+                      : undefined}
+                  />
+                ))}
+              </ReportTable>
+
+              {Number(r1Total?.SinResultadoDocumentado ?? 0) > 0 && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Sin resultado documentado: {r1Total?.SinResultadoDocumentado}.
+                </p>
+              )}
+            </>
+          )}
+
+          {report === 'R2' && (
+            <>
+              <div className="flex items-center justify-between rounded-xl border border-teal-200/70 bg-teal-50/60 p-3.5 dark:border-teal-800/60 dark:bg-teal-950/40">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-teal-700 dark:text-teal-400" />
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    L2 · Tasa de rechazo por motivos económicos: {leadPercent(summary?.L2Porcentaje)}
+                  </p>
+                </div>
+              </div>
+
+              <ReportTable columns={['Fecha / Propuesta', 'Tratamiento', 'Precio cotizado (S/)', 'Promoción aplicada', 'Resultado', 'Motivo de rechazo']}>
+                {rows.map(row => (
+                  <tr key={String(row.id_propuesta_logica)}>
+                    <td className={cell}>PROP-{row.id_propuesta_logica}<br /><span className="text-slate-400">{dateLabel(row.fecha_presentacion)}</span></td>
+                    <td className={cn(cell, 'font-medium')}>{row.Tratamiento}</td>
+                    <td className={cn(cell, 'font-mono')}>{money(row.PrecioCotizado)}</td>
+                    <td className={cell}>{row.PromocionAplicada}</td>
+                    <td className={cell}>
+                      <span className={cn(
+                        'rounded-md px-1.5 py-0.5 font-medium text-[11px]',
+                        String(row.Resultado).includes('Acept') ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' :
+                        String(row.Resultado).includes('Rech') ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' :
+                        'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      )}>
+                        {row.Resultado ?? 'Sin evidencia'}
+                      </span>
+                    </td>
+                    <td className={cn(cell, 'text-slate-500')}>{row.MotivoRechazo ?? '—'}</td>
+                  </tr>
+                ))}
+              </ReportTable>
+
+              {summary && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {summaryLabel} · Presentadas {summary.Presentadas} · Aceptadas {summary.Aceptadas} · Rechazadas {summary.Rechazadas} · Pendientes {summary.Pendientes} · Aceptación {leadPercent(summary.AceptacionPorcentaje)}
+                </p>
+              )}
+            </>
+          )}
+
+          {report === 'R3' && (
+            <>
+              <div className="flex items-center justify-between rounded-xl border border-teal-200/70 bg-teal-50/60 p-3.5 dark:border-teal-800/60 dark:bg-teal-950/40">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-teal-700 dark:text-teal-400" />
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    L3 · Tasa de rechazo por incompatibilidad: {leadPercent(summary?.L3Porcentaje)}
+                  </p>
+                </div>
+              </div>
+
+              <ReportTable columns={['Solicitud / Alternativa', 'Horario preferido', 'Horario ofrecido', 'Resultado', 'Motivo de rechazo', 'N.º cambios']}>
+                {rows.map(row => (
+                  <tr key={String(row.id_opcion)}>
+                    <td className={cell}>SOL-{row.id_solicitud} / ALT-{row.id_opcion}<br /><span className="text-slate-400">{dateLabel(row.fecha_ofrecida)}</span></td>
+                    <td className={cell}>{schedule(row.pref_dia_semana_lead, row.pref_turno_lead, row.pref_hora_inicio_lead, row.pref_hora_fin_lead, row.pref_fecha_lead)}</td>
+                    <td className={cell}>{schedule(row.DiaOfrecido, row.ofr_turno_lead, row.HoraInicioOfrecida, row.HoraFinOfrecida, row.FechaAtencionOfrecida)}</td>
+                    <td className={cell}>
+                      <span className={cn(
+                        'rounded-md px-1.5 py-0.5 font-medium text-[11px]',
+                        String(row.Resultado).includes('Acept') ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' :
+                        String(row.Resultado).includes('Rech') ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' :
+                        'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      )}>
+                        {row.Resultado ?? 'Sin evidencia'}
+                      </span>
+                    </td>
+                    <td className={cn(cell, 'text-slate-500')}>{row.MotivoRechazo ?? '—'}</td>
+                    <td className={cn(cell, 'font-mono text-center')}>{row.NumeroCambios ?? 0}</td>
+                  </tr>
+                ))}
+              </ReportTable>
+
+              {summary && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {summaryLabel} · Presentadas {summary.Presentadas} · Aceptadas {summary.Aceptadas} · Rechazadas {summary.Rechazadas} · Pendientes {summary.Pendientes} · Modificadas {summary.Modificadas}
+                </p>
+              )}
+            </>
+          )}
+
+          {groups.length > 0 && (
+            <details className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/30">
+              <summary className="cursor-pointer font-semibold text-xs text-slate-800 dark:text-slate-200">
+                {report === 'R2' ? 'Desglose por tratamiento, promoción y resultado' : 'Desglose por sede, horario ofrecido y resultado'}
+              </summary>
+              <div className="mt-3">
+                <ReportTable columns={report === 'R2' ? ['Tratamiento', 'Condición comercial', 'Resultado', 'Propuestas'] : ['Sede', 'Horario ofrecido', 'Resultado', 'Alternativas']}>
+                  {groups.map(group => (
+                    <tr key={JSON.stringify(group.labels)}>
+                      {group.labels.map((value, i) => (
+                        <td key={i} className={cell}>{value}</td>
+                      ))}
+                      <td className={cn(cell, 'font-mono font-semibold')}>{group.total}</td>
+                    </tr>
+                  ))}
+                </ReportTable>
+              </div>
+            </details>
+          )}
+        </div>
+      )}
+    </section>
+  );
 }
 
 function R1Row({ row, channel }: { row: Row; channel?: string }) {
-  const values = [row.Tratamiento,
-    ...(channel === undefined ? [] : [channel]), row.Ingresadas, row.Aceptadas, row.CerradasSinAcuerdo,
-    row.Pendientes ?? 0, leadPercent(row.AceptacionPorcentaje), money(row.ValorAcordadoSoles)];
-  return <tr>{values.map((value, index) => <td className={cell} key={index}>{value}</td>)}</tr>;
+  const values = [
+    row.Tratamiento,
+    ...(channel === undefined ? [] : [channel]),
+    row.Ingresadas,
+    row.Aceptadas,
+    row.CerradasSinAcuerdo,
+    row.Pendientes ?? 0,
+    leadPercent(row.AceptacionPorcentaje),
+    money(row.ValorAcordadoSoles)
+  ];
+  return (
+    <tr className={cn(row.EsTotal && 'font-semibold bg-slate-50/90 dark:bg-slate-800/60')}>
+      {values.map((value, index) => (
+        <td className={cn(cell, index >= 2 && 'font-mono')} key={index}>{value}</td>
+      ))}
+    </tr>
+  );
 }

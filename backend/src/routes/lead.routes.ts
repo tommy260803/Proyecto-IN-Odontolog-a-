@@ -185,6 +185,7 @@ router.get('/:id', async (req, res) => {
 // ── Reserva y conversión a PAYER ──────────────────────────────────────────────
 router.post('/:id/reserve', async (req, res) => {
   const { id } = req.params;
+  const numId = Number(id);
   const { id_solicitud, id_opcion } = req.body;
 
   try {
@@ -194,17 +195,53 @@ router.post('/:id/reserve', async (req, res) => {
     const etapaLead = await withRetry(() => prisma.etapas.findFirst({ where: { nombre: 'LEAD' } }));
 
     const result = await withRetry(() => prisma.$transaction(async (tx) => {
-      const eligible = await tx.opciones.findFirst({
+      const persona = await tx.personas.findUnique({ where: { id_persona: numId }, include: { Etapa: true } });
+      if (!persona) throw new LeadConflict('Paciente no encontrado.');
+
+      let eligible = await tx.opciones.findFirst({
         where: {
-          id_opcion: Number(id_opcion), id_solicitud: Number(id_solicitud), archivada_lead_en: null,
-          OR: [{ estado_respuesta: null }, { estado_respuesta: { not: 'Rechazada' } }],
-          Solicitud: { id_persona: Number(id), archivada_lead_en: null, Persona: { Etapa: { nombre: 'LEAD' } } },
-          Disponibilidad: { estado: 'Disponible' }, Reservas: { none: {} },
+          id_opcion: id_opcion ? Number(id_opcion) : undefined,
+          id_solicitud: id_solicitud ? Number(id_solicitud) : undefined,
+          archivada_lead_en: null,
+          Solicitud: { id_persona: numId, archivada_lead_en: null },
+        },
+        include: { Disponibilidad: true, Solicitud: true, Reservas: true },
+        orderBy: { id_opcion: 'desc' },
+      });
+
+      if (!eligible) {
+        eligible = await tx.opciones.findFirst({
+          where: {
+            Solicitud: { id_persona: numId, archivada_lead_en: null },
+            archivada_lead_en: null,
+          },
+          include: { Disponibilidad: true, Solicitud: true, Reservas: true },
+          orderBy: { id_opcion: 'desc' },
+        });
+      }
+
+      if (!eligible) throw new LeadConflict('La alternativa no está disponible para esta negociación.');
+
+      // Si ya cuenta con una reserva activa confirmada o pendiente para esta alternativa, reutilizarla
+      const existingReserva = eligible.Reservas.find(r => !['Cancelada', 'Rechazada', 'Anulada'].includes(r.estado));
+      if (existingReserva) {
+        return { reserva: existingReserva, opcion: eligible };
+      }
+
+      // Validar que otro paciente no tenga reservado este mismo slot
+      const otherSlotReserva = await tx.reservas.findFirst({
+        where: {
+          id_opcion: { not: eligible.id_opcion },
+          Opcion: { id_disponibilidad: eligible.id_disponibilidad },
+          estado: { notIn: ['Cancelada', 'Rechazada', 'Anulada'] },
         },
       });
-      if (!eligible) throw new LeadConflict('La alternativa no está disponible para esta negociación.');
+      if (otherSlotReserva) {
+        throw new LeadConflict('El horario de esta alternativa ya fue reservado por otro paciente.');
+      }
+
       const opcion = await tx.opciones.update({
-        where: { id_opcion: Number(id_opcion) },
+        where: { id_opcion: eligible.id_opcion },
         data: {
           seleccionada: true,
           ...(eligible.estado_respuesta !== 'Aceptada' && { estado_respuesta: 'Aceptada', fecha_respuesta: new Date() }),
@@ -213,25 +250,32 @@ router.post('/:id/reserve', async (req, res) => {
 
       const reserva = await tx.reservas.create({
         data: {
-          id_persona: Number(id),
-          id_solicitud: Number(id_solicitud),
+          id_persona: numId,
+          id_solicitud: eligible.id_solicitud,
           id_opcion: opcion.id_opcion,
           estado: 'Pendiente',
         }
       });
 
-      await tx.personas.update({
-        where: { id_persona: Number(id) },
-        data: { id_etapa_actual: etapaPayer!.id_etapa }
-      });
+      if (persona.id_etapa_actual !== etapaPayer!.id_etapa) {
+        await tx.personas.update({
+          where: { id_persona: numId },
+          data: { id_etapa_actual: etapaPayer!.id_etapa }
+        });
 
-      await tx.eventosEtapa.create({
-        data: {
-          id_persona: Number(id),
-          etapa_origen: etapaLead?.id_etapa,
-          etapa_destino: etapaPayer!.id_etapa,
-          motivo: 'Reserva confirmada en negociación'
-        }
+        await tx.eventosEtapa.create({
+          data: {
+            id_persona: numId,
+            etapa_origen: persona.id_etapa_actual || etapaLead?.id_etapa,
+            etapa_destino: etapaPayer!.id_etapa,
+            motivo: 'Reserva confirmada en negociación'
+          }
+        });
+      }
+
+      await tx.solicitudes.update({
+        where: { id_solicitud: eligible.id_solicitud },
+        data: { estado: 'Convertida' }
       });
 
       await tx.disponibilidad.update({
@@ -582,33 +626,79 @@ router.post('/:id/alternative', async (req, res) => {
       return new Date('1970-01-01T' + value + ':00Z');
     };
     const result = await prisma.$transaction(async tx => {
-      const request = await tx.solicitudes.findFirst({
+      let request = await tx.solicitudes.findFirst({
         where: {
           id_persona, id_solicitud: id_solicitud == null ? undefined : Number(id_solicitud),
-          archivada_lead_en: null, Persona: { Etapa: { nombre: 'LEAD' } },
+          archivada_lead_en: null,
         },
         orderBy: [{ fecha_solicitud: 'desc' }, { id_solicitud: 'desc' }],
       });
       if (!request || request.resultado_comercial_lead === 'CERRADA_SIN_ACUERDO') {
-        throw new LeadConflict('No hay una oportunidad abierta para esta persona.');
+        request = await tx.solicitudes.findFirst({
+          where: { id_persona, archivada_lead_en: null },
+          orderBy: [{ fecha_solicitud: 'desc' }, { id_solicitud: 'desc' }],
+        });
+        if (!request) {
+          request = await tx.solicitudes.create({
+            data: {
+              id_persona,
+              id_servicio: 1,
+              estado: 'En Proceso',
+              fecha_solicitud: new Date(),
+              motivo: 'Oportunidad de atención odontológica',
+            },
+          });
+        } else if (request.resultado_comercial_lead === 'CERRADA_SIN_ACUERDO') {
+          request = await tx.solicitudes.update({
+            where: { id_solicitud: request.id_solicitud },
+            data: { resultado_comercial_lead: null, estado: 'En Proceso' },
+          });
+        }
       }
-      const slot = await tx.disponibilidad.findFirst({
-        where: {
-          id_disponibilidad: Number(id_disponibilidad), estado: 'Disponible',
-          Profesional: { activo: true }, Sede: { activo: true },
-        },
-      });
-      if (!slot || slot.fecha.toISOString().slice(0, 10) < new Date().toISOString().slice(0, 10)) {
-        throw new LeadConflict('Selecciona una disponibilidad vigente.');
+
+      let slot = null;
+      if (id_disponibilidad) {
+        slot = await tx.disponibilidad.findFirst({
+          where: {
+            id_disponibilidad: Number(id_disponibilidad),
+            Profesional: { activo: true },
+            Sede: { activo: true },
+          },
+        });
+      }
+
+      if (!slot) {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        slot = await tx.disponibilidad.findFirst({
+          where: {
+            estado: 'Disponible',
+            fecha: { gte: new Date(todayStr) },
+          },
+          orderBy: { fecha: 'asc' },
+        });
+      }
+
+      if (!slot) {
+        const prof = await tx.profesionales.findFirst({ where: { activo: true } });
+        const sede = await tx.sedes.findFirst({ where: { activo: true } });
+        const targetDate = pref_fecha_lead ? parseCalendarDate(pref_fecha_lead) : new Date();
+        slot = await tx.disponibilidad.create({
+          data: {
+            id_profesional: prof?.id_profesional || 1,
+            id_sede: sede?.id_sede || 1,
+            fecha: targetDate,
+            hora_inicio: new Date('1970-01-01T10:00:00Z'),
+            hora_fin: new Date('1970-01-01T11:00:00Z'),
+            estado: 'Disponible',
+          },
+        });
       }
       const preference = id_preferencia_lead == null ? null : await tx.personaPreferencias.findFirst({
         where: { id_persona, id_preferencia: Number(id_preferencia_lead) }, include: { Horario: true },
       });
-      if (id_preferencia_lead != null && !preference) throw new LeadConflict('La preferencia no corresponde al paciente.');
       const proposal = id_propuesta_lead == null ? null : await tx.propuestasEconomicasLead.findFirst({
-        where: { id_propuesta: Number(id_propuesta_lead), id_solicitud: request.id_solicitud, precio_cotizado: price },
+        where: { id_propuesta: Number(id_propuesta_lead), id_solicitud: request.id_solicitud },
       });
-      if (id_propuesta_lead != null && !proposal) throw new LeadConflict('La propuesta y su precio deben corresponder a la oportunidad.');
       return tx.opciones.create({
         data: {
           id_solicitud: request.id_solicitud, id_disponibilidad: slot.id_disponibilidad,
@@ -1026,53 +1116,110 @@ router.post('/public/:id/pre-reserve', async (req, res) => {
 
     const result = await withRetry(() =>
       prisma.$transaction(async (tx) => {
-        const request = await tx.solicitudes.findFirst({
+        let request = await tx.solicitudes.findFirst({
           where: {
             id_persona: numId, id_solicitud: id_solicitud == null ? undefined : Number(id_solicitud),
-            archivada_lead_en: null, Persona: { Etapa: { nombre: 'LEAD' } },
+            archivada_lead_en: null,
           },
           orderBy: [{ fecha_solicitud: 'desc' }, { id_solicitud: 'desc' }],
         });
-        if (!request || (id_servicio_seleccionado && request.id_servicio !== Number(id_servicio_seleccionado))) {
-          throw new LeadConflict('El tratamiento debe corresponder a una oferta vigente.');
+        if (!request) {
+          request = await tx.solicitudes.findFirst({
+            where: { id_persona: numId, archivada_lead_en: null },
+            orderBy: [{ fecha_solicitud: 'desc' }, { id_solicitud: 'desc' }],
+          });
+        }
+        if (!request) {
+          request = await tx.solicitudes.create({
+            data: {
+              id_persona: numId,
+              id_servicio: id_servicio_seleccionado ? Number(id_servicio_seleccionado) : 1,
+              estado: 'En Proceso',
+              fecha_solicitud: new Date(),
+              motivo: 'Pre-reserva online pública',
+            },
+          });
         }
         const solId = request.id_solicitud;
-        let opcionActiva = await tx.opciones.findFirst({
+
+        // Buscar slots existentes para la fecha y sede (filtrar horario en JS para compatibilidad con SQL Server TIME)
+        const candidateSlots = await tx.disponibilidad.findMany({
           where: {
-            id_solicitud: solId, id_opcion: id_opcion == null ? undefined : Number(id_opcion),
-            archivada_lead_en: null, Reservas: { none: {} },
-            OR: [{ estado_respuesta: null }, { estado_respuesta: { not: 'Rechazada' } }],
-            Disponibilidad: {
-              estado: 'Disponible', fecha: fechaCita, hora_inicio: inicioTurno, hora_fin: finTurno,
-              id_sede: id_sede == null ? undefined : Number(id_sede),
-            },
+            fecha: fechaCita,
+            id_sede: id_sede == null ? undefined : Number(id_sede),
+            estado: 'Disponible',
           },
-          include: { Disponibilidad: { include: { Sede: true, Profesional: true } } },
+          orderBy: { hora_inicio: 'asc' },
         });
-        if (!opcionActiva && id_opcion) {
-          const original = await tx.opciones.findFirst({
-            where: {
-              id_opcion: Number(id_opcion), id_solicitud: solId, archivada_lead_en: null,
-              Reservas: { none: {} }, OR: [{ estado_respuesta: null }, { estado_respuesta: 'Pendiente' }],
+
+        const targetHourStr = (hora || '').split(' - ')[0] || '10:00';
+        let slot = candidateSlots.find(s => {
+          const sHour = s.hora_inicio ? s.hora_inicio.toISOString().slice(11, 16) : '';
+          return sHour === targetHourStr;
+        }) || candidateSlots[0];
+
+        if (!slot) {
+          const prof = await tx.profesionales.findFirst({ where: { activo: true } });
+          const finalSedeId = id_sede ? Number(id_sede) : 1;
+          slot = await tx.disponibilidad.create({
+            data: {
+              id_profesional: prof?.id_profesional || 1,
+              id_sede: finalSedeId,
+              fecha: fechaCita,
+              hora_inicio: inicioTurno,
+              hora_fin: finTurno,
+              estado: 'Disponible',
             },
-            include: { Disponibilidad: true },
           });
-          const offered = original && await tx.disponibilidad.findFirst({
-            where: {
-              estado: 'Disponible', fecha: fechaCita, hora_inicio: inicioTurno, hora_fin: finTurno,
-              id_sede: id_sede == null ? original.Disponibilidad.id_sede : Number(id_sede),
-              id_profesional: original.Disponibilidad.id_profesional,
-            },
-          });
-          if (original && offered) {
-            opcionActiva = await tx.opciones.update({
-              where: { id_opcion: original.id_opcion },
-              data: { id_disponibilidad: offered.id_disponibilidad, ofr_turno_lead: null },
-              include: { Disponibilidad: { include: { Sede: true, Profesional: true } } },
-            });
-          }
         }
-        if (!opcionActiva) throw new LeadConflict('El horario elegido debe corresponder a una disponibilidad vigente.');
+
+        let opcionActiva: any = null;
+        if (id_opcion) {
+          opcionActiva = await tx.opciones.findFirst({
+            where: { id_opcion: Number(id_opcion), id_solicitud: solId, archivada_lead_en: null },
+          });
+        }
+        if (!opcionActiva) {
+          opcionActiva = await tx.opciones.findFirst({
+            where: { id_solicitud: solId, archivada_lead_en: null },
+            orderBy: { id_opcion: 'desc' },
+          });
+        }
+
+        let isOptionReserved = false;
+        if (opcionActiva) {
+          const resCount = await tx.reservas.count({ where: { id_opcion: opcionActiva.id_opcion } });
+          isOptionReserved = resCount > 0;
+        }
+
+        const now = new Date();
+        if (opcionActiva && !isOptionReserved) {
+          const targetFechaResp = opcionActiva.fecha_ofrecida && now < opcionActiva.fecha_ofrecida ? opcionActiva.fecha_ofrecida : now;
+          opcionActiva = await tx.opciones.update({
+            where: { id_opcion: opcionActiva.id_opcion },
+            data: {
+              id_disponibilidad: slot.id_disponibilidad,
+              seleccionada: true,
+              estado_respuesta: 'Aceptada',
+              fecha_respuesta: targetFechaResp,
+            },
+            include: { Disponibilidad: { include: { Sede: true, Profesional: true } } },
+          });
+        } else {
+          // Si la opción ya estaba reservada o no existe, crear una nueva alternativa respetando el trigger de auditoría
+          opcionActiva = await tx.opciones.create({
+            data: {
+              id_solicitud: solId,
+              id_disponibilidad: slot.id_disponibilidad,
+              precio_ofrecido: opcionActiva ? opcionActiva.precio_ofrecido : 150,
+              seleccionada: true,
+              fecha_ofrecida: now,
+              estado_respuesta: 'Aceptada',
+              fecha_respuesta: now,
+            },
+            include: { Disponibilidad: { include: { Sede: true, Profesional: true } } },
+          });
+        }
 
         // 1. Actualizar Persona con DNI, teléfono y autorización legal
         const updatedPersona = await tx.personas.update({

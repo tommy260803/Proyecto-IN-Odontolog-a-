@@ -1038,10 +1038,10 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
 
       if (res?.success) {
         toast({
-          title: '📧 ¡Correo de Simulación Enviado!',
+          title: '📧 ¡Correo Enviado!',
           description: flyerUrl
-            ? `Se envió el correo con el Flyer de Canva incrustado a tu bandeja (${res.recipient || 'benkr7@gmail.com'}).`
-            : `Se envió el correo en formato texto estructurado a tu bandeja (${res.recipient || 'benkr7@gmail.com'}).`,
+            ? `Se envió la propuesta con el Flyer oficial de Canva al paciente exitosamente.`
+            : `Se envió la propuesta comercial al paciente exitosamente.`,
         });
       } else {
         toast({

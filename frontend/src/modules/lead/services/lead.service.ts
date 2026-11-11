@@ -196,8 +196,6 @@ export const leadService = {
       `${API_URL}/lead/send-offer-email`,
       `${API_URL}/leads/${leadId}/send-email`,
       `${API_URL}/lead/${leadId}/send-email`,
-      `https://proyecto-odontologia-backend.onrender.com/api/lead/send-offer-email`,
-      `https://proyecto-odontologia-backend.onrender.com/api/lead/${leadId}/send-email`,
     ];
 
     const uniqueEndpoints = Array.from(new Set(endpoints));
@@ -206,7 +204,7 @@ export const leadService = {
     for (const ep of uniqueEndpoints) {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 6000);
+        const timeout = setTimeout(() => controller.abort(), 12000);
         const res = await fetch(ep, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -214,11 +212,19 @@ export const leadService = {
           signal: controller.signal,
         });
         clearTimeout(timeout);
-        if (res.ok) {
-          const contentType = res.headers.get('content-type') || '';
-          if (contentType.includes('application/json')) {
-            return await res.json();
-          }
+
+        const contentType = res.headers.get('content-type') || '';
+        let data: any = null;
+        if (contentType.includes('application/json')) {
+          data = await res.json();
+        }
+
+        if (res.ok && data) {
+          return data;
+        }
+
+        if (data?.error || data?.message) {
+          throw new Error(data.error || data.message);
         }
       } catch (err) {
         lastError = err;
@@ -272,45 +278,41 @@ export const leadService = {
 
   getPublicOffer: async (leadId: string | number) => {
     const cleanId = String(leadId).replace(/\D/g, '') || leadId;
-    const endpoints = [
-      `${API_URL}/lead/public/${cleanId}`,
-      `/api/lead/public/${cleanId}`,
-      `https://proyecto-odontologia-backend.onrender.com/api/lead/public/${cleanId}`,
-    ];
-    let lastError = null;
-    for (const ep of endpoints) {
-      try {
-        const res = await fetch(ep);
-        if (res.ok) return await res.json();
-      } catch (e) {
-        lastError = e;
-      }
+    try {
+      const res = await fetch(`${API_URL}/lead/public/${cleanId}`);
+      if (res.ok) return await res.json();
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || errData.message || 'No se pudo cargar la oferta comercial');
+    } catch (e: any) {
+      if (e.message && !e.message.includes('Failed to fetch')) throw e;
+      // Intento de fallback relativo solo si hubo fallo de red
+      const fallbackRes = await fetch(`/api/lead/public/${cleanId}`).catch(() => null);
+      if (fallbackRes && fallbackRes.ok) return await fallbackRes.json();
+      throw e;
     }
-    throw lastError || new Error('No se pudo cargar la oferta comercial');
   },
 
   submitPublicPreReserve: async (leadId: string | number, payload: any) => {
     const cleanId = String(leadId).replace(/\D/g, '') || leadId;
-    const endpoints = [
-      `${API_URL}/lead/public/${cleanId}/pre-reserve`,
-      `/api/lead/public/${cleanId}/pre-reserve`,
-      `https://proyecto-odontologia-backend.onrender.com/api/lead/public/${cleanId}/pre-reserve`,
-    ];
-    let lastError = null;
-    for (const ep of endpoints) {
-      try {
-        const res = await fetch(ep, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (res.ok) return await res.json();
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Error al procesar la pre-reserva');
-      } catch (e) {
-        lastError = e;
-      }
+    try {
+      const res = await fetch(`${API_URL}/lead/public/${cleanId}/pre-reserve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) return await res.json();
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || errData.message || 'Error al procesar la pre-reserva');
+    } catch (e: any) {
+      if (e.message && !e.message.includes('Failed to fetch')) throw e;
+      // Intento de fallback relativo solo si hubo fallo de red
+      const fallbackRes = await fetch(`/api/lead/public/${cleanId}/pre-reserve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => null);
+      if (fallbackRes && fallbackRes.ok) return await fallbackRes.json();
+      throw e;
     }
-    throw lastError || new Error('No se pudo completar la pre-reserva');
   },
 };

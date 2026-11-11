@@ -298,13 +298,18 @@ export default function PayerPage() {
       const matchStatus = statusFilter === 'ALL' || p.state === statusFilter;
       
       let matchDate = true;
-      if (startDate && p.createdAt) {
-        const start = startOfDay(parseISO(p.createdAt));
-        matchDate = matchDate && !isBefore(parseISO(p.createdAt), start);
+      const rawDate = p.payment?.operationDate || p.createdAt || p.reservation?.date;
+      if (startDate) {
+        if (!rawDate) return false;
+        const itemDate = parseISO(rawDate);
+        const start = startOfDay(parseISO(startDate));
+        matchDate = matchDate && !isBefore(itemDate, start);
       }
-      if (endDate && p.createdAt) {
+      if (endDate) {
+        if (!rawDate) return false;
+        const itemDate = parseISO(rawDate);
         const end = endOfDay(parseISO(endDate));
-        matchDate = matchDate && !isAfter(parseISO(p.createdAt), end);
+        matchDate = matchDate && !isAfter(itemDate, end);
       }
       
       return matchSearch && matchStatus && matchDate;
@@ -506,8 +511,8 @@ export default function PayerPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <PageHeader 
-          title="Módulo PAYER" 
-          description="Gestión de pagos, cadencia de cobranza en 3 etapas y validación oficial."
+          title="Caja y Cobranzas" 
+          description="Gestión de recaudación, validación de comprobantes y trazabilidad de pagos."
         />
 
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
@@ -515,7 +520,7 @@ export default function PayerPage() {
             type="button"
             onClick={() => setIsExcelModalOpen(true)}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm hover:shadow-md cursor-pointer select-none"
-            title="Exportar datos formateados a Microsoft Excel (.xlsx) para Power BI o análisis"
+            title="Exportar datos formateados a Microsoft Excel (.xlsx)"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
             <span>Exportar Excel (.xlsx)</span>
