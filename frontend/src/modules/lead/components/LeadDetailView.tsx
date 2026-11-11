@@ -53,6 +53,7 @@ import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { ErrorState } from '@/shared/components/feedback/ErrorState';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 import { LeadInteraction, type LeadInteractionAnalysis } from './LeadInteraction';
+import { LeadOperationalFollowUp } from './LeadOperationalFollowUp';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import {
   predictLeadNegotiationStrategy,
@@ -1966,6 +1967,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
             </section>
 
             {/* Sección 3: Despacho Omnicanal y Generación de Pieza Gráfica (Canva) */}
+            {canAbandon && <LeadOperationalFollowUp key={'follow-up-'+ultimaSolicitud.id_solicitud} requestId={ultimaSolicitud.id_solicitud}/>}
             {canAbandon && (
               <LeadInteraction key={ultimaSolicitud.id_solicitud} requestId={ultimaSolicitud.id_solicitud}
                 onChooseSlot={(slot) => {

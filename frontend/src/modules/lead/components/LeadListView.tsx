@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useLeads } from '../hooks/useLeadQueries';
 import { leadService } from '../services/lead.service';
+import { useLeadPriorities } from './LeadOperationalFollowUp';
 import { LeadState } from '@/domain/enums';
 import { QUERY_KEYS } from '@/shared/constants';
 import { useToast } from '@/shared/hooks/use-toast';
@@ -103,6 +104,7 @@ export function LeadListView() {
   const { toast } = useToast();
 
   const { data: leads = [], isLoading, isError } = useLeads();
+  const {data:priorities=[]}=useLeadPriorities();
 
   // Filtros multi-selección y búsqueda
   const [searchTerm, setSearchTerm] = useState('');
@@ -250,8 +252,9 @@ export function LeadListView() {
       }
 
       return true;
-    });
-  }, [leads, searchTerm, selectedStates, selectedServices, startDate, endDate]);
+    }).sort((a:any,b:any)=>(priorities.find(p=>p.id_solicitud===a.id_negociacion)?.orden??5)-
+      (priorities.find(p=>p.id_solicitud===b.id_negociacion)?.orden??5));
+  }, [leads, searchTerm, selectedStates, selectedServices, startDate, endDate,priorities]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -850,6 +853,9 @@ export function LeadListView() {
                       {/* Columna ESTADO */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         {renderLeadStatusBadge(l.state)}
+                        <p className="mt-1 max-w-48 whitespace-normal text-xs text-slate-500">
+                          {priorities.find(p=>p.id_solicitud===(l as any).id_negociacion)?.motivo}
+                        </p>
                       </td>
 
                       {/* Columna ACCIONES */}
