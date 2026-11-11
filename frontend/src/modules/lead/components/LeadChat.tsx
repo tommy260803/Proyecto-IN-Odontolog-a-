@@ -35,6 +35,10 @@ export function LeadChat({ requestId, token, staff = false, shareable = [], onPr
   const [proposals, setProposals] = useState<ChatProposal[]>([]);
   const [proposalBusy, setProposalBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [review, setReview] = useState<{ id_revision: number; pausado: boolean; motivo: string } | null | undefined>();
+  const [reviewReason, setReviewReason] = useState('');
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const paused = staff && review?.pausado === true;
   const pending = useRef<{ clave: string; texto: string } | null>(null);
   const endpoint = api + '/lead/commercial/chat/' + (staff ? 'staff/' : 'patient/') + requestId;
   const own = staff ? 'PERSONAL' : 'PACIENTE';
@@ -61,6 +65,7 @@ export function LeadChat({ requestId, token, staff = false, shareable = [], onPr
         let cursor = 0;
         while (!controller.signal.aborted) {
           const data = await call('GET', cursor ? '?desde=' + cursor : '', undefined, controller.signal);
+          if (staff && !controller.signal.aborted) setReview(data.revision);
           const page: Message[] = data.mensajes;
           received.push(...page);
           if (page.length < 50) break;
@@ -92,7 +97,7 @@ export function LeadChat({ requestId, token, staff = false, shareable = [], onPr
 
   async function send(event: FormEvent) {
     event.preventDefault();
-    if (!draft.trim() || sending) return;
+    if (!draft.trim() || sending || paused) return;
     setSending(true);
     setError('');
     pending.current ??= { clave: crypto.randomUUID(), texto: draft.trim() };
@@ -140,6 +145,25 @@ export function LeadChat({ requestId, token, staff = false, shareable = [], onPr
     }
   }
 
+  async function changeReview(event: FormEvent) {
+    event.preventDefault();
+    if (!reviewReason.trim() || reviewBusy) return;
+    setReviewBusy(true);
+    setError('');
+    try {
+      const data = await call('PATCH', '/review', {
+        pausado: !paused, revision_esperada: review?.id_revision ?? null, motivo: reviewReason.trim(),
+      });
+      setReview(data.revision);
+      setReviewReason('');
+    } catch (failure) {
+      if (failure instanceof Error) setError(failure.message);
+    } finally {
+      setReviewBusy(false);
+      setRefresh(value => value + 1);
+    }
+  }
+
   return <section className="space-y-3 rounded-lg border bg-white p-4">
     <h2 className="text-lg font-semibold">Conversación LEAD</h2>
     {staff && <button type="button" className="underline" onClick={() => void issueAccess()}>Generar enlace temporal de QA</button>}
@@ -148,8 +172,18 @@ export function LeadChat({ requestId, token, staff = false, shareable = [], onPr
     </label>}
     {error && <p role="alert">{error}</p>}
     {notice && <p role="status">{notice}</p>}
+    {staff && review !== undefined && <form className="space-y-2 rounded border p-3" onSubmit={changeReview}>
+      {paused && <p role="status">Seguimiento pausado. {review?.motivo}</p>}
+      <label className="block">Motivo de {paused ? 'reanudación' : 'pausa'}
+        <input className="block w-full rounded border p-2" value={reviewReason} maxLength={400}
+          onChange={event => setReviewReason(event.target.value)} />
+      </label>
+      <button className="underline" disabled={reviewBusy || !reviewReason.trim()}>
+        {paused ? 'Reanudar seguimiento' : 'Pausar seguimiento'}
+      </button>
+    </form>}
     {staff && shareable.map(proposal =>
-      <button key={proposal.id_propuesta} type="button" disabled={proposalBusy} className="block underline"
+      <button key={proposal.id_propuesta} type="button" disabled={proposalBusy || paused} className="block underline"
         onClick={() => void proposalAction(proposal)}>
         Compartir cotización #{proposal.id_propuesta} · versión {proposal.numero_version} · S/ {proposal.precio}
       </button>)}
@@ -170,9 +204,9 @@ export function LeadChat({ requestId, token, staff = false, shareable = [], onPr
     <form className="space-y-2" onSubmit={send}>
       <label className="block">Mensaje
         <textarea className="block w-full rounded border p-2" value={draft} maxLength={2000}
-          disabled={sending || pending.current !== null} onChange={event => setDraft(event.target.value)} />
+          disabled={sending || paused || pending.current !== null} onChange={event => setDraft(event.target.value)} />
       </label>
-      <button className="rounded border px-3 py-1" disabled={sending || !draft.trim()}>
+      <button className="rounded border px-3 py-1" disabled={sending || paused || !draft.trim()}>
         {sending ? 'Enviando…' : pending.current ? 'Reintentar envío' : 'Enviar'}
       </button>
     </form>

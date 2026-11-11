@@ -151,7 +151,7 @@ chat.post('/staff/:id/access', route(async (req, res) => {
   res.status(201).json({ token });
 }));
 
-function chatMessages(staff: boolean, proposals = false) {
+function chatMessages(staff: boolean, action: 'messages' | 'proposals' | 'review' = 'messages') {
   return route(async (req, res) => {
     const requestId = id(req.params.id);
     const sender = staff ? 'PERSONAL' : 'PACIENTE';
@@ -173,11 +173,42 @@ function chatMessages(staff: boolean, proposals = false) {
           ${staff ? Prisma.empty : Prisma.sql`AND a.token_hash = ${chatTokenHash(token!)}`}
       `;
       if (!access || (!staff && !access.activo)) {
-        if (proposals) throw new InputError('Acceso a conversación no vigente.', staff ? 409 : 401);
+        if (action !== 'messages') throw new InputError('Acceso a conversación no vigente.', staff ? 409 : 401);
         if (staff && req.method === 'GET') return { mensajes: [] };
         throw new InputError('Acceso a conversación no vigente.', staff ? 409 : 401);
       }
-      if (proposals) {
+      const [reviewSchema] = await tx.$queryRaw<{ installed: boolean }[]>`
+        SELECT CAST(CASE WHEN OBJECT_ID(N'dbo.RevisionesChatLead', N'U') IS NULL THEN 0 ELSE 1 END AS bit) AS installed
+      `;
+      const [review] = reviewSchema.installed ? await tx.$queryRaw<{ id_revision: number; pausado: boolean; motivo: string }[]>`
+        SELECT TOP (1) id_revision, pausado, motivo FROM dbo.RevisionesChatLead
+        WHERE id_solicitud = ${requestId} ORDER BY id_revision DESC
+      ` : [];
+      if (action === 'review') {
+        if (!reviewSchema.installed) throw new InputError('La revisión del chat no está instalada.', 409);
+        if (req.method === 'GET') return { revision: review ?? null };
+        const { pausado, revision_esperada } = req.body ?? {};
+        if (typeof pausado !== 'boolean' ||
+            (revision_esperada !== null && (!Number.isSafeInteger(revision_esperada) || revision_esperada < 1))) {
+          throw new InputError('Indica el estado y la revisión consultada.');
+        }
+        if ((review?.id_revision ?? null) !== revision_esperada) {
+          throw new InputError('El estado cambió. Consulta la revisión vigente.', 409);
+        }
+        if (!pausado && !access.activo) throw new InputError('La conversación ya no está habilitada.', 409);
+        if ((review?.pausado ?? false) === pausado) return { revision: review ?? null };
+        const reason = requiredText(req.body.motivo, 400);
+        const [saved] = await tx.$queryRaw`
+          INSERT dbo.RevisionesChatLead (id_solicitud, id_usuario, pausado, motivo)
+          OUTPUT inserted.id_revision, inserted.pausado, inserted.motivo
+          VALUES (${requestId}, ${user!.id_usuario}, ${pausado}, ${reason})
+        ` as object[];
+        return { revision: saved };
+      }
+      if (staff && req.method === 'POST' && review?.pausado) {
+        throw new InputError('El seguimiento está pausado por revisión humana.', 409);
+      }
+      if (action === 'proposals') {
         if (!access.activo) throw new InputError('La conversación no admite decisiones.', 409);
         if (req.method === 'GET') return { propuestas: await tx.$queryRaw`
           SELECT c.id_propuesta, p.numero_version, CAST(c.precio AS varchar(20)) AS precio,
@@ -236,7 +267,7 @@ function chatMessages(staff: boolean, proposals = false) {
           FROM dbo.MensajesChatLead WHERE id_solicitud = ${requestId} AND id_mensaje > ${after}
           ORDER BY id_mensaje
         `;
-        return { mensajes: messages };
+        return { mensajes: messages, ...(staff && reviewSchema.installed ? { revision: review ?? null } : {}) };
       }
       if (req.method === 'PATCH') {
         const messageId = id(req.body?.id_mensaje);
@@ -274,9 +305,10 @@ function chatMessages(staff: boolean, proposals = false) {
 
 chat.route('/patient/:id').get(chatMessages(false)).post(chatMessages(false)).patch(chatMessages(false));
 chat.route('/staff/:id').get(chatMessages(true)).post(chatMessages(true)).patch(chatMessages(true));
-chat.get('/patient/:id/proposals', chatMessages(false, true));
-chat.post('/patient/:id/proposals/:proposal/accept', chatMessages(false, true));
-chat.post('/staff/:id/proposals/:proposal', chatMessages(true, true));
+chat.get('/patient/:id/proposals', chatMessages(false, 'proposals'));
+chat.post('/patient/:id/proposals/:proposal/accept', chatMessages(false, 'proposals'));
+chat.post('/staff/:id/proposals/:proposal', chatMessages(true, 'proposals'));
+chat.route('/staff/:id/review').get(chatMessages(true, 'review')).patch(chatMessages(true, 'review'));
 
 router.patch('/opportunities/:id/follow-up', route(async (req, res) => {
   if (!leadStaffAuthEnabled()) return res.sendStatus(404);

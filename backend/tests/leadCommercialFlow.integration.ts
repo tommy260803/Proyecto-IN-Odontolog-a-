@@ -161,6 +161,24 @@ async function run() {
         const chatToken = process.env.LEAD_CHAT_QA === 'true'
           ? (await call(staffQuotes + '/access', 201, 'POST', undefined, token)).token as string : null;
         if (chatToken) {
+          const reviewPath = staffQuotes + '/review';
+          const pause = { pausado: true, revision_esperada: null, motivo: 'Revisar las condiciones de la propuesta' };
+          await call(reviewPath, 401, 'PATCH', pause);
+          const paused = (await call(reviewPath, 200, 'PATCH', pause, token)).revision;
+          await call(staffQuotes, 409, 'POST', { clave: randomUUID(), texto: 'Seguimiento durante pausa' }, token);
+          await call(staffQuotes + '/proposals/' + proposal.id_propuesta, 409, 'POST', undefined, token);
+          await call(patientQuotes, 200, 'POST', { clave: randomUUID(), texto: 'Sigo disponible' }, chatToken);
+          await call(reviewPath, 409, 'PATCH', { ...pause, pausado: false }, token);
+          const resumed = (await call(reviewPath, 200, 'PATCH', {
+            pausado: false, revision_esperada: paused.id_revision, motivo: 'Condiciones verificadas',
+          }, token)).revision;
+          assert.equal(resumed.pausado, false);
+          const [audit] = await tx.$queryRaw<{ total: number }[]>`
+            SELECT COUNT(*) AS total FROM dbo.RevisionesChatLead
+            WHERE id_solicitud = ${requestId} AND id_usuario = ${user.id_usuario}
+          `;
+          assert.equal(audit.total, 2);
+          completed.push('pausa y reanudación auditadas con bloqueo de salida y revisión vigente');
           await call(staffQuotes + '/proposals/' + proposal.id_propuesta, 200, 'POST', undefined, token);
           await call(patientQuotes, 200, 'POST', { clave: randomUUID(), texto: 'Sí, pero me parece caro' }, chatToken);
           const shown = (await call(patientQuotes + '/proposals', 200, 'GET', undefined, chatToken)).propuestas;

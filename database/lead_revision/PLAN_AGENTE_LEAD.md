@@ -10,7 +10,7 @@ Chat web y Gemini con configuración propia de LEAD. La OLTP decide las operacio
 | 4. Chat web | Chat manual validado en QA por HTTP | Acceso temporal por solicitud, historial, recepción y reenvío idempotente. Pendientes la prueba visual y la conexión con BUYER. |
 | 5. F2: alternativas | Recomendación asistida validada en QA | Agenda ordenada por rango confirmado y revalidación al ofrecer. Pendiente interpretar el chat con Gemini. |
 | 6. F3: negociación | Aceptación por chat validada en QA | El personal comparte una versión y el paciente confirma su importe. Pendiente la asistencia con Gemini para objeciones. |
-| 7. F4: seguimiento | Pendiente | Límites por persona, parada, recuperación y revisión humana. |
+| 7. F4: seguimiento | Revisión humana validada en QA | Pausa y reanudación auditadas en el chat. Pendientes las reglas de contacto y el seguimiento automático. |
 | 8. F5: traspaso | Pendiente | Una reserva y un evento por traspaso autorizado, incluso ante reintentos. |
 | 9. Integración y entrega | Pendiente | Prueba conjunta en QA, regresión de indicadores y paquete de activación. |
 
@@ -71,3 +71,11 @@ Aplicar [PROPUESTAS_CHAT_LEAD_QA.sql](PROPUESTAS_CHAT_LEAD_QA.sql) después del 
 El texto libre conserva su función de conversación. Las objeciones y solicitudes de cambio se atienden por ese canal y el personal gestiona los rechazos explícitos con el flujo existente. Quedan pendientes Gemini para asistir con objeciones y la identidad de paciente para un uso productivo. El chat QA acredita el uso del acceso temporal vinculado a la solicitud.
 
 El ensayo HTTP + SQL en QA verificó que un mensaje ambiguo deja la cotización pendiente, que una versión reemplazada y un importe distinto se rechazan, y que el reintento de aceptación conserva la evidencia original.
+
+## Revisión humana en el chat de QA
+
+Aplicar [REVISION_CHAT_LEAD_QA.sql](REVISION_CHAT_LEAD_QA.sql) después del esquema de chat. El personal autorizado pausa o reanuda el seguimiento desde la oportunidad, con un motivo en cada cambio. La revisión consultada debe seguir vigente para actualizarla. El historial registra quién hizo el cambio y cuándo.
+
+Durante una pausa, el chat bloquea los mensajes del personal y la publicación de cotizaciones. El paciente puede enviar mensajes y consultar las cotizaciones compartidas. Para reanudar se verifica que el acceso, la etapa y el consentimiento sigan vigentes. La pausa se aplica al chat de esa solicitud. Las reglas para automatizar contactos y limitar su frecuencia por persona están pendientes.
+
+Pasaron las compilaciones y el ensayo HTTP + SQL en QA. La prueba cubrió permisos, bloqueo de salida, recepción de mensajes durante la pausa, rechazo de una revisión desactualizada y registro de la reanudación.
