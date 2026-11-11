@@ -10,6 +10,7 @@ import turnedRoutes from './routes/turned.routes';
 import reportRoutes from './routes/report.routes';
 import configRoutes from './routes/config.routes';
 import patientAuthRoutes from './routes/patientAuth.routes';
+import whatsappRoutes from './routes/whatsapp.routes';
 import { startDunningScheduler } from './services/dunningScheduler';
 
 const app = express();
@@ -31,6 +32,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/mart', reportRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/patient-auth', patientAuthRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 import { CanvaService } from './services/canvaService';
 

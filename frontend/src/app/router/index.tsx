@@ -5,6 +5,8 @@ import BuyerDetailPage from '@/modules/buyer/pages/BuyerDetailPage';
 import BuyerRequestInfoPage from '@/modules/buyer/pages/BuyerRequestInfoPage';
 import ActivateAccountPage from '@/modules/buyer/pages/ActivateAccountPage';
 import PreReservationPage from '@/modules/lead/pages/PreReservationPage';
+import ProrrogaExpressPage from '@/modules/payer/pages/ProrrogaExpressPage';
+import PublicPaymentPage from '@/modules/payer/pages/PublicPaymentPage';
 import LeadPage from '@/modules/lead/pages/LeadPage';
 import LeadDetailPage from '@/modules/lead/pages/LeadDetailPage';
 import LeadNegotiationPage from '@/modules/lead/pages/LeadNegotiationPage';
@@ -39,6 +41,34 @@ export const router = createBrowserRouter([
   {
     path: '/pre-reserva/:id',
     element: <PreReservationPage />,
+  },
+  {
+    path: '/prorroga-express/:reservaId',
+    element: <ProrrogaExpressPage />,
+  },
+  {
+    path: '/prorroga/:reservaId',
+    element: <ProrrogaExpressPage />,
+  },
+  {
+    path: '/api/payer/prorroga-express/:reservaId',
+    element: <ProrrogaExpressPage />,
+  },
+  {
+    path: '/pasarela-pago/:orderCode',
+    element: <PublicPaymentPage />,
+  },
+  {
+    path: '/pasarela-pago',
+    element: <PublicPaymentPage />,
+  },
+  {
+    path: '/pago/:orderCode',
+    element: <PublicPaymentPage />,
+  },
+  {
+    path: '/pago',
+    element: <PublicPaymentPage />,
   },
   {
     element: <AppLayout />,

@@ -1,6 +1,7 @@
 import { prisma } from '../db';
 import { sendPaymentNoticeOrConfirmation, generateBackendPdfBase64 } from '../routes/payer.routes';
 import { appointmentMidnightInLima } from './appointmentPolicy';
+import { WhatsAppService } from './whatsappService';
 
 export interface DunningCycleResult {
   timestamp: string;
@@ -208,6 +209,25 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
           emailSent = emailRes.success;
         }
 
+        // Envío complementario o preferencial por WhatsApp con opciones de pago y prórroga
+        let waSent = false;
+        if (r.Persona.numero) {
+          try {
+            const waRes = await WhatsAppService.sendDunningUrgencyWhatsApp({
+              toPhone: r.Persona.numero,
+              patientName,
+              serviceName,
+              amount: amountToPay,
+              orderCode,
+              reservaId: r.id_reserva,
+              dueDateStr: reservationDateStr
+            });
+            waSent = waRes.success;
+          } catch (waErr) {
+            console.warn('⚠️ No se pudo enviar WhatsApp de dunning:', waErr);
+          }
+        }
+
         await prisma.reservas.update({
           where: { id_reserva: r.id_reserva },
           data: {
@@ -221,7 +241,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
             id_reserva: r.id_reserva,
             tipo: 'DUNNING_URGENCY',
             motivo_tipificado: 'Alerta Dunning T-24h Urgencia',
-            descripcion: `NOTIFICACION_ETAPA_2_URGENCIA: Alerta de vencimiento a medianoche enviada a ${patientEmail}.`,
+            descripcion: `NOTIFICACION_ETAPA_2_URGENCIA: Alerta de vencimiento enviada a ${patientEmail || 'Email N/D'} y WhatsApp ${r.Persona.numero || 'N/D'}.`,
             estado: 'Abierta'
           }
         });
@@ -231,7 +251,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
           reservationId: r.id_reserva,
           patientName,
           stage: 'ETAPA_2_URGENCIA',
-          details: `Alerta de urgencia (vencimiento hoy a las 23:59) enviada por correo.`,
+          details: `Alerta de urgencia (vencimiento hoy a las 23:59) enviada (Email: ${emailSent ? 'OK' : 'N/D'}, WhatsApp: ${waSent ? 'OK' : 'N/D'}).`,
           emailSent,
           emailRecipient: patientEmail,
           sentAt: now.toISOString()

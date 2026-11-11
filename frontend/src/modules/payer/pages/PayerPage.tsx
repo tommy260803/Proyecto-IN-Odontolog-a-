@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/shared/components/data-display/PageHeader';
 import { BaseTable } from '@/shared/components/data-display/BaseTable';
 import { StatusBadge } from '@/shared/components/feedback/StatusBadge';
@@ -11,7 +11,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { usePayers } from '../hooks/usePayerQueries';
 import { PayerState } from '@/domain/enums';
-import { Search, Eye, AlertTriangle, Trash2, X, RotateCcw, Zap, Bot, Sparkles, CheckCircle2, Clock, Mail, ShieldCheck, RefreshCw, Radio, Play, Pause, Filter, Terminal, BarChart3, XCircle, Flame, FileSpreadsheet, Download } from 'lucide-react';
+import { Search, Eye, AlertTriangle, Trash2, X, RotateCcw, Zap, Bot, Sparkles, CheckCircle2, Clock, Mail, ShieldCheck, RefreshCw, Radio, Play, Pause, Filter, Terminal, BarChart3, XCircle, Flame, FileSpreadsheet, Download, CreditCard, ExternalLink } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
@@ -32,6 +32,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 export default function PayerPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data: payers, isLoading, isError } = usePayers();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,6 +53,48 @@ export default function PayerPage() {
   const [logFilterStage, setLogFilterStage] = useState('ALL');
   const [logSearchTerm, setLogSearchTerm] = useState('');
   const [currentLiveTime, setCurrentLiveTime] = useState(new Date());
+  const [testingWaId, setTestingWaId] = useState<string | number | null>(null);
+
+  // Redirección Automática a Vista Pública de Pasarela de Pago si viene ?orderCode o ?reservaId
+  useEffect(() => {
+    const orderCodeParam = searchParams.get('orderCode');
+    const reservaIdParam = searchParams.get('reservaId') || searchParams.get('id');
+
+    if (orderCodeParam || reservaIdParam) {
+      const targetCode = orderCodeParam || reservaIdParam;
+      navigate(`/pasarela-pago/${targetCode}`, { replace: true });
+    }
+  }, [searchParams, navigate]);
+
+  const handleLaunchTestWhatsApp = async (payerId: string | number) => {
+    setTestingWaId(payerId);
+    try {
+      const res = await fetch(`${API_URL}/whatsapp/test-dunning`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reservaId: Number(payerId), resetProrroga: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
+        toast({
+          title: '📱 ¡WhatsApp Dunning Despachado!',
+          description: `Aviso T-24h enviado a tu número de prueba (${data.sendResult?.recipient || 'configurado'}). Abriendo vista de prórroga interactiva...`,
+        });
+        window.open(data.prorrogaWebUrl || `/prorroga-express/${payerId}`, '_blank');
+      } else {
+        throw new Error(data.error || 'No se pudo enviar la prueba de WhatsApp.');
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Error de prueba WhatsApp',
+        description: err.message || 'Error al conectar con el servicio de WhatsApp.',
+        variant: 'destructive',
+      });
+    } finally {
+      setTestingWaId(null);
+    }
+  };
 
   // Reloj en tiempo real segundo a segundo cuando el modal está abierto
   useEffect(() => {
@@ -460,6 +504,36 @@ export default function PayerPage() {
       header: 'Acciones', 
       cell: (p: PayerWithDetails) => (
         <div className="flex items-center gap-1">
+          {p.state !== PayerState.VALIDATED && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const code = (p.payment as any)?.preReservationCode || `ORD-${String(p.id).padStart(5, '0')}-2026`;
+                  window.open(`/pasarela-pago/${code}`, '_blank');
+                }}
+                className="text-purple-700 bg-purple-50 hover:bg-purple-100 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800 text-xs px-2.5 h-8 gap-1 font-bold shadow-2xs"
+                title="Abrir Pasarela de Pago Pública"
+              >
+                <CreditCard className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                <span>Pagar</span>
+                <ExternalLink className="w-2.5 h-2.5 opacity-70" />
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleLaunchTestWhatsApp(p.id)}
+                disabled={testingWaId === p.id}
+                className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 text-xs px-2.5 h-8 gap-1 font-semibold"
+                title="Disparar aviso de WhatsApp T-24h y probar prórroga"
+              >
+                <Zap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>{testingWaId === p.id ? '...' : 'Test WA'}</span>
+              </Button>
+            </>
+          )}
           <Button variant="ghost" size="sm" onClick={() => setSelectedPayerId(p.id)} className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800">
             <Eye className="w-4 h-4 mr-1" />
             Revisar

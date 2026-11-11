@@ -59,6 +59,8 @@ import { QUERY_KEYS } from '@/shared/constants';
 import { callGroqAssistant, type PayerContext, type AiCollectionResult } from '@/shared/services/groqService';
 import { PaymentNoticePdfModal } from './PaymentNoticePdfModal';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
 interface PayerDetailModalProps {
   payerId: string | null;
   isOpen: boolean;
@@ -97,6 +99,37 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
   const [showCopyPreview, setShowCopyPreview] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState<'FRIENDLY' | 'URGENCY' | 'RESCUE_50'>('FRIENDLY');
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
+  const [isSendingWa, setIsSendingWa] = useState(false);
+
+  const handleLaunchTestWhatsApp = async (idToTest: string | number) => {
+    setIsSendingWa(true);
+    try {
+      const res = await fetch(`${API_URL}/whatsapp/test-dunning`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reservaId: Number(idToTest), resetProrroga: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
+        toast({
+          title: '📱 ¡WhatsApp Dunning Despachado!',
+          description: `Aviso T-24h enviado al número de prueba (${data.sendResult?.recipient || 'configurado'}). Abriendo vista de prórroga interactiva...`,
+        });
+        window.open(data.prorrogaWebUrl || `/prorroga-express/${idToTest}`, '_blank');
+      } else {
+        throw new Error(data.error || 'No se pudo enviar la prueba de WhatsApp.');
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Error de prueba WhatsApp',
+        description: err.message || 'Error al conectar con el servicio de WhatsApp.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSendingWa(false);
+    }
+  };
 
   const handleRegisterPayment = (data: PaymentFormValues) => {
     if (!payer) return;
@@ -366,6 +399,19 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
           </div>
 
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto" onClick={(e) => e.stopPropagation()}>
+            {p.state !== PayerState.VALIDATED && (
+              <button
+                type="button"
+                onClick={() => handleLaunchTestWhatsApp(p.id)}
+                disabled={isSendingWa}
+                className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/80 hover:bg-emerald-200 dark:hover:bg-emerald-900 px-3 py-1.5 rounded-xl transition-all disabled:opacity-50 shadow-2xs border border-emerald-300/70 dark:border-emerald-800/80 cursor-pointer"
+                title="Lanzar recordatorio interactivo WhatsApp T-24h y probar prórroga"
+              >
+                <Zap className={`w-3.5 h-3.5 ${isSendingWa ? 'animate-pulse text-amber-500' : 'text-emerald-600'}`} />
+                <span>{isSendingWa ? 'Enviando...' : 'Probar WhatsApp Dunning'}</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => handleAskAI(p)}

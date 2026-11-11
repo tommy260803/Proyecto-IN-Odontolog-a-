@@ -6,6 +6,7 @@ import { readFileSync } from 'fs';
 import path from 'path';
 import { runDunningCycle, getLastExecutionStats } from '../services/dunningScheduler';
 import { generatePayerConsolidatedExcel, generatePayerFullBiWorkbook } from '../services/payerExcelExportService';
+import { WhatsAppService } from '../services/whatsappService';
 
 const router = Router();
 const paymentLogoDataUrl = `data:image/png;base64,${readFileSync(path.resolve(__dirname, '../../assets/Logo_NexoSalud.png')).toString('base64')}`;
@@ -1380,6 +1381,84 @@ router.post('/send-notice-email', async (req, res) => {
     console.error('Error al enviar correo en backend:', error);
     res.status(500).json({ error: error.message || 'Error al procesar el envío del correo.' });
   }
+});
+
+// Endpoint interactivo para prórroga express (acceso con 1 clic desde WhatsApp)
+router.get('/prorroga-express/:reservaId', async (req, res) => {
+  const reservaId = Number(req.params.reservaId);
+  if (!reservaId || isNaN(reservaId)) {
+    return res.status(400).send('ID de reserva inválido.');
+  }
+
+  const result = await WhatsAppService.grant24HourExtension({ reservaId });
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+  if (!result.success) {
+    return res.status(409).send(`
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Aviso de Prórroga - NexoSalud</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f8fafc; color: #1e293b; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 16px; }
+          .card { max-width: 480px; width: 100%; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); padding: 32px 24px; text-align: center; border: 1px solid #e2e8f0; }
+          .icon { font-size: 48px; margin-bottom: 16px; }
+          h1 { font-size: 20px; font-weight: 700; color: #b45309; margin: 0 0 12px 0; }
+          p { font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0; }
+          .btn { display: inline-block; background: #0d9488; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="icon">⚠️</div>
+          <h1>Aviso de Prórroga</h1>
+          <p>${result.message}</p>
+          <a class="btn" href="${frontendUrl}/payer">Ir a la Pasarela de Pago</a>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Prórroga Concedida - NexoSalud</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f0fdf4; color: #1e293b; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 16px; }
+        .card { max-width: 480px; width: 100%; background: #ffffff; border-radius: 20px; box-shadow: 0 12px 30px -5px rgba(16, 185, 129, 0.15); padding: 36px 28px; text-align: center; border: 1px solid #bbf7d0; }
+        .icon { font-size: 54px; margin-bottom: 14px; }
+        h1 { font-size: 22px; font-weight: 800; color: #065f46; margin: 0 0 10px 0; }
+        .highlight { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 16px; margin: 20px 0; }
+        .time-label { font-size: 12px; font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 0.5px; }
+        .time-value { font-size: 18px; font-weight: 800; color: #047857; margin-top: 4px; }
+        p { font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 20px 0; }
+        .btn { display: inline-block; background: #059669; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25); }
+        .footer-note { font-size: 11px; color: #94a3b8; margin-top: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="icon">✅</div>
+        <h1>¡Prórroga de 24h Concedida!</h1>
+        <p>Estimado(a) <strong>${result.pacienteNombre}</strong>, su reserva se ha extendido exitosamente. Su sillón odontológico queda asegurado.</p>
+        
+        <div class="highlight">
+          <div class="time-label">Nuevo plazo límite de pago</div>
+          <div class="time-value">${result.nuevoVencimiento?.toLocaleString('es-PE')}</div>
+        </div>
+
+        <a class="btn" href="${frontendUrl}/payer">Pagar Pre-Reserva Ahora</a>
+        <div class="footer-note">Clínica Odontológica NexoSalud • Sistema Automatizado de Admisión</div>
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 export default router;
