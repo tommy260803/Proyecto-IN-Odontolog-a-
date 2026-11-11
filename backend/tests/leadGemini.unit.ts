@@ -54,18 +54,50 @@ test('commercial suggestions use the conversation and supplied terms without rep
   assert.equal(result.turno, 'tarde');
 });
 
-test('commercial suggestions reject invented prices, percentages, empty answers and invalid preferences', async () => {
+test('commercial suggestions reject empty answers and invalid preferences', async () => {
   const facts = { servicio: 'Evaluación', precioPropuesta: '48.00', tarifaReferencia: null, promociones: [] };
   const base = { intencion: 'PRECIO', dia: 'sin_dato', turno: 'sin_dato', objecion_economica: true };
   for (const change of [
-    { sugerencia: 'Podemos dejarlo en S/ 30.' },
-    { sugerencia: 'Tienes un descuento del 20%.' },
     { sugerencia: '   ' },
     { sugerencia: 'Revisemos horarios.', dia: 'ayer' },
   ]) {
     await assert.rejects(classifyLeadChat(context, config, async () =>
       response(JSON.stringify({ ...base, ...change })), true, facts), LeadGeminiError);
   }
+});
+
+test('unsupported money claims produce a verified next step instead of blocking the saved conversation', async () => {
+  const facts = { servicio: 'Evaluación', precioPropuesta: '48.00', tarifaReferencia: null, promociones: [] };
+  for (const suggested of ['Podemos dejarlo en S/ 30.', 'Tienes un descuento del 20%.']) {
+    const result = await classifyLeadChat(context, config, async () => response(JSON.stringify({
+      intencion: 'PRECIO', dia: 'sin_dato', turno: 'sin_dato', objecion_economica: true, sugerencia: suggested,
+    })), true, facts);
+    assert.match(result.sugerencia, /responsable comercial/);
+    assert.doesNotMatch(result.sugerencia, /S\/ 30|20%/);
+  }
+});
+
+test('patient budget remains a declared budget and never becomes an authorized price', async () => {
+  const result = await classifyLeadChat([{ remitente: 'paciente', texto: 'solo cuento con 45 soles' }],
+    config, async () => response(JSON.stringify({
+      intencion: 'PRECIO', dia: 'sin_dato', turno: 'sin_dato', objecion_economica: true,
+      sugerencia: 'El presupuesto del paciente es de 45 soles. Consulta la reducción.',
+    })), true, { servicio: 'Evaluación', precioPropuesta: '48.00', tarifaReferencia: null, promociones: [] });
+  assert.match(result.sugerencia, /presupuesto de S\/ 45.00/);
+  assert.match(result.sugerencia, /si la autoriza/);
+});
+
+test('a location objection after a budget message returns site advice even if the model mentions the old budget', async () => {
+  const result = await classifyLeadChat([
+    { remitente: 'paciente', texto: 'solo cuento con 45 soles' },
+    { remitente: 'paciente', texto: 'me queda muy lejos la sede de centro historico' },
+  ], config, async () => response(JSON.stringify({
+    intencion: 'SEDE', dia: 'sin_dato', turno: 'sin_dato', objecion_economica: false,
+    sugerencia: 'Consulta otra sede y considera los 45 soles del paciente.',
+  })), true, { servicio: 'Evaluación', precioPropuesta: '48.00', tarifaReferencia: null, promociones: [],
+    sedesConAgenda: ['Sede California'] });
+  assert.match(result.sugerencia, /Sede California/);
+  assert.doesNotMatch(result.sugerencia, /45|reducción/);
 });
 
 test('price objections produce an actionable escalation when there is no authorized lower proposal', () => {

@@ -1,4 +1,4 @@
-const intents = ['HORARIO', 'PRECIO', 'DUDA', 'AMBIGUO', 'REVISION'] as const;
+const intents = ['HORARIO', 'PRECIO', 'SEDE', 'DUDA', 'AMBIGUO', 'REVISION'] as const;
 const days = ['sin_dato', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
 const shifts = ['sin_dato', 'mañana', 'tarde', 'noche'];
 type Intent = (typeof intents)[number];
@@ -9,16 +9,22 @@ export type LeadCommercialFacts = {
   tarifaReferencia: string | null;
   promociones: string[];
   propuestasMenores?: { id_propuesta: number; precio: string }[];
+  sedesConAgenda?: string[];
 };
 
 export function commercialRecommendation(
   analysis: { intencion: string; objecion_economica?: boolean },
   facts: LeadCommercialFacts,
 ): string {
-  if (analysis.objecion_economica || analysis.intencion === 'PRECIO') {
+  if (analysis.intencion !== 'SEDE' && (analysis.objecion_economica || analysis.intencion === 'PRECIO')) {
     const lower = facts.propuestasMenores?.[0];
     if (lower) return `Revisar la propuesta vigente #${lower.id_propuesta} por S/ ${lower.precio} para este mismo servicio. Confirma sus condiciones antes de ofrecerla.`;
     return 'No hay una propuesta vigente de menor importe registrada para esta solicitud. Solicita al responsable comercial que evalúe una reducción o facilidad y registra una nueva versión si la autoriza. Mantén la negociación pendiente hasta conocer la respuesta.';
+  }
+  if (analysis.intencion === 'SEDE') {
+    return facts.sedesConAgenda?.length
+      ? `Pregunta desde qué zona se desplaza y revisa estas sedes con agenda disponible para el servicio: ${facts.sedesConAgenda.join(', ')}. Selecciona la sede que le convenga y verifica el horario antes de ofrecerlo.`
+      : 'Consulta desde qué zona se desplaza y qué sede prefiere. Actualmente no hay otra sede con agenda disponible verificada para este servicio; coordina la búsqueda de una alternativa antes de prometer un cambio.';
   }
   if (analysis.intencion === 'HORARIO') return 'Consulta los horarios sugeridos de la agenda. Si no hay coincidencias, amplía sede, especialista o franja con el paciente y vuelve a verificar la disponibilidad antes de ofrecer.';
   if (analysis.intencion === 'REVISION') return 'Revisa lo expresado por el paciente. Si es aceptación, verifica propuesta, versión, horario y autorización mediante las acciones de la mesa. Si es un asunto clínico, deriva al profesional.';
@@ -29,6 +35,7 @@ export function commercialRecommendation(
 const suggestions: Record<Intent, string> = {
   HORARIO: '¿Qué días y en qué rango horario podrías asistir?',
   PRECIO: '¿Qué parte de la cotización te gustaría revisar?',
+  SEDE: '¿Desde qué zona te desplazas y qué sede te resultaría más conveniente?',
   DUDA: '¿Qué información te gustaría que aclaremos?',
   AMBIGUO: '¿Podrías contarnos un poco más sobre lo que necesitas?',
   REVISION: 'Revisar el mensaje antes de responder.',
@@ -63,6 +70,9 @@ export async function classifyLeadChat(
               'Analiza lo que dijo el paciente y explica al asesor qué revisar o proponer y por qué. No redactes un mensaje dirigido al paciente.',
               'No digas al lector que consulte con el asesor, que lo comunique al asesor ni que lo revise con el asesor: el lector ya es el asesor. Si requiere autorización, identifica al responsable comercial.',
               'Resuelve la última necesidad con un siguiente paso concreto. No repitas preguntas que el paciente ya contestó.',
+              'Clasifica y responde al ÚLTIMO mensaje. El historial aclara referencias, pero una objeción económica anterior no vuelve económica una consulta nueva sobre sede. objecion_economica se refiere al mensaje actual.',
+              'SEDE: distancia, ubicación o cambio de sede. Si la sede queda lejos, recomienda preguntar la zona de procedencia y revisar sedesConAgenda, sin inventar cercanía ni disponibilidad adicional. No hables del presupuesto anterior salvo que el último mensaje lo retome.',
+              'Distingue presupuesto declarado por el paciente de importe autorizado: decir que cuenta con 45 soles no autoriza ofrecerle ese precio. Puedes citarlo explícitamente como presupuesto para solicitar autorización.',
               'Ejemplo: si ya dijo que el precio es muy caro y pide pagar menos, no preguntes qué alternativa o momento quiere: ya pidió una reducción.',
               'En ese caso, si hay propuestasMenores, recomienda al lector revisar la oferta de menor importe, con su importe exacto, y confirmar sus condiciones antes de presentarla.',
               'Si no las hay, recomienda solicitar al responsable comercial autorización para una reducción o facilidad. Explica que debe esperar la autorización antes de ofrecer nuevas condiciones.',
@@ -124,6 +134,7 @@ export async function classifyLeadChat(
       throw new LeadGeminiError(502, 'La sugerencia de Gemini no cumple el formato esperado.');
     }
     const intencion = parsed.intencion as Intent;
+    let invalidCommercialClaim = false;
     if (commercialFacts) {
       const allowedPrices = [commercialFacts.precioPropuesta, commercialFacts.tarifaReferencia,
         ...(commercialFacts.propuestasMenores ?? []).map(p => p.precio)]
@@ -132,12 +143,19 @@ export async function classifyLeadChat(
         ...parsed.sugerencia.matchAll(/(\d+(?:[.,]\d{1,2})?)\s*soles/gi)];
       if (amounts.some(match => !allowedPrices.includes(Number(match[1].replace(',', '.')))) ||
           /\d+(?:[.,]\d+)?\s*%/.test(parsed.sugerencia)) {
-        throw new LeadGeminiError(502, 'La sugerencia incluye un importe o descuento sin validar. El asesor puede continuar y reintentar el análisis.');
+        invalidCommercialClaim = true;
       }
     }
     let suggestion = commercialFacts ? parsed.sugerencia.trim() as string : suggestions[intencion];
+    if (commercialFacts && invalidCommercialClaim) {
+      suggestion = commercialRecommendation({ intencion, objecion_economica: parsed.objecion_economica }, commercialFacts);
+      const budget = context.at(-1)?.texto.match(/(?:cuento con|tengo|dispongo de|presupuesto(?: es| de)?)\s*(?:solo\s*)?(?:S\s*\/\s*)?(\d+(?:[.,]\d{1,2})?)\s*(?:soles|PEN)/i);
+      if (intencion === 'PRECIO' && budget) {
+        suggestion = `El paciente declara un presupuesto de S/ ${Number(budget[1].replace(',', '.')).toFixed(2)}. ${suggestion}`;
+      }
+    }
     const normalizedSuggestion = suggestion.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    if (commercialFacts && (parsed.objecion_economica || intencion === 'PRECIO') &&
+    if (commercialFacts && intencion !== 'SEDE' && (parsed.objecion_economica || intencion === 'PRECIO') &&
         /que (?:alternativa o momento|parte de (?:la propuesta|la cotizacion|el precio))/.test(normalizedSuggestion)) {
       const lower = commercialFacts.propuestasMenores?.[0];
       suggestion = lower

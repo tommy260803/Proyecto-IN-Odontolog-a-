@@ -1259,12 +1259,29 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
       orderBy: { id_interaccion: 'desc' }, take: 6,
     });
     const service = row.id_servicio == null ? null : await tx.servicios.findUnique({ where: { id_servicio: row.id_servicio } });
+    const sites = await tx.$queryRaw<{ nombre: string }[]>`
+      SELECT DISTINCT s.nombre
+      FROM dbo.Disponibilidad d
+      JOIN dbo.Sedes s ON s.id_sede=d.id_sede AND s.activo=1
+      JOIN dbo.Profesionales p ON p.id_profesional=d.id_profesional AND p.activo=1
+      JOIN dbo.ProfesionalServicio ps ON ps.id_profesional=p.id_profesional AND ps.id_servicio=${row.id_servicio}
+      WHERE d.estado='Disponible'
+        AND (d.fecha>CONVERT(date,DATEADD(hour,-5,SYSUTCDATETIME()))
+          OR (d.fecha=CONVERT(date,DATEADD(hour,-5,SYSUTCDATETIME()))
+            AND d.hora_inicio>CONVERT(time,DATEADD(hour,-5,SYSUTCDATETIME()))))
+        AND NOT EXISTS (
+          SELECT 1 FROM dbo.Opciones o JOIN dbo.Reservas r ON r.id_opcion=o.id_opcion
+          WHERE o.id_disponibilidad=d.id_disponibilidad AND r.estado NOT IN ('Cancelada','Vencida')
+        )
+      ORDER BY s.nombre
+    `;
     return { messages: previous.reverse().map(i => ({ remitente: 'paciente registrado por asesor', texto: (i.mensaje ?? '').slice(0, 4000) })),
       facts: {
         servicio: service?.nombre ?? 'Servicio por confirmar',
         precioPropuesta: proposal?.precio ?? null,
         tarifaReferencia: tarifa?.precio.toFixed(2) ?? null,
         promociones: promociones.map(p => p.nombre),
+        sedesConAgenda: sites.map(s => s.nombre),
         propuestasMenores: proposal ? proposals.filter(p => Number(p.precio) < Number(proposal.precio))
           .sort((a,b) => Number(a.precio)-Number(b.precio)).slice(0, 3) : [],
       } };
