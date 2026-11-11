@@ -106,4 +106,6 @@ Para probarlo, usar el chat de `NexoSalud_LeadPruebas` con `LEAD_CHAT_QA=true`, 
 
 Cada intento realiza como máximo una llamada, con un plazo de ocho segundos. El backend reutiliza hasta 256 sugerencias en memoria, admite una llamada simultánea y espera 60 segundos entre intentos por proceso. Reiniciar el backend reinicia estos controles. El piloto expone la ruta para pruebas y la interfaz del chat queda pendiente de conectar.
 
-Verificación local desde `backend` con `npm run build` y `node --require tsx/cjs --test tests/leadGemini.test.ts`. La prueba de la ruta con SQL y la llamada real quedan pendientes.
+Verificación local desde `backend` con `npm run build` y `node --require tsx/cjs --test tests/leadGemini.test.ts`. Con la URL de QA y los indicadores anteriores, `npm run test:lead:flow` verifica la ruta con Gemini simulado por defecto. Para el ensayo real, activar `LEAD_GEMINI_QA_LIVE_TEST=true` y usar el modelo y la clave configurados. El ensayo limita a una sola solicitud al proveedor y revierte sus datos.
+
+El flujo HTTP + SQL pasó en QA con el proveedor simulado y con una llamada real a `gemini-3.1-flash-lite`. El mensaje sintético sobre disponibilidad por la tarde obtuvo `HORARIO`. Las solicitudes inválidas no llamaron al proveedor y la repetición devolvió la sugerencia guardada en memoria. El ensayo confirmó la reversión de los datos de prueba.

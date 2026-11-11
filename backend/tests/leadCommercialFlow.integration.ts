@@ -124,11 +124,41 @@ async function run() {
           await call(staffChat + '/access', 401, 'POST');
           const invite = (await call(staffChat + '/access', 201, 'POST', undefined, token)).token;
           await call('/lead/chat/patient/' + (Number(requestId) + 1), 401, 'GET', undefined, invite);
-          const msg = { clave: randomUUID(), texto: 'Consulta desde el chat QA' };
+          const msg = { clave: randomUUID(), texto: '¿Podría asistir por la tarde?' };
           const posted = await call(patientChat, 200, 'POST', msg, invite);
           assert.deepEqual(await call(patientChat, 200, 'POST', msg, invite), posted);
           await call(patientChat, 409, 'POST', { ...msg, texto: 'Texto distinto' }, invite);
           assert.equal((await call(staffChat, 200, 'GET', undefined, token)).mensajes.length, 1);
+          if (process.env.LEAD_GEMINI_QA === 'true') {
+            const real = process.env.LEAD_GEMINI_QA_LIVE_TEST === 'true';
+            const originalFetch = globalThis.fetch;
+            let providerCalls = 0;
+            const suggestion = { ...posted, datos_sinteticos: true };
+            const suggestionPath = staffChat + '/suggestion';
+            globalThis.fetch = async (input, init) => {
+              const url = new URL(String(input));
+              if (url.origin === base) return originalFetch(input, init);
+              assert.equal(url.origin, 'https://generativelanguage.googleapis.com');
+              assert.equal(++providerCalls, 1, 'El ensayo permite una sola llamada al proveedor.');
+              return real ? originalFetch(input, init) : Response.json({
+                candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '{"intencion":"HORARIO"}' }] } }],
+              });
+            };
+            try {
+              await call(suggestionPath, 401, 'POST', suggestion, invite);
+              await call(suggestionPath, 400, 'POST', posted, token);
+              await call(suggestionPath, 404, 'POST', { ...suggestion, id_mensaje: 2147483647 }, token);
+              assert.equal(providerCalls, 0);
+              const result = await call(suggestionPath, 200, 'POST', suggestion, token);
+              assert.equal(result.intencion, 'HORARIO');
+              assert.deepEqual(await call(suggestionPath, 200, 'POST', suggestion, token), result);
+              assert.equal(providerCalls, 1);
+              assert.equal((await call(staffChat, 200, 'GET', undefined, token)).mensajes.length, 1);
+              completed.push('sugerencia Gemini ' + (real ? 'real' : 'simulada') + ', acceso y reutilización');
+            } finally {
+              globalThis.fetch = originalFetch;
+            }
+          }
           await call(staffChat, 200, 'PATCH', posted, token);
           assert.ok((await call(patientChat, 200, 'GET', undefined, invite)).mensajes[0].recibido_utc);
           const reply = await call(staffChat, 200, 'POST', { clave: randomUUID(), texto: 'Respuesta del equipo QA' }, token);
