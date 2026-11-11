@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { classifyLeadChat, LeadGeminiError } from '../src/services/leadGemini';
+import { classifyLeadChat, commercialRecommendation, LeadGeminiError } from '../src/services/leadGemini';
 
 const config = { key: 'synthetic-test-key', model: 'gemini-test' };
 const context = [{ remitente: 'PACIENTE', texto: '¿Puedo ir por la tarde?' }];
@@ -66,4 +66,48 @@ test('commercial suggestions reject invented prices, percentages, empty answers 
     await assert.rejects(classifyLeadChat(context, config, async () =>
       response(JSON.stringify({ ...base, ...change })), true, facts), LeadGeminiError);
   }
+});
+
+test('price objections produce an actionable escalation when there is no authorized lower proposal', () => {
+  const result = commercialRecommendation({ intencion: 'PRECIO', objecion_economica: true }, {
+    servicio: 'Evaluación', precioPropuesta: '48.00', tarifaReferencia: '60.00', promociones: [],
+  });
+  assert.match(result, /No hay una propuesta vigente de menor importe/);
+  assert.match(result, /responsable comercial/);
+  assert.match(result, /nueva versión si la autoriza/);
+  assert.match(result, /pendiente/);
+  assert.doesNotMatch(result, /¿/);
+});
+
+test('lower proposal recommendations identify the actual proposal instead of inventing a reduction', async () => {
+  const facts = { servicio: 'Evaluación', precioPropuesta: '48.00', tarifaReferencia: '60.00', promociones: [],
+    propuestasMenores: [{ id_propuesta: 23, precio: '40.00' }] };
+  const answer = 'Hay una propuesta por S/ 40.00 que podemos revisar contigo antes de ofrecerla.';
+  const result = await classifyLeadChat(context, config, async () =>
+    response(JSON.stringify({ intencion: 'PRECIO', dia: 'sin_dato', turno: 'sin_dato',
+      objecion_economica: true, sugerencia: answer })), true, facts);
+  assert.equal(result.sugerencia, answer);
+  assert.match(result.recomendacion!, /#23 por S\/ 40.00/);
+});
+
+test('schedule, acceptance and clinical messages have distinct review actions', () => {
+  const facts = { servicio: 'Evaluación', precioPropuesta: '48.00', tarifaReferencia: null, promociones: [] };
+  assert.match(commercialRecommendation({ intencion: 'HORARIO' }, facts), /verificar la disponibilidad/);
+  assert.match(commercialRecommendation({ intencion: 'REVISION' }, facts), /versión, horario y autorización/);
+  assert.match(commercialRecommendation({ intencion: 'REVISION' }, facts), /clínico/);
+  assert.match(commercialRecommendation({ intencion: 'AMBIGUO' }, facts), /Aclara/);
+});
+
+test('the repeated generic question from a price objection is replaced with a concrete authorized next step', async () => {
+  const facts = { servicio: 'Evaluación', precioPropuesta: '48.00', tarifaReferencia: null, promociones: [] };
+  const result = await classifyLeadChat([
+    { remitente: 'paciente', texto: '48 soles es muy caro' },
+    { remitente: 'paciente', texto: 'que sea menos dinero' },
+  ], config, async () => response(JSON.stringify({
+    intencion: 'PRECIO', dia: 'sin_dato', turno: 'sin_dato', objecion_economica: true,
+    sugerencia: 'Comprendo. ¿Qué alternativa o momento le resulta viable para revisarlo con el asesor?',
+  })), true, facts);
+  assert.doesNotMatch(result.sugerencia, /alternativa o momento/);
+  assert.match(result.sugerencia, /consultar una autorización/);
+  assert.match(result.recomendacion!, /nueva versión/);
 });

@@ -2180,6 +2180,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                   <div className="space-y-1 rounded border border-teal-200 p-3 text-xs">
                     <p className="font-semibold">Sugerencia para la interacción registrada</p>
                     <p>{analysis.sugerencia}</p>
+                    {analysis.recomendacion && <p className="border-t pt-2">{analysis.recomendacion}</p>}
                     {analysis.promociones.length > 0 && (
                       <p>Promociones activas para revisar: {analysis.promociones.join(', ')}.</p>
                     )}

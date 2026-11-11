@@ -1240,10 +1240,19 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
       where: { activo: true, OR: [{ id_servicio: null }, { id_servicio: row.id_servicio }] },
       select: { nombre: true },
     });
-    const proposal = await tx.propuestasEconomicasLead.findFirst({
-      where: { id_solicitud: row.id_solicitud, estado: 'Pendiente', fecha_vigencia_hasta_utc_lead: { gt: now } },
-      orderBy: [{ fecha_presentacion: 'desc' }, { id_propuesta: 'desc' }],
-    });
+    const proposals = await tx.$queryRaw<{ id_propuesta: number; precio: string }[]>`
+      SELECT p.id_propuesta, CONVERT(varchar(30),p.precio_cotizado) AS precio
+      FROM dbo.PropuestasEconomicasLead p
+      WHERE p.id_solicitud=${row.id_solicitud} AND p.id_servicio=${row.id_servicio}
+        AND p.estado='Pendiente' AND p.fecha_vigencia_hasta_utc_lead>SYSUTCDATETIME()
+        AND NOT EXISTS (
+          SELECT 1 FROM dbo.PropuestasEconomicasLead v
+          WHERE COALESCE(v.id_propuesta_raiz,v.id_propuesta)=COALESCE(p.id_propuesta_raiz,p.id_propuesta)
+            AND v.numero_version>p.numero_version
+        )
+      ORDER BY p.fecha_presentacion DESC,p.id_propuesta DESC
+    `;
+    const proposal = proposals[0];
     const previous = await tx.interacciones.findMany({
       where: { id_solicitud: row.id_solicitud, id_interaccion: { lte: interaction.id_interaccion },
         tipo: 'Respuesta del paciente' },
@@ -1253,9 +1262,11 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
     return { messages: previous.reverse().map(i => ({ remitente: 'paciente registrado por asesor', texto: (i.mensaje ?? '').slice(0, 4000) })),
       facts: {
         servicio: service?.nombre ?? 'Servicio por confirmar',
-        precioPropuesta: proposal?.precio_cotizado.toFixed(2) ?? null,
+        precioPropuesta: proposal?.precio ?? null,
         tarifaReferencia: tarifa?.precio.toFixed(2) ?? null,
         promociones: promociones.map(p => p.nombre),
+        propuestasMenores: proposal ? proposals.filter(p => Number(p.precio) < Number(proposal.precio))
+          .sort((a,b) => Number(a.precio)-Number(b.precio)).slice(0, 3) : [],
       } };
   });
   const cacheKey = createHash('sha256').update(JSON.stringify([req.params.id, req.params.interaction, context,
