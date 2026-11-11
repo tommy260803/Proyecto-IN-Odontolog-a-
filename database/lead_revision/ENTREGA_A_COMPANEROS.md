@@ -38,6 +38,8 @@ El personal autorizado puede registrar una nota de contacto o una respuesta del 
 
 En la misma copia pasó la regresión SQL de conversión idempotente BUYER → LEAD, historial y reportes, con reversión al finalizar. Al ejecutar [PRUEBA_INTEGRACION_LEAD.sql](PRUEBA_INTEGRACION_LEAD.sql) mediante `sqlcmd`, usen `-I` para habilitar `QUOTED_IDENTIFIER`, requerido por los índices filtrados.
 
+**Ensayo integral reproducible de las rutas nuevas.** En backend, con `SQLSERVER_URL` apuntando a `NexoSalud_LeadPruebas` y ambos scripts de QA instalados, ejecuten `npm run test:lead:flow`. La prueba rechaza otras bases. Registra una captación, convierte a LEAD, autentica al negociador, registra una respuesta útil, presenta y versiona una cotización, acepta una alternativa, guarda el acuerdo, registra la autorización y traspasa a una reserva pendiente. Comprueba los reintentos, M1/M3/M6 y la reversión de los datos y conteos, incluidos los historiales. El escenario usa una transacción QA compartida por las rutas HTTP. La concurrencia entre conexiones independientes requiere un ensayo separado.
+
 ## 1. Qué cambió en la base
 
 La migración fue aditiva. Conservó las tablas y los identificadores existentes y agregó estos objetos de negocio y auditoría.
