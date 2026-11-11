@@ -1770,7 +1770,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                           <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium text-slate-600 dark:text-slate-300">
                             <Clock className="h-3.5 w-3.5 text-slate-400" />
                             <span>
-                              Vence: {opt.Disponibilidad?.fecha?.split('T')[0] || 'Vigente'}
+                              Fecha del turno ofrecido: {opt.Disponibilidad?.fecha?.split('T')[0] || 'No registrada'}
                             </span>
                           </span>
 
