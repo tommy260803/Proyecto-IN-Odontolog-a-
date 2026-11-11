@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { prisma } from '../src/db';
 import { registerLeadIntake } from '../src/services/leadIntake';
+import { processLeadEntry } from '../src/services/leadOrchestrator';
 
 async function run() {
   const [target] = await prisma.$queryRaw<{ db: string; intakeProcedureId: number | null; queueId: number | null }[]>`
@@ -10,6 +11,9 @@ async function run() {
   `;
   assert.equal(target.db, 'NexoSalud_LeadPruebas');
   assert.ok(target.intakeProcedureId, 'Instalar ENTRADA_AGENTE_LEAD_QA.sql.');
+  const [phase3] = await prisma.$queryRaw<{ installed: number | null }[]>`
+    SELECT OBJECT_ID('dbo.usp_PriorizarTrabajoAgenteLead', 'P') AS installed
+  `;
 
   const buyer = await prisma.etapas.findUniqueOrThrow({ where: { nombre: 'BUYER' } });
   const service = await prisma.servicios.findFirstOrThrow({ where: { activo: true } });
@@ -99,10 +103,46 @@ async function run() {
         { intento: 2, accion: 'COMPLETADO' },
       ]);
       console.log('OK: una toma concurrente, recuperación, rechazo de token vencido y auditoría.');
+      if (phase3.installed) {
+        // Reuse only the temporary request to exercise F1 with an overdue follow-up.
+        await prisma.$executeRaw`
+          UPDATE dbo.Solicitudes SET fecha_proximo_seguimiento = DATEADD(day, -1, SYSUTCDATETIME())
+          WHERE id_solicitud = ${initial.id_solicitud}
+        `;
+        await prisma.$executeRaw`
+          UPDATE dbo.TrabajosAgenteLead SET estado = 'PENDIENTE', disponible_utc = SYSUTCDATETIME()
+          WHERE id_solicitud = ${initial.id_solicitud}
+        `;
+        const results = await Promise.all(Array.from({ length: 8 }, () => processLeadEntry(prisma, initial.id_solicitud)));
+        assert.deepEqual(results.filter(result => result.status !== 'idle'), [{
+          status: 'processed',
+          decision: {
+            id_solicitud: initial.id_solicitud,
+            prioridad: 1,
+            motivo: 'SEGUIMIENTO_VENCIDO',
+            siguiente_accion: 'REVISAR_SEGUIMIENTO',
+          },
+        }]);
+        assert.deepEqual(await processLeadEntry(prisma, initial.id_solicitud), { status: 'idle' });
+        const [saved] = await prisma.$queryRaw<{ intento: number; estado: string }[]>`
+          SELECT p.intento, t.estado FROM dbo.PriorizacionesAgenteLead p
+          JOIN dbo.TrabajosAgenteLead t ON t.id_solicitud = p.id_solicitud
+          WHERE p.id_solicitud = ${initial.id_solicitud}
+        `;
+        assert.deepEqual(saved, { intento: 3, estado: 'COMPLETADO' });
+        console.log('OK: F1 persistió una sola decisión con motivo, prioridad y siguiente acción.');
+      }
     }
   } finally {
     await prisma.$transaction(async tx => {
       if (target.queueId) {
+        if (phase3.installed) {
+          await tx.$executeRaw`
+            DELETE p FROM dbo.PriorizacionesAgenteLead p
+            JOIN dbo.EntradasAgenteLead e ON e.id_solicitud = p.id_solicitud
+            WHERE e.id_persona = ${personId}
+          `;
+        }
         await tx.$executeRaw`
           DELETE a FROM dbo.AuditoriaTrabajosAgenteLead a
           JOIN dbo.EntradasAgenteLead e ON e.id_solicitud = a.id_solicitud

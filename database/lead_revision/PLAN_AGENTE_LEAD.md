@@ -6,7 +6,7 @@ Chat web y Gemini con configuración propia de LEAD. La OLTP decide las operacio
 | --- | --- | --- |
 | 1. Contratos y políticas | Validada en documentación | Entrada, salida, responsables y bloqueos definidos; acuerdos externos pendientes explícitos. |
 | 2. Persistencia y seguridad | Núcleo validado en QA | Cola de ingreso, auditoría, permisos y recuperación. El almacenamiento de chat, herramientas, seguimiento y revisión se incorpora con sus flujos. |
-| 3. Orquestador y F1 | Pendiente | Una ejecución recuperable por evento y una prioridad explicable. |
+| 3. Orquestador y F1 | Flujo inicial validado en QA | Una decisión recuperable por ingreso, con prioridad y siguiente acción. Pendientes el adaptador Gemini y la delegación contextual. |
 | 4. Chat web | Pendiente | Sesión vinculada, historial y mensajes sin duplicados. |
 | 5. F2: alternativas | Pendiente | Opciones elegibles, revalidación e historial preservado. |
 | 6. F3: negociación | Pendiente | Condiciones verificadas, versiones y evidencia de decisiones. |
@@ -41,3 +41,11 @@ Instalar [COLA_AGENTE_LEAD_QA.sql](COLA_AGENTE_LEAD_QA.sql) con SQLCMD y `-b` so
 El ejecutor futuro usará una conexión independiente con el rol `rol_ejecutor_agente_lead`. Toma una tarea con un token temporal y resuelve el intento con ese mismo token. El plazo técnico predeterminado es de 60 segundos. Los fallos admiten hasta cinco intentos con espera creciente para reintentos explícitos. Al agotar intentos, la tarea queda en revisión. El token solo protege la resolución en la cola. Las futuras herramientas comerciales deben validar su propia idempotencia y vigencia antes de producir efectos.
 
 En QA se instaló y reejecutó la migración y pasó `npm run test:lead:intake` con la cola presente. El ensayo verificó una sola toma entre ocho llamadas, recuperación después de expirar, rechazo del token anterior, finalización única y auditoría. Una prueba adicional con un usuario temporal confirmó los permisos de ejecución y la ausencia de acceso directo a las tablas comprobadas.
+
+## Primera ejecución de F1 en QA
+
+Aplicar [PRIORIZACION_AGENTE_LEAD_QA.sql](PRIORIZACION_AGENTE_LEAD_QA.sql) con SQLCMD y `-b` después de la cola. Desde `backend`, ejecutar `npx --no-install tsx src/scripts/run-lead-orchestrator.ts` con `LEAD_AGENT_SQLSERVER_URL` apuntando a QA y una identidad del rol ejecutor. El comando consume como máximo un ingreso por llamada.
+
+La cola conserva el orden de toma por disponibilidad del trabajo. F1 clasifica la solicitud tomada según seguimiento vencido, seguimiento previsto para hoy en Lima, primera respuesta pendiente u oportunidad sin acción inmediata. Una oportunidad archivada, cerrada o fuera de LEAD se finaliza. La decisión se registra junto con el cierre del trabajo y su auditoría. Las acciones registradas son recomendaciones internas; queda pendiente la delegación contextual con Gemini cuando exista contexto verificable de conversación.
+
+Pasaron `npm run build` y `npm run test:lead:intake` contra QA. Ocho ejecuciones concurrentes sobre una misma solicitud temporal produjeron una sola decisión persistida y un seguimiento vencido recibió prioridad 1.
