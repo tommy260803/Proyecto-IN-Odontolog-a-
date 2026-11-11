@@ -1168,15 +1168,17 @@ async function activeConversation(tx: Prisma.TransactionClient, value: unknown) 
 }
 
 router.get('/opportunities/:id/conversation', route(async (req, res) => {
+  const before = req.query.antes === undefined ? undefined : id(req.query.antes);
   const messages = await prisma.$transaction(async tx => {
     await activeConversation(tx, req.params.id);
     return tx.interacciones.findMany({
-      where: { id_solicitud: id(req.params.id), tipo: 'Respuesta del paciente' },
-      orderBy: { id_interaccion: 'desc' }, take: 100,
+      where: { id_solicitud: id(req.params.id), tipo: 'Respuesta del paciente',
+        ...(before ? { id_interaccion: { lt: before } } : {}) },
+      orderBy: { id_interaccion: 'desc' }, take: 21,
       select: { id_interaccion: true, mensaje: true, fecha_hora: true, id_canal: true },
     });
   });
-  res.set('Cache-Control', 'no-store').json({ mensajes: messages.reverse() });
+  res.set('Cache-Control', 'no-store').json({ mensajes: messages.slice(0, 20).reverse(), hay_anteriores: messages.length > 20 });
 }));
 
 router.post('/opportunities/:id/interactions', route(async (req, res) => {
@@ -1247,23 +1249,31 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
         tipo: 'Respuesta del paciente' },
       orderBy: { id_interaccion: 'desc' }, take: 6,
     });
-    return { messages: previous.reverse().map(i => ({ remitente: 'paciente registrado por asesor', texto: i.mensaje ?? '' })),
-      tarifa, promociones, proposal };
+    const service = row.id_servicio == null ? null : await tx.servicios.findUnique({ where: { id_servicio: row.id_servicio } });
+    return { messages: previous.reverse().map(i => ({ remitente: 'paciente registrado por asesor', texto: (i.mensaje ?? '').slice(0, 4000) })),
+      facts: {
+        servicio: service?.nombre ?? 'Servicio por confirmar',
+        precioPropuesta: proposal?.precio_cotizado.toFixed(2) ?? null,
+        tarifaReferencia: tarifa?.precio.toFixed(2) ?? null,
+        promociones: promociones.map(p => p.nombre),
+      } };
   });
+  const cacheKey = createHash('sha256').update(JSON.stringify([req.params.id, req.params.interaction, context,
+    process.env.LEAD_GEMINI_MODEL])).digest('hex');
+  const cached = geminiSuggestions.get(cacheKey);
+  if (cached) return res.json({ ...cached, promociones: context.facts.promociones });
   if (geminiBusy) throw new InputError('Hay otro análisis en curso. Intenta de nuevo.', 429);
   geminiBusy = true;
   try {
     const analysis = await classifyLeadChat(context.messages, {
       key: process.env.GEMINI_API_KEY ?? '', model: process.env.LEAD_GEMINI_MODEL || 'gemini-3.5-flash-lite',
-    }, fetch, true);
-    const sugerencia = analysis.objecion_economica || analysis.intencion === 'PRECIO'
-      ? context.proposal
-        ? `La propuesta vigente es de S/ ${context.proposal.precio_cotizado.toFixed(2)}. ¿Qué parte de la propuesta te gustaría revisar?`
-        : context.tarifa
-        ? `La tarifa vigente de referencia es S/ ${context.tarifa.precio.toFixed(2)}. ¿Qué parte de la propuesta te gustaría revisar?`
-        : 'Confirma la tarifa vigente con el asesor antes de responder sobre el precio.'
-      : analysis.sugerencia;
-    res.json({ ...analysis, sugerencia, promociones: context.promociones.map(p => p.nombre) });
+    }, fetch, true, context.facts);
+    if (geminiSuggestions.size >= 256) {
+      const oldest = geminiSuggestions.keys().next().value;
+      if (oldest !== undefined) geminiSuggestions.delete(oldest);
+    }
+    geminiSuggestions.set(cacheKey, analysis);
+    res.json({ ...analysis, promociones: context.facts.promociones });
   } catch (error) {
     if (error instanceof LeadGeminiError) throw new InputError(error.message, error.status);
     throw error;

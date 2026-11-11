@@ -39,3 +39,31 @@ test('rejects invalid and truncated output and maps quota errors without retry',
     assert.equal(calls, 1);
   }
 });
+
+test('commercial suggestions use the conversation and supplied terms without replacing the answer with a template', async () => {
+  const facts = { servicio: 'Evaluación', precioPropuesta: '48.00', tarifaReferencia: '60.00', promociones: [] };
+  const answer = 'Entiendo que ese importe supera lo que puedes pagar. ¿Prefieres revisar la atención para otro momento con el asesor?';
+  const result = await classifyLeadChat(context, config, async (_url, init) => {
+    const body = JSON.parse(String(init?.body));
+    assert.deepEqual(JSON.parse(body.contents[0].parts[0].text), { mensajes: context, condiciones: facts });
+    return response(JSON.stringify({ intencion: 'PRECIO', dia: 'jueves', turno: 'tarde',
+      objecion_economica: true, sugerencia: answer }));
+  }, true, facts);
+  assert.equal(result.sugerencia, answer);
+  assert.equal(result.dia, 'jueves');
+  assert.equal(result.turno, 'tarde');
+});
+
+test('commercial suggestions reject invented prices, percentages, empty answers and invalid preferences', async () => {
+  const facts = { servicio: 'Evaluación', precioPropuesta: '48.00', tarifaReferencia: null, promociones: [] };
+  const base = { intencion: 'PRECIO', dia: 'sin_dato', turno: 'sin_dato', objecion_economica: true };
+  for (const change of [
+    { sugerencia: 'Podemos dejarlo en S/ 30.' },
+    { sugerencia: 'Tienes un descuento del 20%.' },
+    { sugerencia: '   ' },
+    { sugerencia: 'Revisemos horarios.', dia: 'ayer' },
+  ]) {
+    await assert.rejects(classifyLeadChat(context, config, async () =>
+      response(JSON.stringify({ ...base, ...change })), true, facts), LeadGeminiError);
+  }
+});
