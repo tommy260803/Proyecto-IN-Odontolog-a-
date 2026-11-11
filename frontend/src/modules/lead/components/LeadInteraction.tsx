@@ -181,7 +181,7 @@ export function LeadInteraction({ requestId, onAnalysis }: {
             </div>
             {suggestions[message.id_interaccion] && (
               <div className="max-w-[88%] self-end break-words rounded-2xl rounded-tr-sm border border-teal-200 bg-teal-50 p-3 text-sm dark:bg-teal-950">
-                <p className="text-xs font-medium">IA · sugerencia</p>
+                <p className="text-xs font-medium">IA · recomendación para ti</p>
                 <p className="whitespace-pre-wrap">{suggestions[message.id_interaccion].sugerencia}</p>
                 {suggestions[message.id_interaccion].recomendacion && (
                   <div className="mt-2 border-t border-teal-200 pt-2">

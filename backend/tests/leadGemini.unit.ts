@@ -108,6 +108,6 @@ test('the repeated generic question from a price objection is replaced with a co
     sugerencia: 'Comprendo. ¿Qué alternativa o momento le resulta viable para revisarlo con el asesor?',
   })), true, facts);
   assert.doesNotMatch(result.sugerencia, /alternativa o momento/);
-  assert.match(result.sugerencia, /consultar una autorización/);
+  assert.match(result.sugerencia, /Solicita al responsable comercial autorización/);
   assert.match(result.recomendacion!, /nueva versión/);
 });
