@@ -1289,19 +1289,61 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
   const cacheKey = createHash('sha256').update(JSON.stringify([req.params.id, req.params.interaction, context,
     process.env.LEAD_GEMINI_MODEL])).digest('hex');
   const cached = geminiSuggestions.get(cacheKey);
-  if (cached) return res.json({ ...cached, promociones: context.facts.promociones });
+  if (cached && !['HORARIO', 'SEDE'].includes(cached.intencion)) return res.json({ ...cached, promociones: context.facts.promociones });
   if (geminiBusy) throw new InputError('Hay otro análisis en curso. Intenta de nuevo.', 429);
   geminiBusy = true;
   try {
-    const analysis = await classifyLeadChat(context.messages, {
+    const analysis = cached ?? await classifyLeadChat(context.messages, {
       key: process.env.GEMINI_API_KEY ?? '', model: process.env.LEAD_GEMINI_MODEL || 'gemini-3.5-flash-lite',
     }, fetch, true, context.facts);
+    let alternativas: { id_disponibilidad: number; id_sede: number; id_profesional: number;
+      fecha: string; inicio: string; fin: string; sede: string; profesional: string }[] = [];
+    if (analysis.intencion === 'HORARIO' || analysis.intencion === 'SEDE') {
+      const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+      const day = analysis.dia ? days.indexOf(analysis.dia) : -1;
+      const excluded = analysis.turnos_excluidos ?? [];
+      const allowed = ['mañana', 'tarde', 'noche'].filter(shift =>
+        !excluded.includes(shift) && (!analysis.turno || analysis.turno === shift));
+      alternativas = await prisma.$queryRaw`
+        SELECT TOP (3) d.id_disponibilidad,d.id_sede,d.id_profesional,
+          CONVERT(varchar(10),d.fecha,23) AS fecha,
+          CONVERT(varchar(5),d.hora_inicio,108) AS inicio,
+          CONVERT(varchar(5),d.hora_fin,108) AS fin,
+          s.nombre AS sede,CONCAT(p.nombres,' ',p.apellidos) AS profesional
+        FROM dbo.Disponibilidad d
+        JOIN dbo.Sedes s ON s.id_sede=d.id_sede AND s.activo=1
+        JOIN dbo.Profesionales p ON p.id_profesional=d.id_profesional AND p.activo=1
+        JOIN dbo.ProfesionalServicio ps ON ps.id_profesional=p.id_profesional
+        JOIN dbo.Solicitudes sol ON sol.id_solicitud=${id(req.params.id)} AND sol.id_servicio=ps.id_servicio
+        JOIN dbo.Servicios sv ON sv.id_servicio=ps.id_servicio AND sv.activo=1
+        WHERE d.estado='Disponible'
+          AND (d.fecha>CONVERT(date,DATEADD(hour,-5,SYSUTCDATETIME()))
+            OR (d.fecha=CONVERT(date,DATEADD(hour,-5,SYSUTCDATETIME()))
+              AND d.hora_inicio>CONVERT(time,DATEADD(hour,-5,SYSUTCDATETIME()))))
+          AND (${day}<0 OR DATEDIFF(day,CONVERT(date,'19000101'),d.fecha)%7=${day})
+          AND ((${allowed.includes('mañana') ? 1 : 0}=1 AND d.hora_inicio>='08:00' AND d.hora_inicio<'13:00')
+            OR (${allowed.includes('tarde') ? 1 : 0}=1 AND d.hora_inicio>='13:00' AND d.hora_inicio<'18:00')
+            OR (${allowed.includes('noche') ? 1 : 0}=1 AND d.hora_inicio>='18:00' AND d.hora_inicio<'20:00'))
+          AND NOT EXISTS (
+            SELECT 1 FROM dbo.Opciones o JOIN dbo.Reservas r ON r.id_opcion=o.id_opcion
+            WHERE o.id_disponibilidad=d.id_disponibilidad AND r.estado NOT IN ('Cancelada','Vencida')
+          )
+        ORDER BY d.fecha,d.hora_inicio,d.id_disponibilidad
+      `;
+    }
+    const result = { ...analysis, alternativas,
+      sugerencia: analysis.intencion === 'HORARIO'
+        ? alternativas.length
+          ? `${analysis.turnos_excluidos?.length ? 'El paciente descarta la franja de ' + analysis.turnos_excluidos.join(', ') + '. ' : ''}Estos horarios están disponibles para el servicio y respetan la preferencia indicada. Revisa con el paciente cuál le conviene y selecciónalo para preparar la propuesta.`
+          : 'No encontré horarios disponibles que cumplan esta preferencia. Confirma qué otros días o franjas acepta el paciente antes de ampliar la búsqueda.'
+        : analysis.sugerencia,
+    };
     if (geminiSuggestions.size >= 256) {
       const oldest = geminiSuggestions.keys().next().value;
       if (oldest !== undefined) geminiSuggestions.delete(oldest);
     }
-    geminiSuggestions.set(cacheKey, analysis);
-    res.json({ ...analysis, promociones: context.facts.promociones });
+    geminiSuggestions.set(cacheKey, result);
+    res.json({ ...result, promociones: context.facts.promociones });
   } catch (error) {
     if (error instanceof LeadGeminiError) throw new InputError(error.message, error.status);
     throw error;

@@ -9,6 +9,13 @@ export type LeadInteractionAnalysis = {
   sugerencia: string;
   promociones: string[];
   recomendacion?: string;
+  turnos_excluidos?: string[];
+  alternativas?: LeadSuggestedSlot[];
+};
+
+export type LeadSuggestedSlot = {
+  id_disponibilidad: number; id_sede: number; id_profesional: number;
+  fecha: string; inicio: string; fin: string; sede: string; profesional: string;
 };
 
 type Recognition = {
@@ -34,9 +41,10 @@ async function request(path: string, body?: object) {
   return result;
 }
 
-export function LeadInteraction({ requestId, onAnalysis }: {
+export function LeadInteraction({ requestId, onAnalysis, onChooseSlot }: {
   requestId: number;
   onAnalysis: (value: LeadInteractionAnalysis | null) => void;
+  onChooseSlot: (value: LeadSuggestedSlot) => void;
 }) {
   const [channels, setChannels] = useState<{ id_canal: number; nombre: string }[]>([]);
   const [channel, setChannel] = useState('');
@@ -183,12 +191,14 @@ export function LeadInteraction({ requestId, onAnalysis }: {
               <div className="max-w-[88%] self-end break-words rounded-2xl rounded-tr-sm border border-teal-200 bg-teal-50 p-3 text-sm dark:bg-teal-950">
                 <p className="text-xs font-medium">IA · recomendación para ti</p>
                 <p className="whitespace-pre-wrap">{suggestions[message.id_interaccion].sugerencia}</p>
-                {suggestions[message.id_interaccion].recomendacion && (
-                  <div className="mt-2 border-t border-teal-200 pt-2">
-                    <p className="text-xs font-semibold">Acción recomendada al asesor</p>
-                    <p>{suggestions[message.id_interaccion].recomendacion}</p>
-                  </div>
-                )}
+                {suggestions[message.id_interaccion].alternativas?.map(slot => (
+                  <button key={slot.id_disponibilidad} type="button" className="mt-2 block w-full rounded-lg border border-teal-300 p-2 text-left hover:bg-teal-100 dark:hover:bg-teal-900"
+                    onClick={() => onChooseSlot(slot)}>
+                    <span className="block font-medium">{slot.fecha} · {slot.inicio}–{slot.fin}</span>
+                    <span className="block">{slot.sede} · {slot.profesional}</span>
+                    <span className="text-xs underline">Usar este horario en la propuesta</span>
+                  </button>
+                ))}
               </div>
             )}
           </div>

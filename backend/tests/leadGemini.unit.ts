@@ -1,11 +1,31 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { classifyLeadChat, commercialRecommendation, LeadGeminiError } from '../src/services/leadGemini';
+import { classifyLeadChat, commercialRecommendation, excludedLeadShifts, LeadGeminiError } from '../src/services/leadGemini';
 
 const config = { key: 'synthetic-test-key', model: 'gemini-test' };
 const context = [{ remitente: 'PACIENTE', texto: '¿Puedo ir por la tarde?' }];
 const response = (text: string, finishReason = 'STOP') => Response.json({
   candidates: [{ finishReason, content: { parts: [{ text }] } }],
+});
+
+test('negated shifts override a stale location classification without offering the rejected shift', async () => {
+  const result = await classifyLeadChat([
+    { remitente: 'paciente', texto: 'Me queda lejos Centro Histórico' },
+    { remitente: 'paciente', texto: 'que no puedo en la tarde' },
+  ], config, async () => response(JSON.stringify({
+    intencion: 'SEDE', dia: 'sin_dato', turno: 'tarde', objecion_economica: false,
+    sugerencia: 'Pregunta desde qué zona se desplaza.',
+  })), true, { servicio: 'Evaluación', precioPropuesta: '48.00', tarifaReferencia: null, promociones: [] });
+  assert.equal(result.intencion, 'HORARIO');
+  assert.equal(result.turno, '');
+  assert.deepEqual(result.turnos_excluidos, ['tarde']);
+  assert.equal(result.objecion_economica, false);
+});
+
+test('tomorrow as a calendar day does not reject the morning shift', () => {
+  assert.deepEqual(excludedLeadShifts('no puedo mañana'), []);
+  assert.deepEqual(excludedLeadShifts('no puedo en la mañana'), ['mañana']);
+  assert.deepEqual(excludedLeadShifts('excepto por la noche'), ['noche']);
 });
 
 test('sends one bounded request and returns a locally defined suggestion', async () => {

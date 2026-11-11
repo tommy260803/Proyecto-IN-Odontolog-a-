@@ -1,6 +1,16 @@
 const intents = ['HORARIO', 'PRECIO', 'SEDE', 'DUDA', 'AMBIGUO', 'REVISION'] as const;
 const days = ['sin_dato', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
 const shifts = ['sin_dato', 'mañana', 'tarde', 'noche'];
+export function excludedLeadShifts(text: string): string[] {
+  const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return ['manana', 'tarde', 'noche'].filter(shift => {
+    const prefix = shift === 'manana'
+      ? '(?:(?:en|por)\\s+la\\s+|el turno de la\\s+)'
+      : '(?:en\\s+|por\\s+)?(?:la\\s+|el turno de la\\s+)?';
+    return new RegExp('(?:no\\s+(?:puedo|podria|me sirve|quiero|estoy disponible)|excepto|menos)\\s+(?:asistir\\s+)?' + prefix + shift + '\\b').test(normalized);
+  })
+    .map(shift => shift === 'manana' ? 'mañana' : shift);
+}
 type Intent = (typeof intents)[number];
 
 export type LeadCommercialFacts = {
@@ -71,6 +81,7 @@ export async function classifyLeadChat(
               'No digas al lector que consulte con el asesor, que lo comunique al asesor ni que lo revise con el asesor: el lector ya es el asesor. Si requiere autorización, identifica al responsable comercial.',
               'Resuelve la última necesidad con un siguiente paso concreto. No repitas preguntas que el paciente ya contestó.',
               'Clasifica y responde al ÚLTIMO mensaje. El historial aclara referencias, pero una objeción económica anterior no vuelve económica una consulta nueva sobre sede. objecion_economica se refiere al mensaje actual.',
+              'Una franja negada NO es una preferencia: no puedo en la tarde excluye tarde, usa HORARIO y turno sin_dato salvo que indique otro turno que sí acepta.',
               'SEDE: distancia, ubicación o cambio de sede. Si la sede queda lejos, recomienda preguntar la zona de procedencia y revisar sedesConAgenda, sin inventar cercanía ni disponibilidad adicional. No hables del presupuesto anterior salvo que el último mensaje lo retome.',
               'Distingue presupuesto declarado por el paciente de importe autorizado: decir que cuenta con 45 soles no autoriza ofrecerle ese precio. Puedes citarlo explícitamente como presupuesto para solicitar autorización.',
               'Ejemplo: si ya dijo que el precio es muy caro y pide pagar menos, no preguntes qué alternativa o momento quiere: ya pidió una reducción.',
@@ -133,7 +144,9 @@ export async function classifyLeadChat(
         (extractPreferences && (!days.includes(parsed.dia) || !shifts.includes(parsed.turno) || typeof parsed.objecion_economica !== 'boolean'))) {
       throw new LeadGeminiError(502, 'La sugerencia de Gemini no cumple el formato esperado.');
     }
-    const intencion = parsed.intencion as Intent;
+    const turnosExcluidos = commercialFacts ? excludedLeadShifts(context.at(-1)?.texto ?? '') : [];
+    const intencion = turnosExcluidos.length ? 'HORARIO' : parsed.intencion as Intent;
+    const economicObjection = turnosExcluidos.length ? false : parsed.objecion_economica;
     let invalidCommercialClaim = false;
     if (commercialFacts) {
       const allowedPrices = [commercialFacts.precioPropuesta, commercialFacts.tarifaReferencia,
@@ -148,14 +161,14 @@ export async function classifyLeadChat(
     }
     let suggestion = commercialFacts ? parsed.sugerencia.trim() as string : suggestions[intencion];
     if (commercialFacts && invalidCommercialClaim) {
-      suggestion = commercialRecommendation({ intencion, objecion_economica: parsed.objecion_economica }, commercialFacts);
+      suggestion = commercialRecommendation({ intencion, objecion_economica: economicObjection }, commercialFacts);
       const budget = context.at(-1)?.texto.match(/(?:cuento con|tengo|dispongo de|presupuesto(?: es| de)?)\s*(?:solo\s*)?(?:S\s*\/\s*)?(\d+(?:[.,]\d{1,2})?)\s*(?:soles|PEN)/i);
       if (intencion === 'PRECIO' && budget) {
         suggestion = `El paciente declara un presupuesto de S/ ${Number(budget[1].replace(',', '.')).toFixed(2)}. ${suggestion}`;
       }
     }
     const normalizedSuggestion = suggestion.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    if (commercialFacts && intencion !== 'SEDE' && (parsed.objecion_economica || intencion === 'PRECIO') &&
+    if (commercialFacts && intencion !== 'SEDE' && (economicObjection || intencion === 'PRECIO') &&
         /que (?:alternativa o momento|parte de (?:la propuesta|la cotizacion|el precio))/.test(normalizedSuggestion)) {
       const lower = commercialFacts.propuestasMenores?.[0];
       suggestion = lower
@@ -164,12 +177,13 @@ export async function classifyLeadChat(
     }
     return { intencion, sugerencia: suggestion,
       ...(commercialFacts ? { recomendacion: commercialRecommendation({
-        intencion, objecion_economica: parsed.objecion_economica,
+        intencion, objecion_economica: economicObjection,
       }, commercialFacts) } : {}),
       ...(extractPreferences ? {
       dia: parsed.dia === 'sin_dato' ? '' : parsed.dia as string,
-      turno: parsed.turno === 'sin_dato' ? '' : parsed.turno as string,
-      objecion_economica: parsed.objecion_economica as boolean,
+      turno: parsed.turno === 'sin_dato' || turnosExcluidos.includes(parsed.turno) ? '' : parsed.turno as string,
+      objecion_economica: economicObjection as boolean,
+      turnos_excluidos: turnosExcluidos,
     } : {}) };
   } catch (error) {
     if (error instanceof LeadGeminiError) throw error;
