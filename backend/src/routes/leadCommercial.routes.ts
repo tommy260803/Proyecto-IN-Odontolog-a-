@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { Router, type Request, type Response } from 'express';
 import { prisma } from '../db';
-import { getLeadStaffIdentity, leadStaffAuthEnabled, loginLeadStaff, logoutLeadStaff } from '../services/leadStaffAuth';
+import { getLeadStaffIdentity, leadStaffAuthEnabled, loginLeadStaff, logoutLeadStaff, type LeadStaffIdentity } from '../services/leadStaffAuth';
 
 export const leadCommercialRouter = Router();
 const router = leadCommercialRouter;
@@ -74,8 +74,8 @@ async function opportunity(tx: Prisma.TransactionClient, value: unknown, editabl
 router.post('/staff/session', loginLeadStaff);
 router.delete('/staff/session', logoutLeadStaff);
 
-async function staffOpportunity(tx: Prisma.TransactionClient, req: Request) {
-  const user = await getLeadStaffIdentity(req, tx);
+async function staffOpportunity(tx: Prisma.TransactionClient, req: Request, verifiedUser?: LeadStaffIdentity) {
+  const user = verifiedUser ?? await getLeadStaffIdentity(req, tx);
   if (!user) throw new InputError('Se requiere una sesión vigente del personal de LEAD.', 401);
   const row = await opportunity(tx, req.params.id, false);
   if (user.rol !== 'Administrador' && row.id_negociador !== user.id_usuario) {
@@ -548,7 +548,18 @@ router.post('/opportunities/:id/staff/payer-transfer', route(async (req, res) =>
   if (req.body?.confirmado !== true) throw new InputError('Confirma el traspaso a PAYER.');
   const authorizationId = id(req.body.id_autorizacion);
   const result = await prisma.$transaction(async tx => {
-    const { row, user } = await staffOpportunity(tx, req);
+    const user = await getLeadStaffIdentity(req, tx);
+    if (!user) throw new InputError('Se requiere una sesión vigente del personal de LEAD.', 401);
+    // Tomar el bloqueo antes de las lecturas SERIALIZABLE evita que dos
+    // traspasos conserven bloqueos compartidos mientras intentan reservar.
+    const [lock] = await tx.$queryRaw<{ resultado: number }[]>`
+      DECLARE @resultado int;
+      EXEC @resultado = sys.sp_getapplock @Resource=N'NexoSalud:LEAD:PAYER',
+        @LockMode='Exclusive', @LockOwner='Transaction', @LockTimeout=3000;
+      SELECT @resultado AS resultado;
+    `;
+    if (!lock || lock.resultado < 0) throw new InputError('Otro traspaso está en curso. Vuelve a verificar la solicitud.', 409);
+    const { row } = await staffOpportunity(tx, req, user);
     const readiness = await payerReadiness(tx, row);
     if (readiness.traspaso) {
       const [same] = await tx.$queryRaw<{ coincide: number }[]>`
@@ -590,7 +601,7 @@ router.post('/opportunities/:id/staff/payer-transfer', route(async (req, res) =>
     `;
     if (linked !== 1) throw new InputError('La autorización ya fue utilizada.', 409);
     return { id_reserva: reservation.id_reserva, reutilizada: false };
-  }, serializable);
+  }, { ...serializable, timeout: 15_000 });
   res.status(result.reutilizada ? 200 : 201).json(result);
 }));
 

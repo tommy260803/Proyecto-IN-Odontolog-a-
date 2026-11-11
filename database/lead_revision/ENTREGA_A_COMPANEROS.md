@@ -40,6 +40,8 @@ En la misma copia pasó la regresión SQL de conversión idempotente BUYER → L
 
 **Ensayo integral reproducible de las rutas nuevas.** En backend, con `SQLSERVER_URL` apuntando a `NexoSalud_LeadPruebas` y ambos scripts de QA instalados, ejecuten `npm run test:lead:flow`. La prueba rechaza otras bases. Registra una captación, convierte a LEAD, autentica al negociador, registra una respuesta útil, presenta y versiona una cotización, acepta una alternativa, guarda el acuerdo, registra la autorización y traspasa a una reserva pendiente. Comprueba los reintentos, M1/M3/M6 y la reversión de los datos y conteos, incluidos los historiales. El escenario usa una transacción QA compartida por las rutas HTTP. La concurrencia entre conexiones independientes requiere un ensayo separado.
 
+**Concurrencia del traspaso.** Con la misma configuración QA, `npm run test:lead:concurrency` usa conexiones SQL independientes. Crea casos sintéticos confirmados y elimina exclusivamente esos registros al terminar, incluidos sus historiales. Prueba dos envíos del mismo traspaso, dos solicitudes que compiten por un horario y un fallo intencional después de crear la reserva. El servidor adquiere el bloqueo transaccional `NexoSalud:LEAD:PAYER` antes de leer las condiciones, para ordenar los traspasos del flujo nuevo y evitar la espera circular al actualizar un horario.
+
 ## 1. Qué cambió en la base
 
 La migración fue aditiva. Conservó las tablas y los identificadores existentes y agregó estos objetos de negocio y auditoría.
