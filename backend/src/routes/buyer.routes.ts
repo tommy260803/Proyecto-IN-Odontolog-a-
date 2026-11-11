@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { Prisma, type Personas } from '@prisma/client';
 import { prisma } from '../db';
 import { MartSyncService } from '../services/martSyncService';
+import { BuyerEvaluationService } from '../services/buyerEvaluationService';
 
 const router = Router();
 
@@ -256,7 +257,7 @@ router.get('/check-duplicate', async (req, res) => {
   }
 });
 
-// Registrar BUYER e inmediatamente solicitar información (Convertir a LEAD si es único)
+// Registrar BUYER: persiste contacto, captación y mensaje primero; evalúa intención con Gemini fuera de SQL
 router.post('/register', async (req, res) => {
   const {
     nombres,
@@ -309,7 +310,8 @@ router.post('/register', async (req, res) => {
     const cleanPhone = rawDigits.length >= 9 ? rawDigits.slice(-9) : (rawDigits.length >= 7 ? rawDigits : null);
     const cleanEmail = email ? String(email).trim().toLowerCase() : null;
 
-    const result = await writeBuyer(async tx => {
+    // 1. Fase transaccional: guardar primero el contacto, la captación y el mensaje en BUYER
+    const txResult = await writeBuyer(async tx => {
       if (requestKey) {
         const [prior] = await tx.$queryRaw<{ id_solicitud: number; id_persona: number; request_hash: string }[]>`
           SELECT id_solicitud,id_persona,hash_registro_web_lead AS request_hash
@@ -326,7 +328,8 @@ router.post('/register', async (req, res) => {
             totalConsultas, isDuplicate: false, isNewPersonWithSharedContact: false, replayed: true };
         }
       }
-      // 1. Detectar duplicado por teléfono o correo
+
+      // Detectar duplicado por teléfono o correo
       let isDuplicate = false;
       let existingPerson = null;
       const isNewPersonConfirmed = Boolean(req.body.isNewPersonConfirmed);
@@ -336,7 +339,7 @@ router.post('/register', async (req, res) => {
         isDuplicate = Boolean(existingPerson);
       }
 
-      // 2. Canal Web y Fuente Web
+      // Canal Web y Fuente Web
       let webCanal = await tx.canales.findFirst({
         where: { nombre: { in: ['Página Web', 'Página Web / Portal Online'] }, activo: true },
         orderBy: { id_canal: 'asc' },
@@ -364,8 +367,8 @@ router.post('/register', async (req, res) => {
       let totalConsultas = 1;
 
       if (isDuplicate && existingPerson) {
-        // ARQUITECTURA LIMPIA: No duplicamos la fila de persona. Anexamos la nueva consulta a su historial.
-        const prevCount = await tx.solicitudes.count({ where: { id_persona: existingPerson.id_persona } });
+        // Contacto existente: Conservar su etapa actual y no duplicar persona
+        const prevCount = await tx.interacciones.count({ where: { id_persona: existingPerson.id_persona } });
         totalConsultas = prevCount + 1;
 
         persona = await tx.personas.update({
@@ -373,14 +376,13 @@ router.post('/register', async (req, res) => {
           data: {
             email: email ? String(email).trim() : existingPerson.email,
             fecha_actualizacion: new Date(),
-            // Al reiterar consulta, se reactiva y promueve a LEAD para negociación comercial
-            id_etapa_actual: etapaLead.id_etapa,
+            // Conserva estrictamente su etapa actual
+            id_etapa_actual: existingPerson.id_etapa_actual,
             estado_calidad: 'Valido',
           }
         });
-
       } else {
-        // Paciente nuevo: Creamos el registro único
+        // Paciente nuevo: Permanece en BUYER mientras se evalúa su intención
         persona = await tx.personas.create({
           data: {
             nombres: resolvedNombres,
@@ -393,19 +395,15 @@ router.post('/register', async (req, res) => {
             id_canal_origen: validCanalOrigen,
             tipo_persona: tipo_persona || 'Adulto General',
             estado_calidad: 'Valido',
-            id_etapa_actual: etapaLead.id_etapa,
+            id_etapa_actual: etapaBuyer.id_etapa,
           }
         });
-
       }
 
       // Detalle de la duda o consulta específica ingresada por el paciente
       const prefix = isNewPersonConfirmed ? '[Contacto Compartido] ' : '';
-      const rawInquiry = req.body.motivo_consulta || req.body.necesidad_declarada || req.body.duda_especifica;
-      const motivoRaw = rawInquiry 
-        ? `[Consulta #${totalConsultas}] ${rawInquiry}`
-        : (req.body.concreteRequest || (isDuplicate ? `Consulta recurrente #${totalConsultas} desde portal web` : 'Solicitud de información desde formulario web'));
-      const motivoConsulta = String(prefix + motivoRaw).slice(0, 195);
+      const rawInquiry = req.body.mensaje || req.body.motivo_consulta || req.body.necesidad_declarada || req.body.duda_especifica || req.body.concreteRequest || 'Solicitud de información desde formulario web';
+      const motivoConsulta = String(prefix + rawInquiry).slice(0, 195);
 
       let resolvedSede = sede_preferida || req.body.sede || null;
       if (!resolvedSede && req.body.id_sede) {
@@ -413,52 +411,35 @@ router.post('/register', async (req, res) => {
         if (foundSede) resolvedSede = foundSede.nombre;
       }
 
-      // 1. Guardar la nueva Solicitud en su historial
-      const solicitud = await tx.solicitudes.create({
-        data: {
-          id_persona: persona.id_persona,
-          id_servicio: validServicio,
-          motivo: motivoConsulta,
-          fecha_ingreso_lead: new Date(),
-          resultado_comercial_lead: 'PENDIENTE',
-          id_canal_origen: validCanalOrigen,
-        }
+      // Para contactos existentes, conserva su primera captación; si no existe, registrar
+      await recordBuyerCapture(tx, persona, {
+        sourceId: validFuente, serviceId: validServicio ?? validServicioInteres,
+        branchId: await captureBranch(tx, req.body.id_sede ?? resolvedSede), reason: motivoConsulta,
       });
 
-      if (requestKey) {
-        await tx.$executeRaw`UPDATE dbo.Solicitudes SET clave_registro_web_lead=${requestKey},
-          hash_registro_web_lead=${requestHash} WHERE id_solicitud=${solicitud.id_solicitud}`;
+      const [captacionRow] = await tx.$queryRaw<{ id_captacion: number }[]>`
+        SELECT TOP (1) id_captacion FROM dbo.CaptacionesBuyer WITH (UPDLOCK,HOLDLOCK)
+        WHERE id_persona=${persona.id_persona} ORDER BY id_captacion ASC
+      `;
+
+      if (!captacionRow) {
+        throw new BuyerInputError('No se pudo verificar la captación inicial del prospecto.', 500);
       }
 
-      if (!existingPerson || existingPerson.id_etapa_actual === etapaBuyer.id_etapa) {
-        await recordBuyerCapture(tx, persona, {
-          sourceId: validFuente, serviceId: validServicio ?? validServicioInteres,
-          branchId: await captureBranch(tx, req.body.id_sede ?? resolvedSede), reason: motivoConsulta,
-        });
-        await tx.$executeRaw`
-          INSERT dbo.EventosEtapa (id_persona,etapa_origen,etapa_destino,fecha_hora,motivo,
-            id_captacion,id_solicitud,clave_operacion_buyer)
-          SELECT id_persona,${etapaBuyer.id_etapa},${etapaLead.id_etapa},SYSDATETIME(),${motivoConsulta},
-            id_captacion,${solicitud.id_solicitud},CONCAT('BUYER_LEAD:',id_captacion)
-          FROM dbo.CaptacionesBuyer WHERE id_persona=${persona.id_persona}
-        `;
-      }
-
-      // 2. Registrar la Interacción con trazabilidad de fecha y detalle
-      await tx.interacciones.create({
+      // Registrar la Interacción con el mensaje ingresado
+      const interaccion = await tx.interacciones.create({
         data: {
           id_persona: persona.id_persona,
-          id_solicitud: solicitud.id_solicitud,
           id_canal: validCanal,
           id_fuente: validFuente,
-          tipo: isDuplicate ? `Consulta Web Recurrente (#${totalConsultas})` : 'Registro y Solicitud de Info (Consulta #1)',
-          mensaje: isDuplicate 
-            ? `El usuario reiteró consulta vía web (Intento #${totalConsultas}). Duda/Motivo: ${motivoConsulta}. Sede preferida: ${resolvedSede || 'No especificada'}.`
-            : `El usuario llenó el formulario público de solicitud de información. Duda/Motivo: ${motivoConsulta}.`
+          tipo: isDuplicate ? `Consulta Web Recurrente (#${totalConsultas})` : 'Registro y Consulta Inicial (#1)',
+          mensaje: String(rawInquiry),
+          es_respuesta_util: false,
+          resultado: 'Registrado - Pendiente de Evaluación',
         }
       });
 
-      // 3. Preferencias del paciente (Upsert)
+      // Preferencias del paciente (Upsert)
       if (resolvedSede || validCanal || validServicioInteres) {
         const existingPref = await tx.personaPreferencias.findFirst({ where: { id_persona: persona.id_persona } });
         if (existingPref) {
@@ -482,51 +463,111 @@ router.post('/register', async (req, res) => {
         }
       }
 
-      return { 
-        persona, 
-        solicitud, 
-        oportunidad: { id_oportunidad: solicitud.id_solicitud, id_persona: persona.id_persona },
-        isDuplicate, 
-        existingPerson, 
-        totalConsultas, 
-        isNewPersonWithSharedContact: isNewPersonConfirmed 
+      return {
+        persona,
+        id_captacion: captacionRow.id_captacion,
+        id_interaccion: interaccion.id_interaccion,
+        rawInquiry,
+        validServicio,
+        motivoConsulta,
+        resolvedSede,
+        isDuplicate,
+        existingPerson,
+        totalConsultas,
+        isNewPersonWithSharedContact: isNewPersonConfirmed,
       };
     });
 
-    if ('replayed' in result) {
-      return res.status(200).json({ success: true, consultationCount: result.totalConsultas, replayed: true, data: result });
-    }
-    if (result.isDuplicate) {
-      return res.status(200).json({ 
-        success: true, 
-        isDuplicate: true, 
-        isRecurring: true,
-        consultationCount: result.totalConsultas,
-        message: `¡Hola de nuevo! Anexamos tu nueva consulta a tu historial (Consulta #${result.totalConsultas}). Tu caso fue priorizado para atención en la etapa LEAD.`, 
-        data: result 
-      });
+    if ('replayed' in txResult) {
+      return res.status(200).json({ success: true, consultationCount: txResult.totalConsultas, replayed: true, data: txResult });
     }
 
-    if (result.isNewPersonWithSharedContact) {
+    // 2. Ejecutar la llamada de clasificación a Gemini FUERA de la transacción SQL
+    const evaluation = await BuyerEvaluationService.evaluateBuyerInteraction({
+      id_persona: txResult.persona.id_persona,
+      id_captacion: txResult.id_captacion,
+      id_interaccion: txResult.id_interaccion,
+      mensaje: txResult.rawInquiry,
+      id_servicio_declarado: txResult.validServicio,
+      motivo_consulta: txResult.motivoConsulta,
+      sede_preferida: txResult.resolvedSede,
+    });
+
+    // Sincronización analítica asíncrona
+    MartSyncService.syncBuyer().catch(err => console.warn('[AutoSync] Error:', err.message));
+
+    const responsePayload = {
+      id_persona: txResult.persona.id_persona,
+      id_captacion: txResult.id_captacion,
+      id_interaccion: txResult.id_interaccion,
+      id_decision: evaluation.id_decision,
+      etapa: evaluation.etapa_final,
+      intencion: evaluation.intencion,
+      id_servicio: evaluation.id_servicio,
+      accion: evaluation.accion,
+      estado_evaluacion: evaluation.estado,
+      aclaracion: evaluation.aclaracion ?? null,
+      id_solicitud: evaluation.id_solicitud ?? null,
+      oportunidad: evaluation.id_solicitud
+        ? { id_oportunidad: evaluation.id_solicitud, id_persona: txResult.persona.id_persona }
+        : { id_oportunidad: txResult.id_captacion, id_persona: txResult.persona.id_persona },
+      totalConsultas: txResult.totalConsultas,
+      isDuplicate: txResult.isDuplicate,
+      isRecurring: txResult.isDuplicate,
+      isNewPersonWithSharedContact: txResult.isNewPersonWithSharedContact,
+    };
+
+    if (evaluation.accion === 'CONVERSION_LEAD') {
       return res.status(201).json({
         success: true,
-        isDuplicate: false,
-        isRecurring: false,
-        isNewPersonWithSharedContact: true,
-        consultationCount: 1,
-        message: 'Registrado exitosamente como nuevo paciente independiente.',
-        data: result
+        isDuplicate: txResult.isDuplicate,
+        isRecurring: txResult.isDuplicate,
+        consultationCount: txResult.totalConsultas,
+        message: 'Intención de reserva confirmada. Se inició la oportunidad en etapa LEAD.',
+        data: responsePayload,
       });
     }
 
-    MartSyncService.syncBuyer().catch(err => console.warn('[AutoSync] Error:', err.message));
-    res.status(201).json({ 
-      success: true, 
-      isDuplicate: false, 
-      isRecurring: false,
-      consultationCount: 1,
-      message: 'Solicitud registrada correctamente. Pasado a estado LEAD.', 
-      data: result 
+    if (evaluation.accion === 'ACLARACION') {
+      return res.status(200).json({
+        success: true,
+        isDuplicate: txResult.isDuplicate,
+        isRecurring: txResult.isDuplicate,
+        consultationCount: txResult.totalConsultas,
+        message: 'Consulta registrada en BUYER. Se requiere aclaración sobre el tratamiento o servicio deseado.',
+        data: responsePayload,
+      });
+    }
+
+    if (evaluation.accion === 'CONSERVA_ETAPA_POSTERIOR') {
+      return res.status(200).json({
+        success: true,
+        isDuplicate: txResult.isDuplicate,
+        isRecurring: txResult.isDuplicate,
+        consultationCount: txResult.totalConsultas,
+        message: `El contacto ya se encuentra en etapa ${evaluation.etapa_final}. Se conserva su etapa actual.`,
+        data: responsePayload,
+      });
+    }
+
+    if (evaluation.estado === 'PENDIENTE') {
+      return res.status(202).json({
+        success: true,
+        isDuplicate: txResult.isDuplicate,
+        isRecurring: txResult.isDuplicate,
+        consultationCount: txResult.totalConsultas,
+        message: 'Mensaje registrado. Evaluación semántica pendiente por indisponibilidad temporal del clasificador.',
+        data: responsePayload,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      isDuplicate: txResult.isDuplicate,
+      isRecurring: txResult.isDuplicate,
+      consultationCount: txResult.totalConsultas,
+      message: 'Consulta informativa registrada. El paciente permanece en etapa BUYER.',
+      data: responsePayload,
     });
   } catch (error: any) {
     if (error instanceof BuyerInputError) return res.status(error.status).json({ error: error.message });
@@ -535,6 +576,32 @@ router.post('/register', async (req, res) => {
       error: error?.message || 'Error al registrar al BUYER',
       details: error?.message
     });
+  }
+});
+
+// Recuperar evaluaciones semánticas pendientes de forma persistente
+router.post('/evaluations/recover', async (_req, res) => {
+  try {
+    const summary = await BuyerEvaluationService.recoverPendingEvaluations();
+    res.json({ success: true, ...summary });
+  } catch (err: any) {
+    console.error('Error recuperando evaluaciones pendientes:', err);
+    res.status(500).json({ error: 'Error al recuperar evaluaciones pendientes', details: err?.message });
+  }
+});
+
+// Reintentar la evaluación semántica de un mensaje por su id_interaccion
+router.post('/evaluations/:id/retry', async (req, res) => {
+  const interactionId = Number(req.params.id);
+  if (!Number.isInteger(interactionId) || interactionId < 1) {
+    return res.status(400).json({ error: 'ID de interacción inválido.' });
+  }
+  try {
+    const outcome = await BuyerEvaluationService.retryEvaluationByInteraction(interactionId);
+    res.json({ success: true, data: outcome });
+  } catch (err: any) {
+    console.error(`Error reintentando evaluación ${interactionId}:`, err);
+    res.status(500).json({ error: 'Error al reintentar evaluación', details: err?.message });
   }
 });
 

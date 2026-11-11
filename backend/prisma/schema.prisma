@@ -439,6 +439,8 @@ model DecisionesIA {
   id_decision        Int       @id @default(autoincrement())
   id_persona         Int?
   id_usuario         Int?
+  id_captacion       Int?
+  id_interaccion     Int?
   agente             String    @db.VarChar(50)
   fecha_hora         DateTime  @default(now()) @db.DateTime2
   entrada            String?   @db.VarChar(Max)

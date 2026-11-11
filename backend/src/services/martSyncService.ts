@@ -13,7 +13,7 @@ export class MartSyncService {
       SET XACT_ABORT ON;
       BEGIN TRY
         BEGIN TRANSACTION;
-        EXEC NexoSaludDB.dbo.usp_SincronizarCaptacionBuyer;
+        EXEC dbo.usp_SincronizarCaptacionBuyer;
         EXEC NexoSalud_Mart.dbo.usp_SincronizarInversionCampanaBuyer;
         COMMIT TRANSACTION;
       END TRY

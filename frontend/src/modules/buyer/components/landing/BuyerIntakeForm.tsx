@@ -64,6 +64,7 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [submittedRef, setSubmittedRef] = useState<string | null>(null);
+  const [autoClarification, setAutoClarification] = useState<string | null>(null);
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [formStep, setFormStep] = useState<1 | 2>(1);
@@ -149,6 +150,12 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
         ? `OP-${String(opId).padStart(4, '0')}`
         : `OP-${Math.floor(1000 + Math.random() * 9000)}`;
 
+      if (result.data?.aclaracion) {
+        setAutoClarification(result.data.aclaracion);
+      } else {
+        setAutoClarification(null);
+      }
+
       setSubmittedRef(refCode);
       if (onSuccess) onSuccess(refCode);
     } catch (err: any) {
@@ -160,6 +167,7 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
 
   const handleReset = () => {
     setSubmittedRef(null);
+    setAutoClarification(null);
     setNombre('');
     setTelefono('');
     setIdSede('');
@@ -195,6 +203,15 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
             <p className="text-sm text-slate-600 max-w-sm mx-auto leading-relaxed">
               Un asesor de NexoSalud revisará tu consulta y te responderá por WhatsApp en menos de <strong className="text-slate-900 font-semibold">15 minutos</strong>.
             </p>
+            {autoClarification && (
+              <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-xs text-amber-900 text-left max-w-sm mx-auto space-y-1 mt-3">
+                <span className="font-semibold block text-amber-950 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                  Orientación preliminar:
+                </span>
+                <p className="leading-relaxed text-amber-900">{autoClarification}</p>
+              </div>
+            )}
           </div>
 
           <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-xs text-slate-600 space-y-1.5 text-left max-w-sm mx-auto">
