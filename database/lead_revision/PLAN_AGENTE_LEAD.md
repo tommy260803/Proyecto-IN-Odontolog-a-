@@ -8,7 +8,7 @@ Chat web y Gemini con configuración propia de LEAD. La OLTP decide las operacio
 | 2. Persistencia y seguridad | Núcleo validado en QA | Cola de ingreso, auditoría, permisos y recuperación. El almacenamiento de chat, herramientas, seguimiento y revisión se incorpora con sus flujos. |
 | 3. Orquestador y F1 | Flujo inicial validado en QA | Una decisión recuperable por ingreso, con prioridad y siguiente acción. Pendientes el adaptador Gemini y la delegación contextual. |
 | 4. Chat web | Chat manual validado en QA por HTTP | Acceso temporal por solicitud, historial, recepción y reenvío idempotente. Pendientes la prueba visual y la conexión con BUYER. |
-| 5. F2: alternativas | Pendiente | Opciones elegibles, revalidación e historial preservado. |
+| 5. F2: alternativas | Recomendación asistida validada en QA | Agenda ordenada por rango confirmado y revalidación al ofrecer. Pendiente interpretar el chat con Gemini. |
 | 6. F3: negociación | Pendiente | Condiciones verificadas, versiones y evidencia de decisiones. |
 | 7. F4: seguimiento | Pendiente | Límites por persona, parada, recuperación y revisión humana. |
 | 8. F5: traspaso | Pendiente | Una reserva y un evento por traspaso autorizado, incluso ante reintentos. |
@@ -57,3 +57,9 @@ Aplicar [CHAT_AGENTE_LEAD_QA.sql](CHAT_AGENTE_LEAD_QA.sql) con SQLCMD y `-b` des
 El personal asignado o un administrador inicia sesión en una oportunidad con entrada acreditada y autorización de contacto vigente. Desde la oportunidad genera un enlace temporal para entregar al paciente en QA. Cada enlace vence a las 24 horas y reemplaza el anterior. El chat vincula el acceso a la persona de la entrada y su solicitud. El historial se consulta por páginas y el navegador confirma la recepción de mensajes de la otra parte. La marca de recepción acredita que llegaron al navegador, sin inferir lectura ni aceptación comercial. El reenvío durante la misma sesión reutiliza la clave del mensaje.
 
 Pasaron las compilaciones de backend y frontend y el ensayo HTTP + SQL `npm run test:lead:flow` con el chat habilitado. El ensayo verificó diálogo, recepción, paginación, repetición de clave, aislamiento por solicitud, rotación y vencimiento del enlace. Pendientes la prueba visual en navegador y la integración del historial y la identidad del paciente con BUYER.
+
+## Alternativas según el rango confirmado
+
+El personal puede consultar una fecha con un rango de horas en Lima. Si es obligatorio, aparecen únicamente horarios que caben por completo en él. Si es flexible, aparecen primero los que coinciden y luego los demás horarios elegibles, identificados como fuera del rango preferido. Los filtros previos de sede y profesional siguen disponibles en la API.
+
+La consulta no registra ofertas. La operación existente revalida el horario antes de registrar la opción y conserva las condiciones en el historial. En QA, el ensayo comercial comprobó ambos modos y rechazó con 409 una oferta cuyo horario pasó a ocupado después de la consulta. La interpretación automática del mensaje del paciente y la publicación autónoma por chat siguen pendientes.

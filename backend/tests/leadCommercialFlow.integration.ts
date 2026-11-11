@@ -178,8 +178,24 @@ async function run() {
         const candidate = candidates.candidatas.find((entry: { id_disponibilidad: number }) =>
           entry.id_disponibilidad === slot.id_disponibilidad);
         assert.ok(candidate);
+        const later = await tx.disponibilidad.create({ data: {
+          id_profesional: professional.id_profesional, id_sede: site.id_sede,
+          fecha: new Date(day + 'T00:00:00Z'), hora_inicio: new Date('1970-01-01T11:00:00Z'),
+          hora_fin: new Date('1970-01-01T12:00:00Z'), estado: 'Disponible',
+        } });
+        const window = path + '/availability?fecha=' + day + '&desde=11:00&hasta=12:00&ajuste=';
+        const flexible = (await call(window + 'flexible', 200)).candidatas;
+        assert.deepEqual(flexible.map((entry: { id_disponibilidad: number; coincide_horario: boolean }) =>
+          [entry.id_disponibilidad, entry.coincide_horario]), [[later.id_disponibilidad, true], [slot.id_disponibilidad, false]]);
+        const required = (await call(window + 'obligatorio', 200)).candidatas;
+        assert.deepEqual(required.map((entry: { id_disponibilidad: number }) => entry.id_disponibilidad), [later.id_disponibilidad]);
+        await call(path + '/availability?fecha=' + day + '&desde=11:00&ajuste=obligatorio', 400);
         const offer = { ...candidate, precio_ofrecido: '125.50', turno_ofrecido: 'Mañana',
           id_propuesta: current.id_propuesta, opciones_esperadas: [] };
+        await tx.disponibilidad.update({ where: { id_disponibilidad: slot.id_disponibilidad }, data: { estado: 'Ocupado' } });
+        await call(path + '/alternatives', 409, 'POST', offer, token);
+        await tx.disponibilidad.update({ where: { id_disponibilidad: slot.id_disponibilidad }, data: { estado: 'Disponible' } });
+        completed.push('rangos obligatorios y flexibles, orden de candidatos y revalidación de agenda');
         const option = (await call(path + '/alternatives', 201, 'POST', offer, token)).alternativa;
         assert.equal((await call(path + '/alternatives', 200, 'POST', offer, token)).alternativa.id_opcion, option.id_opcion);
         const detail = await call(path + '?incluir_interacciones=false', 200);

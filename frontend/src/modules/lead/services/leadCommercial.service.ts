@@ -83,6 +83,7 @@ export interface OpportunityDetail {
 }
 
 export interface Candidate {
+  coincide_horario?: boolean | null;
   id_disponibilidad: number;
   id_sede: number;
   id_profesional: number;
@@ -162,9 +163,11 @@ export const leadCommercialService = {
     get<{ interacciones: RecordedInteraction[]; hay_siguiente: boolean }>(
       `/opportunities/${id}/activity?pagina=${page}`, signal,
     ),
-  availability: (id: string, day: string, page: number, signal: AbortSignal) =>
+  availability: (id: string, day: string, page: number, signal: AbortSignal, window?: {
+    desde: string; hasta: string; ajuste: string;
+  }) =>
     get<{ candidatas: Candidate[]; hay_siguiente: boolean }>(
-      `/opportunities/${id}/availability?${new URLSearchParams({ fecha: day, pagina: String(page) })}`, signal,
+      `/opportunities/${id}/availability?${new URLSearchParams({ fecha: day, pagina: String(page), ...window })}`, signal,
     ),
   filters: (signal: AbortSignal) => get<{
     canales: { id_canal: number; nombre: string }[];

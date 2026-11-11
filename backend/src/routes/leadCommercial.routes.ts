@@ -741,6 +741,17 @@ router.get('/opportunities/:id/availability', route(async (req, res) => {
   const site = optionalId(req.query.id_sede);
   const professional = optionalId(req.query.id_profesional);
   const page = req.query.pagina == null ? 1 : id(req.query.pagina);
+  const { desde, hasta, ajuste } = req.query;
+  const hasWindow = desde != null || hasta != null || ajuste != null;
+  const validTime = (value: unknown): value is string =>
+    typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+  if (hasWindow && (!validTime(desde) || !validTime(hasta) || desde >= hasta ||
+      (ajuste !== 'obligatorio' && ajuste !== 'flexible'))) {
+    throw new InputError('Indica un rango horario válido y si es obligatorio o flexible.');
+  }
+  const inWindow = hasWindow ? Prisma.sql`
+    d.hora_inicio >= CONVERT(time(7), ${desde}) AND d.hora_fin <= CONVERT(time(7), ${hasta})
+  ` : Prisma.empty;
   const rows = await prisma.$transaction(async tx => {
     const row = await opportunity(tx, req.params.id, true);
     if (row.id_servicio == null) throw new InputError('Registra un servicio antes de buscar horarios.');
@@ -749,7 +760,8 @@ router.get('/opportunities/:id/availability', route(async (req, res) => {
         CONVERT(char(5), d.hora_inicio, 108) AS inicio, CONVERT(char(5), d.hora_fin, 108) AS fin,
         CONVERT(varchar(16), CAST(d.hora_inicio AS time(7))) AS inicio_exacto,
         CONVERT(varchar(16), CAST(d.hora_fin AS time(7))) AS fin_exacto,
-        s.nombre AS sede, CONCAT(p.nombres, ' ', p.apellidos) AS profesional
+        s.nombre AS sede, CONCAT(p.nombres, ' ', p.apellidos) AS profesional,
+        ${hasWindow ? Prisma.sql`CAST(CASE WHEN ${inWindow} THEN 1 ELSE 0 END AS bit)` : Prisma.sql`CAST(NULL AS bit)`} AS coincide_horario
       FROM dbo.Disponibilidad d
       JOIN dbo.Sedes s ON s.id_sede = d.id_sede AND s.activo = 1
       JOIN dbo.Profesionales p ON p.id_profesional = d.id_profesional AND p.activo = 1
@@ -763,7 +775,8 @@ router.get('/opportunities/:id/availability', route(async (req, res) => {
           WHERE o.id_disponibilidad=d.id_disponibilidad AND r.estado NOT IN ('Cancelada','Vencida'))
         ${site === null ? Prisma.empty : Prisma.sql`AND d.id_sede = ${site}`}
         ${professional === null ? Prisma.empty : Prisma.sql`AND d.id_profesional = ${professional}`}
-      ORDER BY d.hora_inicio, d.id_disponibilidad
+        ${ajuste === 'obligatorio' ? Prisma.sql`AND ${inWindow}` : Prisma.empty}
+      ORDER BY coincide_horario DESC, d.hora_inicio, d.id_disponibilidad
       OFFSET ${BigInt(page - 1) * 25n} ROWS FETCH NEXT 26 ROWS ONLY
     `);
   }, serializable);

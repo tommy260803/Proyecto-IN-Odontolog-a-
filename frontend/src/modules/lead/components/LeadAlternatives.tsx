@@ -18,11 +18,14 @@ function CandidateSearch({ requestId, data, token, edit, finishEdit }: {
 }) {
   const [selected, setSelected] = useState<Candidate | null>(null);
   const [saved, setSaved] = useState(false);
-  const [search, setSearch] = useState({ day: '', page: 1 });
-  const { day, page } = search;
+  const [search, setSearch] = useState<{ day: string; page: number; window?: {
+    desde: string; hasta: string; ajuste: string;
+  } }>({ day: '', page: 1 });
+  const [rangeError, setRangeError] = useState('');
+  const { day, page, window } = search;
   const query = useQuery({
-    queryKey: ['lead', 'availability', requestId, day, page],
-    queryFn: ({ signal }) => leadCommercialService.availability(requestId, day, page, signal),
+    queryKey: ['lead', 'availability', requestId, day, page, window],
+    queryFn: ({ signal }) => leadCommercialService.availability(requestId, day, page, signal, window),
     enabled: Boolean(day),
     retry: false,
   });
@@ -34,19 +37,42 @@ function CandidateSearch({ requestId, data, token, edit, finishEdit }: {
       <p>Consulta de agenda en hora de Lima. La disponibilidad puede cambiar.</p>
       <form className="my-3 flex flex-wrap items-end gap-3" onSubmit={event => {
         event.preventDefault();
-        const date = new FormData(event.currentTarget).get('fecha');
+        const form = new FormData(event.currentTarget);
+        const date = form.get('fecha');
+        const desde = String(form.get('desde') ?? '');
+        const hasta = String(form.get('hasta') ?? '');
+        const ajuste = String(form.get('ajuste') ?? '');
+        const window = desde || hasta ? { desde, hasta, ajuste } : undefined;
+        if (window && (!desde || !hasta || desde >= hasta)) {
+          setRangeError('Indica la hora de inicio y una hora de fin posterior.');
+          return;
+        }
+        setRangeError('');
         if (typeof date === 'string' && date) {
           setSelected(null);
           setSaved(false);
-          if (date === day && page === 1) void query.refetch();
-          else setSearch({ day: date, page: 1 });
+          if (date === day && page === 1 && JSON.stringify(window) === JSON.stringify(search.window)) void query.refetch();
+          else setSearch({ day: date, page: 1, window });
         }
       }}>
         <label className="grid gap-1">Fecha de atención
           <input name="fecha" type="date" required className="rounded border px-3 py-2" />
         </label>
+        <label className="grid gap-1">Desde
+          <input name="desde" type="time" className="rounded border px-3 py-2" />
+        </label>
+        <label className="grid gap-1">Hasta
+          <input name="hasta" type="time" className="rounded border px-3 py-2" />
+        </label>
+        <label className="grid gap-1">Rango del paciente
+          <select name="ajuste" className="rounded border px-3 py-2">
+            <option value="flexible">Flexible</option>
+            <option value="obligatorio">Obligatorio</option>
+          </select>
+        </label>
         <button className="rounded border px-3 py-2" type="submit">Consultar agenda</button>
       </form>
+      {rangeError && <p role="alert">{rangeError}</p>}
       {day && query.isPending && <p role="status">Consultando horarios…</p>}
       {query.isError && <p role="alert">{query.error.message}</p>}
       {query.data && (
@@ -57,6 +83,8 @@ function CandidateSearch({ requestId, data, token, edit, finishEdit }: {
             {query.data.candidatas.map(slot => (
               <li key={slot.id_disponibilidad} className="py-2">
                 {slot.inicio}–{slot.fin} · {slot.sede} · {slot.profesional}
+                {slot.coincide_horario === true && <span> · Dentro del rango</span>}
+                {slot.coincide_horario === false && <span> · Fuera del rango preferido</span>}
                 {token && <button type="button" className="ml-3 underline" onClick={() => { setSaved(false); setSelected(slot); }}>
                   {edit ? 'Usar para la modificación' : 'Preparar oferta'}
                 </button>}
@@ -72,9 +100,9 @@ function CandidateSearch({ requestId, data, token, edit, finishEdit }: {
           {saved && <p role="status">Oferta registrada.</p>}
           {(page > 1 || query.data.hay_siguiente) && (
             <nav aria-label="Páginas de agenda" className="flex gap-3">
-              <button className="underline disabled:opacity-50" disabled={page === 1} onClick={() => setSearch({ day, page: page - 1 })}>Anterior</button>
+              <button className="underline disabled:opacity-50" disabled={page === 1} onClick={() => { setSelected(null); setSearch({ ...search, page: page - 1 }); }}>Anterior</button>
               <span>Página {page}</span>
-              <button className="underline disabled:opacity-50" disabled={!query.data.hay_siguiente} onClick={() => setSearch({ day, page: page + 1 })}>Siguiente</button>
+              <button className="underline disabled:opacity-50" disabled={!query.data.hay_siguiente} onClick={() => { setSelected(null); setSearch({ ...search, page: page + 1 }); }}>Siguiente</button>
             </nav>
           )}
         </>
