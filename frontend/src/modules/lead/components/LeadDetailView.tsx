@@ -52,6 +52,7 @@ import { useToast } from '@/shared/hooks/use-toast';
 import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { ErrorState } from '@/shared/components/feedback/ErrorState';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import {
   predictLeadNegotiationStrategy,
   type LeadNegotiationStrategy,
@@ -93,6 +94,10 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   });
   const [loading, setLoading] = useState(true);
   const [reserving, setReserving] = useState(false);
+  const [abandonOpen, setAbandonOpen] = useState(false);
+  const [abandonReason, setAbandonReason] = useState('');
+  const [abandoning, setAbandoning] = useState(false);
+  const [abandonError, setAbandonError] = useState('');
   const [addingAlternative, setAddingAlternative] = useState(false);
   const [selectedOpcion, setSelectedOpcion] = useState<number | string | null>(null);
 
@@ -543,6 +548,32 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   const academico = lead.DatosAcademicos?.[0] || lead.datosAcademicos || {};
   const laboral = lead.DatosLaborales?.[0] || lead.datosLaborales || {};
   const ultimaSolicitud = lead.Solicitudes?.[0];
+  const isAbandoned = ultimaSolicitud?.resultado_comercial_lead === 'CERRADA_SIN_ACUERDO' ||
+    ['Abandonada', 'Perdida', 'Cancelada'].includes(ultimaSolicitud?.estado) ||
+    ['Descartado', 'Rechazado'].includes(lead.estado_calidad);
+  const isConverted = lead.Etapa?.nombre === 'PAYER' || ultimaSolicitud?.estado === 'Convertida';
+  const canAbandon = Boolean(ultimaSolicitud?.id_solicitud) && lead.Etapa?.nombre === 'LEAD' &&
+    !isAbandoned && !isConverted &&
+    (!ultimaSolicitud.resultado_comercial_lead || ultimaSolicitud.resultado_comercial_lead === 'PENDIENTE');
+
+  const handleAbandon = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!canAbandon || reserving || abandoning || !abandonReason.trim()) return;
+    setAbandoning(true);
+    setAbandonError('');
+    try {
+      const result = await leadService.abandonLead(leadId, abandonReason.trim(), ultimaSolicitud.id_solicitud);
+      if (!result) throw new Error('No se pudo registrar el abandono.');
+      setAbandonOpen(false);
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
+      fetchLeadData();
+      toast({ title: 'Negociación cerrada sin acuerdo' });
+    } catch (error) {
+      setAbandonError(error instanceof Error ? error.message : 'No se pudo registrar el abandono.');
+    } finally {
+      setAbandoning(false);
+    }
+  };
   const opciones: any[] = ultimaSolicitud?.Opciones || [];
   const selectedOptData = opciones.find((o: any) => o.id_opcion === selectedOpcion);
 
@@ -781,7 +812,8 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                 {fullName}
               </h1>
               {renderLeadStatusBadge(
-                selectedOpcion ? LeadState.ALTERNATIVE_SELECTED : LeadState.IN_NEGOTIATION
+                isConverted ? LeadState.PAYMENT_REQUESTED : isAbandoned ? LeadState.LOST :
+                  selectedOpcion ? LeadState.ALTERNATIVE_SELECTED : LeadState.IN_NEGOTIATION
               )}
               <span className="font-mono text-xs text-slate-400 dark:text-slate-500 tabular-nums">
                 LEAD #{lead.id_persona || leadId}
@@ -795,7 +827,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
             <button
               type="button"
               onClick={handleReserveAndConvert}
-              disabled={reserving || !selectedOpcion}
+              disabled={reserving || abandoning || isAbandoned || isConverted || !selectedOpcion}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#0f766e] px-3.5 text-xs font-semibold text-white shadow-2xs transition-all hover:bg-teal-800 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
             >
               {reserving ? (
@@ -810,6 +842,21 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                 </>
               )}
             </button>
+
+            {canAbandon && (
+              <button
+                type="button"
+                disabled={reserving || abandoning}
+                onClick={() => {
+                  setAbandonReason('');
+                  setAbandonError('');
+                  setAbandonOpen(true);
+                }}
+                className="h-9 rounded-lg border border-red-200 px-3 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:text-red-300"
+              >
+                Registrar abandono
+              </button>
+            )}
 
             <Link
               to={`/pre-reserva/${leadId}`}
@@ -2276,6 +2323,39 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
           </div>
         </div>
       </div>
+
+      <Dialog open={abandonOpen} onOpenChange={(open) => { if (!abandoning) setAbandonOpen(open); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar abandono</DialogTitle>
+            <DialogDescription>
+              La negociación de {fullName} quedará cerrada sin acuerdo.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAbandon} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="lead-abandon-reason" className="block text-sm font-medium">Motivo del cierre</label>
+              <textarea
+                id="lead-abandon-reason"
+                className="w-full rounded-md border bg-background p-2 text-sm"
+                rows={3}
+                required
+                maxLength={400}
+                value={abandonReason}
+                disabled={abandoning}
+                onChange={(event) => setAbandonReason(event.target.value)}
+              />
+              {abandonError && <p role="alert" className="text-sm text-red-600">{abandonError}</p>}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button" disabled={abandoning} onClick={() => setAbandonOpen(false)} className="rounded-md border px-3 py-2 text-sm">Cancelar</button>
+              <button type="submit" disabled={abandoning || !abandonReason.trim()} className="rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {abandoning ? 'Registrando…' : 'Confirmar abandono'}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirmación de Eliminación de Propuesta */}
       <ConfirmationDialog

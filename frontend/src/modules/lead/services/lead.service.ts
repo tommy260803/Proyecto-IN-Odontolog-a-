@@ -152,14 +152,17 @@ export const leadService = {
     return res.json();
   },
 
-  abandonLead: async (id: string, motivo?: string) => {
+  abandonLead: async (id: string, motivo?: string, idSolicitud?: number) => {
     if (!useApi) return null;
     const res = await fetch(`${API_URL}/lead/${id}/abandon`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ motivo })
+      body: JSON.stringify({ motivo, id_solicitud: idSolicitud })
     });
-    if (!res.ok) throw new Error('Error al registrar abandono del lead');
+    if (!res.ok) {
+      const problem = await res.json().catch(() => null);
+      throw new Error(problem?.error ?? 'Error al registrar abandono del lead');
+    }
     return res.json();
   },
 
