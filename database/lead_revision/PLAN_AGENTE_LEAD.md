@@ -9,7 +9,7 @@ Chat web y Gemini con configuración propia de LEAD. La OLTP decide las operacio
 | 3. Orquestador y F1 | Flujo inicial validado en QA | Una decisión recuperable por ingreso, con prioridad y siguiente acción. Pendientes el adaptador Gemini y la delegación contextual. |
 | 4. Chat web | Chat manual validado en QA por HTTP | Acceso temporal por solicitud, historial, recepción y reenvío idempotente. Pendientes la prueba visual y la conexión con BUYER. |
 | 5. F2: alternativas | Recomendación asistida validada en QA | Agenda ordenada por rango confirmado y revalidación al ofrecer. Pendiente interpretar el chat con Gemini. |
-| 6. F3: negociación | Pendiente | Condiciones verificadas, versiones y evidencia de decisiones. |
+| 6. F3: negociación | Aceptación por chat validada en QA | El personal comparte una versión y el paciente confirma su importe. Pendiente la asistencia con Gemini para objeciones. |
 | 7. F4: seguimiento | Pendiente | Límites por persona, parada, recuperación y revisión humana. |
 | 8. F5: traspaso | Pendiente | Una reserva y un evento por traspaso autorizado, incluso ante reintentos. |
 | 9. Integración y entrega | Pendiente | Prueba conjunta en QA, regresión de indicadores y paquete de activación. |
@@ -63,3 +63,11 @@ Pasaron las compilaciones de backend y frontend y el ensayo HTTP + SQL `npm run 
 El personal puede consultar una fecha con un rango de horas en Lima. Si es obligatorio, aparecen únicamente horarios que caben por completo en él. Si es flexible, aparecen primero los que coinciden y luego los demás horarios elegibles, identificados como fuera del rango preferido. Los filtros previos de sede y profesional siguen disponibles en la API.
 
 La consulta no registra ofertas. La operación existente revalida el horario antes de registrar la opción y conserva las condiciones en el historial. En QA, el ensayo comercial comprobó ambos modos y rechazó con 409 una oferta cuyo horario pasó a ocupado después de la consulta. La interpretación automática del mensaje del paciente y la publicación autónoma por chat siguen pendientes.
+
+## Cotizaciones en el chat de QA
+
+Aplicar [PROPUESTAS_CHAT_LEAD_QA.sql](PROPUESTAS_CHAT_LEAD_QA.sql) después del esquema de chat. El personal comparte una cotización pendiente desde la oportunidad. El chat muestra la versión, el importe registrado y la promoción si corresponde. El paciente confirma el importe desde la tarjeta y el sistema registra la aceptación y su evidencia en una sola transacción. Una versión anterior o sin publicar queda fuera del flujo de aceptación.
+
+El texto libre conserva su función de conversación. Las objeciones y solicitudes de cambio se atienden por ese canal y el personal gestiona los rechazos explícitos con el flujo existente. Quedan pendientes Gemini para asistir con objeciones y la identidad de paciente para un uso productivo. El chat QA acredita el uso del acceso temporal vinculado a la solicitud.
+
+El ensayo HTTP + SQL en QA verificó que un mensaje ambiguo deja la cotización pendiente, que una versión reemplazada y un importe distinto se rechazan, y que el reintento de aceptación conserva la evidencia original.

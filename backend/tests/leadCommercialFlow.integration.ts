@@ -156,11 +156,37 @@ async function run() {
         const proposalBody = { presentada: true, precio_cotizado: '150.25', versiones_esperadas: [] };
         await call(path + '/staff/proposals', 401, 'POST', proposalBody);
         const proposal = (await call(path + '/staff/proposals', 201, 'POST', proposalBody, token)).propuesta;
+        const staffQuotes = '/lead/chat/staff/' + requestId;
+        const patientQuotes = '/lead/chat/patient/' + requestId;
+        const chatToken = process.env.LEAD_CHAT_QA === 'true'
+          ? (await call(staffQuotes + '/access', 201, 'POST', undefined, token)).token as string : null;
+        if (chatToken) {
+          await call(staffQuotes + '/proposals/' + proposal.id_propuesta, 200, 'POST', undefined, token);
+          await call(patientQuotes, 200, 'POST', { clave: randomUUID(), texto: 'Sí, pero me parece caro' }, chatToken);
+          const shown = (await call(patientQuotes + '/proposals', 200, 'GET', undefined, chatToken)).propuestas;
+          assert.equal(shown[0].estado, 'Pendiente');
+        }
         const revisionBody = { ...proposalBody, precio_cotizado: '125.50', versiones_esperadas: [proposal.id_propuesta],
           id_version_anterior: proposal.id_propuesta };
         const current = (await call(path + '/staff/proposals', 201, 'POST', revisionBody, token)).propuesta;
         const acceptProposal = { estado: 'Aceptada', decision_explicita: true };
         await call(path + '/staff/proposals/' + proposal.id_propuesta + '/decision', 409, 'POST', acceptProposal, token);
+        if (chatToken) {
+          const acceptance = { confirmado: true, precio: '125.50' };
+          const currentPath = patientQuotes + '/proposals/' + current.id_propuesta + '/accept';
+          await call(patientQuotes + '/proposals/' + proposal.id_propuesta + '/accept', 409, 'POST', acceptance, chatToken);
+          await call(currentPath, 404, 'POST', acceptance, chatToken);
+          await call(staffQuotes + '/proposals/' + current.id_propuesta, 200, 'POST', undefined, token);
+          const shown = (await call(patientQuotes + '/proposals', 200, 'GET', undefined, chatToken)).propuestas;
+          assert.deepEqual(shown.map((p: { id_propuesta: number }) => p.id_propuesta), [current.id_propuesta]);
+          await call(currentPath, 400, 'POST', { ...acceptance, precio: '150.25' }, chatToken);
+          assert.equal((await call(currentPath, 200, 'POST', acceptance, chatToken)).reutilizada, false);
+          assert.equal((await call(currentPath, 200, 'POST', acceptance, chatToken)).reutilizada, true);
+          const accepted = (await call(patientQuotes + '/proposals', 200, 'GET', undefined, chatToken)).propuestas[0];
+          assert.equal(accepted.estado, 'Aceptada');
+          assert.ok(accepted.aceptada_utc);
+          completed.push('aceptación explícita en chat con versión, importe, evidencia y reintento');
+        }
         await call(path + '/staff/proposals/' + current.id_propuesta + '/decision', 200, 'POST', acceptProposal, token);
         completed.push('versionado y aceptación de cotización vigente');
 

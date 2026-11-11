@@ -10,10 +10,21 @@ type Message = {
   recibido_utc: string | null;
 };
 
-export function LeadChat({ requestId, token, staff = false }: {
+type ChatProposal = {
+  id_propuesta: number;
+  numero_version: number;
+  precio: string;
+  promocion: string | null;
+  servicio: string;
+  estado: string;
+};
+
+export function LeadChat({ requestId, token, staff = false, shareable = [], onProposalChange }: {
   requestId: string;
   token: string;
   staff?: boolean;
+  shareable?: Pick<ChatProposal, 'id_propuesta' | 'numero_version' | 'precio'>[];
+  onProposalChange?: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
@@ -21,6 +32,9 @@ export function LeadChat({ requestId, token, staff = false }: {
   const [sending, setSending] = useState(false);
   const [invite, setInvite] = useState('');
   const [refresh, setRefresh] = useState(0);
+  const [proposals, setProposals] = useState<ChatProposal[]>([]);
+  const [proposalBusy, setProposalBusy] = useState(false);
+  const [notice, setNotice] = useState('');
   const pending = useRef<{ clave: string; texto: string } | null>(null);
   const endpoint = api + '/lead/commercial/chat/' + (staff ? 'staff/' : 'patient/') + requestId;
   const own = staff ? 'PERSONAL' : 'PACIENTE';
@@ -32,7 +46,8 @@ export function LeadChat({ requestId, token, staff = false }: {
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!response.ok) {
-      throw new Error(response.status === 401 ? 'El acceso a este chat venció o no es válido.' : 'No se pudo completar la operación.');
+      const problem = await response.json().catch(() => null);
+      throw new Error(problem?.error ?? 'No se pudo completar la operación.');
     }
     return response.json();
   }
@@ -53,6 +68,10 @@ export function LeadChat({ requestId, token, staff = false }: {
         }
         if (controller.signal.aborted) return;
         setMessages(received);
+        if (!staff) {
+          const data = await call('GET', '/proposals', undefined, controller.signal);
+          if (!controller.signal.aborted) setProposals(data.propuestas);
+        }
         for (const message of received) {
           if (message.remitente !== own && !message.recibido_utc) {
             await call('PATCH', '', { id_mensaje: message.id_mensaje }, controller.signal);
@@ -69,7 +88,7 @@ export function LeadChat({ requestId, token, staff = false }: {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [endpoint, token, own, refresh]);
+  }, [endpoint, token, own, refresh, staff]);
 
   async function send(event: FormEvent) {
     event.preventDefault();
@@ -101,6 +120,26 @@ export function LeadChat({ requestId, token, staff = false }: {
     }
   }
 
+  async function proposalAction(proposal: Pick<ChatProposal, 'id_propuesta' | 'precio'>) {
+    if (!staff && !window.confirm('¿Aceptas esta versión por S/ ' + proposal.precio + '?')) return;
+    setProposalBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const path = '/proposals/' + proposal.id_propuesta;
+      await call('POST', staff ? path : path + '/accept', staff ? undefined : {
+        confirmado: true, precio: proposal.precio,
+      });
+      setNotice(staff ? 'Cotización compartida.' : 'Aceptación registrada.');
+      onProposalChange?.();
+    } catch (failure) {
+      if (failure instanceof Error) setError(failure.message);
+    } finally {
+      setProposalBusy(false);
+      setRefresh(value => value + 1);
+    }
+  }
+
   return <section className="space-y-3 rounded-lg border bg-white p-4">
     <h2 className="text-lg font-semibold">Conversación LEAD</h2>
     {staff && <button type="button" className="underline" onClick={() => void issueAccess()}>Generar enlace temporal de QA</button>}
@@ -108,6 +147,19 @@ export function LeadChat({ requestId, token, staff = false }: {
       <input className="block w-full rounded border p-2" readOnly value={invite} onFocus={event => event.target.select()} />
     </label>}
     {error && <p role="alert">{error}</p>}
+    {notice && <p role="status">{notice}</p>}
+    {staff && shareable.map(proposal =>
+      <button key={proposal.id_propuesta} type="button" disabled={proposalBusy} className="block underline"
+        onClick={() => void proposalAction(proposal)}>
+        Compartir cotización #{proposal.id_propuesta} · versión {proposal.numero_version} · S/ {proposal.precio}
+      </button>)}
+    {proposals.map(proposal => <article key={proposal.id_propuesta} className="rounded border p-3">
+      <h3 className="font-semibold">{proposal.servicio} · Cotización #{proposal.id_propuesta}</h3>
+      <p>Versión {proposal.numero_version} · S/ {proposal.precio} · {proposal.estado}</p>
+      {proposal.promocion && <p>Promoción: {proposal.promocion}</p>}
+      {proposal.estado === 'Pendiente' && <button type="button" disabled={proposalBusy} className="underline"
+        onClick={() => void proposalAction(proposal)}>Aceptar esta versión</button>}
+    </article>)}
     <ol className="max-h-96 space-y-2 overflow-y-auto" aria-label="Mensajes">
       {messages.map(message => <li className="rounded bg-slate-100 p-2" key={message.id_mensaje}>
         <strong>{message.remitente === 'PACIENTE' ? 'Paciente' : 'Equipo LEAD'}</strong>

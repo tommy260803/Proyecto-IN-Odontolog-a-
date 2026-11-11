@@ -59,7 +59,10 @@ export default function LeadOpportunityPage() {
           <LeadOutcome key={`outcome-${idSolicitud}`} data={data} access={editAccess} />
           <LeadActivity key={`activity-${idSolicitud}`} data={data} requestId={idSolicitud} token={editAccess?.token} />
           {import.meta.env.VITE_LEAD_CHAT_QA === 'true' && access?.requestId === idSolicitud &&
-            <LeadChat key={`chat-${idSolicitud}-${access.token}`} requestId={idSolicitud} token={access.token} staff />}
+            <LeadChat key={`chat-${idSolicitud}`} requestId={idSolicitud} token={access.token} staff
+              shareable={open ? data.propuestas.filter(p => p.orden_version === 1 && p.estado === 'Pendiente')
+                .map(p => ({ ...p, precio: p.precio_cotizado })) : []}
+              onProposalChange={() => void query.refetch()} />}
           <LeadPayerReadiness key={`payer-${idSolicitud}`} requestId={idSolicitud}
             token={access?.requestId === idSolicitud ? access.token : undefined} />
           {(import.meta.env.VITE_LEAD_STAFF_AUTH_QA === 'true' ||

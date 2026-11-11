@@ -151,7 +151,7 @@ chat.post('/staff/:id/access', route(async (req, res) => {
   res.status(201).json({ token });
 }));
 
-function chatMessages(staff: boolean) {
+function chatMessages(staff: boolean, proposals = false) {
   return route(async (req, res) => {
     const requestId = id(req.params.id);
     const sender = staff ? 'PERSONAL' : 'PACIENTE';
@@ -173,8 +173,61 @@ function chatMessages(staff: boolean) {
           ${staff ? Prisma.empty : Prisma.sql`AND a.token_hash = ${chatTokenHash(token!)}`}
       `;
       if (!access || (!staff && !access.activo)) {
+        if (proposals) throw new InputError('Acceso a conversación no vigente.', staff ? 409 : 401);
         if (staff && req.method === 'GET') return { mensajes: [] };
         throw new InputError('Acceso a conversación no vigente.', staff ? 409 : 401);
+      }
+      if (proposals) {
+        if (!access.activo) throw new InputError('La conversación no admite decisiones.', 409);
+        if (req.method === 'GET') return { propuestas: await tx.$queryRaw`
+          SELECT c.id_propuesta, p.numero_version, CAST(c.precio AS varchar(20)) AS precio,
+            c.promocion, c.aceptada_utc, p.estado, sv.nombre AS servicio
+          FROM dbo.PropuestasChatLead c
+          JOIN dbo.PropuestasEconomicasLead p ON p.id_propuesta = c.id_propuesta AND p.id_solicitud = c.id_solicitud
+          JOIN dbo.Servicios sv ON sv.id_servicio = p.id_servicio
+          WHERE c.id_solicitud = ${requestId}
+            AND NOT EXISTS (
+              SELECT 1 FROM dbo.PropuestasEconomicasLead v WHERE v.id_solicitud = p.id_solicitud
+                AND v.id_propuesta_raiz = COALESCE(p.id_propuesta_raiz, p.id_propuesta)
+                AND v.numero_version > p.numero_version
+            )
+          ORDER BY c.publicada_utc DESC, c.id_propuesta DESC
+        ` };
+        const { proposal } = await currentProposal(tx, id(req.params.proposal), requestId);
+        const [published] = await tx.$queryRaw<{ precio: Prisma.Decimal; promocion: string | null; aceptada_utc: Date | null }[]>`
+          SELECT precio, promocion, aceptada_utc FROM dbo.PropuestasChatLead
+          WHERE id_propuesta = ${proposal.id_propuesta} AND id_solicitud = ${requestId}
+        `;
+        if (published && (!published.precio.equals(proposal.precio_cotizado) ||
+            published.promocion !== proposal.promocion_aplicada)) {
+          throw new InputError('Las condiciones cambiaron. Solicita una nueva versión.', 409);
+        }
+        if (staff) {
+          if (published) return { reutilizada: true };
+          if (proposal.estado !== 'Pendiente') throw new InputError('La versión ya tiene una decisión.', 409);
+          await tx.$executeRaw`
+            INSERT dbo.PropuestasChatLead (id_propuesta, id_solicitud, id_usuario, precio, promocion)
+            VALUES (${proposal.id_propuesta}, ${requestId}, ${user!.id_usuario},
+              ${proposal.precio_cotizado}, ${proposal.promocion_aplicada})
+          `;
+          return { reutilizada: false };
+        }
+        if (!published) throw new InputError('Esta versión no se compartió en el chat.', 404);
+        if (req.body?.confirmado !== true || !published.precio.equals(price(req.body.precio))) {
+          throw new InputError('Confirma el importe de la versión mostrada.');
+        }
+        if (published.aceptada_utc && proposal.estado === 'Aceptada') return { reutilizada: true };
+        if (proposal.estado !== 'Pendiente') throw new InputError('La versión ya tiene una decisión.', 409);
+        const acceptedAt = new Date();
+        await tx.propuestasEconomicasLead.update({
+          where: { id_propuesta: proposal.id_propuesta },
+          data: { estado: 'Aceptada', fecha_decision: acceptedAt, id_motivo_rechazo_lead: null },
+        });
+        await tx.$executeRaw`
+          UPDATE dbo.PropuestasChatLead SET aceptada_utc = ${acceptedAt}
+          WHERE id_propuesta = ${proposal.id_propuesta}
+        `;
+        return { reutilizada: false };
       }
       if (req.method === 'GET') {
         const after = req.query.desde == null ? 0 : id(req.query.desde);
@@ -221,6 +274,9 @@ function chatMessages(staff: boolean) {
 
 chat.route('/patient/:id').get(chatMessages(false)).post(chatMessages(false)).patch(chatMessages(false));
 chat.route('/staff/:id').get(chatMessages(true)).post(chatMessages(true)).patch(chatMessages(true));
+chat.get('/patient/:id/proposals', chatMessages(false, true));
+chat.post('/patient/:id/proposals/:proposal/accept', chatMessages(false, true));
+chat.post('/staff/:id/proposals/:proposal', chatMessages(true, true));
 
 router.patch('/opportunities/:id/follow-up', route(async (req, res) => {
   if (!leadStaffAuthEnabled()) return res.sendStatus(404);
