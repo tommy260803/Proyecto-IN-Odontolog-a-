@@ -5,7 +5,7 @@ Chat web y Gemini con configuración propia de LEAD. La OLTP decide las operacio
 | Fase | Estado | Entregable verificable |
 | --- | --- | --- |
 | 1. Contratos y políticas | Validada en documentación | Entrada, salida, responsables y bloqueos definidos; acuerdos externos pendientes explícitos. |
-| 2. Persistencia y seguridad | Pendiente | Cola y auditoría por solicitud, permisos y recuperación en QA. |
+| 2. Persistencia y seguridad | Núcleo validado en QA | Cola de ingreso, auditoría, permisos y recuperación. El almacenamiento de chat, herramientas, seguimiento y revisión se incorpora con sus flujos. |
 | 3. Orquestador y F1 | Pendiente | Una ejecución recuperable por evento y una prioridad explicable. |
 | 4. Chat web | Pendiente | Sesión vinculada, historial y mensajes sin duplicados. |
 | 5. F2: alternativas | Pendiente | Opciones elegibles, revalidación e historial preservado. |
@@ -33,3 +33,11 @@ PAYER recibe la reserva vinculada a `id_solicitud`, `id_persona` e `id_opcion`; 
 | F5: preparar y transferir | Clínica para delegación; LEAD y PAYER para la interfaz | Preparar y mostrar bloqueos; sin transferencia autónoma hasta tener delegación y evidencia válida. |
 
 Las políticas aprobadas deben tener versión, responsable y vigencia. La aceptación económica, la aceptación de la alternativa y la autorización de reserva se registran por separado. Un conflicto de identidad, agenda, precio o autorización se deriva al personal; el agente no completa la evidencia por inferencia. El envío se centraliza en el chat web, con estados verificables; el simulador legado no acredita contacto.
+
+## Cola de ingreso en QA
+
+Instalar [COLA_AGENTE_LEAD_QA.sql](COLA_AGENTE_LEAD_QA.sql) con SQLCMD y `-b` sobre `NexoSalud_LeadPruebas` después de instalar la recepción. La entrada nueva y su trabajo se guardan en la misma transacción. Las entradas anteriores a la migración no se encolan.
+
+El ejecutor futuro usará una conexión independiente con el rol `rol_ejecutor_agente_lead`. Toma una tarea con un token temporal y resuelve el intento con ese mismo token. El plazo técnico predeterminado es de 60 segundos. Los fallos admiten hasta cinco intentos con espera creciente para reintentos explícitos. Al agotar intentos, la tarea queda en revisión. El token solo protege la resolución en la cola. Las futuras herramientas comerciales deben validar su propia idempotencia y vigencia antes de producir efectos.
+
+En QA se instaló y reejecutó la migración y pasó `npm run test:lead:intake` con la cola presente. El ensayo verificó una sola toma entre ocho llamadas, recuperación después de expirar, rechazo del token anterior, finalización única y auditoría. Una prueba adicional con un usuario temporal confirmó los permisos de ejecución y la ausencia de acceso directo a las tablas comprobadas.

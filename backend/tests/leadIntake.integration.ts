@@ -4,8 +4,9 @@ import { prisma } from '../src/db';
 import { registerLeadIntake } from '../src/services/leadIntake';
 
 async function run() {
-  const [target] = await prisma.$queryRaw<{ db: string; intakeProcedureId: number | null }[]>`
-    SELECT DB_NAME() AS db, OBJECT_ID('dbo.usp_RegistrarEntradaAgenteLead', 'P') AS intakeProcedureId
+  const [target] = await prisma.$queryRaw<{ db: string; intakeProcedureId: number | null; queueId: number | null }[]>`
+    SELECT DB_NAME() AS db, OBJECT_ID('dbo.usp_RegistrarEntradaAgenteLead', 'P') AS intakeProcedureId,
+      OBJECT_ID('dbo.TrabajosAgenteLead', 'U') AS queueId
   `;
   assert.equal(target.db, 'NexoSalud_LeadPruebas');
   assert.ok(target.intakeProcedureId, 'Instalar ENTRADA_AGENTE_LEAD_QA.sql.');
@@ -62,8 +63,57 @@ async function run() {
           AND id_solicitud <> ${unconverted.id_solicitud}) AS solicitudes
     `;
     assert.deepEqual(counts, { entradas: 1, conversiones: 1, solicitudes: 1 });
+    if (target.queueId) {
+      const claim = () => prisma.$queryRaw<{ token: string; intentos: number }[]>`
+        EXEC dbo.usp_TomarTrabajoAgenteLead @id_solicitud = ${initial.id_solicitud}
+      `;
+      const claims = (await Promise.all(Array.from({ length: 8 }, claim))).flat();
+      assert.equal(claims.length, 1);
+      assert.equal(claims[0].intentos, 1);
+      // Vencer la toma de este caso para simular una caída sin esperar el plazo.
+      await prisma.$executeRaw`
+        UPDATE dbo.TrabajosAgenteLead SET vence_utc = SYSUTCDATETIME()
+        WHERE id_solicitud = ${initial.id_solicitud}
+      `;
+      const [second] = await claim();
+      assert.equal(second.intentos, 2);
+      assert.notEqual(second.token, claims[0].token);
+      const finish = async (token: string) => {
+        const [row] = await prisma.$queryRaw<{ aplicado: boolean }[]>`
+          EXEC dbo.usp_ResolverTrabajoAgenteLead @id_solicitud = ${initial.id_solicitud},
+            @token = ${token}, @resultado = 'COMPLETADO'
+        `;
+        return row.aplicado;
+      };
+      assert.equal(await finish(claims[0].token), false);
+      assert.equal(await finish(second.token), true);
+      assert.equal(await finish(second.token), false);
+      assert.deepEqual(await claim(), []);
+      const audit = await prisma.$queryRaw<{ intento: number; accion: string }[]>`
+        SELECT intento, accion FROM dbo.AuditoriaTrabajosAgenteLead
+        WHERE id_solicitud = ${initial.id_solicitud} ORDER BY id_auditoria
+      `;
+      assert.deepEqual(audit, [
+        { intento: 1, accion: 'TOMADO' },
+        { intento: 2, accion: 'TOMADO' },
+        { intento: 2, accion: 'COMPLETADO' },
+      ]);
+      console.log('OK: una toma concurrente, recuperación, rechazo de token vencido y auditoría.');
+    }
   } finally {
     await prisma.$transaction(async tx => {
+      if (target.queueId) {
+        await tx.$executeRaw`
+          DELETE a FROM dbo.AuditoriaTrabajosAgenteLead a
+          JOIN dbo.EntradasAgenteLead e ON e.id_solicitud = a.id_solicitud
+          WHERE e.id_persona = ${personId}
+        `;
+        await tx.$executeRaw`
+          DELETE t FROM dbo.TrabajosAgenteLead t
+          JOIN dbo.EntradasAgenteLead e ON e.id_solicitud = t.id_solicitud
+          WHERE e.id_persona = ${personId}
+        `;
+      }
       await tx.$executeRaw`DELETE dbo.EntradasAgenteLead WHERE id_persona = ${personId}`;
       await tx.$executeRaw`DELETE dbo.EventosEtapa WHERE id_persona = ${personId}`;
       await tx.$executeRaw`DELETE dbo.Solicitudes WHERE id_persona = ${personId}`;
