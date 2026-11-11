@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { Router, type Request, type Response } from 'express';
 import { createHash, randomBytes } from 'node:crypto';
 import { prisma } from '../db';
-import { classifyLeadChat, excludedLeadSites, LeadGeminiError } from '../services/leadGemini';
+import { classifyLeadChat, excludedLeadSites, leadScheduleConstraints, LeadGeminiError } from '../services/leadGemini';
 import { getLeadStaffIdentity, leadStaffAuthEnabled, leadStaffAuthMode, loginLeadStaff, logoutLeadStaff, type LeadStaffIdentity } from '../services/leadStaffAuth';
 
 export const leadCommercialRouter = Router();
@@ -1256,7 +1256,7 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
     const previous = await tx.interacciones.findMany({
       where: { id_solicitud: row.id_solicitud, id_interaccion: { lte: interaction.id_interaccion },
         tipo: 'Respuesta del paciente' },
-      orderBy: { id_interaccion: 'desc' }, take: 6,
+      orderBy: { id_interaccion: 'desc' },
     });
     const service = row.id_servicio == null ? null : await tx.servicios.findUnique({ where: { id_servicio: row.id_servicio } });
     const sites = await tx.$queryRaw<{ nombre: string }[]>`
@@ -1275,13 +1275,23 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
         )
       ORDER BY s.nombre
     `;
-    const messages = previous.reverse().map(i => ({ remitente: 'paciente registrado por asesor', texto: (i.mensaje ?? '').slice(0, 4000) }));
+    const history = previous.reverse().map(i => ({ remitente: 'paciente registrado por asesor', texto: (i.mensaje ?? '').slice(0, 4000) }));
+    const messages = history.slice(-6);
     const siteCatalog = await tx.sedes.findMany({
       select: { id_sede: true, nombre: true },
     });
-    const excludedSites = excludedLeadSites(messages.map(m => m.texto), siteCatalog);
+    const texts = history.map(m => m.texto);
+    const excludedSites = excludedLeadSites(texts, siteCatalog);
     const excludedSiteNames = siteCatalog.filter(s => excludedSites.includes(s.id_sede)).map(s => s.nombre);
-    return { messages, excludedSites, excludedSiteNames,
+    const professionals = await tx.profesionales.findMany({
+      select: { id_profesional: true, nombres: true, apellidos: true },
+    });
+    const excludedProfessionals = excludedLeadSites(texts, professionals.map(p => ({
+      id_sede: p.id_profesional, nombre: p.nombres + ' ' + p.apellidos,
+      aliases: professionals.filter(other => other.nombres.toLowerCase() === p.nombres.toLowerCase()).length === 1 ? [p.nombres] : [],
+    })));
+    const constraints = leadScheduleConstraints(texts);
+    return { messages, excludedSites, excludedSiteNames, excludedProfessionals, constraints,
       facts: {
         servicio: service?.nombre ?? 'Servicio por confirmar',
         precioPropuesta: proposal?.precio ?? null,
@@ -1304,12 +1314,18 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
     }, fetch, true, context.facts);
     let alternativas: { id_disponibilidad: number; id_sede: number; id_profesional: number;
       fecha: string; inicio: string; fin: string; sede: string; profesional: string }[] = [];
-    if (analysis.intencion === 'HORARIO' || analysis.intencion === 'SEDE') {
+    if ((analysis.intencion === 'HORARIO' || analysis.intencion === 'SEDE') && !context.constraints.needsTimeClarification) {
       const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
-      const day = analysis.dia ? days.indexOf(analysis.dia) : -1;
-      const excluded = analysis.turnos_excluidos ?? [];
+      const modelDay = analysis.dia ? days.indexOf(analysis.dia) : -1;
+      const allowedDays = days.map((_, index) => index).filter(day =>
+        !context.constraints.excludedDays.includes(day) &&
+        (context.constraints.preferredDays.length ? context.constraints.preferredDays.includes(day) :
+          modelDay < 0 || context.constraints.excludedDays.includes(modelDay) || day === modelDay));
+      const excluded = [...context.constraints.excludedShifts, ...(analysis.turnos_excluidos ?? [])];
       const allowed = ['mañana', 'tarde', 'noche'].filter(shift =>
-        !excluded.includes(shift) && (!analysis.turno || analysis.turno === shift));
+        !excluded.includes(shift) && (context.constraints.preferredShifts.length
+          ? context.constraints.preferredShifts.includes(shift)
+          : !analysis.turno || excluded.includes(analysis.turno) || analysis.turno === shift));
       alternativas = await prisma.$queryRaw`
         SELECT TOP (3) d.id_disponibilidad,d.id_sede,d.id_profesional,
           CONVERT(varchar(10),d.fecha,23) AS fecha,
@@ -1324,10 +1340,11 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
         JOIN dbo.Servicios sv ON sv.id_servicio=ps.id_servicio AND sv.activo=1
         WHERE d.estado='Disponible'
           ${context.excludedSites.length ? Prisma.sql`AND d.id_sede NOT IN (${Prisma.join(context.excludedSites)})` : Prisma.empty}
+          ${context.excludedProfessionals.length ? Prisma.sql`AND d.id_profesional NOT IN (${Prisma.join(context.excludedProfessionals)})` : Prisma.empty}
           AND (d.fecha>CONVERT(date,DATEADD(hour,-5,SYSUTCDATETIME()))
             OR (d.fecha=CONVERT(date,DATEADD(hour,-5,SYSUTCDATETIME()))
               AND d.hora_inicio>CONVERT(time,DATEADD(hour,-5,SYSUTCDATETIME()))))
-          AND (${day}<0 OR DATEDIFF(day,CONVERT(date,'19000101'),d.fecha)%7=${day})
+          ${allowedDays.length ? Prisma.sql`AND DATEDIFF(day,CONVERT(date,'19000101'),d.fecha)%7 IN (${Prisma.join(allowedDays)})` : Prisma.sql`AND 1=0`}
           AND ((${allowed.includes('mañana') ? 1 : 0}=1 AND d.hora_inicio>='08:00' AND d.hora_inicio<'13:00')
             OR (${allowed.includes('tarde') ? 1 : 0}=1 AND d.hora_inicio>='13:00' AND d.hora_inicio<'18:00')
             OR (${allowed.includes('noche') ? 1 : 0}=1 AND d.hora_inicio>='18:00' AND d.hora_inicio<'20:00'))
@@ -1339,7 +1356,9 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
       `;
     }
     const result = { ...analysis, alternativas,
-      sugerencia: analysis.intencion === 'HORARIO'
+      sugerencia: ['HORARIO', 'SEDE'].includes(analysis.intencion) && context.constraints.needsTimeClarification
+        ? 'El paciente indicó una hora, fecha o rango que esta búsqueda por franjas todavía no comprueba con precisión. Revisa esa condición en la agenda y confirma el turno exacto antes de ofrecerlo.'
+        : analysis.intencion === 'HORARIO'
         ? alternativas.length
           ? `${analysis.turnos_excluidos?.length ? 'El paciente descarta la franja de ' + analysis.turnos_excluidos.join(', ') + '. ' : ''}Estos horarios están disponibles para el servicio y respetan la preferencia indicada. Revisa con el paciente cuál le conviene y selecciónalo para preparar la propuesta.`
           : 'No encontré horarios disponibles que cumplan esta preferencia. Confirma qué otros días o franjas acepta el paciente antes de ampliar la búsqueda.'

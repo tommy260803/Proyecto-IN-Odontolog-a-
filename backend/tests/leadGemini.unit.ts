@@ -1,10 +1,40 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { classifyLeadChat, commercialRecommendation, excludedLeadShifts, excludedLeadSites, LeadGeminiError } from '../src/services/leadGemini';
+import { classifyLeadChat, commercialRecommendation, excludedLeadShifts, excludedLeadSites, leadScheduleConstraints, LeadGeminiError } from '../src/services/leadGemini';
 
 const config = { key: 'synthetic-test-key', model: 'gemini-test' };
 const context = [{ remitente: 'PACIENTE', texto: '¿Puedo ir por la tarde?' }];
 const sites = [{ id_sede: 1, nombre: 'Sede Centro Histórico' }, { id_sede: 2, nombre: 'Sede California' }];
+
+test('schedule restrictions survive topic changes and explicit acceptance can restore a shift', () => {
+  const messages = ['no puedo en la tarde', ...Array(8).fill('¿Cuál es el precio?'), 'solo puedo los jueves por la mañana'];
+  const constraints = leadScheduleConstraints(messages);
+  assert.deepEqual(constraints.excludedShifts, ['tarde']);
+  assert.deepEqual(constraints.preferredDays, [3]);
+  assert.deepEqual(constraints.preferredShifts, ['mañana']);
+  assert.equal(constraints.needsTimeClarification, false);
+  assert.deepEqual(leadScheduleConstraints([...messages, 'ahora sí puedo por la tarde']).excludedShifts, []);
+});
+
+test('rejecting a preferred weekday removes the preference instead of recommending that day again', () => {
+  const constraints = leadScheduleConstraints(['solo puedo los lunes', 'no puedo los lunes']);
+  assert.deepEqual(constraints.preferredDays, []);
+  assert.deepEqual(constraints.excludedDays, [0]);
+  assert.deepEqual(leadScheduleConstraints(['no puedo lunes', 'ahora sí puedo lunes']).excludedDays, []);
+});
+
+test('precise times and relative dates require verification instead of broad shift offers', () => {
+  assert.equal(leadScheduleConstraints(['solo puedo después de las 16:00']).needsTimeClarification, true);
+  assert.equal(leadScheduleConstraints(['puedo mañana']).needsTimeClarification, true);
+  assert.equal(leadScheduleConstraints(['puedo por la mañana']).needsTimeClarification, false);
+});
+
+test('specialists can be rejected by an unambiguous name and restored by an explicit correction', () => {
+  const professionals = [{ id_sede: 10, nombre: 'Valeria Mendoza', aliases: ['Valeria'] }];
+  assert.deepEqual(excludedLeadSites(['no quiero con Valeria'], professionals), [10]);
+  assert.deepEqual(excludedLeadSites(['no quiero con Valeria', 'ahora sí quiero con Valeria Mendoza'], professionals), []);
+  assert.deepEqual(excludedLeadSites(['California me queda lejos'], [{ id_sede: 3, nombre: 'Cali' }]), []);
+});
 
 test('rejected sites remain excluded across subsequent messages and cannot reappear as alternatives', () => {
   assert.deepEqual(excludedLeadSites([

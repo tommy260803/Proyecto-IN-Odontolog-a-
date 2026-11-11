@@ -1,7 +1,7 @@
 const intents = ['HORARIO', 'PRECIO', 'SEDE', 'DUDA', 'AMBIGUO', 'REVISION'] as const;
 const days = ['sin_dato', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
 const shifts = ['sin_dato', 'mañana', 'tarde', 'noche'];
-export function excludedLeadSites(messages: string[], sites: { id_sede: number; nombre: string }[]): number[] {
+export function excludedLeadSites(messages: string[], sites: { id_sede: number; nombre: string; aliases?: string[] }[]): number[] {
   const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const excluded = new Set<number>();
   for (const message of messages) {
@@ -9,7 +9,8 @@ export function excludedLeadSites(messages: string[], sites: { id_sede: number; 
     for (const clause of clauses) {
       for (const site of sites) {
         const name = normalize(site.nombre).replace(/^sede\s+/, '');
-        if (!name || !clause.includes(name)) continue;
+        const words = ' ' + clause.replace(/[^a-z0-9 ]/g, ' ') + ' ';
+        if (![name, ...(site.aliases ?? []).map(normalize)].some(alias => alias && words.includes(' ' + alias + ' '))) continue;
         if (/\b(?:no\s+(?:pued[oe]|podria|quier[oe]|me sirve|le sirve)|descart|rechaz|lejos|excepto|menos)/.test(clause)) {
           excluded.add(site.id_sede);
         } else if (/\b(?:si\s+(?:pued[oe]|quier[oe])|acepto|me sirve|le sirve|prefier[oe])\b/.test(clause)) {
@@ -29,6 +30,50 @@ export function excludedLeadShifts(text: string): string[] {
     return new RegExp('(?:no\\s+(?:puedo|podria|me sirve|quiero|estoy disponible)|excepto|menos)\\s+(?:asistir\\s+)?' + prefix + shift + '\\b').test(normalized);
   })
     .map(shift => shift === 'manana' ? 'mañana' : shift);
+}
+
+export function leadScheduleConstraints(messages: string[]) {
+  const excludedShifts = new Set<string>();
+  const excludedDays = new Set<number>();
+  let preferredDays: number[] = [];
+  let preferredShifts: string[] = [];
+  let needsTimeClarification = false;
+  const weekdays = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+  for (const text of messages) {
+    const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    for (const clause of normalized.split(/[.!?;\n]|\bpero\b/)) {
+      const negative = /\b(?:no (?:puedo|puede|quiero|quiere|me sirve|le sirve)|excepto|menos|descarto)\b/.test(clause);
+      const positive = /\b(?:si (?:puedo|puede)|puedo|puede|prefiero|prefiere|solo|solamente|me sirve|le sirve)\b/.test(clause);
+      const mentionedDays = weekdays.flatMap((day, index) => new RegExp('\\b' + day + '(?:s)?\\b').test(clause) ? [index] : []);
+      if (negative) {
+        mentionedDays.forEach(day => excludedDays.add(day));
+        excludedLeadShifts(clause).forEach(shift => excludedShifts.add(shift));
+        preferredDays = preferredDays.filter(day => !excludedDays.has(day));
+        preferredShifts = preferredShifts.filter(shift => !excludedShifts.has(shift));
+      } else if (positive) {
+        if (mentionedDays.length) {
+          preferredDays = mentionedDays;
+          mentionedDays.forEach(day => excludedDays.delete(day));
+        }
+        const mentionedShifts = ['mañana', 'tarde', 'noche'].filter(shift => {
+          const plain = shift === 'mañana' ? 'manana' : shift;
+          return new RegExp('(?:por|en) la ' + plain + '\\b|turno (?:de la )?' + plain + '\\b').test(clause);
+        });
+        if (mentionedShifts.length) {
+          preferredShifts = mentionedShifts;
+          mentionedShifts.forEach(shift => excludedShifts.delete(shift));
+        }
+      }
+    }
+    // Until precise time/date ranges are supported, never claim a broad shift satisfies one.
+    if (/(?:\b(?:a las|desde las|hasta las|despues de las|antes de las)\s*\d|\d{1,2}:\d{2}|\b(?:hoy|manana|pasado manana)\b|\d{1,2}\/\d{1,2})/.test(
+      normalized.replace(/(?:por|en) la manana|turno (?:de la )?manana/g, ''))) needsTimeClarification = true;
+    if (/\b(?:sin restriccion de (?:hora|fecha)|cualquier (?:hora|horario|fecha))\b/.test(normalized)) needsTimeClarification = false;
+  }
+  return {
+    excludedShifts: [...excludedShifts], excludedDays: [...excludedDays],
+    preferredDays, preferredShifts, needsTimeClarification,
+  };
 }
 type Intent = (typeof intents)[number];
 
