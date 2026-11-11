@@ -278,9 +278,15 @@ router.post('/register', async (req, res) => {
   } = req.body;
 
   try {
-    const requestKey = req.get('Idempotency-Key')?.toLowerCase();
-    if (requestKey && !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(requestKey)) {
-      throw new BuyerInputError('La clave de registro web debe ser un UUID.', 400);
+    const requestKey = (
+      req.get('Idempotency-Key') ||
+      req.body.idempotency_key ||
+      req.body['idempotency-key'] ||
+      ''
+    ).trim().toLowerCase();
+
+    if (requestKey && !/^[a-zA-Z0-9_-]{4,128}$/.test(requestKey)) {
+      throw new BuyerInputError('La Idempotency-Key debe ser un identificador válido (alfanumérico, guiones, entre 4 y 128 caracteres).', 400);
     }
 
     let etapaBuyer = await prisma.etapas.findFirst({ where: { nombre: 'BUYER' } });
@@ -317,10 +323,71 @@ router.post('/register', async (req, res) => {
       'Solicitud de información desde formulario web'
     ).trim();
 
-    // Hash idempotente del mensaje por contacto
-    const messageHash = createHash('sha256')
-      .update(`${cleanPhone || ''}|${cleanEmail || ''}|${rawInquiry.toLowerCase()}`)
-      .digest('hex');
+    // Hash determinista del contenido de la operación (Punto 4)
+    const contentPayload = {
+      nombres: resolvedNombres.toLowerCase(),
+      apellidos: resolvedApellidos.toLowerCase(),
+      numero: cleanPhone,
+      email: cleanEmail,
+      mensaje: rawInquiry.trim(),
+      id_servicio: (id_servicio ? Number(id_servicio) : null) || null,
+      id_sede: (req.body.id_sede ? Number(req.body.id_sede) : null) || null,
+      id_interaccion_previa: id_interaccion_previa ? Number(id_interaccion_previa) : null,
+      autoriza_contacto: Boolean(req.body.autoriza_contacto || req.body.consentimiento_atencion),
+    };
+    const contentHash = createHash('sha256').update(JSON.stringify(contentPayload)).digest('hex');
+
+    // Verificación de Idempotency-Key como identidad persistente (Punto 4)
+    if (requestKey) {
+      const priorByKey = await prisma.decisionesIA.findFirst({
+        where: {
+          agente: 'BUYER',
+          entrada: { contains: `"idempotencyKey":"${requestKey}"` },
+        },
+        orderBy: { id_decision: 'desc' },
+      });
+
+      if (priorByKey) {
+        let storedHash: string | null = null;
+        try {
+          const parsed = JSON.parse(priorByKey.entrada || '{}');
+          storedHash = parsed.contentHash || null;
+        } catch {}
+
+        // La misma clave con contenido distinto debe rechazarse (HTTP 409)
+        if (storedHash && storedHash !== contentHash) {
+          return res.status(409).json({
+            success: false,
+            error: 'Conflicto de idempotencia: la Idempotency-Key ya fue utilizada previamente con un contenido diferente.',
+            code: 'IDEMPOTENCY_CONFLICT',
+          });
+        }
+
+        // Misma clave con mismo contenido: recuperar la interacción y decisión persistida
+        const priorInteraction = priorByKey.id_interaccion
+          ? await prisma.interacciones.findUnique({ where: { id_interaccion: priorByKey.id_interaccion } })
+          : null;
+
+        const parsedDecision = JSON.parse(priorByKey.decision || '{}');
+        const isCompleted = parsedDecision.estado === 'COMPLETADA' || priorByKey.decision?.includes('"estado":"COMPLETADA"');
+
+        return res.status(200).json({
+          success: true,
+          replayed: true,
+          data: {
+            id_persona: priorByKey.id_persona,
+            id_captacion: priorByKey.id_captacion,
+            id_interaccion: priorByKey.id_interaccion,
+            id_decision: priorByKey.id_decision,
+            id_solicitud: parsedDecision.id_solicitud || priorInteraction?.id_solicitud || null,
+            id_evento_etapa: parsedDecision.id_evento_etapa || null,
+            estado_decision: parsedDecision.estado || (isCompleted ? 'COMPLETADA' : 'PENDIENTE'),
+            accion: priorByKey.accion,
+            aclaracion: priorByKey.resultado_revision || null,
+          },
+        });
+      }
+    }
 
     // Contexto de aclaración previa si se está continuando una conversación
     let previousContext: {
@@ -362,31 +429,17 @@ router.post('/register', async (req, res) => {
         isDuplicate = Boolean(existingPerson);
       }
 
-      // Comprobar idempotencia persistente del registro por mensaje
-      if (existingPerson) {
-        const priorDecision = await tx.decisionesIA.findFirst({
-          where: {
-            agente: 'BUYER',
-            id_persona: existingPerson.id_persona,
-            entrada: { contains: `"messageHash":"${messageHash}"` },
-          },
-          orderBy: { id_decision: 'desc' },
+      // Validar que la interacción previa pertenezca a la misma persona (Punto 2)
+      if (previousContext?.idInteraccionPrevia && existingPerson) {
+        const prevInt = await tx.interacciones.findUnique({
+          where: { id_interaccion: previousContext.idInteraccionPrevia },
+          select: { id_persona: true },
         });
-
-        if (priorDecision) {
-          const priorInteraction = await tx.interacciones.findUnique({
-            where: { id_interaccion: priorDecision.id_interaccion || 0 },
-          });
-          const isCompleted = priorDecision.decision?.includes('"estado":"COMPLETADA"');
-          return {
-            replayed: true,
-            completed: isCompleted,
-            priorDecision,
-            priorInteraction,
-            persona: existingPerson,
-            totalConsultas: 1,
-            isDuplicate: true,
-          };
+        if (prevInt && prevInt.id_persona !== existingPerson.id_persona) {
+          console.warn(
+            `[buyer.routes] Contexto descartado: interacción previa ${previousContext.idInteraccionPrevia} pertenece a persona ${prevInt.id_persona}, no a ${existingPerson.id_persona}`
+          );
+          previousContext = null;
         }
       }
 
@@ -488,11 +541,11 @@ router.post('/register', async (req, res) => {
         }
       });
 
-      // Guardar el trabajo pendiente de evaluación en la MISMA transacción SQL
+      // Guardar el trabajo pendiente de evaluación en la MISMA transacción SQL (Punto 4)
       const pendingPayload = JSON.stringify({
+        idempotencyKey: requestKey || null,
+        contentHash,
         mensaje: rawInquiry,
-        messageHash,
-        requestKey: requestKey || null,
         id_persona: persona.id_persona,
         id_captacion: captacionRow.id_captacion,
         id_interaccion: interaccion.id_interaccion,
@@ -566,49 +619,11 @@ router.post('/register', async (req, res) => {
       };
     });
 
-    // 2. Si el mensaje ya estaba completado, devolver el resultado persistido (Idempotencia)
-    if ('completed' in txResult && txResult.completed && txResult.priorDecision) {
-      const priorDec = txResult.priorDecision;
-      const parsedDecision = JSON.parse(priorDec.decision || '{}');
-      return res.status(200).json({
-        success: true,
-        replayed: true,
-        isDuplicate: true,
-        consultationCount: 1,
-        message: 'Mensaje idéntico recibido previamente. Se devuelve el resultado persistido.',
-        data: {
-          id_persona: txResult.persona.id_persona,
-          id_captacion: priorDec.id_captacion,
-          id_interaccion: priorDec.id_interaccion,
-          id_decision: priorDec.id_decision,
-          etapa: txResult.persona.id_etapa_actual === etapaLead.id_etapa ? 'LEAD' : 'BUYER',
-          intencion: parsedDecision.intencion ?? null,
-          id_servicio: parsedDecision.id_servicio ?? null,
-          accion: priorDec.accion,
-          estado_evaluacion: 'COMPLETADA',
-          aclaracion: priorDec.resultado_revision ?? null,
-          id_solicitud: parsedDecision.id_solicitud ?? null,
-          oportunidad: parsedDecision.id_solicitud
-            ? { id_oportunidad: parsedDecision.id_solicitud, id_persona: txResult.persona.id_persona }
-            : { id_oportunidad: priorDec.id_captacion, id_persona: txResult.persona.id_persona },
-          intentosRealizados: parsedDecision.intentosRealizados ?? 1,
-          duracionTotalMs: parsedDecision.duracionTotalMs ?? 0,
-        },
-      });
-    }
-
-    const interaccionId = 'priorInteraction' in txResult && txResult.priorInteraction
-      ? txResult.priorInteraction.id_interaccion
-      : (txResult as any).id_interaccion;
-    const captacionId = 'priorDecision' in txResult && txResult.priorDecision?.id_captacion
-      ? txResult.priorDecision.id_captacion
-      : (txResult as any).id_captacion;
-
-    // 3. Ejecutar la llamada de clasificación a Gemini FUERA de la transacción SQL con protección concurrente
+    // 2. Ejecutar la llamada de clasificación a Gemini FUERA de la transacción SQL con protección concurrente
     const evaluation = await BuyerEvaluationService.evaluateBuyerInteraction({
       id_persona: txResult.persona.id_persona,
-      id_captacion: captacionId,
-      id_interaccion: interaccionId,
+      id_captacion: txResult.id_captacion,
+      id_interaccion: txResult.id_interaccion,
       mensaje: rawInquiry,
       id_servicio_declarado: (txResult as any).validServicio,
       motivo_consulta: (txResult as any).motivoConsulta,
@@ -621,8 +636,8 @@ router.post('/register', async (req, res) => {
 
     const responsePayload = {
       id_persona: txResult.persona.id_persona,
-      id_captacion: captacionId,
-      id_interaccion: interaccionId,
+      id_captacion: txResult.id_captacion,
+      id_interaccion: txResult.id_interaccion,
       id_decision: evaluation.id_decision,
       etapa: evaluation.etapa_final,
       intencion: evaluation.intencion,
@@ -633,7 +648,7 @@ router.post('/register', async (req, res) => {
       id_solicitud: evaluation.id_solicitud ?? null,
       oportunidad: evaluation.id_solicitud
         ? { id_oportunidad: evaluation.id_solicitud, id_persona: txResult.persona.id_persona }
-        : { id_oportunidad: captacionId, id_persona: txResult.persona.id_persona },
+        : { id_oportunidad: txResult.id_captacion, id_persona: txResult.persona.id_persona },
       totalConsultas: txResult.totalConsultas,
       isDuplicate: txResult.isDuplicate,
       isRecurring: txResult.isDuplicate,

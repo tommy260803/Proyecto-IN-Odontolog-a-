@@ -11,6 +11,7 @@ import reportRoutes from './routes/report.routes';
 import configRoutes from './routes/config.routes';
 import patientAuthRoutes from './routes/patientAuth.routes';
 import { startDunningScheduler } from './services/dunningScheduler';
+import { BuyerEvaluationService } from './services/buyerEvaluationService';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -224,4 +225,16 @@ app.get('/api/etapas', async (req, res) => {
 app.listen(port, () => {
   console.log(`Servidor backend corriendo en http://localhost:${port}`);
   startDunningScheduler();
+  // Recuperación automática de evaluaciones Buyer pendientes y entregas a LEAD
+  BuyerEvaluationService.recoverPendingEvaluations()
+    .then((rep) => {
+      if (rep.totalEncontradas > 0 || rep.entregasLeadRecuperadas > 0) {
+        console.log(
+          `[Buyer Startup] Recuperación automática: ${rep.recuperadasExitosamente}/${rep.totalEncontradas} evaluaciones, ${rep.entregasLeadRecuperadas} entregas LEAD confirmadas.`
+        );
+      }
+    })
+    .catch((err) => {
+      console.warn(`[Buyer Startup] Aviso en recuperación automática: ${err?.message}`);
+    });
 });

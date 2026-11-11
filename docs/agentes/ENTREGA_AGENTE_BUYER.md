@@ -4,9 +4,40 @@ Este documento constituye el contrato técnico y operativo de entrega del **Agen
 
 ---
 
-## 1. Estructura de Componentes y Enlaces al Código
+## 1. Commits Revisados y Estado del Repositorio
 
-Los componentes desarrollados y validados para esta integración utilizan rutas relativas al repositorio:
+- **`b819dd5`** (`origin/lead`): `feat(lead): registrar recepción idempotente de solicitudes Buyer`  
+  Punto de partida del contrato LEAD con `dbo.usp_RegistrarEntradaAgenteLead`, script `ENTRADA_AGENTE_LEAD_QA.sql` y `leadIntake.ts`.
+- **`f859c4c`**: `feat(buyer): avance de integracion clasificador Gemini con flujo Buyer y Lead`  
+  Commit local de respaldo previo a la fusión.
+- **`3be5a85`**: `Merge remote-tracking branch 'origin/lead' into feature/buyer-agent-gemini`  
+  Fusión limpia de ramas sin conflictos, preservando `@google/genai` (^3.1.0) y los scripts de LEAD.
+- **`7104fb8`**: `feat(buyer): adapta integracion con contrato LEAD, desacoplamiento y aclaraciones`  
+  Desacoplamiento de llamadas fuera de transacción, esquema compartido, descompromiso de horarios rígidos e integración en dos turnos.
+- **Commit actual**: `feat(buyer): robustece recuperacion post-commit, resolucion explicita e idempotencia`  
+  Incorpora recuperación de caídas post-commit sin reclasificar, reconstrucción fiel desde `entrada`, validación de pertenencia de solicitudes e interacciones, e `Idempotency-Key` estricto con comprobación de hash.
+
+---
+
+## 2. Estado Real de la Integración
+
+| Capacidad | Estado | Detalle Operativo |
+|---|---|---|
+| **Clasificación Semántica** | **OPERATIVO** | `@google/genai` con modelo `gemini-3.5-flash-lite`, timeout con `AbortSignal`, reintentos exponenciales y auditoría censurada. |
+| **Persistencia Transaccional** | **OPERATIVO** | Persona en `BUYER`, captación, mensaje e interacción en `dbo.Interacciones`, y decisión inicial `PENDIENTE` en `dbo.DecisionesIA` en una única transacción atómica. |
+| **Evaluación Desacoplada** | **OPERATIVO** | Llamada a Gemini fuera de la transacción SQL; consultas al catálogo real de servicios activos. |
+| **Recuperación Post-Commit** | **OPERATIVO** | Si `dbo.usp_ConvertirBuyerALead` committed y ocurre una caída antes de actualizar la interacción o decisión, el sistema recupera los identificadores de `dbo.EventosEtapa` (`BUYER_LEAD:<id_captacion>`), completa `registerLeadIntake` y no reclasifica con Gemini. |
+| **Reconstrucción en Reintentos** | **OPERATIVO** | Reconstruye desde `entrada` el servicio declarado y el contexto. Enriquece el prompt con mensaje anterior, pregunta del agente y respuesta actual. |
+| **Pertenencia de Contexto** | **OPERATIVO** | Valida que `id_interaccion_previa` pertenezca a la misma persona; descarta el contexto si pertenece a otro usuario. |
+| **Resolución Explícita de Solicitudes** | **OPERATIVO** | Para contactos en etapas posteriores (`LEAD`, etc.), resuelve menciones explícitas (`#123`) validando pertenencia (`CONSERVA_ETAPA_POSTERIOR`). Referencias dudosas o sin código quedan como `SOLICITUD_PENDIENTE_APERTURA`. |
+| **Idempotencia Estricta** | **OPERATIVO** | `Idempotency-Key` como identidad persistente y hash SHA-256 de contenido. Misma clave con contenido distinto se rechaza con **409 Conflict**. Claves distintas permiten mensajes nuevos iguales. |
+| **Protección Concurrente** | **OPERATIVO** | Cerrojo en memoria (`inFlightEvaluations` por `id_interaccion`) y cerrojos SQL con `UPDLOCK, HOLDLOCK` en `dbo.usp_RegistrarEntradaAgenteLead` y `dbo.usp_ConvertirBuyerALead`. |
+| **Recuperación Automática** | **OPERATIVO** | Ejecutada al arrancar el servidor backend en [`backend/src/index.ts`](../../backend/src/index.ts) y accesible vía `POST /api/buyer/evaluations/recover`. |
+| **Sincronización Mart en QA** | **DESACTIVADA** | `MartSyncService.isSyncEnabled()` mantiene la sincronización inactiva salvo presencia de `ENABLE_MART_SYNC=true`. |
+
+---
+
+## 3. Estructura de Componentes y Enlaces al Código
 
 - **Contrato de Integración y Entrega a LEAD**:  
   [`database/lead_revision/CONTRATO_BUYER_LEAD.md`](../../database/lead_revision/CONTRATO_BUYER_LEAD.md)  
@@ -14,182 +45,131 @@ Los componentes desarrollados y validados para esta integración utilizan rutas 
 
 - **Propuesta de Esquema Compartido BUYER <-> LEAD**:  
   [`database/buyer_revision/PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql`](../../database/buyer_revision/PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql)  
-  Script SQL reproducible con guardas de seguridad unificadas para entornos QA (`NexoSalud_LeadEnsayoFinal` y `NexoSalud_LeadPruebas`), asegurando las columnas `dbo.Interacciones.id_solicitud`, `dbo.DecisionesIA.id_captacion`, `dbo.DecisionesIA.id_interaccion`, la tabla `dbo.EntradasAgenteLead` y el procedimiento `dbo.usp_RegistrarEntradaAgenteLead`.
+  Script SQL reproducible con guardas de seguridad unificadas para entornos QA (`NexoSalud_LeadEnsayoFinal` y `NexoSalud_LeadPruebas`).
 
 - **Función Interna de Entrada LEAD (`registerLeadIntake`)**:  
   [`backend/src/services/leadIntake.ts`](../../backend/src/services/leadIntake.ts)  
-  Ejecuta la entrega desacoplada fuera de la transacción SQL contra `dbo.usp_RegistrarEntradaAgenteLead`, aceptando cliente de base de datos configurable y validando el rango de enteros positivos seguros.
+  Ejecuta la entrega desacoplada fuera de la transacción SQL contra `dbo.usp_RegistrarEntradaAgenteLead`.
 
 - **Clasificador Semántico Independiente**:  
   [`backend/src/services/buyerMessageClassifier.ts`](../../backend/src/services/buyerMessageClassifier.ts)  
-  Implementa la clasificación con `@google/genai` (v3.1.0), modelo `gemini-3.5-flash-lite`, timeout por petición con cancelación efectiva (`AbortSignal`), reintentos exponenciales con jitter, registro de métricas censuradas (`intentosRealizados`, `duracionTotalMs`), validación estricta de `intencion` e `id_servicio` (rechazando booleanos, cadenas, arrays y decimales; `AMBIGUA` siempre normaliza a `id_servicio: null`).
+  Implementa la clasificación con `@google/genai` (v3.1.0), modelo `gemini-3.5-flash-lite`, timeout con `AbortSignal`, reintentos exponenciales con jitter y métricas censuradas (`intentosRealizados`, `duracionTotalMs`).
 
 - **Servicio de Evaluación y Persistencia Buyer**:  
   [`backend/src/services/buyerEvaluationService.ts`](../../backend/src/services/buyerEvaluationService.ts)  
-  Orquesta la persistencia atómica de interacciones y trabajo pendiente en `dbo.DecisionesIA`, consulta del catálogo activo real, llamadas a Gemini fuera de transacciones SQL, aclaraciones en dos turnos con contexto, conversión vía `dbo.usp_ConvertirBuyerALead`, entrega fuera de transacción a `registerLeadIntake`, cerrojo in-flight contra peticiones concurrentes y recuperación automática tras caídas (`recoverPendingEvaluations` y `recoverPendingLeadDeliveries`).
+  Orquestador central: resuelve solicitudes explícitas con [`resolveExplicitSolicitud`](../../backend/src/services/buyerEvaluationService.ts#L45), detecta caídas post-commit, enriquece prompts conversacionales, ejecuta la conversión formal y gestiona la recuperación automática.
 
 - **Definiciones de Tipos y Contratos**:  
   [`backend/src/types/buyer.ts`](../../backend/src/types/buyer.ts)  
-  Contiene interfaces de clasificación, catálogo de servicios, métricas de auditoría (`intentosRealizados`, `duracionTotalMs`), acciones del clasificador (incluyendo `SOLICITUD_PENDIENTE_APERTURA` y `CONSERVA_ETAPA_POSTERIOR`) y contexto conversacional para aclaraciones (`BuyerClarificationContext`).
+  Contiene interfaces de clasificación, catálogo de servicios, métricas de auditoría, acciones (`SOLICITUD_PENDIENTE_APERTURA`, `CONSERVA_ETAPA_POSTERIOR`) y contexto conversacional.
 
 - **Rutas API del Módulo Buyer**:  
   [`backend/src/routes/buyer.routes.ts`](../../backend/src/routes/buyer.routes.ts)  
-  Adapta `POST /buyer/register` para persistencia transaccional de persona, captación e interacción con trabajo pendiente (`PENDIENTE`), detección de duplicados e idempotencia persistente por hash de mensaje. Expone `POST /buyer/evaluations/recover` y `POST /buyer/evaluations/:id/retry`.
-
-- **Control de Sincronización Analítica**:  
-  [`backend/src/services/martSyncService.ts`](../../backend/src/services/martSyncService.ts)  
-  Garantiza que la sincronización analítica hacia `NexoSalud_Mart` permanezca desactivada por defecto durante QA y pruebas (`RUN_SQL_TESTS=true` o `QA_ENV=true`), activándose únicamente ante la bandera explícita `ENABLE_MART_SYNC=true`.
+  Implementa `POST /buyer/register` con validación estricta de `Idempotency-Key` (409 ante conflicto de hash), persistencia transaccional y endpoints de recuperación (`POST /buyer/evaluations/recover`) y reintento (`POST /buyer/evaluations/:id/retry`).
 
 - **Interfaz Pública y Formulario de Captación**:  
   [`frontend/src/modules/buyer/components/landing/BuyerIntakeForm.tsx`](../../frontend/src/modules/buyer/components/landing/BuyerIntakeForm.tsx)  
-  Formulario de admisión con continuación interactiva de aclaraciones en dos turnos (`id_interaccion_previa`), diferenciación de reenvíos idénticos y reemplazo de promesas rígidas por textos configurables según disponibilidad de sede.
-
-- **Servicio Frontend de Buyer**:  
-  [`frontend/src/modules/buyer/services/buyer.service.ts`](../../frontend/src/modules/buyer/services/buyer.service.ts)  
-  Conexión HTTP que soporta el envío de `id_interaccion_previa` para continuar hilos conversacionales y preserva cabeceras de idempotencia.
+  Formulario de admisión con continuación interactiva de aclaraciones en dos turnos (`id_interaccion_previa`), diferenciación de reenvíos idénticos y reemplazo de promesas rígidas por textos configurables.
 
 - **Pruebas Automatizadas de Integración**:  
   [`backend/tests/buyerIntegrationFlow.test.ts`](../../backend/tests/buyerIntegrationFlow.test.ts)  
-  Suite completa con 15 casos de prueba protegidos con la bandera `RUN_SQL_TESTS=true`, verificación de `DB_NAME()` en guarda antes de escribir, reporte visible de errores de limpieza y cobertura de rutas HTTP, concurrencia, aclaraciones en dos turnos, servicios desconocidos y entregas repetidas a LEAD.
-
-- **Pruebas Unitarias del Clasificador**:  
-  [`backend/tests/buyerMessageClassifier.test.ts`](../../backend/tests/buyerMessageClassifier.test.ts)  
-  Suite con 28 pruebas unitarias (24 simuladas deterministas y 4 reales condicionales mediante `RUN_LIVE_GEMINI_TESTS=true`).
+  Suite completa con 20 casos de prueba protegidos con la bandera `RUN_SQL_TESTS=true` y guarda `DB_NAME()`.
 
 ---
 
-## 2. Flujo Acordado y Reglas de Negocio Implementadas
+## 4. Orden de Instalación y Configuración QA
 
-```mermaid
-flowchart TD
-    A["Prospecto llena formulario web"] --> B["POST /buyer/register"]
-    B --> C["Transacción Atómica SQL (writeBuyer)"]
-    C --> D["Persiste Persona (Etapa: BUYER)<br/>CaptacionesBuyer + Interacción<br/>DecisionesIA (Estado: PENDIENTE)"]
-    C --> E["Commit Transacción SQL"]
-    E --> F["Llamada Gemini (FUERA de SQL)<br/>Catálogo Activo Real"]
-    F -->|Fallo Transitorio / Timeout| G["DecisionesIA (Estado: PENDIENTE)<br/>Reintento encolado / Recuperación"]
-    F -->|Respuesta Válida| H{"Evaluación de Intención"}
-    
-    H -->|SOLO_CONSULTA| I["Permanece en BUYER<br/>Acción: SOLO_CONSULTA"]
-    H -->|AMBIGUA| J["Permanece en BUYER<br/>Genera Aclaración Contextual"]
-    H -->|SOLICITA_RESERVA| K{"¿Servicio válido en catálogo?"}
-    
-    K -->|No reconocido| J
-    K -->|Reconocido| L{"¿Cumple Consentimiento y Calidad?"}
-    
-    L -->|No| M["Permanece en BUYER<br/>Acción: REQUISITOS_INCOMPLETOS"]
-    L -->|Sí| N{"¿Etapa actual del contacto?"}
-    
-    N -->|BUYER| O["dbo.usp_ConvertirBuyerALead<br/>Crea Solicitud + Evento BUYER_LEAD"]
-    N -->|LEAD / Avanzado con Evidencia| P["Vincula a Solicitud Previa<br/>Acción: CONSERVA_ETAPA_POSTERIOR"]
-    N -->|LEAD / Avanzado sin Evidencia| Q["Acción: SOLICITUD_PENDIENTE_APERTURA<br/>Conserva Etapa Actual"]
-    
-    O --> R["Persiste entregaLeadEstado: PENDIENTE"]
-    R --> S["Llamada FUERA de SQL:<br/>registerLeadIntake(id_solicitud)"]
-    S -->|Confirmada| T["dbo.EntradasAgenteLead OK<br/>entregaLeadEstado: CONFIRMADA"]
-    S -->|Caída / Pérdida de Respuesta| U["Reconciliación automática<br/>recoverPendingLeadDeliveries()"]
+### 4.1 Configuración de Variables de Entorno
+
+Crear el archivo `backend/.env` basado en `backend/.env.example`:
+
+```ini
+SQLSERVER_URL="sqlserver://localhost:1433;database=NexoSalud_LeadEnsayoFinal;integratedSecurity=true;trustServerCertificate=true;"
+OLTP_CONNECTION_STRING="Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=NexoSalud_LeadEnsayoFinal;Trusted_Connection=yes;TrustServerCertificate=yes;"
+MART_CONNECTION_STRING="Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=NexoSalud_Mart;Trusted_Connection=yes;TrustServerCertificate=yes;"
+PORT=3001
+DUNNING_ENABLED=false
+GEMINI_API_KEY="tu_clave_gemini_api_aqui"
 ```
 
-### Detalle de las 11 Correcciones del Acuerdo LEAD
+### 4.2 Despliegue de Esquema en Base de Datos QA
 
-1. **Incorporación Limpia de `origin/lead` (commit `b819dd5`)**:  
-   Se integraron sin conflicto los scripts y procedimientos del equipo LEAD (`leadIntake.ts`, `provision-lead-staff.ts`, `CONTRATO_BUYER_LEAD.md`), preservando la dependencia `@google/genai` (^3.1.0) y los tipos compartidos.
-
-2. **Eliminación Total de Sustitutos por Defecto (Servicio 1 / Primer Activo)**:  
-   Si el clasificador o el mensaje indican una intención de reserva pero el servicio no pertenece al catálogo activo (o es nulo), el sistema **no** asigna el ID 1 ni el primer elemento de la lista. En su lugar, emite una solicitud cordial de aclaración (`accion: 'ACLARACION'`) y permanece en etapa `BUYER`.
-
-3. **Idempotencia Persistente del Registro por Mensaje**:  
-   Se computa el hash SHA-256 del contenido del mensaje para identificar peticiones idénticas. La interacción y el trabajo pendiente (`dbo.DecisionesIA` con `estado: 'PENDIENTE'`) se graban dentro de la misma transacción atómica. Si se recibe un reenvío del mismo mensaje completado previamente, se devuelve la decisión persistida sin duplicar filas.
-
-4. **Continuación Interactiva de Aclaraciones desde la Interfaz**:  
-   En [`BuyerIntakeForm.tsx`](../../frontend/src/modules/buyer/components/landing/BuyerIntakeForm.tsx), al recibir una aclaración preliminar del agente, el usuario dispone de un campo específico para responder y precisar su necesidad. La respuesta se envía con el parámetro `id_interaccion_previa`, permitiendo al evaluador semántico unir la consulta anterior y la nueva respuesta en un prompt contextual de dos turnos. Se diferencia explícitamente un mensaje nuevo de un reenvío del mensaje original.
-
-5. **Contactos Avanzados y Evidencia Contextual**:  
-   Si el contacto ya se encuentra en `LEAD`, `PAYER` u otra etapa posterior, el sistema evalúa si el mensaje contiene evidencia de una solicitud existente (ej. código `#123` o referencias explícitas a cotizaciones previas). Solo en ese caso se vincula (`CONSERVA_ETAPA_POSTERIOR`). Si se trata de una nueva intención sin evidencia directa, se marca como `SOLICITUD_PENDIENTE_APERTURA` manteniendo la etapa, a la espera del flujo acordado con LEAD.
-
-6. **Entrega Desacoplada y Confirmada a LEAD (`registerLeadIntake`)**:  
-   Tras el `COMMIT` de la conversión SQL (`dbo.usp_ConvertirBuyerALead`), se llama a `registerLeadIntake(id_solicitud)` **fuera de la transacción**, garantizando `@@TRANCOUNT == 0` (cumpliendo con la restricción de `dbo.usp_RegistrarEntradaAgenteLead`). El estado se audita como `entregaLeadEstado: 'PENDIENTE'` antes de la llamada y se actualiza a `'CONFIRMADA'` tras recibir la respuesta. Las caídas posteriores al commit o pérdidas de respuesta se recuperan mediante `recoverPendingLeadDeliveries()`.
-
-7. **Desactivación de Sincronización Analítica en QA**:  
-   [`MartSyncService.isSyncEnabled()`](../../backend/src/services/martSyncService.ts) desactiva la sincronización hacia `NexoSalud_Mart` en entornos de prueba (`RUN_SQL_TESTS=true` o `QA_ENV=true`) hasta que los procedimientos y destinos analíticos estén formalmente verificados. Requiere `ENABLE_MART_SYNC=true` para activarse.
-
-8. **Propuesta Mínima y Reproducible de Esquema Compartido**:  
-   En [`PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql`](../../database/buyer_revision/PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql) se unificó la guarda QA para admitir tanto `NexoSalud_LeadEnsayoFinal` como `NexoSalud_LeadPruebas`, garantizando la idempotencia en la creación de `dbo.EntradasAgenteLead` y `dbo.usp_RegistrarEntradaAgenteLead`.
-
-9. **Pruebas SQL con Activación Explícita y Guarda de Base de Datos**:  
-   En [`buyerIntegrationFlow.test.ts`](../../backend/tests/buyerIntegrationFlow.test.ts), la suite SQL solo corre cuando `$env:RUN_SQL_TESTS='true'`. Verifica mediante `SELECT DB_NAME() AS current_db` que la conexión sea a `NexoSalud_LeadEnsayoFinal` o `NexoSalud_LeadPruebas` antes de escribir. Los errores de limpieza en `afterAll` se reportan visiblemente en consola.
-
-10. **Métricas de Auditoría y Descompromiso de Promesas Fijas**:  
-    Se normalizó el uso de `intentosRealizados` (y `duracionTotalMs`) como contador oficial de intentos. En frontend y respuestas automáticas se eliminaron horarios fijos ("Lun a Sáb 8:00 AM – 8:00 PM") y promesas ("en menos de 15 minutos", "hoy mismo"), sustituyéndolos por respuestas descomprometidas ("a la brevedad dentro de nuestros horarios de atención", "según disponibilidad de cada sede").
-
-11. **Alineación con el Contrato Técnico LEAD**:  
-    El clasificador y orquestador Buyer cumplen plenamente con las expectativas descritas en [CONTRATO_BUYER_LEAD.md](../../database/lead_revision/CONTRATO_BUYER_LEAD.md).
-
----
-
-## 3. Instrucciones de Ejecución Reproducibles
-
-Todas las instrucciones se ejecutan desde el directorio raíz del repositorio en PowerShell:
-
-### 3.1 Compilación Completa
+Ejecutar desde la raíz del proyecto en PowerShell:
 
 ```powershell
-# Compilar TypeScript del backend
+sqlcmd -S localhost -d NexoSalud_LeadEnsayoFinal -E -i database/buyer_revision/PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql
+```
+
+### 4.3 Compilación del Proyecto
+
+```powershell
+# Compilación Backend (TypeScript)
 npm --prefix backend run build
 
-# Compilar frontend (TypeScript + Vite)
+# Compilación Frontend (TypeScript + Vite)
 npm --prefix frontend run build
 ```
 
-### 3.2 Pruebas Simuladas y Deterministas (Sin tocar SQL ni Gemini)
+### 4.4 Ejecución de Pruebas
 
 ```powershell
-# Ejecución general de pruebas unitarias y mocks
+# Pruebas unitarias simuladas (sin tocar SQL ni Gemini)
 npm --prefix frontend test
 
 # Pruebas del clasificador semántico
 npm --prefix frontend test -- backend/tests/buyerMessageClassifier.test.ts
-```
 
-### 3.3 Pruebas de Integración SQL contra `NexoSalud_LeadEnsayoFinal`
-
-```powershell
-# Ejecutar la suite completa de integración contra la base de datos QA
+# Pruebas integradas SQL contra la base de datos QA
 $env:RUN_SQL_TESTS='true'; npm --prefix frontend test -- backend/tests/buyerIntegrationFlow.test.ts
-
-# Para retirar la variable al terminar:
 Remove-Item Env:\RUN_SQL_TESTS
 ```
 
-### 3.4 Pruebas Reales con la API de Gemini (Opcional)
+### 4.5 Inicio del Backend
 
 ```powershell
-# Requiere GEMINI_API_KEY configurada
-$env:RUN_LIVE_GEMINI_TESTS='true'; npm --prefix frontend test -- backend/tests/buyerMessageClassifier.test.ts
-
-# Para retirar la variable al terminar:
-Remove-Item Env:\RUN_LIVE_GEMINI_TESTS
+npm --prefix backend run dev
+# Al arrancar, BuyerEvaluationService.recoverPendingEvaluations() ejecuta la recuperación automática de pendientes.
 ```
 
 ---
 
-## 4. Evidencia de Verificación
+## 5. Aclaración de Cambios de Esquema
 
-Resultados obtenidos en las comprobaciones automatizadas:
+### 5.1 Cambios YA Aplicados en QA (`NexoSalud_LeadEnsayoFinal`)
+1. **`dbo.Interacciones.id_solicitud INT NULL`**:  
+   Permite vincular el mensaje con la oportunidad comercial generada.
+2. **`dbo.DecisionesIA.id_captacion INT NULL` e `id_interaccion INT NULL`**:  
+   Asegura la trazabilidad directa entre la auditoría de IA y la interacción del paciente.
+3. **`dbo.EntradasAgenteLead`**:  
+   Tabla de recepción formal para LEAD (`id_solicitud` PK, `id_evento_etapa` UK, `id_captacion`, `id_persona`, `fecha_registro_utc`).
+4. **`dbo.usp_RegistrarEntradaAgenteLead`**:  
+   Procedimiento almacenado de entrega con cerrojo `UPDLOCK, HOLDLOCK` y comprobación estricta de evento `BUYER_LEAD:<id_captacion>`.
 
-| Componente | Comando | Resultado |
-|---|---|---|
-| **Compilación Backend** | `npm --prefix backend run build` | **EXIT 0** (0 errores de tipo) |
-| **Compilación Frontend** | `npm --prefix frontend run build` | **EXIT 0** (Build generado en dist/) |
-| **Suite Vitest Completa** | `npm --prefix frontend test` | **16 passed \| 1 skipped (76 tests passed)** |
-| **Integración SQL (`buyerIntegrationFlow`)** | `$env:RUN_SQL_TESTS='true'; ...` | **1 passed (14 tests passed, 1 skipped)** |
+### 5.2 Cambios que Requieren Coordinación con LEAD para Producción
+1. **Inclusión en scripts de migración baseline de LEAD**:  
+   Asegurar que `database/lead_revision/INSTALAR_LEAD_COMPLETO.sql` contenga formalmente la columna `id_solicitud` en `dbo.Interacciones`.
+2. **Homologación de columnas en `dbo.Solicitudes`**:  
+   En `schema.prisma`, alinear la definición de `Solicitudes` con las columnas físicas existentes en producción (`fecha_solicitud` en lugar de `fecha_creacion`).
+3. **Flujo de apertura para contactos avanzados**:  
+   Consensuar el procedimiento mediante el cual el equipo LEAD toma las solicitudes marcadas como `SOLICITUD_PENDIENTE_APERTURA` y las convierte en una oportunidad de atención secundaria o recurrente.
 
-### Detalle de los 14 Casos de Integración Validados en SQL
+---
 
-1. `Registro en BUYER`: el nuevo contacto permanece estrictamente en `BUYER` antes de evaluar intención. (**PASS**)
+## 6. Evidencia de Verificación y Casos de Prueba
+
+### Resultados Globales
+
+- **Compilación Backend (`tsc`)**: **EXIT 0** (0 errores)
+- **Compilación Frontend (`vite build`)**: **EXIT 0** (Bundle generado en `dist/`)
+- **Suite Vitest Completa (`npm --prefix frontend test`)**: **16 pasados, 1 omitido (76 pruebas pasadas, 0 fallidas)**
+- **Suite Integrada SQL (`RUN_SQL_TESTS=true`)**: **1 pasado (19 pruebas pasadas, 1 omitida condicional)**
+
+### Detalle de los 19 Casos Validados en SQL (`buyerIntegrationFlow.test.ts`)
+
+1. `Registro en BUYER`: nuevo contacto permanece estrictamente en `BUYER` antes de evaluar intención. (**PASS**)
 2. `Clasificación informativa`: consulta de horarios permanece en `BUYER` sin crear solicitud. (**PASS**)
 3. `Aclaración con contexto`: mensaje vago genera orientación cordial y preserva entrada. (**PASS**)
-4. `Conversión válida`: intención explícita de reserva convierte a `LEAD` vía `dbo.usp_ConvertirBuyerALead` y registra en `dbo.EntradasAgenteLead`. (**PASS**)
+4. `Conversión válida`: intención explícita convierte a `LEAD` vía `dbo.usp_ConvertirBuyerALead` y registra en `dbo.EntradasAgenteLead`. (**PASS**)
 5. `Requisitos incumplidos`: sin autorización de contacto, la reserva permanece en `BUYER`. (**PASS**)
 6. `Reintento del mismo mensaje`: `retryEvaluationByInteraction` procesa el mismo ID sin duplicar interacciones. (**PASS**)
 7. `Contactos avanzados sin evidencia`: nueva solicitud permanece pendiente de apertura (`SOLICITUD_PENDIENTE_APERTURA`). (**PASS**)
@@ -199,4 +179,9 @@ Resultados obtenidos en las comprobaciones automatizadas:
 11. `Servicio desconocido`: intención de reserva sin tratamiento del catálogo solicita aclaración sin sustituir por servicio 1. (**PASS**)
 12. `Aclaraciones en dos turnos`: turno 1 pide aclaración y turno 2 con `id_interaccion_previa` resuelve y convierte a `LEAD`. (**PASS**)
 13. `Reenvíos concurrentes`: peticiones simultáneas del mismo mensaje son serializadas sin duplicar registros. (**PASS**)
-14. `Rutas HTTP`: `POST /buyer/register` y `POST /buyer/evaluations/recover` responden con códigos (200/201) y contrato esperado. (**PASS**)
+14. `Rutas HTTP`: `POST /buyer/register` y `POST /buyer/evaluations/recover` responden con códigos y contrato esperado. (**PASS**)
+15. `Caída post-commit`: detecta conversión previa en SQL (`BUYER_LEAD:<id_captacion>`), recupera `id_solicitud`, completa `registerLeadIntake` sin reclasificar en Gemini y actualiza la interacción. (**PASS**)
+16. `Reconstrucción de contexto`: reintento recupera servicio declarado y enriquece prompt con mensaje anterior, pregunta del agente y respuesta actual. (**PASS**)
+17. `Validación de pertenencia`: rechaza contexto cruzado cuando la interacción previa pertenece a otra persona. (**PASS**)
+18. `Resolución explícita de solicitud`: vincula solicitud legítima comprobando pertenencia; referencias dudosas (inexistentes o de otro usuario) quedan como `SOLICITUD_PENDIENTE_APERTURA`. (**PASS**)
+19. `Idempotency-Key estricto`: misma clave con contenido distinto se rechaza con **409 Conflict**; misma clave con mismo contenido devuelve resultado persistido (replayed); claves distintas permiten mensajes iguales. (**PASS**)

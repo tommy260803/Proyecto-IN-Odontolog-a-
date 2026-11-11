@@ -649,7 +649,9 @@ describe.skipIf(!runSqlTests)('Flujo Integrado Buyer -> Clasificador Gemini -> P
 
     const turn2Classifier = async (prompt: string): Promise<BuyerClassificationResult> => {
       // Verificar que el prompt contenga el contexto enriquecido del turno 1
-      expect(prompt).toContain('Consulta previa del paciente:');
+      expect(prompt).toContain('Mensaje anterior del paciente:');
+      expect(prompt).toContain('Pregunta u orientación del agente:');
+      expect(prompt).toContain('Respuesta actual del paciente:');
       expect(prompt).toContain(interaccion.mensaje!);
       return {
         intencion: 'SOLICITA_RESERVA',
@@ -774,6 +776,348 @@ describe.skipIf(!runSqlTests)('Flujo Integrado Buyer -> Clasificador Gemini -> P
       const recBody = await recRes.json();
       expect(recBody.success).toBe(true);
       expect(recBody.totalEncontradas).toBeDefined();
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  // 15. Caída post-commit: recupera conversión existente sin reclasificar y completa registerLeadIntake (Punto 1)
+  it('15. Caída post-commit: recupera conversión BUYER -> LEAD existente sin reclasificar y completa registerLeadIntake', async () => {
+    const targetService = activeCatalog[0];
+    const { persona, captacion, interaccion } = await createTestBuyer({
+      mensaje: 'Quiero turno inmediato para profilaxis',
+      autoriza_contacto: true,
+      id_servicio: targetService.id_servicio,
+    });
+
+    // Simular que dbo.usp_ConvertirBuyerALead ya committed en SQL Server (caída inesperada justo tras el commit)
+    const [conv] = await prisma.$queryRaw<{ id_solicitud: number; id_evento_etapa: number }[]>`
+      EXEC dbo.usp_ConvertirBuyerALead
+        @id_captacion=${captacion.id_captacion},
+        @id_servicio=${targetService.id_servicio},
+        @motivo='Cita de prueba post-commit'
+    `;
+    expect(conv.id_solicitud).toBeGreaterThan(0);
+
+    // La interacción no tiene id_solicitud aún (simulando caída antes de actualizar)
+    const intBefore = await prisma.interacciones.findUnique({ where: { id_interaccion: interaccion.id_interaccion } });
+    expect(intBefore?.id_solicitud).toBeNull();
+
+    // El clasificador NO debe invocarse (si se llama lanza error)
+    const forbiddenClassifier = async (): Promise<BuyerClassificationResult> => {
+      throw new Error('FALLO: El clasificador no debe ejecutarse si la conversión ya committed en SQL.');
+    };
+
+    const outcome = await BuyerEvaluationService.evaluateBuyerInteraction({
+      id_persona: persona.id_persona,
+      id_captacion: captacion.id_captacion,
+      id_interaccion: interaccion.id_interaccion,
+      mensaje: interaccion.mensaje!,
+      id_servicio_declarado: targetService.id_servicio,
+      dbClient: prisma,
+      classifierOverride: forbiddenClassifier,
+    });
+
+    expect(outcome.estado).toBe('COMPLETADA');
+    expect(outcome.accion).toBe('CONVERSION_LEAD');
+    expect(outcome.id_solicitud).toBe(conv.id_solicitud);
+    expect(outcome.id_evento_etapa).toBe(conv.id_evento_etapa);
+    expect(outcome.ya_convertido).toBe(true);
+    expect(outcome.entregaLeadEstado).toBe('CONFIRMADA');
+
+    // Comprobar que en dbo.Interacciones se actualizó id_solicitud
+    const intAfter = await prisma.interacciones.findUnique({ where: { id_interaccion: interaccion.id_interaccion } });
+    expect(intAfter?.id_solicitud).toBe(conv.id_solicitud);
+
+    // Comprobar que en dbo.EntradasAgenteLead se completó la entrega
+    const [entry] = await prisma.$queryRaw<{ id_solicitud: number }[]>`
+      SELECT id_solicitud FROM dbo.EntradasAgenteLead WHERE id_solicitud=${conv.id_solicitud}
+    `;
+    expect(entry.id_solicitud).toBe(conv.id_solicitud);
+  });
+
+  // 16. Reconstrucción desde entrada persistida en reintento y enriquecimiento de prompt (Punto 2)
+  it('16. Reconstrucción de contexto: reintento recupera servicio declarado y enriquece prompt con mensaje anterior, agente y respuesta', async () => {
+    const targetService = activeCatalog.find(s => s.nombre.toLowerCase().includes('ortodoncia')) || activeCatalog[0];
+    const { persona, captacion, interaccion } = await createTestBuyer({
+      mensaje: 'Sí, confirmo que quiero iniciar tratamiento de brackets este sábado',
+    });
+
+    // Guardar una decisión PENDIENTE con servicio declarado y contexto conversacional previo
+    await prisma.decisionesIA.create({
+      data: {
+        agente: 'BUYER',
+        id_persona: persona.id_persona,
+        id_captacion: captacion.id_captacion,
+        id_interaccion: interaccion.id_interaccion,
+        fecha_hora: new Date(),
+        entrada: JSON.stringify({
+          mensaje: interaccion.mensaje,
+          id_servicio_declarado: targetService.id_servicio,
+          contextoConversacional: {
+            mensajeAnterior: '¿Cuánto cuesta colocarse brackets?',
+            aclaracionPrevia: 'Contamos con evaluación de ortodoncia. ¿Deseas agendar cita?',
+            idInteraccionPrevia: interaccion.id_interaccion,
+            turno: 2,
+          },
+        }),
+        regla_aplicada: 'test-retry',
+        decision: JSON.stringify({ estado: 'PENDIENTE', intencion: null, id_servicio: null }),
+        accion: 'REINTENTO_PENDIENTE',
+        requiere_revision: true,
+      },
+    });
+
+    let promptEvaluado = '';
+    const mockClassifier = async (prompt: string): Promise<BuyerClassificationResult> => {
+      promptEvaluado = prompt;
+      return {
+        intencion: 'SOLICITA_RESERVA',
+        id_servicio: targetService.id_servicio,
+        intentos_realizados: 1,
+        duracion_total_ms: 50,
+        intentos: [{ intento: 1, duracion_ms: 50, exitoso: true }],
+      };
+    };
+
+    const outcome = await BuyerEvaluationService.retryEvaluationByInteraction(interaccion.id_interaccion, {
+      dbClient: prisma,
+      classifierOverride: mockClassifier,
+    });
+
+    expect(promptEvaluado).toContain('Mensaje anterior del paciente: "¿Cuánto cuesta colocarse brackets?"');
+    expect(promptEvaluado).toContain('Pregunta u orientación del agente: "Contamos con evaluación de ortodoncia. ¿Deseas agendar cita?"');
+    expect(promptEvaluado).toContain('Respuesta actual del paciente: "Sí, confirmo que quiero iniciar tratamiento de brackets este sábado"');
+    expect(outcome.estado).toBe('COMPLETADA');
+    expect(outcome.id_servicio).toBe(targetService.id_servicio);
+    expect(outcome.accion).toBe('CONVERSION_LEAD');
+  });
+
+  // 17. Validación de pertenencia: rechaza contexto cruzado de otra persona (Punto 2)
+  it('17. Validación de pertenencia: rechaza contexto cruzado cuando la interacción previa pertenece a otra persona', async () => {
+    const { persona: personaA, interaccion: interaccionA } = await createTestBuyer({
+      nombres: 'PersonaA',
+      mensaje: 'Mensaje privado confidencial de Persona A',
+    });
+    const { persona: personaB, captacion: captacionB, interaccion: interaccionB } = await createTestBuyer({
+      nombres: 'PersonaB',
+      mensaje: 'Consulta legítima de Persona B',
+    });
+
+    let promptRecibido = '';
+    const mockClassifier = async (prompt: string): Promise<BuyerClassificationResult> => {
+      promptRecibido = prompt;
+      return {
+        intencion: 'SOLO_CONSULTA',
+        id_servicio: null,
+        intentos_realizados: 1,
+        duracion_total_ms: 30,
+        intentos: [{ intento: 1, duracion_ms: 30, exitoso: true }],
+      };
+    };
+
+    // Persona B intenta enviar como contexto previo la interacción de Persona A
+    await BuyerEvaluationService.evaluateBuyerInteraction({
+      id_persona: personaB.id_persona,
+      id_captacion: captacionB.id_captacion,
+      id_interaccion: interaccionB.id_interaccion,
+      mensaje: interaccionB.mensaje!,
+      contextoConversacional: {
+        mensajeAnterior: interaccionA.mensaje!,
+        aclaracionPrevia: 'Pregunta a Persona A',
+        idInteraccionPrevia: interaccionA.id_interaccion, // Pertenece a Persona A!
+        turno: 2,
+      },
+      dbClient: prisma,
+      classifierOverride: mockClassifier,
+    });
+
+    // El contexto de Persona A debe ser rechazado y no aparecer en el prompt de Persona B
+    expect(promptRecibido).not.toContain(interaccionA.mensaje!);
+    expect(promptRecibido).not.toContain('Mensaje privado confidencial de Persona A');
+    expect(promptRecibido).toBe(interaccionB.mensaje!);
+  });
+
+  // 18. Resolución explícita de solicitud: comprueba pertenencia y evita última abierta (Punto 3)
+  it('18. Resolución explícita de solicitud: vincula pertenencia comprobada y mantiene referencia dudosa en SOLICITUD_PENDIENTE_APERTURA', async () => {
+    const { persona, captacion, interaccion } = await createTestBuyer({
+      stageId: leadStageId,
+      mensaje: 'Mensaje desde etapa LEAD',
+    });
+
+    // Crear Solicitud legítima propia en SQL Server
+    await prisma.$executeRaw`
+      INSERT INTO dbo.Solicitudes (id_persona, id_servicio, estado, fecha_solicitud)
+      VALUES (${persona.id_persona}, ${activeCatalog[0].id_servicio}, 'Abierta', SYSDATETIME())
+    `;
+    const [solPropia] = await prisma.$queryRaw<{ id_solicitud: number }[]>`
+      SELECT TOP (1) id_solicitud FROM dbo.Solicitudes WHERE id_persona=${persona.id_persona} ORDER BY id_solicitud DESC
+    `;
+
+    const mockClassifier = async (): Promise<BuyerClassificationResult> => ({
+      intencion: 'SOLICITA_RESERVA',
+      id_servicio: activeCatalog[0].id_servicio,
+      intentos_realizados: 1,
+      duracion_total_ms: 40,
+      intentos: [{ intento: 1, duracion_ms: 40, exitoso: true }],
+    });
+
+    // Caso A: Mensaje menciona explícitamente su propia solicitud -> vincula exitosamente
+    const outcomeValido = await BuyerEvaluationService.evaluateBuyerInteraction({
+      id_persona: persona.id_persona,
+      id_captacion: captacion.id_captacion,
+      id_interaccion: interaccion.id_interaccion,
+      mensaje: `Hola, quiero coordinar la fecha para mi solicitud #${solPropia.id_solicitud}`,
+      dbClient: prisma,
+      classifierOverride: mockClassifier,
+    });
+    expect(outcomeValido.accion).toBe('CONSERVA_ETAPA_POSTERIOR');
+    expect(outcomeValido.id_solicitud).toBe(solPropia.id_solicitud);
+
+    // Caso B: Mensaje menciona un número que no existe o pertenece a otro -> referencia dudosa -> SOLICITUD_PENDIENTE_APERTURA
+    const intDudoso = await prisma.interacciones.create({
+      data: {
+        id_persona: persona.id_persona,
+        id_canal: 1,
+        id_fuente: 1,
+        tipo: 'Mensaje Dudoso',
+        mensaje: 'Quiero cambiar fecha de mi solicitud #9999999',
+        es_respuesta_util: false,
+        resultado: 'Registrado',
+      },
+    });
+    const outcomeDudoso = await BuyerEvaluationService.evaluateBuyerInteraction({
+      id_persona: persona.id_persona,
+      id_captacion: captacion.id_captacion,
+      id_interaccion: intDudoso.id_interaccion,
+      mensaje: intDudoso.mensaje!,
+      dbClient: prisma,
+      classifierOverride: mockClassifier,
+    });
+    expect(outcomeDudoso.accion).toBe('SOLICITUD_PENDIENTE_APERTURA');
+    expect(outcomeDudoso.id_solicitud).toBeNull();
+
+    // Caso C: Mensaje vago ("mi cotización previa") sin número explícito -> no toma la última a ciegas -> SOLICITUD_PENDIENTE_APERTURA
+    const intVago = await prisma.interacciones.create({
+      data: {
+        id_persona: persona.id_persona,
+        id_canal: 1,
+        id_fuente: 1,
+        tipo: 'Mensaje Vago',
+        mensaje: 'Quisiera continuar con mi cotización previa que me enviaron ayer',
+        es_respuesta_util: false,
+        resultado: 'Registrado',
+      },
+    });
+    const outcomeVago = await BuyerEvaluationService.evaluateBuyerInteraction({
+      id_persona: persona.id_persona,
+      id_captacion: captacion.id_captacion,
+      id_interaccion: intVago.id_interaccion,
+      mensaje: intVago.mensaje!,
+      dbClient: prisma,
+      classifierOverride: mockClassifier,
+    });
+    expect(outcomeVago.accion).toBe('SOLICITUD_PENDIENTE_APERTURA');
+    expect(outcomeVago.id_solicitud).toBeNull();
+  });
+
+  // 19. Idempotency-Key como identidad persistente y hash de contenido (Punto 4)
+  it('19. Idempotency-Key: misma clave con contenido distinto se rechaza (409); claves distintas permiten mensajes iguales', async () => {
+    const app = express();
+    app.use(express.json());
+    app.use('/api/buyer', buyerRouter);
+
+    const server = http.createServer(app);
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
+    const port = (server.address() as any).port;
+    const baseUrl = `http://127.0.0.1:${port}/api/buyer`;
+
+    try {
+      const timestamp = Date.now() + Math.floor(Math.random() * 1000);
+      const idempotencyKey = `idem-${timestamp}-uuid-abc`;
+      const phone = `9${String(timestamp).slice(-8)}`;
+
+      // 1. Primer envío con Idempotency-Key
+      const res1 = await fetch(`${baseUrl}/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify({
+          nombres: 'JuanIdem',
+          apellidos: 'Perez',
+          numero: phone,
+          consentimiento_atencion: true,
+          necesidad_declarada: 'Consulta sobre limpieza dental',
+        }),
+      });
+      expect([200, 201]).toContain(res1.status);
+      const body1 = await res1.json();
+      expect(body1.success).toBe(true);
+      const initialInteractionId = body1.data.id_interaccion;
+      createdPersonaIds.push(body1.data.id_persona);
+
+      // 2. Misma Idempotency-Key con CONTENIDO DISTINTO debe rechazarse con 409 Conflict
+      const resConflict = await fetch(`${baseUrl}/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify({
+          nombres: 'JuanIdem',
+          apellidos: 'Perez',
+          numero: phone,
+          consentimiento_atencion: true,
+          necesidad_declarada: 'CONTENIDO COMPLETAMENTE DIFERENTE',
+        }),
+      });
+      expect(resConflict.status).toBe(409);
+      const conflictBody = await resConflict.json();
+      expect(conflictBody.code).toBe('IDEMPOTENCY_CONFLICT');
+
+      // 3. Misma Idempotency-Key con MISMO CONTENIDO devuelve el resultado persistido (replayed: true)
+      const resReplay = await fetch(`${baseUrl}/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify({
+          nombres: 'JuanIdem',
+          apellidos: 'Perez',
+          numero: phone,
+          consentimiento_atencion: true,
+          necesidad_declarada: 'Consulta sobre limpieza dental',
+        }),
+      });
+      expect(resReplay.status).toBe(200);
+      const replayBody = await resReplay.json();
+      expect(replayBody.replayed).toBe(true);
+      expect(replayBody.data.id_interaccion).toBe(initialInteractionId);
+
+      // 4. Clave distinta permite mensajes nuevos idénticos en conversaciones diferentes
+      const differentKey = `idem-${timestamp}-uuid-xyz`;
+      const resDifferent = await fetch(`${baseUrl}/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': differentKey,
+        },
+        body: JSON.stringify({
+          nombres: 'JuanIdem',
+          apellidos: 'Perez',
+          numero: phone,
+          consentimiento_atencion: true,
+          necesidad_declarada: 'Consulta sobre limpieza dental',
+        }),
+      });
+      expect([200, 201]).toContain(resDifferent.status);
+      const differentBody = await resDifferent.json();
+      expect(differentBody.success).toBe(true);
+      expect(differentBody.replayed).toBeFalsy();
+      expect(differentBody.data.id_interaccion).not.toBe(initialInteractionId);
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }

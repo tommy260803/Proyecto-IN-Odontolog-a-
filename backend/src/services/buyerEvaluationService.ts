@@ -79,6 +79,65 @@ export function generateAutomaticClarification(
 }
 
 /**
+ * Resuelve una solicitud mencionada explícitamente en el texto del contacto
+ * y comprueba estrictamente su existencia y pertenencia en SQL.
+ * Una referencia dudosa (que no existe, fuera de rango o pertenece a otra persona)
+ * o no explícita debe quedar pendiente. Evita seleccionar simplemente la última solicitud abierta.
+ */
+export async function resolveExplicitSolicitud(
+  texto: string,
+  id_persona: number,
+  db: PrismaClient | Prisma.TransactionClient
+): Promise<{ resolved: boolean; id_solicitud: number | null; motivoDuda?: string }> {
+  // Regex para encontrar menciones numéricas explícitas: #123, solicitud 123, OP-123, ref 123
+  const regex = /(?:#|solicitud\s*(?:#|n[úu]m(?:ero)?\s*)?|op-?\s*|ref(?:erencia)?\s*:?\s*#?)\s*(\d{1,10})\b/i;
+  const match = texto.match(regex);
+
+  if (!match) {
+    return {
+      resolved: false,
+      id_solicitud: null,
+      motivoDuda: 'Sin identificador numérico explícito de solicitud (referencia no comprobable)',
+    };
+  }
+
+  const candidateId = parseInt(match[1], 10);
+  if (isNaN(candidateId) || candidateId <= 0 || candidateId > 2_147_483_647) {
+    return {
+      resolved: false,
+      id_solicitud: null,
+      motivoDuda: `Identificador numérico inválido o fuera de rango: ${match[1]}`,
+    };
+  }
+
+  // Comprobar existencia y pertenencia en dbo.Solicitudes
+  const solicitudes = await (db as any).$queryRaw<{ id_solicitud: number; id_persona: number; estado: string }[]>`
+    SELECT id_solicitud, id_persona, estado
+    FROM dbo.Solicitudes
+    WHERE id_solicitud = ${candidateId}
+  `;
+
+  if (!solicitudes || solicitudes.length === 0) {
+    return {
+      resolved: false,
+      id_solicitud: null,
+      motivoDuda: `Solicitud #${candidateId} no encontrada en la base de datos (referencia dudosa)`,
+    };
+  }
+
+  const solicitud = solicitudes[0];
+  if (solicitud.id_persona !== id_persona) {
+    return {
+      resolved: false,
+      id_solicitud: null,
+      motivoDuda: `Solicitud #${candidateId} pertenece a otra persona (${solicitud.id_persona} != ${id_persona})`,
+    };
+  }
+
+  return { resolved: true, id_solicitud: solicitud.id_solicitud };
+}
+
+/**
  * Evalúa si un mensaje de un contacto en etapa avanzada (LEAD/PAYER) posee
  * evidencia contextual suficiente para asociarlo a una oportunidad abierta previa.
  */
@@ -153,6 +212,118 @@ export class BuyerEvaluationService {
 
     // 1. Obtener catálogo activo real de servicios desde la base de datos
     const catalog = await getActiveServices(db);
+
+    // COMPROBACIÓN CRÍTICA (Punto 1):
+    // Antes de reclasificar una evaluación pendiente, comprobar si la captación ya tiene
+    // una conversión BUYER → LEAD vinculada en SQL Server (cubriendo caídas inmediatamente
+    // posteriores al commit del procedimiento usp_ConvertirBuyerALead y antes de actualizar la interacción o la decisión).
+    const existingConversions = await (db as any).$queryRaw<{
+      id_evento_etapa: number;
+      id_solicitud: number;
+      id_persona: number;
+      id_captacion: number;
+    }[]>`
+      SELECT TOP 1 id_evento_etapa, id_solicitud, id_persona, id_captacion
+      FROM dbo.EventosEtapa
+      WHERE id_captacion = ${id_captacion}
+        AND clave_operacion_buyer = ${`BUYER_LEAD:${id_captacion}`}
+      ORDER BY id_evento_etapa DESC
+    `;
+
+    if (existingConversions.length > 0 && existingConversions[0].id_solicitud) {
+      const conv = existingConversions[0];
+      let entregaLeadConfirmada = false;
+      try {
+        const leadIntake = await registerLeadIntake(conv.id_solicitud, db as any);
+        if (leadIntake?.id_solicitud) {
+          entregaLeadConfirmada = true;
+        }
+      } catch (handoffErr: any) {
+        console.warn(
+          `[BuyerEvaluationService] registerLeadIntake en recuperación de commit previo (id_solicitud=${conv.id_solicitud}): ${handoffErr?.message}`
+        );
+      }
+
+      await (db as any).$executeRaw`
+        UPDATE dbo.Interacciones
+        SET id_solicitud = ${conv.id_solicitud},
+            resultado = 'Conversión a LEAD confirmada (recuperada tras commit previo)'
+        WHERE id_interaccion = ${id_interaccion}
+      `;
+
+      let existingDecision = await (db as any).decisionesIA.findFirst({
+        where: { agente: 'BUYER', id_interaccion },
+        orderBy: { id_decision: 'desc' },
+      });
+
+      const decisionPayload = JSON.stringify({
+        estado: 'COMPLETADA',
+        intencion: 'SOLICITA_RESERVA',
+        id_servicio: input.id_servicio_declarado ?? null,
+        id_solicitud: conv.id_solicitud,
+        id_evento_etapa: conv.id_evento_etapa,
+        entregaLeadEstado: entregaLeadConfirmada ? 'CONFIRMADA' : 'PENDIENTE',
+        recuperadaDeCommitPrevio: true,
+        intentosRealizados: 1,
+        duracionTotalMs: 0,
+      });
+
+      if (!existingDecision) {
+        existingDecision = await (db as any).decisionesIA.create({
+          data: {
+            agente: 'BUYER',
+            id_persona,
+            id_captacion,
+            id_interaccion,
+            fecha_hora: new Date(),
+            entrada: JSON.stringify({
+              mensaje,
+              id_persona,
+              id_captacion,
+              id_interaccion,
+              id_servicio_declarado: input.id_servicio_declarado || null,
+              contextoConversacional: input.contextoConversacional || null,
+            }),
+            regla_aplicada: 'recuperacion-commit-previo',
+            decision: decisionPayload,
+            accion: 'CONVERSION_LEAD',
+            requiere_revision: !entregaLeadConfirmada,
+            resultado_revision: `Conversión recuperada desde commit previo en SQL (Solicitud #${conv.id_solicitud}). Entrega ${entregaLeadConfirmada ? 'confirmada' : 'pendiente'} en LEAD.`,
+          },
+        });
+      } else {
+        await (db as any).decisionesIA.update({
+          where: { id_decision: existingDecision.id_decision },
+          data: {
+            decision: decisionPayload,
+            accion: 'CONVERSION_LEAD',
+            requiere_revision: !entregaLeadConfirmada,
+            resultado_revision: `Conversión recuperada desde commit previo en SQL (Solicitud #${conv.id_solicitud}). Entrega ${entregaLeadConfirmada ? 'confirmada' : 'pendiente'} en LEAD.`,
+          },
+        });
+      }
+
+      return {
+        id_persona,
+        id_captacion,
+        id_interaccion,
+        id_decision: existingDecision.id_decision,
+        estado: 'COMPLETADA',
+        intencion: 'SOLICITA_RESERVA',
+        id_servicio: input.id_servicio_declarado ?? null,
+        accion: 'CONVERSION_LEAD',
+        etapa_final: 'LEAD',
+        id_solicitud: conv.id_solicitud,
+        id_evento_etapa: conv.id_evento_etapa,
+        ya_convertido: true,
+        aclaracion: null,
+        intentosRealizados: 1,
+        intentos_realizados: 1,
+        duracionTotalMs: 0,
+        duracion_total_ms: 0,
+        entregaLeadEstado: entregaLeadConfirmada ? 'CONFIRMADA' : 'PENDIENTE',
+      };
+    }
 
     // Preparar contexto persistente
     const inputPayload = JSON.stringify({
@@ -234,11 +405,34 @@ export class BuyerEvaluationService {
       });
     }
 
+    // VALIDACIÓN DE PERTENENCIA DEL CONTEXTO (Punto 2)
+    let safeContext = input.contextoConversacional;
+    if (safeContext?.idInteraccionPrevia) {
+      const prevInt = await (db as any).interacciones.findUnique({
+        where: { id_interaccion: Number(safeContext.idInteraccionPrevia) },
+        select: { id_persona: true, mensaje: true },
+      });
+      if (prevInt && prevInt.id_persona !== id_persona) {
+        console.warn(
+          `[BuyerEvaluationService] Rechazo de contexto cruzado: id_interaccion_previa=${safeContext.idInteraccionPrevia} pertenece a persona ${prevInt.id_persona}, no a ${id_persona}`
+        );
+        safeContext = undefined;
+      }
+    }
+
     // 3. Ejecutar clasificación fuera de la transacción SQL
-    // Si hay contexto de aclaración de dos turnos, enriquecer el prompt
+    // Si hay contexto de aclaración, enriquecer el prompt con: mensaje anterior, pregunta del agente y respuesta actual (Punto 2)
     let textToClassify = mensaje;
-    if (input.contextoConversacional?.mensajeAnterior) {
-      textToClassify = `Consulta previa del paciente: "${input.contextoConversacional.mensajeAnterior}". Aclaración o respuesta actual: "${mensaje}"`;
+    if (safeContext) {
+      const parts: string[] = [];
+      if (safeContext.mensajeAnterior) {
+        parts.push(`Mensaje anterior del paciente: "${safeContext.mensajeAnterior}"`);
+      }
+      if (safeContext.aclaracionPrevia) {
+        parts.push(`Pregunta u orientación del agente: "${safeContext.aclaracionPrevia}"`);
+      }
+      parts.push(`Respuesta actual del paciente: "${mensaje}"`);
+      textToClassify = parts.join('\n');
     }
 
     let classification: BuyerClassificationResult;
@@ -409,41 +603,37 @@ export class BuyerEvaluationService {
         };
       }
 
-      // REGLA 5: Si el contacto ya está en una etapa posterior (LEAD, PAYER, CUSTOMER, TURNED)
+      // REGLA 5 (Punto 3): Si el contacto ya está en una etapa posterior (LEAD, PAYER, CUSTOMER, TURNED)
       if (currentStageName !== 'BUYER') {
-        const hasEvidence = hasContextualEvidenceForOpportunity(mensaje, input.motivo_consulta);
+        const resolution = await resolveExplicitSolicitud(
+          `${mensaje} ${input.motivo_consulta || ''}`,
+          id_persona,
+          db
+        );
 
-        if (hasEvidence) {
-          // Vinculación únicamente cuando exista evidencia contextual
-          const existingOpenSolicitud = await db.solicitudes.findFirst({
-            where: { id_persona, estado: 'Abierta' },
-            select: { id_solicitud: true },
-            orderBy: { id_solicitud: 'desc' },
-          });
+        if (resolution.resolved && resolution.id_solicitud) {
+          // Solicitud explícita resuelta y comprobada su pertenencia
+          await (db as any).$executeRaw`
+            UPDATE dbo.Interacciones
+            SET id_solicitud = ${resolution.id_solicitud},
+                resultado = ${`Mensaje vinculado a solicitud explícita #${resolution.id_solicitud}`}
+            WHERE id_interaccion = ${id_interaccion}
+          `;
 
-          if (existingOpenSolicitud) {
-            await db.$executeRaw`
-              UPDATE dbo.Interacciones
-              SET id_solicitud=${existingOpenSolicitud.id_solicitud}, resultado='Mensaje vinculado a oportunidad existente por evidencia contextual'
-              WHERE id_interaccion=${id_interaccion}
-            `;
-          }
-
-          await db.decisionesIA.update({
+          await (db as any).decisionesIA.update({
             where: { id_decision: decisionRecord.id_decision },
             data: {
               decision: JSON.stringify({
                 estado: 'COMPLETADA',
                 intencion,
                 id_servicio: effectiveServiceId,
+                id_solicitud: resolution.id_solicitud,
                 intentosRealizados,
-                intentos_realizados: intentosRealizados,
                 duracionTotalMs,
-                duracion_total_ms: duracionTotalMs,
               }),
               accion: 'CONSERVA_ETAPA_POSTERIOR',
               requiere_revision: false,
-              resultado_revision: `Contacto en etapa ${currentStageName}. Se conserva etapa; mensaje vinculado a oportunidad abierta previa por evidencia contextual.`,
+              resultado_revision: `Contacto en etapa ${currentStageName}. Solicitud explícita #${resolution.id_solicitud} verificada y vinculada. Se conserva etapa.`,
             },
           });
 
@@ -457,16 +647,15 @@ export class BuyerEvaluationService {
             id_servicio: effectiveServiceId,
             accion: 'CONSERVA_ETAPA_POSTERIOR',
             etapa_final: currentStageName,
-            id_solicitud: existingOpenSolicitud?.id_solicitud ?? null,
+            id_solicitud: resolution.id_solicitud,
             intentosRealizados,
-            intentos_realizados: intentosRealizados,
             duracionTotalMs,
-            duracion_total_ms: duracionTotalMs,
             entregaLeadEstado: 'NO_APLICA',
           };
         } else {
-          // Sin evidencia contextual hacia la oportunidad anterior: mantener nueva solicitud pendiente de apertura
-          await db.decisionesIA.update({
+          // Referencia dudosa o nueva solicitud sin código verificado:
+          // Se mantiene como SOLICITUD_PENDIENTE_APERTURA evitando vincular ciegamente la última solicitud
+          await (db as any).decisionesIA.update({
             where: { id_decision: decisionRecord.id_decision },
             data: {
               decision: JSON.stringify({
@@ -474,13 +663,12 @@ export class BuyerEvaluationService {
                 intencion,
                 id_servicio: effectiveServiceId,
                 intentosRealizados,
-                intentos_realizados: intentosRealizados,
                 duracionTotalMs,
-                duracion_total_ms: duracionTotalMs,
+                motivoPendiente: resolution.motivoDuda || 'Referencia dudosa a solicitud o nueva oportunidad pendiente',
               }),
               accion: 'SOLICITUD_PENDIENTE_APERTURA',
               requiere_revision: true,
-              resultado_revision: `Contacto en etapa ${currentStageName} solicitó nuevo servicio sin referencia a oportunidad previa. Pendiente de apertura de nueva solicitud por LEAD.`,
+              resultado_revision: `Contacto en etapa ${currentStageName}. ${resolution.motivoDuda || 'Referencia dudosa a solicitud'}. Queda pendiente de apertura formal.`,
             },
           });
 
@@ -496,9 +684,7 @@ export class BuyerEvaluationService {
             etapa_final: currentStageName,
             id_solicitud: null,
             intentosRealizados,
-            intentos_realizados: intentosRealizados,
             duracionTotalMs,
-            duracion_total_ms: duracionTotalMs,
             entregaLeadEstado: 'NO_APLICA',
           };
         }
@@ -731,13 +917,42 @@ export class BuyerEvaluationService {
       throw new Error(`No se encontró captación Buyer asociada a la persona ${interaction.id_persona}.`);
     }
 
+    // RECONSTRUCCIÓN DESDE LA ENTRADA PERSISTIDA (Punto 2):
+    // Reconstruye el servicio declarado, contexto y motivo desde la decisión previa
+    const priorDecision = await db.decisionesIA.findFirst({
+      where: { agente: 'BUYER', id_interaccion },
+      orderBy: { id_decision: 'desc' },
+    });
+
+    let reconstructedServiceId: number | null = capture.id_servicio;
+    let reconstructedContext: BuyerClarificationContext | null = null;
+    let reconstructedMotivo: string | null = capture.motivo_consulta;
+
+    if (priorDecision?.entrada) {
+      try {
+        const parsedEntrada = JSON.parse(priorDecision.entrada);
+        if (parsedEntrada.id_servicio_declarado !== undefined) {
+          reconstructedServiceId = parsedEntrada.id_servicio_declarado;
+        }
+        if (parsedEntrada.contextoConversacional) {
+          reconstructedContext = parsedEntrada.contextoConversacional;
+        }
+        if (parsedEntrada.motivo_consulta) {
+          reconstructedMotivo = parsedEntrada.motivo_consulta;
+        }
+      } catch {
+        // En caso de parse corrupto, conservar valores de captura
+      }
+    }
+
     return this.evaluateBuyerInteraction({
       id_persona: interaction.id_persona,
       id_captacion: capture.id_captacion,
       id_interaccion: interaction.id_interaccion,
       mensaje: interaction.mensaje || '',
-      id_servicio_declarado: capture.id_servicio,
-      motivo_consulta: capture.motivo_consulta,
+      id_servicio_declarado: reconstructedServiceId,
+      motivo_consulta: reconstructedMotivo,
+      contextoConversacional: reconstructedContext || undefined,
       dbClient: db,
       classifierOverride: options?.classifierOverride,
       classifierOptions: options?.classifierOptions,
