@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { Router, type Request, type Response } from 'express';
 import { createHash, randomBytes } from 'node:crypto';
 import { prisma } from '../db';
+import { classifyLeadChat, LeadGeminiError } from '../services/leadGemini';
 import { getLeadStaffIdentity, leadStaffAuthEnabled, leadStaffAuthMode, loginLeadStaff, logoutLeadStaff, type LeadStaffIdentity } from '../services/leadStaffAuth';
 
 export const leadCommercialRouter = Router();
@@ -151,8 +152,13 @@ chat.post('/staff/:id/access', route(async (req, res) => {
   res.status(201).json({ token });
 }));
 
-function chatMessages(staff: boolean, action: 'messages' | 'proposals' | 'review' = 'messages') {
+const geminiSuggestions = new Map<string, Awaited<ReturnType<typeof classifyLeadChat>>>();
+let geminiNextRequest = 0;
+let geminiBusy = false;
+
+function chatMessages(staff: boolean, action: 'messages' | 'proposals' | 'review' | 'suggestion' = 'messages') {
   return route(async (req, res) => {
+    if (action === 'suggestion' && process.env.LEAD_GEMINI_QA !== 'true') return res.sendStatus(404);
     const requestId = id(req.params.id);
     const sender = staff ? 'PERSONAL' : 'PACIENTE';
     const result = await prisma.$transaction(async tx => {
@@ -207,6 +213,21 @@ function chatMessages(staff: boolean, action: 'messages' | 'proposals' | 'review
       }
       if (staff && req.method === 'POST' && review?.pausado) {
         throw new InputError('El seguimiento está pausado por revisión humana.', 409);
+      }
+      if (action === 'suggestion') {
+        if (!access.activo) throw new InputError('La conversación no está activa.', 409);
+        if (req.body?.datos_sinteticos !== true) throw new InputError('Confirma que la conversación contiene solo datos sintéticos de QA.');
+        const messageId = id(req.body?.id_mensaje);
+        const context = await tx.$queryRaw<{ id_mensaje: number; remitente: string; texto: string }[]>`
+          SELECT TOP (4) id_mensaje, remitente, LEFT(texto, 500) AS texto
+          FROM dbo.MensajesChatLead
+          WHERE id_solicitud = ${requestId} AND id_mensaje <= ${messageId}
+          ORDER BY id_mensaje DESC
+        `;
+        if (context[0]?.id_mensaje !== messageId || context[0].remitente !== 'PACIENTE') {
+          throw new InputError('Selecciona un mensaje del paciente de esta conversación.', 404);
+        }
+        return { geminiContext: context.reverse().map(({ remitente, texto }) => ({ remitente, texto })), messageId };
       }
       if (action === 'proposals') {
         if (!access.activo) throw new InputError('La conversación no admite decisiones.', 409);
@@ -299,7 +320,32 @@ function chatMessages(staff: boolean, action: 'messages' | 'proposals' | 'review
       `;
       return saved;
     }, serializable);
-    res.json(result);
+    if (!('geminiContext' in result) || !result.geminiContext) return res.json(result);
+    const model = process.env.LEAD_GEMINI_MODEL ?? '';
+    const cacheKey = `${requestId}:${result.messageId}:${model}`;
+    const cached = geminiSuggestions.get(cacheKey);
+    if (cached) return res.json(cached);
+    if (geminiBusy || Date.now() < geminiNextRequest) {
+      res.set('Retry-After', '60');
+      throw new InputError('Espera antes de solicitar otra sugerencia.', 429);
+    }
+    geminiBusy = true;
+    try {
+      const suggestion = await classifyLeadChat(result.geminiContext, { model, key: process.env.GEMINI_API_KEY ?? '' });
+      if (geminiSuggestions.size >= 256) {
+        const oldest = geminiSuggestions.keys().next().value;
+        if (oldest !== undefined) geminiSuggestions.delete(oldest);
+      }
+      geminiSuggestions.set(cacheKey, suggestion);
+      return res.json(suggestion);
+    } catch (error) {
+      if (!(error instanceof LeadGeminiError)) throw error;
+      if (error.status === 429) res.set('Retry-After', '60');
+      throw new InputError(error.message, error.status);
+    } finally {
+      geminiNextRequest = Date.now() + 60_000;
+      geminiBusy = false;
+    }
   });
 }
 
@@ -309,6 +355,7 @@ chat.get('/patient/:id/proposals', chatMessages(false, 'proposals'));
 chat.post('/patient/:id/proposals/:proposal/accept', chatMessages(false, 'proposals'));
 chat.post('/staff/:id/proposals/:proposal', chatMessages(true, 'proposals'));
 chat.route('/staff/:id/review').get(chatMessages(true, 'review')).patch(chatMessages(true, 'review'));
+chat.post('/staff/:id/suggestion', chatMessages(true, 'suggestion'));
 
 router.patch('/opportunities/:id/follow-up', route(async (req, res) => {
   if (!leadStaffAuthEnabled()) return res.sendStatus(404);
