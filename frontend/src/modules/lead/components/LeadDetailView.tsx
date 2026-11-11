@@ -324,13 +324,17 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   const offeredSlot = matchingOfferSlots.find(
     (slot: any) => String(slot.id_disponibilidad) === selectedDisponibilidadId
   );
+  const requestedServiceId = lead?.Solicitudes?.[0]?.id_servicio == null
+    ? ''
+    : String(lead.Solicitudes[0].id_servicio);
 
   const handleAddAlternative = async () => {
     const errors: Record<string, string> = {};
     const ultimaSolicitud = lead?.Solicitudes?.[0];
-    if (!selectedServicioId) errors.servicio = 'Selecciona un servicio odontológico.';
-    else if (String(ultimaSolicitud?.id_servicio ?? '') !== selectedServicioId) {
-      errors.servicio = 'El tratamiento ofrecido debe ser el de la solicitud LEAD.';
+    if (!requestedServiceId) {
+      errors.servicio = 'Esta solicitud no tiene un tratamiento registrado; corrígelo antes de ofrecer una propuesta.';
+    } else if (selectedServicioId !== requestedServiceId) {
+      errors.servicio = 'El tratamiento ofrecido debe coincidir con el de la solicitud LEAD.';
     }
     if (selectedVigencia === 'custom' && !selectedVigenciaCustom) {
       errors.vigencia = 'Selecciona la fecha hasta la que será válida la propuesta.';
@@ -402,6 +406,9 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
       });
     } catch (error) {
       void fetchLeadData();
+      setOfferErrors({
+        envio: error instanceof Error ? error.message : 'No se pudo guardar la propuesta. Revisa los datos e inténtalo de nuevo.',
+      });
       toast({
         title: 'Error al registrar propuesta',
         description: error instanceof Error ? error.message : 'No se pudo guardar la alternativa comercial.',
@@ -1437,6 +1444,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                   </label>
                   <select
                     value={selectedServicioId}
+                    disabled={Boolean(requestedServiceId)}
                     onChange={(e) => {
                       const val = e.target.value;
                       setSelectedServicioId(val);
@@ -1459,6 +1467,14 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                       </option>
                     ))}
                   </select>
+                  {requestedServiceId && (
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      Tratamiento fijado por la solicitud LEAD.
+                    </p>
+                  )}
+                  {offerErrors.servicio && (
+                    <p role="alert" className="mt-1 text-xs text-rose-600">{offerErrors.servicio}</p>
+                  )}
                 </div>
 
                 <div>
@@ -1683,6 +1699,9 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                     </span>
                   </button>
                 </div>
+                {offerErrors.envio && (
+                  <p role="alert" className="text-sm text-rose-600">{offerErrors.envio}</p>
+                )}
               </div>
             </section>
 
