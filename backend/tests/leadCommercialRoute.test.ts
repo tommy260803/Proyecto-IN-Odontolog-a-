@@ -19,11 +19,13 @@ const { tx, db } = vi.hoisted(() => {
 vi.mock('../src/db', () => ({ prisma: db }));
 
 import { leadCommercialRouter } from '../src/routes/leadCommercial.routes';
+import leadRoutes from '../src/routes/lead.routes';
 import { hashLeadStaffPassword } from '../src/services/leadStaffAuth';
 
 const app = express();
 app.use(express.json());
 app.use('/commercial', leadCommercialRouter);
+app.use('/legacy-lead', leadRoutes);
 let server: ReturnType<typeof app.listen>;
 let url: string;
 
@@ -168,6 +170,41 @@ test('la sesión QA exige una contraseña verificada y restringe al negociador a
     expect(tx.solicitudes.update).toHaveBeenCalledTimes(1);
     expect((await fetch(url + '/staff/session', { method: 'DELETE', headers })).status).toBe(204);
     expect((await fetch(url + path, { headers })).status).toBe(401);
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
+test('el modo operativo exige credenciales reales y bloquea escrituras comerciales heredadas', async () => {
+  vi.stubEnv('LEAD_STAFF_AUTH_QA', 'false');
+  vi.stubEnv('LEAD_STAFF_AUTH_ENABLED', 'true');
+  try {
+    const password = 'contraseña operativa de prueba';
+    const user = { id_usuario: 8, nombres: 'Operador', apellidos: 'Real', activo: true,
+      Rol: { nombre: 'Administrador' }, password_hash: await hashLeadStaffPassword(password) };
+    db.usuarios.findUnique.mockResolvedValue(user);
+    tx.usuarios.findUnique.mockResolvedValue(user);
+    tx.$queryRaw.mockResolvedValue([{ ingreso: new Date() }]);
+
+    const legacy = await post('/opportunities/12/proposals', { precio_cotizado: '100.00' });
+    expect(legacy.status).toBe(410);
+    expect((await fetch(url.replace('/commercial', '/legacy-lead/12/abandon'), { method: 'POST' })).status).toBe(410);
+    expect(db.$transaction).not.toHaveBeenCalled();
+
+    expect((await post('/opportunities/12/alternatives', {
+      id_disponibilidad: 1, id_sede: 1, id_profesional: 1, dia: '2026-12-03',
+      inicio_exacto: '09:00:00.0000000', fin_exacto: '10:00:00.0000000',
+      precio_ofrecido: '100.00', turno_ofrecido: 'Mañana', opciones_esperadas: [],
+    })).status).toBe(401);
+    expect((await post('/staff/session', { email: 'operador@example.invalid', password: 'incorrecta' })).status).toBe(401);
+    const login = await post('/staff/session', { email: 'operador@example.invalid', password });
+    expect(login.status).toBe(200);
+    const session = await login.json();
+    const access = await fetch(url + '/opportunities/12/staff-access', {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    expect(access.status).toBe(200);
+    expect(tx.$queryRaw.mock.calls.some(([query]) => String(query).includes('DB_NAME()'))).toBe(false);
   } finally {
     vi.unstubAllEnvs();
   }

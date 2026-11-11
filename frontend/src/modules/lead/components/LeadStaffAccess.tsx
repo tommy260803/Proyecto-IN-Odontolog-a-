@@ -4,8 +4,8 @@ import LeadFollowUpForm from './LeadFollowUpForm';
 const root = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api') + '/lead/commercial';
 type Session = { token: string; expira_en: string; usuario: { nombres: string; apellidos: string; rol: string } };
 
-export default function LeadStaffAccess({ requestId, currentFollowUp, editable, onToken }: {
-  requestId: string; currentFollowUp: string | null; editable: boolean;
+export default function LeadStaffAccess({ requestId, currentFollowUp, editable, onToken, qa = false }: {
+  requestId: string; currentFollowUp: string | null; editable: boolean; qa?: boolean;
   onToken: (token: string | null) => void;
 }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -13,7 +13,7 @@ export default function LeadStaffAccess({ requestId, currentFollowUp, editable, 
   const [error, setError] = useState('');
   return (
     <section className="space-y-2 rounded-lg border bg-white p-4" aria-label="Acceso del personal LEAD">
-      <h2 className="font-semibold">Verificar acceso del personal en QA</h2>
+      <h2 className="font-semibold">{qa ? 'Verificar acceso del personal en QA' : 'Acceso del personal LEAD'}</h2>
       {session ? (
         <>
           <p>{session.usuario.nombres} {session.usuario.apellidos} · {session.usuario.rol}</p>

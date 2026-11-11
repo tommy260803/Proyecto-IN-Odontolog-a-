@@ -37,8 +37,16 @@ function publicIdentity(user: { id_usuario: number; nombres: string; apellidos: 
 
 export type LeadStaffIdentity = ReturnType<typeof publicIdentity>;
 
+export type LeadStaffAuthMode = 'disabled' | 'qa' | 'enabled';
+
+export function leadStaffAuthMode(): LeadStaffAuthMode {
+  if (process.env.LEAD_STAFF_AUTH_QA === 'true') return 'qa';
+  if (process.env.LEAD_STAFF_AUTH_ENABLED === 'true') return 'enabled';
+  return 'disabled';
+}
+
 export function leadStaffAuthEnabled() {
-  return process.env.LEAD_STAFF_AUTH_QA === 'true';
+  return leadStaffAuthMode() !== 'disabled';
 }
 
 async function isQaDatabase(db: Prisma.TransactionClient = prisma) {
@@ -47,7 +55,8 @@ async function isQaDatabase(db: Prisma.TransactionClient = prisma) {
 }
 
 export async function loginLeadStaff(req: Request, res: Response) {
-  if (!leadStaffAuthEnabled()) return res.sendStatus(404);
+  const mode = leadStaffAuthMode();
+  if (mode === 'disabled') return res.sendStatus(404);
   res.set('Cache-Control', 'no-store');
   const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   const password = req.body?.password;
@@ -65,7 +74,7 @@ export async function loginLeadStaff(req: Request, res: Response) {
   attempts.set(ip, { ...attempt, count: attempt.count + 1 });
   inProgress++;
   try {
-    if (!await isQaDatabase()) return res.sendStatus(404);
+    if (mode === 'qa' && !await isQaDatabase()) return res.sendStatus(404);
     const user = await prisma.usuarios.findUnique({ where: { email }, select: staffFields });
     const match = user?.password_hash.match(credentialFormat);
     const key = await derive(password, match ? Buffer.from(match[1], 'hex') : Buffer.alloc(16));
@@ -97,9 +106,11 @@ export function logoutLeadStaff(req: Request, res: Response) {
 }
 
 export async function getLeadStaffIdentity(req: Request, tx: Prisma.TransactionClient) {
+  const mode = leadStaffAuthMode();
+  if (mode === 'disabled') return null;
   const key = sessionKey(req);
   const session = key ? sessions.get(key) : undefined;
-  if (key && session && session.expires > Date.now() && await isQaDatabase(tx)) {
+  if (key && session && session.expires > Date.now() && (mode !== 'qa' || await isQaDatabase(tx))) {
     const user = await tx.usuarios.findUnique({ where: { id_usuario: session.id }, select: staffFields });
     if (user?.activo && eligibleRoles.has(user.Rol.nombre) && digest(user.password_hash) === session.credential) {
       return publicIdentity(user);

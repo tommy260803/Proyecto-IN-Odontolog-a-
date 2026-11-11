@@ -59,8 +59,10 @@ export default function LeadOpportunityPage() {
           <LeadActivity key={`activity-${idSolicitud}`} data={data} requestId={idSolicitud} token={editAccess?.token} />
           <LeadPayerReadiness key={`payer-${idSolicitud}`} requestId={idSolicitud}
             token={access?.requestId === idSolicitud ? access.token : undefined} />
-          {import.meta.env.VITE_LEAD_STAFF_AUTH_QA === 'true' &&
+          {(import.meta.env.VITE_LEAD_STAFF_AUTH_QA === 'true' ||
+            import.meta.env.VITE_LEAD_STAFF_AUTH_ENABLED === 'true') &&
             <LeadStaffAccess key={`staff-${idSolicitud}`} requestId={idSolicitud}
+              qa={import.meta.env.VITE_LEAD_STAFF_AUTH_QA === 'true'}
               onToken={token => setAccess(token ? { requestId: idSolicitud, token } : null)}
               currentFollowUp={data.oportunidad.fecha_proximo_seguimiento}
               editable={!data.oportunidad.archivada_lead_en &&

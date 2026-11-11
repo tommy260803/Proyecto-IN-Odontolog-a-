@@ -1,11 +1,26 @@
 import { Prisma } from '@prisma/client';
 import { Router, type Request, type Response } from 'express';
 import { prisma } from '../db';
-import { getLeadStaffIdentity, leadStaffAuthEnabled, loginLeadStaff, logoutLeadStaff, type LeadStaffIdentity } from '../services/leadStaffAuth';
+import { getLeadStaffIdentity, leadStaffAuthEnabled, leadStaffAuthMode, loginLeadStaff, logoutLeadStaff, type LeadStaffIdentity } from '../services/leadStaffAuth';
 
 export const leadCommercialRouter = Router();
 const router = leadCommercialRouter;
 const serializable = { isolationLevel: Prisma.TransactionIsolationLevel.Serializable } as const;
+
+// Once real staff authentication is enabled, refuse the older unauthenticated
+// mutation contracts. The workspace's staff routes below remain available and
+// verify both the session and request assignment inside their transaction.
+router.use((req, res, next) => {
+  if (leadStaffAuthMode() !== 'enabled' || ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ||
+      req.path === '/staff/session') return next();
+  const supported =
+    (req.method === 'PATCH' && /^\/opportunities\/\d+\/(follow-up|alternatives\/\d+)$/.test(req.path)) ||
+    (req.method === 'POST' && /^\/opportunities\/\d+\/alternatives$/.test(req.path)) ||
+    (req.method === 'POST' && /^\/opportunities\/\d+\/staff\/(reservation-authorization|payer-transfer|interactions|proposals|outcome)$/.test(req.path)) ||
+    (req.method === 'POST' && /^\/opportunities\/\d+\/staff\/proposals\/\d+\/decision$/.test(req.path));
+  if (supported) return next();
+  return res.status(410).json({ error: 'Esta operación LEAD heredada está deshabilitada; utiliza el espacio comercial autenticado.' });
+});
 
 class InputError extends Error {
   constructor(message: string, readonly status = 400) { super(message); }
