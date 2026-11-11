@@ -3,6 +3,7 @@ import cors from 'cors';
 import { prisma } from './db';
 import buyerRoutes from './routes/buyer.routes';
 import leadRoutes from './routes/lead.routes';
+import { leadFollowUpRouter } from './routes/leadFollowUp.routes';
 import payerRoutes from './routes/payer.routes';
 import paymentRoutes from './routes/payment.routes';
 import customerRoutes from './routes/customer.routes';
@@ -20,6 +21,7 @@ app.use(express.json());
 
 // Registrar rutas
 app.use('/api/buyer', buyerRoutes);
+app.use('/api/lead/operational', leadFollowUpRouter);
 app.use('/api/lead', leadRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/payer', payerRoutes);
