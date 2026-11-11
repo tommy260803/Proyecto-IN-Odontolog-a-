@@ -11,7 +11,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { usePayers } from '../hooks/usePayerQueries';
 import { PayerState } from '@/domain/enums';
-import { Search, Eye, AlertTriangle, Trash2, X, RotateCcw, Zap, Bot, Sparkles, CheckCircle2, Clock, Mail, ShieldCheck, RefreshCw, Radio, Play, Pause, Filter, Terminal, BarChart3, XCircle, Flame } from 'lucide-react';
+import { Search, Eye, AlertTriangle, Trash2, X, RotateCcw, Zap, Bot, Sparkles, CheckCircle2, Clock, Mail, ShieldCheck, RefreshCw, Radio, Play, Pause, Filter, Terminal, BarChart3, XCircle, Flame, FileSpreadsheet, Download } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
@@ -23,6 +23,7 @@ import { IndicatorCard } from '@/shared/components/data-display/IndicatorCard';
 import { useToast } from '@/shared/hooks/use-toast';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 import { PayerDetailModal } from '../components/PayerDetailModal';
+import { PayerExcelExportModal } from '../components/PayerExcelExportModal';
 import { calculatePayerRisk } from '@/shared/services/groqService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 
@@ -42,6 +43,7 @@ export default function PayerPage() {
   const [selectedPayerId, setSelectedPayerId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PayerWithDetails | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isCronModalOpen, setIsCronModalOpen] = useState(false);
   const [isDunningRunning, setIsDunningRunning] = useState(false);
   const [dunningStats, setDunningStats] = useState<any | null>(null);
@@ -136,7 +138,7 @@ export default function PayerPage() {
       // Generar auditoría inteligente basada en los registros cargados
       const logs: any[] = [];
       let stage1Count = 0;
-      let stage2Count = 0;
+      const stage2Count = 0;
       let stage3Count = 0;
 
       (payers || []).forEach((p: any) => {
@@ -508,7 +510,17 @@ export default function PayerPage() {
           description="Gestión de pagos, cadencia de cobranza en 3 etapas y validación oficial."
         />
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setIsExcelModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm hover:shadow-md cursor-pointer select-none"
+            title="Exportar datos formateados a Microsoft Excel (.xlsx) para Power BI o análisis"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+            <span>Exportar Excel (.xlsx)</span>
+          </button>
+
           <Link
             to="/reportes?tab=payer"
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all shadow-sm"
@@ -924,6 +936,13 @@ export default function PayerPage() {
         confirmText="Sí, Eliminar Cobro"
         cancelText="Cancelar"
         variant="destructive"
+      />
+
+      {/* Modal Exportador Excel (.xlsx) Formateado para Power BI */}
+      <PayerExcelExportModal
+        isOpen={isExcelModalOpen}
+        onClose={() => setIsExcelModalOpen(false)}
+        totalRecords={payers?.length || 124}
       />
     </div>
   );

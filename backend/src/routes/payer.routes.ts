@@ -5,9 +5,36 @@ import { createPaymentDocumentPdf } from '../pdf/paymentDocument';
 import { readFileSync } from 'fs';
 import path from 'path';
 import { runDunningCycle, getLastExecutionStats } from '../services/dunningScheduler';
+import { generatePayerConsolidatedExcel, generatePayerFullBiWorkbook } from '../services/payerExcelExportService';
 
 const router = Router();
 const paymentLogoDataUrl = `data:image/png;base64,${readFileSync(path.resolve(__dirname, '../../assets/Logo_NexoSalud.png')).toString('base64')}`;
+
+// Endpoint para exportación formal a Excel (.xlsx) con estilos y formato corporativo
+router.get('/export/excel', async (req, res) => {
+  try {
+    const type = (req.query.type as string) || 'general';
+    let buffer: Buffer;
+    let filename: string;
+    const dateStr = new Date().toISOString().slice(0, 10);
+
+    if (type === 'full_bi' || type === 'multitab') {
+      buffer = await generatePayerFullBiWorkbook();
+      filename = `PAYER_Libro_Completo_BI_${dateStr}.xlsx`;
+    } else {
+      buffer = await generatePayerConsolidatedExcel();
+      filename = `PAYER_Consolidado_General_${dateStr}.xlsx`;
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', buffer.length.toString());
+    res.end(buffer);
+  } catch (error: any) {
+    console.error('Error generando exportación Excel de PAYER:', error);
+    res.status(500).json({ error: error.message || 'Error al generar Excel' });
+  }
+});
 
 // Ejecutar manualmente el ciclo de cobranza en 3 etapas (Dunning Cron)
 router.post('/run-dunning-cycle', async (req, res) => {

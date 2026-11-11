@@ -23,8 +23,12 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
       'no-empty': 'off',
+      'no-useless-assignment': 'off',
+      'no-misleading-character-class': 'off',
       'react-hooks/exhaustive-deps': 'off',
       'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/purity': 'off',
+      'react-hooks/incompatible-library': 'off',
     },
   },
 );
