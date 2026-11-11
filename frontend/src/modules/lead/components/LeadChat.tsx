@@ -38,6 +38,9 @@ export function LeadChat({ requestId, token, staff = false, shareable = [], onPr
   const [review, setReview] = useState<{ id_revision: number; pausado: boolean; motivo: string } | null | undefined>();
   const [reviewReason, setReviewReason] = useState('');
   const [reviewBusy, setReviewBusy] = useState(false);
+  const [suggestion, setSuggestion] = useState<{ id: number; text: string; editable: boolean } | null>(null);
+  const [suggestionBusy, setSuggestionBusy] = useState(false);
+  const showSuggestions = staff && import.meta.env.VITE_LEAD_GEMINI_QA === 'true';
   const paused = staff && review?.pausado === true;
   const pending = useRef<{ clave: string; texto: string } | null>(null);
   const endpoint = api + '/lead/commercial/chat/' + (staff ? 'staff/' : 'patient/') + requestId;
@@ -164,6 +167,22 @@ export function LeadChat({ requestId, token, staff = false, shareable = [], onPr
     }
   }
 
+  async function requestSuggestion(messageId: number) {
+    if (!showSuggestions || paused || suggestionBusy ||
+        !window.confirm('¿Confirmas que toda esta conversación usa datos ficticios de QA? Se enviará un fragmento del chat a Gemini.')) return;
+    setSuggestionBusy(true);
+    setSuggestion(null);
+    setError('');
+    try {
+      const result = await call('POST', '/suggestion', { id_mensaje: messageId, datos_sinteticos: true });
+      setSuggestion({ id: messageId, text: result.sugerencia, editable: result.intencion !== 'REVISION' });
+    } catch (failure) {
+      if (failure instanceof Error) setError(failure.message);
+    } finally {
+      setSuggestionBusy(false);
+    }
+  }
+
   return <section className="space-y-3 rounded-lg border bg-white p-4">
     <h2 className="text-lg font-semibold">Conversación LEAD</h2>
     {staff && <button type="button" className="underline" onClick={() => void issueAccess()}>Generar enlace temporal de QA</button>}
@@ -199,8 +218,19 @@ export function LeadChat({ requestId, token, staff = false, shareable = [], onPr
         <strong>{message.remitente === 'PACIENTE' ? 'Paciente' : 'Equipo LEAD'}</strong>
         <p className="whitespace-pre-wrap break-words">{message.texto}</p>
         {message.remitente === own && <small>{message.recibido_utc ? 'Recibido' : 'Publicado'}</small>}
+        {showSuggestions && message.remitente === 'PACIENTE' && <div className="mt-2 space-y-2">
+          <button type="button" className="underline disabled:opacity-50" disabled={paused || suggestionBusy}
+            onClick={() => void requestSuggestion(message.id_mensaje)}>Pedir sugerencia a Gemini</button>
+          {suggestion?.id === message.id_mensaje && !paused && <div className="rounded border bg-white p-2">
+            <p role="status">{suggestion.text}</p>
+            {suggestion.editable && <button type="button" className="underline disabled:opacity-50"
+              disabled={sending || pending.current !== null || Boolean(draft.trim())}
+              onClick={() => setDraft(suggestion.text)}>Usar como borrador</button>}
+          </div>}
+        </div>}
       </li>)}
     </ol>
+    {suggestionBusy && <p role="status">Consultando a Gemini…</p>}
     <form className="space-y-2" onSubmit={send}>
       <label className="block">Mensaje
         <textarea className="block w-full rounded border p-2" value={draft} maxLength={2000}
