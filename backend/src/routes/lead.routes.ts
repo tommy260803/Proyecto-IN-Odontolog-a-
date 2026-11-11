@@ -24,7 +24,6 @@ class LeadConflict extends Error {}
 function bookableSlot(serviceId?: number | null): Prisma.DisponibilidadWhereInput {
   const lima = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
   const day = new Date(lima.slice(0, 10) + 'T00:00:00Z');
-  const time = new Date('1970-01-01T' + lima.slice(11));
   return {
     estado: 'Disponible',
     Profesional: { activo: true, ProfesionalServicio: { some: {
@@ -33,8 +32,26 @@ function bookableSlot(serviceId?: number | null): Prisma.DisponibilidadWhereInpu
     } } },
     Sede: { activo: true },
     Opciones: { none: { Reservas: { some: { estado: { notIn: ['Cancelada', 'Vencida'] } } } } },
-    AND: [{ OR: [{ fecha: { gt: day } }, { fecha: day, hora_inicio: { gt: time } }] }],
+    // SQL Server cannot compare a `time` column to Prisma's datetimeoffset parameter.
+    // Filter by calendar day here, then compare today's clock in application code.
+    fecha: { gte: day },
   };
+}
+
+function sqlDateKey(value: Date | string): string {
+  return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
+}
+
+function sqlTimeKey(value: Date | string): string {
+  const raw = value instanceof Date ? value.toISOString() : String(value);
+  return raw.includes('T') ? raw.slice(11, 19) : raw.slice(0, 8);
+}
+
+function isUpcomingLimaSlot(slot: { fecha: Date | string; hora_inicio: Date | string }): boolean {
+  const nowLima = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
+  const slotDay = sqlDateKey(slot.fecha);
+  const todayLima = nowLima.slice(0, 10);
+  return slotDay > todayLima || (slotDay === todayLima && sqlTimeKey(slot.hora_inicio) > nowLima.slice(11, 19));
 }
 
 function leadError(error: unknown, res: import('express').Response) {
@@ -73,11 +90,11 @@ router.get('/options/availability', async (req, res) => {
           }
         }
       });
-      const disponibilidades = await prisma.disponibilidad.findMany({
+      const disponibilidades = (await prisma.disponibilidad.findMany({
         where: bookableSlot(),
         include: { Profesional: { include: { ProfesionalServicio: { select: { id_servicio: true } } } }, Sede: true },
         orderBy: [{ fecha: 'asc' }, { hora_inicio: 'asc' }, { id_disponibilidad: 'asc' }],
-      });
+      })).filter(isUpcomingLimaSlot);
       return { profesionales, sedes, servicios, disponibilidades };
     });
 
@@ -111,7 +128,9 @@ router.put('/options/:id_opcion', async (req, res) => {
           hora_inicio: current.hora_inicio, hora_fin: current.hora_fin, estado: 'Disponible',
         },
       });
-      if (!slot || slot.estado !== 'Disponible') throw new LeadConflict('Selecciona un horario disponible.');
+      if (!slot || slot.estado !== 'Disponible' || !isUpcomingLimaSlot(slot)) {
+        throw new LeadConflict('Selecciona un horario disponible.');
+      }
       const price = precio_ofrecido === undefined ? option.precio_ofrecido : new Prisma.Decimal(precio_ofrecido);
       if (!price.isFinite() || price.lt(0) || price.gte(100000000) || price.decimalPlaces() > 2) {
         throw new LeadConflict('El precio debe tener hasta dos decimales y estar entre 0 y 99999999.99.');
@@ -227,8 +246,11 @@ router.post('/:id/reserve', async (req, res) => {
           Solicitud: { id_persona: Number(id), archivada_lead_en: null, Persona: { Etapa: { nombre: 'LEAD' } } },
           Disponibilidad: bookableSlot(), Reservas: { none: {} },
         },
+        include: { Disponibilidad: true },
       });
-      if (!eligible) throw new LeadConflict('La alternativa no está disponible para esta negociación.');
+      if (!eligible || !isUpcomingLimaSlot(eligible.Disponibilidad)) {
+        throw new LeadConflict('La alternativa no está disponible para esta negociación.');
+      }
       const opcion = await tx.opciones.update({
         where: { id_opcion: Number(id_opcion) },
         data: {
@@ -623,7 +645,7 @@ router.post('/:id/alternative', async (req, res) => {
           ...bookableSlot(request.id_servicio), id_disponibilidad: Number(id_disponibilidad),
         },
       });
-      if (!slot) {
+      if (!slot || !isUpcomingLimaSlot(slot)) {
         throw new LeadConflict('Selecciona una disponibilidad vigente.');
       }
       const preference = id_preferencia_lead == null ? null : await tx.personaPreferencias.findFirst({
