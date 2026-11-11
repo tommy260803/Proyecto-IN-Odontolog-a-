@@ -19,6 +19,8 @@ type Recognition = {
   abort(): void;
 };
 
+type PatientMessage = { id_interaccion: number; mensaje: string; fecha_hora: string; id_canal: number };
+
 async function request(path: string, body?: object) {
   const response = await fetch(api + path, body && {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -40,6 +42,11 @@ export function LeadInteraction({ requestId, onAnalysis }: {
   const [listening, setListening] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const [history, setHistory] = useState<PatientMessage[]>([]);
+  const [suggestions, setSuggestions] = useState<Record<number, LeadInteractionAnalysis>>({});
+  const [loaded, setLoaded] = useState(false);
+  const inFlight = useRef(false);
+  const pending = useRef<{ text: string; channel: number; expected: number | null } | null>(null);
   const recognition = useRef<Recognition | null>(null);
   const scope = '/opportunities/' + requestId + '/interactions';
   useEffect(() => {
@@ -48,6 +55,9 @@ export function LeadInteraction({ requestId, onAnalysis }: {
       if (mounted) setChannels(canales.filter((c: { nombre: string }) =>
         /llamada|telef[oó]n|presencial/i.test(c.nombre)));
     }).catch((e: Error) => { if (mounted) setError(e.message); });
+    request('/opportunities/' + requestId + '/conversation').then(({ mensajes }) => {
+      if (mounted) { setHistory(mensajes); setLoaded(true); }
+    }).catch((e: Error) => { if (mounted) setError(e.message); });
     return () => {
       mounted = false;
       recognition.current?.abort();
@@ -55,17 +65,21 @@ export function LeadInteraction({ requestId, onAnalysis }: {
   }, []);
 
   async function analyze(interaction: number) {
-    onAnalysis(await request(scope + '/' + interaction + '/analyze', {}));
+    const result = await request(scope + '/' + interaction + '/analyze', {});
+    setSuggestions((current) => ({ ...current, [interaction]: result }));
+    onAnalysis(result);
     setStatus('Interacción guardada y analizada.');
   }
 
   async function run(action: () => Promise<void>) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setError('');
     onAnalysis(null);
     try { await action(); }
     catch (e) { setError(e instanceof Error ? e.message : 'No se pudo completar la operación.'); }
-    finally { setBusy(false); }
+    finally { setBusy(false); inFlight.current = false; }
   }
 
   function dictate() {
@@ -97,16 +111,46 @@ export function LeadInteraction({ requestId, onAnalysis }: {
 
   return (
     <section className="space-y-3 p-6">
-      <h2 className="text-sm font-semibold">Registrar interacción</h2>
+      <h2 className="text-sm font-semibold">Conversación de negociación</h2>
+      <div className="max-h-96 space-y-3 overflow-y-auto" aria-live="polite">
+        {history.map((message) => (
+          <div key={message.id_interaccion} className="space-y-2">
+            <div className="rounded-lg border bg-slate-50 p-3 text-sm dark:bg-slate-900">
+              <p className="font-medium">Paciente · registrado por el asesor</p>
+              <p className="text-xs text-slate-500">
+                {new Date(message.fecha_hora).toLocaleString('es-PE', { timeZone: 'America/Lima' })}
+                {' · '}{channels.find(c => c.id_canal === message.id_canal)?.nombre ?? 'Contacto'}
+              </p>
+              <p className="whitespace-pre-wrap">{message.mensaje}</p>
+            </div>
+            {suggestions[message.id_interaccion] && (
+              <div className="ml-6 rounded-lg border border-teal-200 p-3 text-sm">
+                <p className="font-medium">IA · sugerencia</p>
+                <p>{suggestions[message.id_interaccion].sugerencia}</p>
+              </div>
+            )}
+          </div>
+        ))}
+        {loaded && history.length === 100 && <p className="text-xs text-slate-500">Se muestran las últimas 100 respuestas registradas.</p>}
+        {loaded && !history.length && <p className="text-sm text-slate-500">Las respuestas registradas aparecerán aquí.</p>}
+      </div>
       <form className="space-y-3" onSubmit={(event) => {
         event.preventDefault();
-        if (busy || listening || !channel || !note.trim()) return;
+        if (busy || listening || !loaded || !channel || !note.trim()) return;
         void run(async () => {
           setStatus('');
           setSaved(null);
+          const text = note.trim();
+          if (!pending.current || pending.current.text !== text || pending.current.channel !== Number(channel)) {
+            pending.current = { text, channel: Number(channel), expected: history.at(-1)?.id_interaccion ?? null };
+          }
           const interaction = await request(scope, {
-            id_canal: Number(channel), tipo: 'Respuesta del paciente', mensaje: note.trim(),
+            id_canal: Number(channel), tipo: 'Respuesta del paciente', mensaje: text,
+            ultima_interaccion_esperada: pending.current.expected,
           });
+          pending.current = null;
+          setHistory((current) => current.some(m => m.id_interaccion === interaction.id_interaccion)
+            ? current : [...current, interaction]);
           setSaved(interaction.id_interaccion);
           setNote('');
           setStatus('Interacción guardada.');
@@ -114,7 +158,7 @@ export function LeadInteraction({ requestId, onAnalysis }: {
         });
       }}>
         <label className="block text-sm">Canal
-          <select className="ml-2 rounded border bg-background p-1" required value={channel} onChange={(e) => setChannel(e.target.value)}>
+          <select className="ml-2 rounded border bg-background p-1" required disabled={busy} value={channel} onChange={(e) => setChannel(e.target.value)}>
             <option value="">Selecciona un canal</option>
             {channels.map((c) => <option key={c.id_canal} value={c.id_canal}>{c.nombre}</option>)}
           </select>
@@ -127,7 +171,7 @@ export function LeadInteraction({ requestId, onAnalysis }: {
           <button type="button" disabled={busy || listening} onClick={dictate} className="rounded border px-3 py-2">
             {listening ? 'Escuchando…' : 'Dictar nota'}
           </button>
-          <button type="submit" disabled={busy || listening || !channel || !note.trim()} className="rounded bg-teal-700 px-3 py-2 text-white disabled:opacity-50">
+          <button type="submit" disabled={busy || listening || !loaded || !channel || !note.trim()} className="rounded bg-teal-700 px-3 py-2 text-white disabled:opacity-50">
             {busy ? 'Procesando…' : 'Guardar y analizar'}
           </button>
           {saved && error && <button type="button" disabled={busy} onClick={() => void run(() => analyze(saved))}

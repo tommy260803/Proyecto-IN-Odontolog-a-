@@ -1455,10 +1455,6 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
           {/* Bloque 2: Configuración de Oferta Comercial y Tablero de Propuestas */}
           <div className="divide-y divide-slate-200/80 dark:divide-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs overflow-hidden">
             {/* Sección 1: Configurar Nueva Propuesta Comercial */}
-            {canAbandon && (
-              <LeadInteraction key={ultimaSolicitud.id_solicitud} requestId={ultimaSolicitud.id_solicitud}
-                onAnalysis={(result) => setInteractionAnalysis(result ? { requestId: ultimaSolicitud.id_solicitud, result } : null)} />
-            )}
             <section className="p-6 space-y-5">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -1970,6 +1966,10 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
             </section>
 
             {/* Sección 3: Despacho Omnicanal y Generación de Pieza Gráfica (Canva) */}
+            {canAbandon && (
+              <LeadInteraction key={ultimaSolicitud.id_solicitud} requestId={ultimaSolicitud.id_solicitud}
+                onAnalysis={(result) => setInteractionAnalysis(result ? { requestId: ultimaSolicitud.id_solicitud, result } : null)} />
+            )}
             <section className="p-6 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>

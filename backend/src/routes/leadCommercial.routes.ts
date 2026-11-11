@@ -1155,9 +1155,45 @@ router.post('/opportunities/:id/staff/interactions', route(async (req, res) => {
   res.status(result.reutilizada ? 200 : 201).json(result);
 }));
 
+async function activeConversation(tx: Prisma.TransactionClient, value: unknown) {
+  const row = await tx.solicitudes.findUnique({
+    where: { id_solicitud: id(value) }, include: { Persona: { include: { Etapa: true } } },
+  });
+  if (!row || row.Persona.Etapa.nombre !== 'LEAD' || row.archivada_lead_en ||
+      !['Abierta', 'En negociación'].includes(row.estado) ||
+      ['ACEPTADA', 'CERRADA_SIN_ACUERDO'].includes(row.resultado_comercial_lead ?? '')) {
+    throw new InputError('La solicitud ya no admite nuevas interacciones de negociación.', 409);
+  }
+  return row;
+}
+
+router.get('/opportunities/:id/conversation', route(async (req, res) => {
+  const messages = await prisma.$transaction(async tx => {
+    await activeConversation(tx, req.params.id);
+    return tx.interacciones.findMany({
+      where: { id_solicitud: id(req.params.id), tipo: 'Respuesta del paciente' },
+      orderBy: { id_interaccion: 'desc' }, take: 100,
+      select: { id_interaccion: true, mensaje: true, fecha_hora: true, id_canal: true },
+    });
+  });
+  res.set('Cache-Control', 'no-store').json({ mensajes: messages.reverse() });
+}));
+
 router.post('/opportunities/:id/interactions', route(async (req, res) => {
   const result = await prisma.$transaction(async tx => {
-    const row = await opportunity(tx, req.params.id, true);
+    const row = await activeConversation(tx, req.params.id);
+    const channel = await tx.canales.findFirst({ where: { id_canal: id(req.body.id_canal), activo: true } });
+    if (!channel) throw new InputError('Selecciona un canal activo.');
+    if (req.body.ultima_interaccion_esperada !== undefined) {
+      const latest = await tx.interacciones.findFirst({
+        where: { id_solicitud: row.id_solicitud, tipo: 'Respuesta del paciente' },
+        orderBy: { id_interaccion: 'desc' },
+      });
+      if ((latest?.id_interaccion ?? null) !== req.body.ultima_interaccion_esperada) {
+        if (latest?.mensaje === req.body.mensaje && latest?.id_canal === channel.id_canal) return latest;
+        throw new InputError('La conversación cambió. Recarga la negociación antes de continuar.', 409);
+      }
+    }
     const useful = req.body.es_respuesta_util === true;
     const interaction = await tx.interacciones.create({
       data: {
@@ -1187,7 +1223,7 @@ router.get('/catalogs', route(async (_req, res) => {
 router.post('/opportunities/:id/interactions/:interaction/analyze', route(async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const context = await prisma.$transaction(async tx => {
-    const row = await opportunity(tx, req.params.id, true);
+    const row = await activeConversation(tx, req.params.id);
     const interaction = await tx.interacciones.findFirst({
       where: { id_interaccion: id(req.params.interaction), id_solicitud: row.id_solicitud, id_persona: row.id_persona },
     });
@@ -1206,12 +1242,18 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
       where: { id_solicitud: row.id_solicitud, estado: 'Pendiente', fecha_vigencia_hasta_utc_lead: { gt: now } },
       orderBy: [{ fecha_presentacion: 'desc' }, { id_propuesta: 'desc' }],
     });
-    return { message: interaction.mensaje, tarifa, promociones, proposal };
+    const previous = await tx.interacciones.findMany({
+      where: { id_solicitud: row.id_solicitud, id_interaccion: { lte: interaction.id_interaccion },
+        tipo: 'Respuesta del paciente' },
+      orderBy: { id_interaccion: 'desc' }, take: 6,
+    });
+    return { messages: previous.reverse().map(i => ({ remitente: 'paciente registrado por asesor', texto: i.mensaje ?? '' })),
+      tarifa, promociones, proposal };
   });
   if (geminiBusy) throw new InputError('Hay otro análisis en curso. Intenta de nuevo.', 429);
   geminiBusy = true;
   try {
-    const analysis = await classifyLeadChat([{ remitente: 'nota del asesor', texto: context.message }], {
+    const analysis = await classifyLeadChat(context.messages, {
       key: process.env.GEMINI_API_KEY ?? '', model: process.env.LEAD_GEMINI_MODEL || 'gemini-3.5-flash-lite',
     }, fetch, true);
     const sugerencia = analysis.objecion_economica || analysis.intencion === 'PRECIO'
