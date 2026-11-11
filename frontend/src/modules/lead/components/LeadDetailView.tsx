@@ -310,20 +310,41 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     if (offerErrors.precio) setOfferErrors((p) => ({ ...p, precio: '' }));
   };
 
-  const matchingOfferSlots = (options.disponibilidades ?? []).filter((slot: any) => {
+  const eligibleOfferSlots = (options.disponibilidades ?? []).filter((slot: any) =>
+    (selectedSedeId === 'ALL_SEDES' || String(slot.id_sede) === selectedSedeId) &&
+    slot.Profesional?.ProfesionalServicio?.some(
+      (entry: { id_servicio: number }) => String(entry.id_servicio) === selectedServicioId,
+    ),
+  );
+  const eligibleProfessionalIds = new Set(
+    eligibleOfferSlots.map((slot: any) => String(slot.id_profesional)),
+  );
+  const eligibleProfessionals = (options.profesionales ?? []).filter(
+    (professional: any) => eligibleProfessionalIds.has(String(professional.id_profesional)),
+  );
+  const effectiveProfessionalId = eligibleProfessionalIds.has(selectedProfesionalId)
+    ? selectedProfesionalId
+    : 'ALL_PROFESSIONALS';
+
+  const matchingOfferSlots = eligibleOfferSlots.filter((slot: any) => {
     const start = String(slot.hora_inicio).slice(11, 16);
     if (start < '08:00' || start >= '20:00') return false;
     const shift = start < '13:00' ? 'Turno Mañana' : start < '18:00' ? 'Turno Tarde' : 'Turno Noche';
     return selectedFranja.startsWith(shift) &&
-      (selectedSedeId === 'ALL_SEDES' || String(slot.id_sede) === selectedSedeId) &&
-      (selectedProfesionalId === 'ALL_PROFESSIONALS' || String(slot.id_profesional) === selectedProfesionalId) &&
-      slot.Profesional?.ProfesionalServicio?.some(
-        (entry: { id_servicio: number }) => String(entry.id_servicio) === selectedServicioId,
-      );
+      (effectiveProfessionalId === 'ALL_PROFESSIONALS' || String(slot.id_profesional) === effectiveProfessionalId);
   });
   const offeredSlot = matchingOfferSlots.find(
     (slot: any) => String(slot.id_disponibilidad) === selectedDisponibilidadId
   );
+  const hasOfferedSlot = Boolean(offeredSlot);
+  useEffect(() => {
+    if (selectedProfesionalId !== effectiveProfessionalId) {
+      setSelectedProfesionalId(effectiveProfessionalId);
+    }
+    if (selectedDisponibilidadId && !hasOfferedSlot) {
+      setSelectedDisponibilidadId('');
+    }
+  }, [selectedProfesionalId, effectiveProfessionalId, selectedDisponibilidadId, hasOfferedSlot]);
   const requestedServiceId = lead?.Solicitudes?.[0]?.id_servicio == null
     ? ''
     : String(lead.Solicitudes[0].id_servicio);
@@ -1506,15 +1527,18 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                     Especialista Sugerido
                   </label>
                   <select
-                    value={selectedProfesionalId}
+                    value={effectiveProfessionalId}
+                    disabled={eligibleProfessionals.length === 0}
                     onChange={(e) => {
                       setSelectedProfesionalId(e.target.value);
                       setSelectedDisponibilidadId('');
                     }}
                     className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-xs text-slate-900 dark:text-white focus:border-[#0f766e] focus:outline-none"
                   >
-                    <option value="ALL_PROFESSIONALS">Staff Colegiado Disponible</option>
-                    {options.profesionales?.map((p: any) => (
+                    <option value="ALL_PROFESSIONALS">
+                      {eligibleProfessionals.length ? 'Cualquier especialista disponible' : 'Sin especialistas con horarios para este servicio y sede'}
+                    </option>
+                    {eligibleProfessionals.map((p: any) => (
                       <option key={p.id_profesional} value={String(p.id_profesional)}>
                         Esp. {p.nombres} {p.apellidos}
                       </option>
@@ -1664,7 +1688,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                     </label>
                     <select
                       id="lead-offered-availability"
-                      value={selectedDisponibilidadId}
+                      value={offeredSlot ? selectedDisponibilidadId : ''}
                       onChange={(event) => {
                         setSelectedDisponibilidadId(event.target.value);
                         setOfferErrors((current) => ({ ...current, horario: '' }));
