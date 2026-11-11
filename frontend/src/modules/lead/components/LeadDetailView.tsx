@@ -327,14 +327,13 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   const requestedServiceId = lead?.Solicitudes?.[0]?.id_servicio == null
     ? ''
     : String(lead.Solicitudes[0].id_servicio);
+  const changesRequestedService = Boolean(selectedServicioId && selectedServicioId !== requestedServiceId);
 
   const handleAddAlternative = async () => {
     const errors: Record<string, string> = {};
     const ultimaSolicitud = lead?.Solicitudes?.[0];
-    if (!requestedServiceId) {
-      errors.servicio = 'Esta solicitud no tiene un tratamiento registrado; corrígelo antes de ofrecer una propuesta.';
-    } else if (selectedServicioId !== requestedServiceId) {
-      errors.servicio = 'El tratamiento ofrecido debe coincidir con el de la solicitud LEAD.';
+    if (!ultimaSolicitud || !options.servicios?.some((s: any) => String(s.id_servicio) === selectedServicioId)) {
+      errors.servicio = 'Selecciona un servicio activo para esta solicitud.';
     }
     if (selectedVigencia === 'custom' && !selectedVigenciaCustom) {
       errors.vigencia = 'Selecciona la fecha hasta la que será válida la propuesta.';
@@ -353,6 +352,11 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
       setOfferErrors(errors);
       return;
     }
+
+    const serviceName = options.servicios.find((s: any) => String(s.id_servicio) === selectedServicioId)?.nombre;
+    if (changesRequestedService && !window.confirm(
+      `¿Confirmas que el tratamiento de esta solicitud debe ser ${serviceName}? El cambio se guardará junto con la propuesta.`,
+    )) return;
 
     setOfferErrors({});
     setAddingAlternative(true);
@@ -373,6 +377,8 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
       const response = await leadService.addAlternative(leadId, {
         id_solicitud: ultimaSolicitud?.id_solicitud,
         id_servicio: Number(selectedServicioId),
+        confirmar_cambio_servicio: changesRequestedService,
+        id_servicio_anterior: ultimaSolicitud?.id_servicio ?? null,
         id_disponibilidad: offeredSlot.id_disponibilidad,
         fecha_vigencia_hasta_utc_lead: calculatedExpiry.toISOString(),
         promocion_aplicada: promocionAplicada || null,
@@ -382,9 +388,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         precio_ofrecido: precioOfrecido,
         condiciones: fullCondiciones,
         // Campos adicionales para modo mock/fallback
-        service:
-          options.servicios?.find((s: any) => String(s.id_servicio) === selectedServicioId)
-            ?.nombre || 'Evaluación General',
+        service: serviceName,
         professional: offeredSlot.Profesional?.apellidos,
         branch: offeredSlot.Sede?.nombre,
         date: String(offeredSlot.fecha).slice(0, 10),
@@ -405,7 +409,6 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         description: 'La oferta fue incorporada a la mesa de negociación.',
       });
     } catch (error) {
-      void fetchLeadData();
       setOfferErrors({
         envio: error instanceof Error ? error.message : 'No se pudo guardar la propuesta. Revisa los datos e inténtalo de nuevo.',
       });
@@ -1444,11 +1447,11 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                   </label>
                   <select
                     value={selectedServicioId}
-                    disabled={Boolean(requestedServiceId)}
                     onChange={(e) => {
                       const val = e.target.value;
                       setSelectedServicioId(val);
                       setSelectedDisponibilidadId('');
+                      setOfferErrors({});
                       const serv = options.servicios?.find(
                         (s: any) => String(s.id_servicio) === val
                       );
@@ -1467,9 +1470,9 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                       </option>
                     ))}
                   </select>
-                  {requestedServiceId && (
+                  {changesRequestedService && (
                     <p className="mt-1 text-[11px] text-slate-500">
-                      Tratamiento fijado por la solicitud LEAD.
+                      Al añadir la propuesta, se te pedirá confirmar el cambio de tratamiento de la solicitud.
                     </p>
                   )}
                   {offerErrors.servicio && (
@@ -1637,6 +1640,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                       }}
                       className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 font-mono text-xs font-semibold text-slate-900 dark:text-white tabular-nums focus:border-[#0f766e] focus:outline-none"
                     />
+                    {offerErrors.precio && <p role="alert" className="mt-1 text-xs text-rose-600">{offerErrors.precio}</p>}
                   </div>
 
                   <div>
@@ -1688,7 +1692,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                   <button
                     type="button"
                     onClick={handleAddAlternative}
-                    disabled={addingAlternative || matchingOfferSlots.length === 0}
+                    disabled={addingAlternative}
                     className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#0f766e] px-4 text-xs font-semibold text-white shadow-2xs transition-all hover:bg-teal-800 disabled:opacity-50 cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" strokeWidth={2} />

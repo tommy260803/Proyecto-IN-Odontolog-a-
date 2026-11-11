@@ -621,10 +621,15 @@ router.post('/:id/alternative', async (req, res) => {
   const id_persona = Number(req.params.id);
   const { id_solicitud, id_servicio, id_disponibilidad, precio_ofrecido, id_propuesta_lead,
     fecha_vigencia_hasta_utc_lead, promocion_aplicada, crear_version_propuesta,
+    confirmar_cambio_servicio, id_servicio_anterior,
     id_preferencia_lead, pref_fecha_lead, pref_dia_semana_lead, pref_turno_lead,
     pref_hora_inicio_lead, pref_hora_fin_lead, ofr_turno_lead } = req.body;
   try {
-    const price = new Prisma.Decimal(precio_ofrecido);
+    if ((typeof precio_ofrecido !== 'string' && typeof precio_ofrecido !== 'number') ||
+        String(precio_ofrecido).trim() === '' || !Number.isFinite(Number(precio_ofrecido))) {
+      throw new LeadConflict('Indica un precio válido.');
+    }
+    const price = new Prisma.Decimal(String(precio_ofrecido).trim());
     if (!price.isFinite() || price.lt(0) || price.gte(100000000) || price.decimalPlaces() > 2) {
       throw new LeadConflict('Indica un precio válido.');
     }
@@ -649,16 +654,39 @@ router.post('/:id/alternative', async (req, res) => {
       if (!request || request.resultado_comercial_lead === 'CERRADA_SIN_ACUERDO') {
         throw new LeadConflict('No hay una oportunidad abierta para esta persona.');
       }
-      if (request.id_servicio == null || Number(id_servicio) !== request.id_servicio) {
-        throw new LeadConflict('El tratamiento ofrecido debe coincidir con el de la solicitud.');
+      const serviceId = Number(id_servicio);
+      if (!Number.isSafeInteger(serviceId) || serviceId < 1) {
+        throw new LeadConflict('Selecciona un servicio ofertado válido.');
       }
       const slot = await tx.disponibilidad.findFirst({
         where: {
-          ...bookableSlot(request.id_servicio), id_disponibilidad: Number(id_disponibilidad),
+          ...bookableSlot(serviceId), id_disponibilidad: Number(id_disponibilidad),
         },
       });
       if (!slot || !isUpcomingLimaSlot(slot)) {
-        throw new LeadConflict('Selecciona una disponibilidad vigente.');
+        throw new LeadConflict('El horario ya no está disponible para el servicio seleccionado. Elige otro.');
+      }
+      if (serviceId !== request.id_servicio) {
+        if (confirmar_cambio_servicio !== true || id_servicio_anterior !== request.id_servicio) {
+          throw new LeadConflict('Confirma el cambio de tratamiento de la solicitud. Si ya lo confirmaste, vuelve a abrir la negociación para actualizar los datos.');
+        }
+        const hasProposal = await tx.propuestasEconomicasLead.findFirst({
+          where: { id_solicitud: request.id_solicitud }, select: { id_propuesta: true },
+        });
+        const hasOption = await tx.opciones.findFirst({
+          where: { id_solicitud: request.id_solicitud }, select: { id_opcion: true },
+        });
+        const hasReservation = await tx.reservas.findFirst({
+          where: { id_solicitud: request.id_solicitud }, select: { id_reserva: true },
+        });
+        if (id_propuesta_lead != null || request.resultado_comercial_lead === 'ACEPTADA' ||
+            request.id_propuesta_aceptada_lead != null || hasProposal || hasOption || hasReservation) {
+          throw new LeadConflict('La solicitud ya tiene historial comercial. Para ofrecer otro tratamiento, usa una solicitud nueva.');
+        }
+        await tx.solicitudes.updateMany({
+          where: { id_solicitud: request.id_solicitud },
+          data: { id_servicio: serviceId },
+        });
       }
       const preference = id_preferencia_lead == null ? null : await tx.personaPreferencias.findFirst({
         where: { id_persona, id_preferencia: Number(id_preferencia_lead) }, include: { Horario: true },
@@ -671,7 +699,7 @@ router.post('/:id/alternative', async (req, res) => {
       if (id_propuesta_lead == null) {
         proposal = await tx.propuestasEconomicasLead.create({
           data: {
-            id_solicitud: request.id_solicitud, id_servicio: request.id_servicio,
+            id_solicitud: request.id_solicitud, id_servicio: serviceId,
             precio_cotizado: price, promocion_aplicada: promotion,
             fecha_vigencia_hasta_utc_lead: expiry,
           },
@@ -681,6 +709,9 @@ router.post('/:id/alternative', async (req, res) => {
           where: { id_propuesta: Number(id_propuesta_lead), id_solicitud: request.id_solicitud },
         });
         if (!previous) throw new LeadConflict('La propuesta no corresponde a esta oportunidad.');
+        if (previous.id_servicio !== serviceId) {
+          throw new LeadConflict('La propuesta anterior corresponde a otro tratamiento.');
+        }
         const root = previous.id_propuesta_raiz ?? previous.id_propuesta;
         const latest = await tx.propuestasEconomicasLead.findFirst({
           where: { OR: [{ id_propuesta: root }, { id_propuesta_raiz: root }] },
@@ -693,7 +724,7 @@ router.post('/:id/alternative', async (req, res) => {
           if (previous.estado === 'Aceptada') throw new LeadConflict('Una propuesta aceptada no admite nuevas versiones.');
           proposal = await tx.propuestasEconomicasLead.create({
             data: {
-              id_solicitud: request.id_solicitud, id_servicio: request.id_servicio,
+              id_solicitud: request.id_solicitud, id_servicio: serviceId,
               id_propuesta_raiz: root, numero_version: previous.numero_version + 1,
               precio_cotizado: price, promocion_aplicada: promotion,
               fecha_vigencia_hasta_utc_lead: expiry,
