@@ -19,12 +19,13 @@ type ChatProposal = {
   estado: string;
 };
 
-export function LeadChat({ requestId, token, staff = false, shareable = [], onProposalChange }: {
+export function LeadChat({ requestId, token, staff = false, shareable = [], onProposalChange, demo }: {
   requestId: string;
   token: string;
   staff?: boolean;
   shareable?: Pick<ChatProposal, 'id_propuesta' | 'numero_version' | 'precio'>[];
   onProposalChange?: () => void;
+  demo?: (method: string, path: string, body?: object) => Promise<unknown>;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
@@ -40,13 +41,14 @@ export function LeadChat({ requestId, token, staff = false, shareable = [], onPr
   const [reviewBusy, setReviewBusy] = useState(false);
   const [suggestion, setSuggestion] = useState<{ id: number; text: string; editable: boolean } | null>(null);
   const [suggestionBusy, setSuggestionBusy] = useState(false);
-  const showSuggestions = staff && import.meta.env.VITE_LEAD_GEMINI_QA === 'true';
+  const showSuggestions = staff && (Boolean(demo) || import.meta.env.VITE_LEAD_GEMINI_QA === 'true');
   const paused = staff && review?.pausado === true;
   const pending = useRef<{ clave: string; texto: string } | null>(null);
   const endpoint = api + '/lead/commercial/chat/' + (staff ? 'staff/' : 'patient/') + requestId;
   const own = staff ? 'PERSONAL' : 'PACIENTE';
 
   async function call(method: string, path = '', body?: object, signal?: AbortSignal) {
+    if (demo) return demo(method, path, body) as ReturnType<Response['json']>;
     const response = await fetch(endpoint + path, {
       method, signal, cache: 'no-store',
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
@@ -169,7 +171,7 @@ export function LeadChat({ requestId, token, staff = false, shareable = [], onPr
 
   async function requestSuggestion(messageId: number) {
     if (!showSuggestions || paused || suggestionBusy ||
-        !window.confirm('¿Confirmas que toda esta conversación usa datos ficticios de QA? Se enviará un fragmento del chat a Gemini.')) return;
+        (!demo && !window.confirm('¿Confirmas que toda esta conversación usa datos ficticios de QA? Se enviará un fragmento del chat a Gemini.'))) return;
     setSuggestionBusy(true);
     setSuggestion(null);
     setError('');
@@ -185,7 +187,7 @@ export function LeadChat({ requestId, token, staff = false, shareable = [], onPr
 
   return <section className="space-y-3 rounded-lg border bg-white p-4">
     <h2 className="text-lg font-semibold">Conversación LEAD</h2>
-    {staff && <button type="button" className="underline" onClick={() => void issueAccess()}>Generar enlace temporal de QA</button>}
+    {staff && !demo && <button type="button" className="underline" onClick={() => void issueAccess()}>Generar enlace temporal de QA</button>}
     {invite && <label className="block">Enlace para el paciente
       <input className="block w-full rounded border p-2" readOnly value={invite} onFocus={event => event.target.select()} />
     </label>}
