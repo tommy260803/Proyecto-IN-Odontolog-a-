@@ -114,7 +114,10 @@ export const leadService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error('Error al añadir alternativa');
+    if (!res.ok) {
+      const problem = await res.json().catch(() => null);
+      throw new Error(problem?.error ?? 'Error al añadir alternativa');
+    }
     return res.json();
   },
 

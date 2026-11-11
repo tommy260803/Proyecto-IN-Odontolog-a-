@@ -21,6 +21,22 @@ const serializable = { isolationLevel: Prisma.TransactionIsolationLevel.Serializ
 
 class LeadConflict extends Error {}
 
+function bookableSlot(serviceId?: number | null): Prisma.DisponibilidadWhereInput {
+  const lima = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
+  const day = new Date(lima.slice(0, 10) + 'T00:00:00Z');
+  const time = new Date('1970-01-01T' + lima.slice(11));
+  return {
+    estado: 'Disponible',
+    Profesional: { activo: true, ProfesionalServicio: { some: {
+      ...(serviceId == null ? {} : { id_servicio: serviceId }),
+      Servicio: { activo: true },
+    } } },
+    Sede: { activo: true },
+    Opciones: { none: { Reservas: { some: { estado: { notIn: ['Cancelada', 'Vencida'] } } } } },
+    AND: [{ OR: [{ fecha: { gt: day } }, { fecha: day, hora_inicio: { gt: time } }] }],
+  };
+}
+
 function leadError(error: unknown, res: import('express').Response) {
   if (error instanceof LeadConflict) return res.status(409).json({ error: error.message });
   console.error(error);
@@ -58,9 +74,9 @@ router.get('/options/availability', async (req, res) => {
         }
       });
       const disponibilidades = await prisma.disponibilidad.findMany({
-        where: { estado: 'Disponible' },
-        include: { Profesional: true, Sede: true },
-        orderBy: [{ fecha: 'asc' }, { hora_inicio: 'asc' }],
+        where: bookableSlot(),
+        include: { Profesional: { include: { ProfesionalServicio: { select: { id_servicio: true } } } }, Sede: true },
+        orderBy: [{ fecha: 'asc' }, { hora_inicio: 'asc' }, { id_disponibilidad: 'asc' }],
       });
       return { profesionales, sedes, servicios, disponibilidades };
     });
@@ -86,14 +102,15 @@ router.put('/options/:id_opcion', async (req, res) => {
         throw new LeadConflict('La alternativa no se puede modificar en negociación.');
       }
       const current = option.Disponibilidad;
-      const slot = id_sede || id_profesional || fecha ? await tx.disponibilidad.findFirst({
+      const slot = await tx.disponibilidad.findFirst({
         where: {
+          ...bookableSlot(option.Solicitud.id_servicio),
           id_sede: id_sede ? Number(id_sede) : current.id_sede,
           id_profesional: id_profesional ? Number(id_profesional) : current.id_profesional,
           fecha: fecha ? parseCalendarDate(fecha) : current.fecha,
           hora_inicio: current.hora_inicio, hora_fin: current.hora_fin, estado: 'Disponible',
         },
-      }) : current;
+      });
       if (!slot || slot.estado !== 'Disponible') throw new LeadConflict('Selecciona un horario disponible.');
       const price = precio_ofrecido === undefined ? option.precio_ofrecido : new Prisma.Decimal(precio_ofrecido);
       if (!price.isFinite() || price.lt(0) || price.gte(100000000) || price.decimalPlaces() > 2) {
@@ -208,7 +225,7 @@ router.post('/:id/reserve', async (req, res) => {
           id_opcion: Number(id_opcion), id_solicitud: Number(id_solicitud), archivada_lead_en: null,
           OR: [{ estado_respuesta: null }, { estado_respuesta: { not: 'Rechazada' } }],
           Solicitud: { id_persona: Number(id), archivada_lead_en: null, Persona: { Etapa: { nombre: 'LEAD' } } },
-          Disponibilidad: { estado: 'Disponible' }, Reservas: { none: {} },
+          Disponibilidad: bookableSlot(), Reservas: { none: {} },
         },
       });
       if (!eligible) throw new LeadConflict('La alternativa no está disponible para esta negociación.');
@@ -603,11 +620,10 @@ router.post('/:id/alternative', async (req, res) => {
       }
       const slot = await tx.disponibilidad.findFirst({
         where: {
-          id_disponibilidad: Number(id_disponibilidad), estado: 'Disponible',
-          Profesional: { activo: true }, Sede: { activo: true },
+          ...bookableSlot(request.id_servicio), id_disponibilidad: Number(id_disponibilidad),
         },
       });
-      if (!slot || slot.fecha.toISOString().slice(0, 10) < new Date().toISOString().slice(0, 10)) {
+      if (!slot) {
         throw new LeadConflict('Selecciona una disponibilidad vigente.');
       }
       const preference = id_preferencia_lead == null ? null : await tx.personaPreferencias.findFirst({
@@ -1052,7 +1068,7 @@ router.post('/public/:id/pre-reserve', async (req, res) => {
             archivada_lead_en: null, Reservas: { none: {} },
             OR: [{ estado_respuesta: null }, { estado_respuesta: { not: 'Rechazada' } }],
             Disponibilidad: {
-              estado: 'Disponible', fecha: fechaCita, hora_inicio: inicioTurno, hora_fin: finTurno,
+              ...bookableSlot(), fecha: fechaCita, hora_inicio: inicioTurno, hora_fin: finTurno,
               id_sede: id_sede == null ? undefined : Number(id_sede),
             },
           },
@@ -1068,7 +1084,7 @@ router.post('/public/:id/pre-reserve', async (req, res) => {
           });
           const offered = original && await tx.disponibilidad.findFirst({
             where: {
-              estado: 'Disponible', fecha: fechaCita, hora_inicio: inicioTurno, hora_fin: finTurno,
+              ...bookableSlot(), fecha: fechaCita, hora_inicio: inicioTurno, hora_fin: finTurno,
               id_sede: id_sede == null ? original.Disponibilidad.id_sede : Number(id_sede),
               id_profesional: original.Disponibilidad.id_profesional,
             },

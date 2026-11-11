@@ -327,8 +327,17 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     if (offerErrors.precio) setOfferErrors((p) => ({ ...p, precio: '' }));
   };
 
-  const [offeredSlotId, setOfferedSlotId] = useState('');
-  const availableOfferSlots = options.disponibilidades ?? [];
+  const offeredSlot = (options.disponibilidades ?? []).find((slot: any) => {
+    const start = String(slot.hora_inicio).slice(11, 16);
+    if (start < '08:00' || start >= '20:00') return false;
+    const shift = start < '13:00' ? 'Turno Mañana' : start < '18:00' ? 'Turno Tarde' : 'Turno Noche';
+    return selectedFranja.startsWith(shift) &&
+      (selectedSedeId === 'ALL_SEDES' || String(slot.id_sede) === selectedSedeId) &&
+      (selectedProfesionalId === 'ALL_PROFESSIONALS' || String(slot.id_profesional) === selectedProfesionalId) &&
+      slot.Profesional?.ProfesionalServicio?.some(
+        (entry: { id_servicio: number }) => String(entry.id_servicio) === selectedServicioId,
+      );
+  });
 
   const handleAddAlternative = async () => {
     const errors: Record<string, string> = {};
@@ -344,7 +353,6 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     setOfferErrors({});
     setAddingAlternative(true);
     const ultimaSolicitud = lead.Solicitudes?.[0];
-    const expiryStr = format(calculatedExpiry, 'yyyy-MM-dd');
     const fullCondiciones = `[Vigencia: ${getVigenciaLabel(
       selectedVigencia,
       selectedVigenciaCustom
@@ -352,15 +360,15 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
       condiciones ? `| ${condiciones}` : ''
     }`.trim();
 
-    if (!offeredSlotId) {
+    if (!offeredSlot) {
       setAddingAlternative(false);
-      toast({ title: 'Selecciona una disponibilidad', variant: 'destructive' });
+      toast({ title: 'No hay horarios disponibles con estos filtros', variant: 'destructive' });
       return;
     }
     try {
       await leadService.addAlternative(leadId, {
         id_solicitud: ultimaSolicitud?.id_solicitud,
-        id_disponibilidad: Number(offeredSlotId),
+        id_disponibilidad: offeredSlot.id_disponibilidad,
         ofr_turno_lead: selectedFranja.split(' (')[0],
         precio_ofrecido: precioOfrecido,
         condiciones: fullCondiciones,
@@ -368,15 +376,10 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         service:
           options.servicios?.find((s: any) => String(s.id_servicio) === selectedServicioId)
             ?.nombre || 'Evaluación General',
-        professional:
-          options.profesionales?.find(
-            (p: any) => String(p.id_profesional) === selectedProfesionalId
-          )?.apellidos || 'Staff Colegiado',
-        branch:
-          options.sedes?.find((s: any) => String(s.id_sede) === selectedSedeId)?.nombre ||
-          'Sede California',
-        date: expiryStr,
-        time: '09:00',
+        professional: offeredSlot.Profesional?.apellidos,
+        branch: offeredSlot.Sede?.nombre,
+        date: String(offeredSlot.fecha).slice(0, 10),
+        time: String(offeredSlot.hora_inicio).slice(11, 16),
         price: Number(precioOfrecido),
         conditions: fullCondiciones,
       });
@@ -386,10 +389,11 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         title: 'Propuesta comercial añadida',
         description: 'La oferta fue incorporada a la mesa de negociación.',
       });
-    } catch {
+    } catch (error) {
+      void fetchLeadData();
       toast({
         title: 'Error al registrar propuesta',
-        description: 'No se pudo guardar la alternativa comercial.',
+        description: error instanceof Error ? error.message : 'No se pudo guardar la alternativa comercial.',
         variant: 'destructive',
       });
     } finally {
@@ -1601,22 +1605,18 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                 </div>
 
                 <div className="flex justify-end">
-                  <label className="text-xs">
-                      Disponibilidad ofrecida
-                      <select className="block w-full rounded border p-2" value={offeredSlotId}
-                        onChange={event => setOfferedSlotId(event.target.value)}>
-                        <option value="">Selecciona fecha y horario</option>
-                        {availableOfferSlots.map((slot: any) => (
-                          <option key={slot.id_disponibilidad} value={slot.id_disponibilidad}>
-                            {String(slot.fecha).slice(0, 10)} · {String(slot.hora_inicio).slice(11, 16)}–{String(slot.hora_fin).slice(11, 16)} · {slot.Sede?.nombre} · {slot.Profesional?.apellidos}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                  <div className="text-xs">
+                    <p className="font-semibold">Primer horario disponible</p>
+                    <p role="status" className="rounded border p-2">
+                      {offeredSlot
+                        ? `${String(offeredSlot.fecha).slice(0, 10)} · ${String(offeredSlot.hora_inicio).slice(11, 16)}–${String(offeredSlot.hora_fin).slice(11, 16)} · ${offeredSlot.Sede?.nombre} · ${offeredSlot.Profesional?.apellidos}`
+                        : 'No hay horarios con estos filtros. Cambia la sede, el especialista o la franja.'}
+                    </p>
+                  </div>
                   <button
                     type="button"
                     onClick={handleAddAlternative}
-                    disabled={addingAlternative}
+                    disabled={addingAlternative || !offeredSlot}
                     className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#0f766e] px-4 text-xs font-semibold text-white shadow-2xs transition-all hover:bg-teal-800 disabled:opacity-50 cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" strokeWidth={2} />
