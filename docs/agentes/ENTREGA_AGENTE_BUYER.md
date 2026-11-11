@@ -1,5 +1,9 @@
 # Entrega del Agente Buyer: Integración de Clasificación Gemini, Orquestación y Entrada a LEAD
 
+> [!IMPORTANT]
+> **Estado del Avance: EN REVISIÓN**  
+> La integración se encuentra actualmente en revisión técnica y funcional en el entorno QA. Antes de proceder con la fusión definitiva con otras ramas y el despliegue productivo, deben resolverse los pendientes prioritarios registrados en este documento.
+
 Este documento constituye el contrato técnico y operativo de entrega del **Agente Buyer** integrado con el clasificador semántico **Gemini 3.5 Flash Lite** y el flujo de entrada formal acordado con el equipo LEAD, referenciado en [CONTRATO_BUYER_LEAD.md](../../database/lead_revision/CONTRATO_BUYER_LEAD.md).
 
 ---
@@ -34,6 +38,19 @@ Este documento constituye el contrato técnico y operativo de entrega del **Agen
 | **Protección Concurrente** | **OPERATIVO** | Cerrojo en memoria (`inFlightEvaluations` por `id_interaccion`) y cerrojos SQL con `UPDLOCK, HOLDLOCK` en `dbo.usp_RegistrarEntradaAgenteLead` y `dbo.usp_ConvertirBuyerALead`. |
 | **Recuperación Automática** | **OPERATIVO** | Ejecutada al arrancar el servidor backend en [`backend/src/index.ts`](../../backend/src/index.ts) y accesible vía `POST /api/buyer/evaluations/recover`. |
 | **Sincronización Mart en QA** | **DESACTIVADA** | `MartSyncService.isSyncEnabled()` mantiene la sincronización inactiva salvo presencia de `ENABLE_MART_SYNC=true`. |
+
+### 2.1 Pendientes Prioritarios en Revisión
+
+1. **Distinción entre recuperación post-commit e interacción posterior de contacto ya convertido**:
+   - *Problema detectado*: La comprobación de recuperación por captación (`BUYER_LEAD:<id_captacion>`) se aplica actualmente de forma genérica al evaluar. Si un paciente que ya fue convertido a LEAD/PAYER envía un mensaje nuevo (ej. una consulta informativa sobre horarios o doctores), el sistema reutiliza su captación histórica y asume erróneamente que se trata de una caída post-commit pendiente de recuperar, retornando `CONVERSION_LEAD` en lugar de responder a su consulta.
+   - *Solución requerida*: Debe distinguir la operación interrumpida de una interacción posterior, vinculando la detección a la interacción en curso o comprobando si la persona ya se encuentra en etapas avanzadas con una interacción nueva que requiere evaluación independiente.
+
+2. **Protección de `Idempotency-Key` frente a registros HTTP simultáneos**:
+   - *Problema detectado*: La verificación actual consulta la base de datos antes de registrar. Si dos peticiones HTTP con la misma `Idempotency-Key` llegan exactamente en el mismo milisegundo (concurrencia de red), ambas podrían superar la comprobación previa antes de que la primera haga commit en SQL Server.
+   - *Solución requerida*: Incorporar cerrojo en memoria (`inFlightByKey`) y/o restricción de unicidad transaccional para serializar o rechazar con 409 Conflict solicitudes simultáneas con la misma clave.
+
+3. **Inclusión de variables de entorno QA en la configuración**:
+   - *Requerimiento*: Añadir explícitamente `QA_ENV=true` y `DISABLE_MART_SYNC=true` al ejemplo de configuración QA y plantilla de variables para garantizar aislamiento respecto al data mart y comportamiento estricto en pruebas.
 
 ---
 
@@ -89,6 +106,8 @@ OLTP_CONNECTION_STRING="Driver={ODBC Driver 17 for SQL Server};Server=localhost;
 MART_CONNECTION_STRING="Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=NexoSalud_Mart;Trusted_Connection=yes;TrustServerCertificate=yes;"
 PORT=3001
 DUNNING_ENABLED=false
+QA_ENV=true
+DISABLE_MART_SYNC=true
 GEMINI_API_KEY="tu_clave_gemini_api_aqui"
 ```
 
@@ -185,3 +204,13 @@ npm --prefix backend run dev
 17. `Validación de pertenencia`: rechaza contexto cruzado cuando la interacción previa pertenece a otra persona. (**PASS**)
 18. `Resolución explícita de solicitud`: vincula solicitud legítima comprobando pertenencia; referencias dudosas (inexistentes o de otro usuario) quedan como `SOLICITUD_PENDIENTE_APERTURA`. (**PASS**)
 19. `Idempotency-Key estricto`: misma clave con contenido distinto se rechaza con **409 Conflict**; misma clave con mismo contenido devuelve resultado persistido (replayed); claves distintas permiten mensajes iguales. (**PASS**)
+
+### 6.3 Próxima Prueba Planificada
+
+- **Caso 20 (Próxima Implementación)**: *Consulta informativa nueva de una persona en PAYER con conversión anterior.*
+  - **Contexto**: Un paciente preexistente que ya completó la conversión (`BUYER` → `LEAD`) y actualmente se encuentra en la etapa avanzada `PAYER` envía una nueva interacción puramente informativa (ej. "¿Atienden emergencias los domingos?").
+  - **Comportamiento esperado**:
+    1. El sistema no debe confundir la existencia de la conversión previa en la captación con una caída post-commit pendiente de recuperar.
+    2. Debe clasificar la intención del nuevo mensaje mediante Gemini (`SOLO_CONSULTA`).
+    3. Debe registrar la interacción en `dbo.Interacciones` y devolver la orientación informativa de Buyer.
+    4. **Debe conservar intacta la etapa `PAYER` del paciente** y **evitar devolver `CONVERSION_LEAD`**.

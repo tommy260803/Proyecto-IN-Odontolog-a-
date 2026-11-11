@@ -24,3 +24,8 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Archivos de auditoria y paquetes ZIP
+*.zip
+revision_*.zip
+
