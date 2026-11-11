@@ -2,6 +2,8 @@
 
 Esta es la guía principal para continuar **PAYER, CUSTOMER y TURNED**. La OLTP de BUYER y LEAD está instalada en **`NexoSaludDB`** e incluye la captación, la conversión trazable, la negociación comercial y las consultas R1–R3. Las **nueve dimensiones y los cinco hechos de LEAD** están instalados en **`NexoSalud_Mart`**. [Estado, dependencias y orden de ejecución del Mart](#7-data-mart-de-lead).
 
+La recepción del futuro agente se documenta en el [contrato BUYER → LEAD](CONTRATO_BUYER_LEAD.md).
+
 La rama `lead` incluye el paquete SQL, el esquema Prisma, las rutas de BUYER y LEAD y el panel de reportes R1–R3. Para usar la aplicación, configuren el backend para una OLTP con las migraciones de la sección 6 ya aplicadas. Ejecuten `npm run prisma:generate` y `npm run build` en `backend`. En `frontend`, `npm test` ejecuta las pruebas de componentes y rutas simuladas, y `npm run build` compila la interfaz. Las pruebas que escriben en SQL requieren una copia de QA.
 
 El nuevo espacio de trabajo LEAD está disponible para revisión en QA. Con el backend apuntando a `NexoSalud_LeadPruebas`, activen `VITE_LEAD_WORKSPACE=true` al iniciar Vite. La bandeja en `/lead` lista solicitudes con ingreso documentado y cada detalle se abre por `id_solicitud`. Los enlaces anteriores por paciente abren un selector. Esta entrega es de consulta. La edición comercial y el traspaso a PAYER se habilitarán conforme se validen sus contratos. El flujo anterior sigue disponible con la configuración predeterminada.
