@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { Router, type Request, type Response } from 'express';
 import { createHash, randomBytes } from 'node:crypto';
 import { prisma } from '../db';
-import { classifyLeadChat, LeadGeminiError } from '../services/leadGemini';
+import { classifyLeadChat, excludedLeadSites, LeadGeminiError } from '../services/leadGemini';
 import { getLeadStaffIdentity, leadStaffAuthEnabled, leadStaffAuthMode, loginLeadStaff, logoutLeadStaff, type LeadStaffIdentity } from '../services/leadStaffAuth';
 
 export const leadCommercialRouter = Router();
@@ -1275,13 +1275,19 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
         )
       ORDER BY s.nombre
     `;
-    return { messages: previous.reverse().map(i => ({ remitente: 'paciente registrado por asesor', texto: (i.mensaje ?? '').slice(0, 4000) })),
+    const messages = previous.reverse().map(i => ({ remitente: 'paciente registrado por asesor', texto: (i.mensaje ?? '').slice(0, 4000) }));
+    const siteCatalog = await tx.sedes.findMany({
+      select: { id_sede: true, nombre: true },
+    });
+    const excludedSites = excludedLeadSites(messages.map(m => m.texto), siteCatalog);
+    const excludedSiteNames = siteCatalog.filter(s => excludedSites.includes(s.id_sede)).map(s => s.nombre);
+    return { messages, excludedSites, excludedSiteNames,
       facts: {
         servicio: service?.nombre ?? 'Servicio por confirmar',
         precioPropuesta: proposal?.precio ?? null,
         tarifaReferencia: tarifa?.precio.toFixed(2) ?? null,
         promociones: promociones.map(p => p.nombre),
-        sedesConAgenda: sites.map(s => s.nombre),
+        sedesConAgenda: sites.filter(s => !excludedSiteNames.includes(s.nombre)).map(s => s.nombre),
         propuestasMenores: proposal ? proposals.filter(p => Number(p.precio) < Number(proposal.precio))
           .sort((a,b) => Number(a.precio)-Number(b.precio)).slice(0, 3) : [],
       } };
@@ -1317,6 +1323,7 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
         JOIN dbo.Solicitudes sol ON sol.id_solicitud=${id(req.params.id)} AND sol.id_servicio=ps.id_servicio
         JOIN dbo.Servicios sv ON sv.id_servicio=ps.id_servicio AND sv.activo=1
         WHERE d.estado='Disponible'
+          ${context.excludedSites.length ? Prisma.sql`AND d.id_sede NOT IN (${Prisma.join(context.excludedSites)})` : Prisma.empty}
           AND (d.fecha>CONVERT(date,DATEADD(hour,-5,SYSUTCDATETIME()))
             OR (d.fecha=CONVERT(date,DATEADD(hour,-5,SYSUTCDATETIME()))
               AND d.hora_inicio>CONVERT(time,DATEADD(hour,-5,SYSUTCDATETIME()))))
@@ -1336,7 +1343,11 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
         ? alternativas.length
           ? `${analysis.turnos_excluidos?.length ? 'El paciente descarta la franja de ' + analysis.turnos_excluidos.join(', ') + '. ' : ''}Estos horarios están disponibles para el servicio y respetan la preferencia indicada. Revisa con el paciente cuál le conviene y selecciónalo para preparar la propuesta.`
           : 'No encontré horarios disponibles que cumplan esta preferencia. Confirma qué otros días o franjas acepta el paciente antes de ampliar la búsqueda.'
-        : analysis.sugerencia,
+        : analysis.intencion === 'SEDE'
+          ? alternativas.length
+            ? 'Estas opciones tienen agenda disponible para el servicio y excluyen las sedes descartadas por el paciente. Confirma desde qué zona se desplaza y cuál le conviene antes de preparar la propuesta.'
+            : `No hay horarios disponibles en otras sedes que cumplan las restricciones registradas.${context.excludedSiteNames.length ? ' Sedes descartadas: ' + context.excludedSiteNames.join(', ') + '.' : ''} Confirma si acepta otra sede o coordina nueva disponibilidad; no vuelvas a ofrecer una sede que ya rechazó.`
+          : analysis.sugerencia,
     };
     if (geminiSuggestions.size >= 256) {
       const oldest = geminiSuggestions.keys().next().value;

@@ -1,9 +1,24 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { classifyLeadChat, commercialRecommendation, excludedLeadShifts, LeadGeminiError } from '../src/services/leadGemini';
+import { classifyLeadChat, commercialRecommendation, excludedLeadShifts, excludedLeadSites, LeadGeminiError } from '../src/services/leadGemini';
 
 const config = { key: 'synthetic-test-key', model: 'gemini-test' };
 const context = [{ remitente: 'PACIENTE', texto: '¿Puedo ir por la tarde?' }];
+const sites = [{ id_sede: 1, nombre: 'Sede Centro Histórico' }, { id_sede: 2, nombre: 'Sede California' }];
+
+test('rejected sites remain excluded across subsequent messages and cannot reappear as alternatives', () => {
+  assert.deepEqual(excludedLeadSites([
+    'me queda muy lejos la sede de centro historico',
+    'que no puede en la sede california',
+    'necesito por la mañana',
+  ], sites).sort(), [1, 2]);
+});
+
+test('asking about a site does not reject it and explicit acceptance restores it', () => {
+  assert.deepEqual(excludedLeadSites(['¿Dónde queda California?'], sites), []);
+  assert.deepEqual(excludedLeadSites(['no puedo en California', 'ahora sí puedo en California'], sites), []);
+  assert.deepEqual(excludedLeadSites(['No quiero California, prefiero Centro Histórico'], sites), [2]);
+});
 const response = (text: string, finishReason = 'STOP') => Response.json({
   candidates: [{ finishReason, content: { parts: [{ text }] } }],
 });

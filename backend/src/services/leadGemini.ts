@@ -1,6 +1,25 @@
 const intents = ['HORARIO', 'PRECIO', 'SEDE', 'DUDA', 'AMBIGUO', 'REVISION'] as const;
 const days = ['sin_dato', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
 const shifts = ['sin_dato', 'mañana', 'tarde', 'noche'];
+export function excludedLeadSites(messages: string[], sites: { id_sede: number; nombre: string }[]): number[] {
+  const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const excluded = new Set<number>();
+  for (const message of messages) {
+    const clauses = normalize(message).split(/[.!?;\n]|\b(?:pero|en cambio)\b|(?=\bprefiero\b)/);
+    for (const clause of clauses) {
+      for (const site of sites) {
+        const name = normalize(site.nombre).replace(/^sede\s+/, '');
+        if (!name || !clause.includes(name)) continue;
+        if (/\b(?:no\s+(?:pued[oe]|podria|quier[oe]|me sirve|le sirve)|descart|rechaz|lejos|excepto|menos)/.test(clause)) {
+          excluded.add(site.id_sede);
+        } else if (/\b(?:si\s+(?:pued[oe]|quier[oe])|acepto|me sirve|le sirve|prefier[oe])\b/.test(clause)) {
+          excluded.delete(site.id_sede);
+        }
+      }
+    }
+  }
+  return [...excluded];
+}
 export function excludedLeadShifts(text: string): string[] {
   const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   return ['manana', 'tarde', 'noche'].filter(shift => {
