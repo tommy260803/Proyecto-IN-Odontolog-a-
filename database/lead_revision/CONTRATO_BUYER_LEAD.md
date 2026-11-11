@@ -12,6 +12,12 @@ LEAD verifica el evento BUYER → LEAD y sus vínculos con persona, captación y
 
 Si el contacto ya avanzó, BUYER conserva su etapa y registra la interacción. Puede vincularla a una oportunidad que el contexto identifique con claridad. Una solicitud distinta queda pendiente de apertura hasta acordar ese flujo.
 
+## Continuidad de conversación del agente
+
+El aviso interno conserva su firma: solo recibe `id_solicitud`. BUYER debe conservar el identificador del mensaje, su procedencia y el vínculo con la captación. Para iniciar la conversación, LEAD recuperará únicamente el contexto asociado a la captación acreditada por la entrada y comprobará la pertenencia a la misma persona. No buscará mensajes solo por persona o por cercanía de fechas. Si BUYER todavía no ofrece un vínculo verificable con el historial, la solicitud puede priorizarse en QA, pero se detiene el inicio automático de la conversación. El formato de lectura y la sesión de paciente deben validarse con BUYER antes de conectar el chat.
+
+BUYER es responsable de conservar el mensaje y reintentar el aviso pendiente; LEAD es responsable de deduplicar el ingreso y procesar su propia cola. Una respuesta perdida del aviso no inicia otra negociación. La respuesta del aviso confirma recepción, no que el agente haya contactado al paciente.
+
 ## QA y estado de integración
 
 Con el paquete OLTP BUYER y LEAD instalado, ejecutar desde la raíz del repositorio, con la instancia de QA:
