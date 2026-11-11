@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { format, addDays, startOfDay, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -104,7 +104,10 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     '24h' | '48h' | '72h' | '7d' | 'custom'
   >('48h');
   const [selectedVigenciaCustom, setSelectedVigenciaCustom] = useState('');
+  const [validityStartedAt, setValidityStartedAt] = useState(() => Date.now());
   const [selectedFranja, setSelectedFranja] = useState('Turno Mañana (08:00 AM – 01:00 PM)');
+  const [selectedDisponibilidadId, setSelectedDisponibilidadId] = useState('');
+  const [activeProposal, setActiveProposal] = useState<{ id: number; terms: string } | null>(null);
   const [companyHorario, setCompanyHorario] = useState('');
 
   const { openTime, closeTime } = useMemo(
@@ -114,6 +117,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
 
   const [precioOfrecido, setPrecioOfrecido] = useState('150.00');
   const [condiciones, setCondiciones] = useState('');
+  const [promocionAplicada, setPromocionAplicada] = useState('');
   const [offerErrors, setOfferErrors] = useState<Record<string, string>>({});
 
   // Edición rápida de tarifa en las opciones del tablero
@@ -174,6 +178,8 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
 
   useEffect(() => {
     if (leadId) {
+      setActiveProposal(null);
+      setSelectedDisponibilidadId('');
       fetchLeadData();
     }
   }, [leadId]);
@@ -249,20 +255,20 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
 
   // Vigencia calculada
   const calculatedExpiry = useMemo(() => {
-    const today = startOfDay(new Date());
-    if (selectedVigencia === '24h') return addDays(today, 1);
-    if (selectedVigencia === '48h') return addDays(today, 2);
-    if (selectedVigencia === '72h') return addDays(today, 3);
-    if (selectedVigencia === '7d') return addDays(today, 7);
+    const hoursByTerm = { '24h': 24, '48h': 48, '72h': 72, '7d': 168 } as const;
+    if (selectedVigencia in hoursByTerm) {
+      return new Date(validityStartedAt + hoursByTerm[selectedVigencia as keyof typeof hoursByTerm] * 60 * 60 * 1000);
+    }
     if (selectedVigencia === 'custom' && selectedVigenciaCustom) {
       try {
-        return parseISO(selectedVigenciaCustom);
+        const customExpiry = parseISO(`${selectedVigenciaCustom}T23:59:59.999-05:00`);
+        if (!Number.isNaN(customExpiry.getTime())) return customExpiry;
       } catch {
-        return addDays(today, 2);
+        // Use the standard 48-hour term when the custom date is malformed.
       }
     }
-    return addDays(today, 2);
-  }, [selectedVigencia, selectedVigenciaCustom]);
+    return new Date(Date.now() + 48 * 60 * 60 * 1000);
+  }, [selectedVigencia, selectedVigenciaCustom, validityStartedAt]);
 
   const getVigenciaLabel = (vig: string, customVal: string) => {
     if (vig === '24h') return '24 horas (Flash)';
@@ -296,13 +302,15 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     setPrecioOfrecido(discounted.toFixed(2));
     if (type === 'CAMPANA') {
       setCondiciones(`Tarifa promocional autorizada (-${pct}%) con reserva anticipada`);
+      setPromocionAplicada(pct === 15 ? 'Promoción (-15%)' : `Campaña (-${pct}%)`);
     } else if (type === 'REGULAR') {
       setCondiciones('');
+      setPromocionAplicada('');
     }
     if (offerErrors.precio) setOfferErrors((p) => ({ ...p, precio: '' }));
   };
 
-  const offeredSlot = (options.disponibilidades ?? []).find((slot: any) => {
+  const matchingOfferSlots = (options.disponibilidades ?? []).filter((slot: any) => {
     const start = String(slot.hora_inicio).slice(11, 16);
     if (start < '08:00' || start >= '20:00') return false;
     const shift = start < '13:00' ? 'Turno Mañana' : start < '18:00' ? 'Turno Tarde' : 'Turno Noche';
@@ -313,10 +321,22 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         (entry: { id_servicio: number }) => String(entry.id_servicio) === selectedServicioId,
       );
   });
+  const offeredSlot = matchingOfferSlots.find(
+    (slot: any) => String(slot.id_disponibilidad) === selectedDisponibilidadId
+  );
 
   const handleAddAlternative = async () => {
     const errors: Record<string, string> = {};
+    const ultimaSolicitud = lead?.Solicitudes?.[0];
     if (!selectedServicioId) errors.servicio = 'Selecciona un servicio odontológico.';
+    else if (String(ultimaSolicitud?.id_servicio ?? '') !== selectedServicioId) {
+      errors.servicio = 'El tratamiento ofrecido debe ser el de la solicitud LEAD.';
+    }
+    if (selectedVigencia === 'custom' && !selectedVigenciaCustom) {
+      errors.vigencia = 'Selecciona la fecha hasta la que será válida la propuesta.';
+    } else if (calculatedExpiry.getTime() <= Date.now()) {
+      errors.vigencia = 'La vigencia debe terminar en una fecha futura.';
+    }
     if (!precioOfrecido || isNaN(Number(precioOfrecido)) || Number(precioOfrecido) <= 0) {
       errors.precio = 'Ingresa una tarifa mayor a 0.';
     }
@@ -327,23 +347,33 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
 
     setOfferErrors({});
     setAddingAlternative(true);
-    const ultimaSolicitud = lead.Solicitudes?.[0];
     const fullCondiciones = `[Vigencia: ${getVigenciaLabel(
       selectedVigencia,
       selectedVigenciaCustom
-    )} · Vence: ${format(calculatedExpiry, 'dd/MM/yyyy')}] [${selectedFranja}] ${
+    )} · Vence: ${format(calculatedExpiry, 'dd/MM/yyyy HH:mm')}] [${selectedFranja}] ${
       condiciones ? `| ${condiciones}` : ''
     }`.trim();
 
     if (!offeredSlot) {
       setAddingAlternative(false);
-      toast({ title: 'No hay horarios disponibles con estos filtros', variant: 'destructive' });
+      toast({ title: 'Selecciona uno de los horarios disponibles', variant: 'destructive' });
       return;
     }
+    const proposalTerms = JSON.stringify({
+      serviceId: Number(selectedServicioId),
+      price: Number(precioOfrecido).toFixed(2),
+      promotion: promocionAplicada || null,
+      validUntil: calculatedExpiry.toISOString(),
+    });
     try {
-      await leadService.addAlternative(leadId, {
+      const response = await leadService.addAlternative(leadId, {
         id_solicitud: ultimaSolicitud?.id_solicitud,
+        id_servicio: Number(selectedServicioId),
         id_disponibilidad: offeredSlot.id_disponibilidad,
+        fecha_vigencia_hasta_utc_lead: calculatedExpiry.toISOString(),
+        promocion_aplicada: promocionAplicada || null,
+        id_propuesta_lead: activeProposal?.id,
+        crear_version_propuesta: Boolean(activeProposal && activeProposal.terms !== proposalTerms),
         ofr_turno_lead: selectedFranja.split(' (')[0],
         precio_ofrecido: precioOfrecido,
         condiciones: fullCondiciones,
@@ -358,8 +388,14 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         price: Number(precioOfrecido),
         conditions: fullCondiciones,
       });
+      const proposalId = Number(response?.data?.id_propuesta_lead);
+      if (Number.isInteger(proposalId) && proposalId > 0) {
+        setActiveProposal({ id: proposalId, terms: proposalTerms });
+      }
       fetchLeadData();
+      setSelectedDisponibilidadId('');
       setCondiciones('');
+      setPromocionAplicada('');
       toast({
         title: 'Propuesta comercial añadida',
         description: 'La oferta fue incorporada a la mesa de negociación.',
@@ -1339,7 +1375,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                   </p>
                 </div>
                 <span className="font-mono text-xs font-medium text-slate-500 dark:text-slate-400 tabular-nums">
-                  Vigencia hasta: {format(calculatedExpiry, 'dd/MM/yyyy')}
+                  Vigencia hasta: {format(calculatedExpiry, 'dd/MM/yyyy HH:mm')}
                 </span>
               </div>
 
@@ -1361,7 +1397,11 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                       <button
                         key={v.id}
                         type="button"
-                        onClick={() => setSelectedVigencia(v.id as any)}
+                        onClick={() => {
+                          setSelectedVigencia(v.id as any);
+                          setValidityStartedAt(Date.now());
+                          setOfferErrors((current) => ({ ...current, vigencia: '' }));
+                        }}
                         className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                           active
                             ? 'border-[#0f766e] bg-teal-50/60 dark:bg-teal-950/50 font-semibold text-[#0f766e] dark:text-teal-300'
@@ -1378,11 +1418,15 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                     <input
                       type="date"
                       value={selectedVigenciaCustom}
-                      onChange={(e) => setSelectedVigenciaCustom(e.target.value)}
+                      onChange={(e) => {
+                        setSelectedVigenciaCustom(e.target.value);
+                        setOfferErrors((current) => ({ ...current, vigencia: '' }));
+                      }}
                       className="h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 font-mono text-xs text-slate-800 dark:text-slate-200"
                     />
                   </div>
                 )}
+                {offerErrors.vigencia && <p role="alert" className="text-xs text-rose-600">{offerErrors.vigencia}</p>}
               </div>
 
               {/* Grid de Servicio, Sede y Especialista */}
@@ -1396,11 +1440,13 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                     onChange={(e) => {
                       const val = e.target.value;
                       setSelectedServicioId(val);
+                      setSelectedDisponibilidadId('');
                       const serv = options.servicios?.find(
                         (s: any) => String(s.id_servicio) === val
                       );
                       const baseP = Number(serv?.Tarifas?.[0]?.precio || 180);
                       setPrecioOfrecido(baseP.toFixed(2));
+                      setPromocionAplicada('');
                     }}
                     className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-xs text-slate-900 dark:text-white focus:border-[#0f766e] focus:outline-none"
                   >
@@ -1421,7 +1467,10 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                   </label>
                   <select
                     value={selectedSedeId}
-                    onChange={(e) => setSelectedSedeId(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedSedeId(e.target.value);
+                      setSelectedDisponibilidadId('');
+                    }}
                     className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-xs text-slate-900 dark:text-white focus:border-[#0f766e] focus:outline-none"
                   >
                     <option value="ALL_SEDES">Todas las sedes (A elección)</option>
@@ -1439,7 +1488,10 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                   </label>
                   <select
                     value={selectedProfesionalId}
-                    onChange={(e) => setSelectedProfesionalId(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedProfesionalId(e.target.value);
+                      setSelectedDisponibilidadId('');
+                    }}
                     className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-xs text-slate-900 dark:text-white focus:border-[#0f766e] focus:outline-none"
                   >
                     <option value="ALL_PROFESSIONALS">Staff Colegiado Disponible</option>
@@ -1480,7 +1532,10 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                       <button
                         key={slot.label}
                         type="button"
-                        onClick={() => setSelectedFranja(slot.full)}
+                        onClick={() => {
+                          setSelectedFranja(slot.full);
+                          setSelectedDisponibilidadId('');
+                        }}
                         className={`flex items-center justify-between rounded-lg border px-3.5 py-2 text-xs transition-colors cursor-pointer ${
                           active
                             ? 'border-[#0f766e] bg-teal-50/50 dark:bg-teal-950/40 font-semibold text-slate-900 dark:text-white'
@@ -1560,7 +1615,10 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                       type="number"
                       step="0.5"
                       value={precioOfrecido}
-                      onChange={(e) => setPrecioOfrecido(e.target.value)}
+                      onChange={(e) => {
+                        setPrecioOfrecido(e.target.value);
+                        setPromocionAplicada('');
+                      }}
                       className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 font-mono text-xs font-semibold text-slate-900 dark:text-white tabular-nums focus:border-[#0f766e] focus:outline-none"
                     />
                   </div>
@@ -1579,14 +1637,29 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                   </div>
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex flex-col items-stretch justify-end gap-3 sm:flex-row sm:items-end">
                   <div className="text-xs">
-                    <p className="font-semibold">Primer horario disponible</p>
-                    <p role="status" className="rounded border p-2">
-                      {offeredSlot
-                        ? `${String(offeredSlot.fecha).slice(0, 10)} · ${String(offeredSlot.hora_inicio).slice(11, 16)}–${String(offeredSlot.hora_fin).slice(11, 16)} · ${offeredSlot.Sede?.nombre} · ${offeredSlot.Profesional?.apellidos}`
-                        : 'No hay horarios con estos filtros. Cambia la sede, el especialista o la franja.'}
-                    </p>
+                    <label htmlFor="lead-offered-availability" className="mb-1 block font-semibold">
+                      Elige el horario que quieres ofrecer
+                    </label>
+                    <select
+                      id="lead-offered-availability"
+                      value={selectedDisponibilidadId}
+                      onChange={(event) => setSelectedDisponibilidadId(event.target.value)}
+                      disabled={matchingOfferSlots.length === 0}
+                      className="min-w-64 rounded border bg-white p-2 text-xs disabled:bg-slate-100"
+                    >
+                      <option value="">
+                        {matchingOfferSlots.length
+                          ? `Selecciona un horario (${matchingOfferSlots.length} disponibles)`
+                          : 'No hay horarios disponibles con estos filtros'}
+                      </option>
+                      {matchingOfferSlots.map((slot: any) => (
+                        <option key={slot.id_disponibilidad} value={String(slot.id_disponibilidad)}>
+                          {String(slot.fecha).slice(0, 10)} · {String(slot.hora_inicio).slice(11, 16)}–{String(slot.hora_fin).slice(11, 16)} · {slot.Sede?.nombre} · Esp. {slot.Profesional?.nombres} {slot.Profesional?.apellidos}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <button
                     type="button"
@@ -1721,6 +1794,18 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                               ? `Esp. ${opt.Disponibilidad.Profesional.apellidos}`
                               : 'Staff Colegiado'}
                           </p>
+                          {opt.Propuesta?.promocion_aplicada && (
+                            <p>
+                              <span className="font-medium text-slate-500">Promoción:</span>{' '}
+                              {opt.Propuesta.promocion_aplicada}
+                            </p>
+                          )}
+                          {opt.Propuesta?.fecha_vigencia_hasta_utc_lead && (
+                            <p>
+                              <span className="font-medium text-slate-500">Precio vigente hasta:</span>{' '}
+                              {format(new Date(opt.Propuesta.fecha_vigencia_hasta_utc_lead), 'dd/MM/yyyy HH:mm')}
+                            </p>
+                          )}
                           {opt.condiciones && (
                             <p className="pt-1 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
                               {opt.condiciones}

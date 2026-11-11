@@ -300,6 +300,7 @@ model Opciones {
   precio_ofrecido   Decimal        @db.Decimal(10, 2)
   fecha_ofrecida    DateTime       @default(now()) @db.DateTime2
   seleccionada      Boolean        @default(false)
+  Propuesta         PropuestasEconomicasLead? @relation(fields: [id_propuesta_lead], references: [id_propuesta], onDelete: NoAction, onUpdate: NoAction)
   Solicitud         Solicitudes    @relation(fields: [id_solicitud], references: [id_solicitud], onDelete: NoAction, onUpdate: NoAction)
   Disponibilidad    Disponibilidad @relation(fields: [id_disponibilidad], references: [id_disponibilidad], onDelete: NoAction, onUpdate: NoAction)
   Reservas          Reservas[]
@@ -499,10 +500,12 @@ model PropuestasEconomicasLead {
   precio_cotizado Decimal @db.Decimal(10, 2)
   promocion_aplicada String? @db.VarChar(150)
   fecha_presentacion DateTime @default(dbgenerated("sysdatetime()")) @db.DateTime2
+  fecha_vigencia_hasta_utc_lead DateTime? @db.DateTime2
   estado String @default("Pendiente") @db.VarChar(20)
   fecha_decision DateTime? @db.DateTime2
   id_promocion_lead Int?
   id_motivo_rechazo_lead Int?
+  Opciones Opciones[]
 }
 
 model CambiosOpcionLead {

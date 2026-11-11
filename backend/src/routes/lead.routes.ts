@@ -206,11 +206,12 @@ router.get('/:id', async (req, res) => {
           include: {
             Servicio: true,
             Opciones: {
-                where: { archivada_lead_en: null },
+              where: { archivada_lead_en: null },
               include: {
                 Disponibilidad: {
                   include: { Profesional: true, Sede: true }
-                }
+                },
+                Propuesta: true,
               }
             }
           },
@@ -246,9 +247,11 @@ router.post('/:id/reserve', async (req, res) => {
           Solicitud: { id_persona: Number(id), archivada_lead_en: null, Persona: { Etapa: { nombre: 'LEAD' } } },
           Disponibilidad: bookableSlot(), Reservas: { none: {} },
         },
-        include: { Disponibilidad: true },
+        include: { Disponibilidad: true, Propuesta: true },
       });
-      if (!eligible || !isUpcomingLimaSlot(eligible.Disponibilidad)) {
+      if (!eligible || !isUpcomingLimaSlot(eligible.Disponibilidad) ||
+          (eligible.Propuesta?.fecha_vigencia_hasta_utc_lead &&
+            eligible.Propuesta.fecha_vigencia_hasta_utc_lead.getTime() <= Date.now())) {
         throw new LeadConflict('La alternativa no está disponible para esta negociación.');
       }
       const opcion = await tx.opciones.update({
@@ -616,13 +619,19 @@ router.put('/:id', async (req, res) => {
 // ── Añadir alternativa a la mesa de negociación ────────────────────────────
 router.post('/:id/alternative', async (req, res) => {
   const id_persona = Number(req.params.id);
-  const { id_solicitud, id_disponibilidad, precio_ofrecido, id_propuesta_lead,
+  const { id_solicitud, id_servicio, id_disponibilidad, precio_ofrecido, id_propuesta_lead,
+    fecha_vigencia_hasta_utc_lead, promocion_aplicada, crear_version_propuesta,
     id_preferencia_lead, pref_fecha_lead, pref_dia_semana_lead, pref_turno_lead,
     pref_hora_inicio_lead, pref_hora_fin_lead, ofr_turno_lead } = req.body;
   try {
     const price = new Prisma.Decimal(precio_ofrecido);
     if (!price.isFinite() || price.lt(0) || price.gte(100000000) || price.decimalPlaces() > 2) {
       throw new LeadConflict('Indica un precio válido.');
+    }
+    const expiry = typeof fecha_vigencia_hasta_utc_lead === 'string'
+      ? new Date(fecha_vigencia_hasta_utc_lead) : null;
+    if (!expiry || Number.isNaN(expiry.getTime()) || expiry.getTime() <= Date.now()) {
+      throw new LeadConflict('La vigencia de la propuesta debe ser una fecha futura válida.');
     }
     const time = (value?: string) => {
       if (value == null) return null;
@@ -640,6 +649,9 @@ router.post('/:id/alternative', async (req, res) => {
       if (!request || request.resultado_comercial_lead === 'CERRADA_SIN_ACUERDO') {
         throw new LeadConflict('No hay una oportunidad abierta para esta persona.');
       }
+      if (request.id_servicio == null || Number(id_servicio) !== request.id_servicio) {
+        throw new LeadConflict('El tratamiento ofrecido debe coincidir con el de la solicitud.');
+      }
       const slot = await tx.disponibilidad.findFirst({
         where: {
           ...bookableSlot(request.id_servicio), id_disponibilidad: Number(id_disponibilidad),
@@ -652,22 +664,64 @@ router.post('/:id/alternative', async (req, res) => {
         where: { id_persona, id_preferencia: Number(id_preferencia_lead) }, include: { Horario: true },
       });
       if (id_preferencia_lead != null && !preference) throw new LeadConflict('La preferencia no corresponde al paciente.');
-      const proposal = id_propuesta_lead == null ? null : await tx.propuestasEconomicasLead.findFirst({
-        where: { id_propuesta: Number(id_propuesta_lead), id_solicitud: request.id_solicitud, precio_cotizado: price },
-      });
-      if (id_propuesta_lead != null && !proposal) throw new LeadConflict('La propuesta y su precio deben corresponder a la oportunidad.');
+      const promotion = typeof promocion_aplicada === 'string'
+        ? promocion_aplicada.trim().slice(0, 150) || null
+        : null;
+      let proposal;
+      if (id_propuesta_lead == null) {
+        proposal = await tx.propuestasEconomicasLead.create({
+          data: {
+            id_solicitud: request.id_solicitud, id_servicio: request.id_servicio,
+            precio_cotizado: price, promocion_aplicada: promotion,
+            fecha_vigencia_hasta_utc_lead: expiry,
+          },
+        });
+      } else {
+        const previous = await tx.propuestasEconomicasLead.findFirst({
+          where: { id_propuesta: Number(id_propuesta_lead), id_solicitud: request.id_solicitud },
+        });
+        if (!previous) throw new LeadConflict('La propuesta no corresponde a esta oportunidad.');
+        const root = previous.id_propuesta_raiz ?? previous.id_propuesta;
+        const latest = await tx.propuestasEconomicasLead.findFirst({
+          where: { OR: [{ id_propuesta: root }, { id_propuesta_raiz: root }] },
+          orderBy: { numero_version: 'desc' },
+        });
+        if (latest?.id_propuesta !== previous.id_propuesta) {
+          throw new LeadConflict('Actualiza la propuesta antes de agregar otra alternativa.');
+        }
+        if (crear_version_propuesta === true) {
+          if (previous.estado === 'Aceptada') throw new LeadConflict('Una propuesta aceptada no admite nuevas versiones.');
+          proposal = await tx.propuestasEconomicasLead.create({
+            data: {
+              id_solicitud: request.id_solicitud, id_servicio: request.id_servicio,
+              id_propuesta_raiz: root, numero_version: previous.numero_version + 1,
+              precio_cotizado: price, promocion_aplicada: promotion,
+              fecha_vigencia_hasta_utc_lead: expiry,
+            },
+          });
+        } else {
+          if (!previous.precio_cotizado.equals(price) || previous.promocion_aplicada !== promotion ||
+              previous.fecha_vigencia_hasta_utc_lead?.getTime() !== expiry.getTime()) {
+            throw new LeadConflict('Cambió el precio o la vigencia. Registra una nueva versión de la propuesta.');
+          }
+          proposal = previous;
+        }
+      }
       return tx.opciones.create({
         data: {
           id_solicitud: request.id_solicitud, id_disponibilidad: slot.id_disponibilidad,
           precio_ofrecido: price, estado_respuesta: 'Pendiente',
-          id_propuesta_lead: proposal?.id_propuesta, id_preferencia_lead: preference?.id_preferencia,
+          id_propuesta_lead: proposal.id_propuesta, id_preferencia_lead: preference?.id_preferencia,
           pref_fecha_lead: pref_fecha_lead ? parseCalendarDate(pref_fecha_lead) : null,
           pref_dia_semana_lead: pref_dia_semana_lead ?? preference?.Horario?.dia_semana,
           pref_turno_lead, ofr_turno_lead,
           pref_hora_inicio_lead: time(pref_hora_inicio_lead) ?? preference?.Horario?.hora_inicio,
           pref_hora_fin_lead: time(pref_hora_fin_lead) ?? preference?.Horario?.hora_fin,
         },
-        include: { Disponibilidad: { include: { Profesional: true, Sede: true } } },
+        include: {
+          Disponibilidad: { include: { Profesional: true, Sede: true } },
+          Propuesta: true,
+        },
       });
     }, serializable);
     res.status(201).json({ message: 'Alternativa registrada en el tablero', data: result });

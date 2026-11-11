@@ -232,7 +232,8 @@ function chatMessages(staff: boolean, action: 'messages' | 'proposals' | 'review
       if (action === 'proposals') {
         if (!access.activo) throw new InputError('La conversación no admite decisiones.', 409);
         if (req.method === 'GET') return { propuestas: await tx.$queryRaw`
-          SELECT c.id_propuesta, p.numero_version, CAST(c.precio AS varchar(20)) AS precio,
+          SELECT c.id_propuesta, p.numero_version, p.fecha_vigencia_hasta_utc_lead,
+            CAST(c.precio AS varchar(20)) AS precio,
             c.promocion, c.aceptada_utc, p.estado, sv.nombre AS servicio
           FROM dbo.PropuestasChatLead c
           JOIN dbo.PropuestasEconomicasLead p ON p.id_propuesta = c.id_propuesta AND p.id_solicitud = c.id_solicitud
@@ -256,6 +257,10 @@ function chatMessages(staff: boolean, action: 'messages' | 'proposals' | 'review
         }
         if (staff) {
           if (published) return { reutilizada: true };
+          if (proposal.fecha_vigencia_hasta_utc_lead &&
+              proposal.fecha_vigencia_hasta_utc_lead.getTime() <= Date.now()) {
+            throw new InputError('La propuesta venció. Crea una nueva versión antes de compartirla.', 409);
+          }
           if (proposal.estado !== 'Pendiente') throw new InputError('La versión ya tiene una decisión.', 409);
           await tx.$executeRaw`
             INSERT dbo.PropuestasChatLead (id_propuesta, id_solicitud, id_usuario, precio, promocion)
@@ -269,6 +274,10 @@ function chatMessages(staff: boolean, action: 'messages' | 'proposals' | 'review
           throw new InputError('Confirma el importe de la versión mostrada.');
         }
         if (published.aceptada_utc && proposal.estado === 'Aceptada') return { reutilizada: true };
+        if (proposal.fecha_vigencia_hasta_utc_lead &&
+            proposal.fecha_vigencia_hasta_utc_lead.getTime() <= Date.now()) {
+          throw new InputError('La vigencia de esta propuesta terminó.', 409);
+        }
         if (proposal.estado !== 'Pendiente') throw new InputError('La versión ya tiene una decisión.', 409);
         const acceptedAt = new Date();
         await tx.propuestasEconomicasLead.update({
