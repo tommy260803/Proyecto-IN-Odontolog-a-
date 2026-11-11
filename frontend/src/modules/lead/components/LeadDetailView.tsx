@@ -63,29 +63,6 @@ interface LeadDetailViewProps {
   leadId: string;
 }
 
-const DEFAULT_SEDES = [
-  { id_sede: 1, nombre: 'Sede California', direccion: 'Av. Larco 820, Urb. California, Trujillo' },
-  { id_sede: 2, nombre: 'Sede El Golf', direccion: 'Av. El Golf 540, Urb. El Golf, Trujillo' },
-  {
-    id_sede: 3,
-    nombre: 'Sede Centro Historico',
-    direccion: 'Jr. Pizarro 456, Centro Histórico, Trujillo',
-  },
-];
-
-const DEFAULT_SERVICIOS = [
-  { id_servicio: 1, nombre: 'Evaluación General', Tarifas: [{ precio: 120 }] },
-  { id_servicio: 2, nombre: 'Ortodoncia Inicial', Tarifas: [{ precio: 350 }] },
-  { id_servicio: 3, nombre: 'Blanqueamiento Dental', Tarifas: [{ precio: 420 }] },
-  { id_servicio: 4, nombre: 'Implante Dental', Tarifas: [{ precio: 1850 }] },
-];
-
-const DEFAULT_PROFESIONALES = [
-  { id_profesional: 1, nombres: 'Carlos', apellidos: 'Mendoza Ríos' },
-  { id_profesional: 2, nombres: 'Lucía', apellidos: 'Vargas Paredes' },
-  { id_profesional: 3, nombres: 'Andrés', apellidos: 'Salazar Luna' },
-];
-
 function parseCompanyHours(companyHorario: string) {
   if (!companyHorario) return { openTime: '08:00 AM', closeTime: '08:00 PM' };
   const match = companyHorario.match(
@@ -109,9 +86,9 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
 
   const [lead, setLead] = useState<any>(null);
   const [options, setOptions] = useState<any>({
-    profesionales: DEFAULT_PROFESIONALES,
-    sedes: DEFAULT_SEDES,
-    servicios: DEFAULT_SERVICIOS,
+    profesionales: [],
+    sedes: [],
+    servicios: [],
     disponibilidades: [],
   });
   const [loading, setLoading] = useState(true);
@@ -182,11 +159,9 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
       .then(([leadData, optionsData, empData]) => {
         setLead(leadData);
         setOptions({
-          profesionales: optionsData?.profesionales?.length
-            ? optionsData.profesionales
-            : DEFAULT_PROFESIONALES,
-          sedes: optionsData?.sedes?.length ? optionsData.sedes : DEFAULT_SEDES,
-          servicios: optionsData?.servicios?.length ? optionsData.servicios : DEFAULT_SERVICIOS,
+          profesionales: optionsData?.profesionales ?? [],
+          sedes: optionsData?.sedes ?? [],
+          servicios: optionsData?.servicios ?? [],
           disponibilidades: optionsData?.disponibilidades || [],
         });
         if (empData?.horarioAtencion) {
