@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../db';
 import fs from 'fs';
 import path from 'path';
+import { leadStaffAuthEnabled } from '../services/leadStaffAuth';
 
 const router = Router();
 
@@ -664,19 +665,16 @@ router.put('/fuentes/:id', async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // 6. USUARIOS Y ROLES
 // ─────────────────────────────────────────────────────────────
+const publicUserFields = {
+  id_usuario: true, nombres: true, apellidos: true, email: true, id_rol: true, activo: true,
+  Rol: { select: { id_rol: true, nombre: true } },
+} as const;
+
 router.get('/usuarios', async (req, res) => {
   try {
     const [usuarios, roles] = await Promise.all([
       prisma.usuarios.findMany({
-        select: {
-          id_usuario: true,
-          nombres: true,
-          apellidos: true,
-          email: true,
-          id_rol: true,
-          activo: true,
-          Rol: { select: { id_rol: true, nombre: true } },
-        },
+        select: publicUserFields,
         orderBy: [{ activo: 'desc' }, { id_usuario: 'asc' }],
       }),
       prisma.roles.findMany({ orderBy: { id_rol: 'asc' } }),
@@ -690,6 +688,7 @@ router.get('/usuarios', async (req, res) => {
 });
 
 router.post('/usuarios', async (req, res) => {
+  if (leadStaffAuthEnabled()) return res.status(403).json({ error: 'La edición de cuentas está bloqueada durante la prueba de acceso LEAD.' });
   try {
     const { nombres, apellidos, email, id_rol, activo } = req.body;
     if (!nombres || !apellidos || !email || !id_rol) {
@@ -705,7 +704,7 @@ router.post('/usuarios', async (req, res) => {
         id_rol: Number(id_rol),
         activo: activo !== undefined ? Boolean(activo) : true,
       },
-      include: { Rol: true },
+      select: publicUserFields,
     });
 
     res.status(201).json(newUser);
@@ -715,6 +714,7 @@ router.post('/usuarios', async (req, res) => {
 });
 
 router.put('/usuarios/:id', async (req, res) => {
+  if (leadStaffAuthEnabled()) return res.status(403).json({ error: 'La edición de cuentas está bloqueada durante la prueba de acceso LEAD.' });
   try {
     const id = Number(req.params.id);
     const { nombres, apellidos, email, id_rol, activo } = req.body;
@@ -728,7 +728,7 @@ router.put('/usuarios/:id', async (req, res) => {
         ...(id_rol !== undefined && { id_rol: Number(id_rol) }),
         ...(activo !== undefined && { activo: Boolean(activo) }),
       },
-      include: { Rol: true },
+      select: publicUserFields,
     });
 
     res.json(updated);

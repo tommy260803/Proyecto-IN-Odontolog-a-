@@ -36,7 +36,8 @@ beforeEach(() => {
           Resultado: 'Rechazada', MotivoRechazo: 'Incompatibilidad de horario', NumeroCambios: 2 }],
         resumen: [{ Presentadas: 1, Rechazadas: 1, Aceptadas: 0, Pendientes: 0, Modificadas: 1, L3Porcentaje: 100 }],
       };
-    return new Response(JSON.stringify(body), { status: 200 });
+    const headers = url.includes('/reports/') ? { 'X-Lead-Cutoff-Utc': '2026-11-08T04:00:00.000Z' } : undefined;
+    return new Response(JSON.stringify(body), { status: 200, headers });
   });
 });
 afterEach(() => {
@@ -78,6 +79,27 @@ test('R2 presenta la raíz y los valores de su versión vigente con el desglose 
   await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('con_promocion=false'))).toBe(true));
   expect(screen.getByText('Desglose por tratamiento, promoción y resultado')).toBeTruthy();
   expect(screen.queryByLabelText('Fecha de corte')).toBeNull();
+  expect(screen.getByText('2026-11-08T04:00:00.000Z (UTC)')).toBeVisible();
+  expect(screen.getByRole('region', { name: 'Detalle de propuestas por raíz' })).toHaveAttribute('tabindex', '0');
+  expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/reports/R2?'))
+    .every(([url]) => !String(url).includes('corte_utc='))).toBe(true);
+  fireEvent.change(screen.getByLabelText('Motivo de rechazo'), { target: { value: '1' } });
+  await screen.findByText(/El motivo filtra el detalle/);
+  expect(screen.getByText(/L2.*100[.,]00 %/)).toBeVisible();
+  expect(screen.getByRole('region', { name: 'Totales de propuestas' })).toBeVisible();
+});
+
+test('al cambiar de R1 a R2 no renderiza los grupos de R1 como propuestas', async () => {
+  const consoleErrors = vi.spyOn(console, 'error');
+  try {
+    render(<LeadReportsPanel />);
+    await screen.findByText('TOTAL');
+    fireEvent.click(screen.getByRole('button', { name: 'R2' }));
+    await screen.findByText(/PROP-11/);
+    expect(consoleErrors.mock.calls.some(([message]) => String(message).includes('same key'))).toBe(false);
+  } finally {
+    consoleErrors.mockRestore();
+  }
 });
 
 test('R3 presenta ambos horarios, el motivo tipificado y el conteo de cambios en la misma fila', async () => {

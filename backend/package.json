@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "test:lead:flow": "node --require tsx/cjs tests/leadCommercialFlow.integration.ts",
+    "test:lead:intake": "node --require tsx/cjs tests/leadIntake.integration.ts",
+    "test:lead:concurrency": "node --require tsx/cjs tests/leadTransferConcurrency.integration.ts",
+    "lead:staff:provision": "tsx src/scripts/provision-lead-staff.ts",
     "etl:buyer": "tsx src/scripts/run-etl.ts",
     "classify:buyer": "tsx src/scripts/classify-buyer-cli.ts",
     "start": "node dist/index.js",

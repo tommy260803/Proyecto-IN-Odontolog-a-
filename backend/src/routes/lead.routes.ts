@@ -4,9 +4,18 @@ import { leadCommercialRouter } from './leadCommercial.routes';
 import { prisma, withRetry } from '../db';
 import { NegotiatorAgentService } from '../services/negotiatorAgentService';
 import { getServicioCommercialInfo } from './config.routes';
+import { leadStaffAuthMode } from '../services/leadStaffAuth';
 
 const router = Router();
 router.use('/commercial', leadCommercialRouter);
+
+// Keep the patient-facing pre-reservation contract intact. Other legacy LEAD
+// writes are closed only when the authenticated commercial workspace is enabled.
+router.use((req, res, next) => {
+  if (leadStaffAuthMode() !== 'enabled' || ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ||
+      req.path.startsWith('/public/')) return next();
+  return res.status(410).json({ error: 'Esta operación LEAD heredada está deshabilitada; utiliza el espacio comercial autenticado.' });
+});
 
 const serializable = { isolationLevel: Prisma.TransactionIsolationLevel.Serializable } as const;
 

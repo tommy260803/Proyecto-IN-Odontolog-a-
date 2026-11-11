@@ -6,8 +6,10 @@ import BuyerRequestInfoPage from '@/modules/buyer/pages/BuyerRequestInfoPage';
 import ActivateAccountPage from '@/modules/buyer/pages/ActivateAccountPage';
 import PreReservationPage from '@/modules/lead/pages/PreReservationPage';
 import LeadPage from '@/modules/lead/pages/LeadPage';
+import LeadOpportunityPage from '@/modules/lead/pages/LeadOpportunityPage';
 import LeadDetailPage from '@/modules/lead/pages/LeadDetailPage';
 import LeadNegotiationPage from '@/modules/lead/pages/LeadNegotiationPage';
+import { LeadListView } from '@/modules/lead/components/LeadListView';
 import PayerPage from '@/modules/payer/pages/PayerPage';
 import PayerDetailPage from '@/modules/payer/pages/PayerDetailPage';
 import CustomerPage from '@/modules/customer/pages/CustomerPage';
@@ -22,6 +24,8 @@ import ClinicalAppointmentsPage from '@/modules/clinical/pages/ClinicalAppointme
 import ClinicalOdontogramPage from '@/modules/clinical/pages/ClinicalOdontogramPage';
 import ConfigPage from '@/modules/config/pages/ConfigPage';
 import AppLayout from '@/app/layouts/AppLayout';
+
+const leadWorkspace = import.meta.env.VITE_LEAD_WORKSPACE === 'true';
 
 export const router = createBrowserRouter([
   {
@@ -73,15 +77,19 @@ export const router = createBrowserRouter([
       },
       {
         path: 'lead',
-        element: <LeadPage />,
+        element: leadWorkspace ? <LeadPage /> : <LeadListView />,
+      },
+      {
+        path: 'lead/oportunidades/:idSolicitud',
+        element: leadWorkspace ? <LeadOpportunityPage /> : <Navigate to="/lead" replace />,
       },
       {
         path: 'lead/:id',
-        element: <LeadDetailPage />,
+        element: leadWorkspace ? <LeadPage /> : <LeadDetailPage />,
       },
       {
         path: 'lead/:id/negotiation',
-        element: <LeadNegotiationPage />,
+        element: leadWorkspace ? <LeadPage /> : <LeadNegotiationPage />,
       },
       {
         path: 'payer',
