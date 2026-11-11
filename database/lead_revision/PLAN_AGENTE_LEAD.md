@@ -12,7 +12,7 @@ Chat web y Gemini con configuración propia de LEAD. La OLTP decide las operacio
 | 6. F3: negociación | Aceptación por chat validada en QA | El personal comparte una versión y el paciente confirma su importe. Pendiente la asistencia con Gemini para objeciones. |
 | 7. F4: seguimiento | Revisión humana validada en QA | Pausa y reanudación auditadas en el chat. Pendientes las reglas de contacto y el seguimiento automático. |
 | 8. F5: traspaso | Traspaso manual validado en QA | Una reserva y un evento por autorización, incluso ante reintentos y concurrencia. Pendiente la delegación para el agente. |
-| 9. Integración y entrega | Pendiente | Prueba conjunta en QA, regresión de indicadores y paquete de activación. |
+| 9. Integración y entrega | Validación local en QA y entrega documentadas | Flujo asistido reproducible. Pendientes la prueba conjunta y el paquete de activación productiva. |
 
 ## Interfaces entre etapas
 
@@ -85,3 +85,16 @@ Pasaron las compilaciones y el ensayo HTTP + SQL en QA. La prueba cubrió permis
 El personal registra la autorización para la propuesta aceptada y la revisión vigente de la alternativa. El traspaso revalida la agenda y registra en una sola transacción la reserva pendiente, la ocupación del horario, el cambio de etapa y el evento. Un reintento devuelve la reserva existente cuando consta exactamente un evento LEAD a PAYER para esa persona, solicitud y autorización. Si falta la evidencia o se duplica, el diagnóstico indica que requiere revisión.
 
 Pasaron `npm run test:lead:flow` y `npm run test:lead:concurrency`. El ensayo comprobó que retirar la evidencia bloquea el reintento sin duplicar la reserva. Con conexiones SQL independientes se verificó que los reintentos conservan la reserva original, que solo una solicitud obtiene un horario disputado y que un fallo antes de guardar el evento revierte todo el traspaso. La ejecución autónoma sigue pendiente de delegación y validación conjunta con PAYER.
+
+## Entrega y reproducción en QA
+
+En una copia dedicada `NexoSalud_LeadPruebas` con el paquete OLTP BUYER y LEAD, aplicar estos archivos desde la raíz con `sqlcmd -S "<instancia QA>" -E -C -I -b -d NexoSalud_LeadPruebas -f 65001 -i "<ruta al script>"`, en este orden:
+
+1. [ENTRADA_AGENTE_LEAD_QA.sql](ENTRADA_AGENTE_LEAD_QA.sql).
+2. [COLA_AGENTE_LEAD_QA.sql](COLA_AGENTE_LEAD_QA.sql) y [PRIORIZACION_AGENTE_LEAD_QA.sql](PRIORIZACION_AGENTE_LEAD_QA.sql).
+3. [CHAT_AGENTE_LEAD_QA.sql](CHAT_AGENTE_LEAD_QA.sql), [PROPUESTAS_CHAT_LEAD_QA.sql](PROPUESTAS_CHAT_LEAD_QA.sql) y [REVISION_CHAT_LEAD_QA.sql](REVISION_CHAT_LEAD_QA.sql).
+4. [AUTORIZACION_RESERVA_QA.sql](AUTORIZACION_RESERVA_QA.sql) y [TRASPASO_PAYER_QA.sql](TRASPASO_PAYER_QA.sql).
+
+Configurar `SQLSERVER_URL` para la copia, habilitar `LEAD_CHAT_QA=true` para incluir el chat y ejecutar desde `backend` las suites `npm run test:lead:intake`, `npm run test:lead:flow` y `npm run test:lead:concurrency` en secuencia. Los casos usan datos sintéticos y revierten o limpian sus registros. Para detener el piloto de chat, desactivar `LEAD_CHAT_QA` y reiniciar el backend. El historial queda disponible en SQL Server y se puede volver a habilitar el chat con las mismas condiciones.
+
+Pasaron las tres suites de backend en la copia existente y ambas compilaciones, incluida la del frontend con el chat habilitado. Pasaron 52 pruebas de frontend en 15 archivos. La validación cubre recepción y F1, chat, negociación, reserva y concurrencia. La regresión comercial verificó M1, M3 y M6 para un caso aceptado. La conciliación completa de M1–M8 y L1–L3 queda fuera de la evidencia de este ensayo. También quedan pendientes la prueba visual en navegador, la integración real con BUYER y PAYER, el adaptador de Gemini y sus evaluaciones, las políticas de seguimiento y delegación, y la preparación de un paquete productivo con respaldo y recuperación.
