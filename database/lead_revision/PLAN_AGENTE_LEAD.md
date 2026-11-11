@@ -7,7 +7,7 @@ Chat web y Gemini con configuración propia de LEAD. La OLTP decide las operacio
 | 1. Contratos y políticas | Validada en documentación | Entrada, salida, responsables y bloqueos definidos; acuerdos externos pendientes explícitos. |
 | 2. Persistencia y seguridad | Núcleo validado en QA | Cola de ingreso, auditoría, permisos y recuperación. El almacenamiento de chat, herramientas, seguimiento y revisión se incorpora con sus flujos. |
 | 3. Orquestador y F1 | Flujo inicial validado en QA | Una decisión recuperable por ingreso, con prioridad y siguiente acción. Pendientes el adaptador Gemini y la delegación contextual. |
-| 4. Chat web | Pendiente | Sesión vinculada, historial y mensajes sin duplicados. |
+| 4. Chat web | Chat manual validado en QA por HTTP | Acceso temporal por solicitud, historial, recepción y reenvío idempotente. Pendientes la prueba visual y la conexión con BUYER. |
 | 5. F2: alternativas | Pendiente | Opciones elegibles, revalidación e historial preservado. |
 | 6. F3: negociación | Pendiente | Condiciones verificadas, versiones y evidencia de decisiones. |
 | 7. F4: seguimiento | Pendiente | Límites por persona, parada, recuperación y revisión humana. |
@@ -49,3 +49,11 @@ Aplicar [PRIORIZACION_AGENTE_LEAD_QA.sql](PRIORIZACION_AGENTE_LEAD_QA.sql) con S
 La cola conserva el orden de toma por disponibilidad del trabajo. F1 clasifica la solicitud tomada según seguimiento vencido, seguimiento previsto para hoy en Lima, primera respuesta pendiente u oportunidad sin acción inmediata. Una oportunidad archivada, cerrada o fuera de LEAD se finaliza. La decisión se registra junto con el cierre del trabajo y su auditoría. Las acciones registradas son recomendaciones internas; queda pendiente la delegación contextual con Gemini cuando exista contexto verificable de conversación.
 
 Pasaron `npm run build` y `npm run test:lead:intake` contra QA. Ocho ejecuciones concurrentes sobre una misma solicitud temporal produjeron una sola decisión persistida y un seguimiento vencido recibió prioridad 1.
+
+## Chat web en QA
+
+Aplicar [CHAT_AGENTE_LEAD_QA.sql](CHAT_AGENTE_LEAD_QA.sql) con SQLCMD y `-b` después de la recepción. En el backend QA, habilitar `LEAD_STAFF_AUTH_QA=true` y `LEAD_CHAT_QA=true`. En el frontend QA, habilitar `VITE_LEAD_WORKSPACE=true`, `VITE_LEAD_STAFF_AUTH_QA=true` y `VITE_LEAD_CHAT_QA=true`.
+
+El personal asignado o un administrador inicia sesión en una oportunidad con entrada acreditada y autorización de contacto vigente. Desde la oportunidad genera un enlace temporal para entregar al paciente en QA. Cada enlace vence a las 24 horas y reemplaza el anterior. El chat vincula el acceso a la persona de la entrada y su solicitud. El historial se consulta por páginas y el navegador confirma la recepción de mensajes de la otra parte. La marca de recepción acredita que llegaron al navegador, sin inferir lectura ni aceptación comercial. El reenvío durante la misma sesión reutiliza la clave del mensaje.
+
+Pasaron las compilaciones de backend y frontend y el ensayo HTTP + SQL `npm run test:lead:flow` con el chat habilitado. El ensayo verificó diálogo, recepción, paginación, repetición de clave, aislamiento por solicitud, rotación y vencimiento del enlace. Pendientes la prueba visual en navegador y la integración del historial y la identidad del paciente con BUYER.

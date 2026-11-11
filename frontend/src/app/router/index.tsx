@@ -6,6 +6,7 @@ import BuyerRequestInfoPage from '@/modules/buyer/pages/BuyerRequestInfoPage';
 import ActivateAccountPage from '@/modules/buyer/pages/ActivateAccountPage';
 import PreReservationPage from '@/modules/lead/pages/PreReservationPage';
 import LeadPage from '@/modules/lead/pages/LeadPage';
+import { LeadPatientChatPage } from '@/modules/lead/components/LeadChat';
 import LeadOpportunityPage from '@/modules/lead/pages/LeadOpportunityPage';
 import LeadDetailPage from '@/modules/lead/pages/LeadDetailPage';
 import LeadNegotiationPage from '@/modules/lead/pages/LeadNegotiationPage';
@@ -28,6 +29,8 @@ import AppLayout from '@/app/layouts/AppLayout';
 const leadWorkspace = import.meta.env.VITE_LEAD_WORKSPACE === 'true';
 
 export const router = createBrowserRouter([
+  ...(import.meta.env.VITE_LEAD_CHAT_QA === 'true'
+    ? [{ path: '/lead-chat/:id', element: <LeadPatientChatPage /> }] : []),
   {
     path: '/',
     element: <BuyerRequestInfoPage />,

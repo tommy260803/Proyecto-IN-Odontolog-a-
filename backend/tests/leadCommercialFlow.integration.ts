@@ -109,6 +109,42 @@ async function run() {
         const login = await call('/lead/staff/session', 200, 'POST', { email, password });
         const token = login.token;
         const path = '/lead/opportunities/' + requestId;
+        if (process.env.LEAD_CHAT_QA === 'true') {
+          // The fixture is inside a rollback transaction; the intake procedure
+          // requires a committed conversion, so seed its equivalent from the event.
+          const inserted = await tx.$executeRaw`
+            INSERT dbo.EntradasAgenteLead (id_solicitud, id_evento_etapa, id_captacion, id_persona)
+            SELECT e.id_solicitud, e.id_evento_etapa, e.id_captacion, e.id_persona
+            FROM dbo.EventosEtapa e WHERE e.id_solicitud = ${requestId}
+              AND e.clave_operacion_buyer = CONCAT('BUYER_LEAD:', e.id_captacion)
+          `;
+          assert.equal(inserted, 1);
+          const staffChat = '/lead/chat/staff/' + requestId;
+          const patientChat = '/lead/chat/patient/' + requestId;
+          await call(staffChat + '/access', 401, 'POST');
+          const invite = (await call(staffChat + '/access', 201, 'POST', undefined, token)).token;
+          await call('/lead/chat/patient/' + (Number(requestId) + 1), 401, 'GET', undefined, invite);
+          const msg = { clave: randomUUID(), texto: 'Consulta desde el chat QA' };
+          const posted = await call(patientChat, 200, 'POST', msg, invite);
+          assert.deepEqual(await call(patientChat, 200, 'POST', msg, invite), posted);
+          await call(patientChat, 409, 'POST', { ...msg, texto: 'Texto distinto' }, invite);
+          assert.equal((await call(staffChat, 200, 'GET', undefined, token)).mensajes.length, 1);
+          await call(staffChat, 200, 'PATCH', posted, token);
+          assert.ok((await call(patientChat, 200, 'GET', undefined, invite)).mensajes[0].recibido_utc);
+          const reply = await call(staffChat, 200, 'POST', { clave: randomUUID(), texto: 'Respuesta del equipo QA' }, token);
+          const nextPage = await call(patientChat + '?desde=' + posted.id_mensaje, 200, 'GET', undefined, invite);
+          assert.equal(nextPage.mensajes.length, 1);
+          assert.equal(nextPage.mensajes[0].id_mensaje, reply.id_mensaje);
+          const replacement = (await call(staffChat + '/access', 201, 'POST', undefined, token)).token;
+          await call(patientChat, 401, 'GET', undefined, invite);
+          assert.equal((await call(patientChat, 200, 'GET', undefined, replacement)).mensajes.length, 2);
+          await tx.$executeRaw`
+            UPDATE dbo.AccesosChatLead SET vence_utc = SYSUTCDATETIME()
+            WHERE id_solicitud = ${requestId}
+          `;
+          await call(patientChat, 401, 'GET', undefined, replacement);
+          completed.push('chat bidireccional, confirmación de recepción, reenvío, paginación y acceso limitado');
+        }
         const note = { tipo: 'Respuesta del paciente', mensaje: 'Confirmó interés en la atención',
           id_canal: channel.id_canal, es_respuesta_util: true, ultima_interaccion_esperada: null };
         const interaction = await call(path + '/staff/interactions', 201, 'POST', note, token);

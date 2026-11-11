@@ -7,6 +7,7 @@ import LeadPayerReadiness from '../components/LeadPayerReadiness';
 import LeadStaffAccess from '../components/LeadStaffAccess';
 import LeadProposals from '../components/LeadProposals';
 import LeadOutcome from '../components/LeadOutcome';
+import { LeadChat } from '../components/LeadChat';
 import { commercialStatus, formatFollowUp, leadCommercialService, validLeadId } from '../services/leadCommercial.service';
 
 export default function LeadOpportunityPage() {
@@ -57,6 +58,8 @@ export default function LeadOpportunityPage() {
           <LeadProposals key={`proposals-${idSolicitud}`} data={data} access={editAccess} />
           <LeadOutcome key={`outcome-${idSolicitud}`} data={data} access={editAccess} />
           <LeadActivity key={`activity-${idSolicitud}`} data={data} requestId={idSolicitud} token={editAccess?.token} />
+          {import.meta.env.VITE_LEAD_CHAT_QA === 'true' && access?.requestId === idSolicitud &&
+            <LeadChat key={`chat-${idSolicitud}-${access.token}`} requestId={idSolicitud} token={access.token} staff />}
           <LeadPayerReadiness key={`payer-${idSolicitud}`} requestId={idSolicitud}
             token={access?.requestId === idSolicitud ? access.token : undefined} />
           {(import.meta.env.VITE_LEAD_STAFF_AUTH_QA === 'true' ||

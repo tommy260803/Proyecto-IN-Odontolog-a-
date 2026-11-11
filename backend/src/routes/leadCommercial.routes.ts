@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { Router, type Request, type Response } from 'express';
+import { createHash, randomBytes } from 'node:crypto';
 import { prisma } from '../db';
 import { getLeadStaffIdentity, leadStaffAuthEnabled, leadStaffAuthMode, loginLeadStaff, logoutLeadStaff, type LeadStaffIdentity } from '../services/leadStaffAuth';
 
@@ -105,6 +106,121 @@ router.get('/opportunities/:id/staff-access', route(async (req, res) => {
   const { row, user } = await prisma.$transaction(tx => staffOpportunity(tx, req), serializable);
   res.json({ usuario: user, id_solicitud: row.id_solicitud });
 }));
+
+const chat = Router();
+router.use('/chat', chat);
+
+chat.use((req, res, next) => route(async () => {
+  res.set('Cache-Control', 'no-store');
+  if (leadStaffAuthMode() !== 'qa' || process.env.LEAD_CHAT_QA !== 'true') return res.sendStatus(404);
+  const [target] = await prisma.$queryRaw<{ enabled: boolean }[]>`
+    SELECT CAST(CASE WHEN DB_NAME() = N'NexoSalud_LeadPruebas'
+      AND OBJECT_ID(N'dbo.MensajesChatLead', N'U') IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS enabled
+  `;
+  if (!target.enabled) return res.sendStatus(404);
+  next();
+})(req, res));
+
+const chatTokenHash = (token: string) => createHash('sha256').update(token).digest();
+
+chat.post('/staff/:id/access', route(async (req, res) => {
+  const token = randomBytes(32).toString('hex');
+  await prisma.$transaction(async tx => {
+    const { row, user } = await staffOpportunity(tx, req);
+    const [entry] = await tx.$queryRaw<{ allowed: number }[]>`
+      SELECT 1 AS allowed FROM dbo.EntradasAgenteLead e
+      JOIN dbo.Personas p ON p.id_persona = e.id_persona
+      JOIN dbo.Etapas t ON t.id_etapa = p.id_etapa_actual
+      WHERE e.id_solicitud = ${row.id_solicitud} AND e.id_persona = ${row.id_persona}
+        AND t.nombre = 'LEAD' AND p.autoriza_contacto = 1
+    `;
+    if (!entry || row.archivada_lead_en || ['ACEPTADA', 'CERRADA_SIN_ACUERDO'].includes(row.resultado_comercial_lead ?? '')) {
+      throw new InputError('La solicitud no está habilitada para el chat.', 409);
+    }
+    const changed = await tx.$executeRaw`
+      UPDATE dbo.AccesosChatLead WITH (UPDLOCK, HOLDLOCK)
+      SET token_hash = ${chatTokenHash(token)}, id_usuario = ${user.id_usuario},
+          vence_utc = DATEADD(hour, 24, SYSUTCDATETIME())
+      WHERE id_solicitud = ${row.id_solicitud}
+    `;
+    if (!changed) await tx.$executeRaw`
+      INSERT dbo.AccesosChatLead (id_solicitud, token_hash, id_usuario, vence_utc)
+      VALUES (${row.id_solicitud}, ${chatTokenHash(token)}, ${user.id_usuario}, DATEADD(hour, 24, SYSUTCDATETIME()))
+    `;
+  }, serializable);
+  res.status(201).json({ token });
+}));
+
+function chatMessages(staff: boolean) {
+  return route(async (req, res) => {
+    const requestId = id(req.params.id);
+    const sender = staff ? 'PERSONAL' : 'PACIENTE';
+    const result = await prisma.$transaction(async tx => {
+      const user = staff ? (await staffOpportunity(tx, req)).user : null;
+      const token = req.get('Authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
+      if (!staff && !token) throw new InputError('Se requiere el acceso de esta conversación.', 401);
+      const [access] = await tx.$queryRaw<{ id_solicitud: number; activo: boolean }[]>`
+        SELECT a.id_solicitud, CAST(CASE WHEN a.vence_utc > SYSUTCDATETIME()
+          AND p.autoriza_contacto = 1 AND t.nombre = 'LEAD' AND s.archivada_lead_en IS NULL
+          AND ISNULL(s.resultado_comercial_lead, '') NOT IN ('ACEPTADA', 'CERRADA_SIN_ACUERDO')
+          THEN 1 ELSE 0 END AS BIT) AS activo
+        FROM dbo.AccesosChatLead a WITH (UPDLOCK, HOLDLOCK)
+        JOIN dbo.EntradasAgenteLead e ON e.id_solicitud = a.id_solicitud
+        JOIN dbo.Solicitudes s ON s.id_solicitud = e.id_solicitud AND s.id_persona = e.id_persona
+        JOIN dbo.Personas p ON p.id_persona = e.id_persona
+        LEFT JOIN dbo.Etapas t ON t.id_etapa = p.id_etapa_actual
+        WHERE a.id_solicitud = ${requestId}
+          ${staff ? Prisma.empty : Prisma.sql`AND a.token_hash = ${chatTokenHash(token!)}`}
+      `;
+      if (!access || (!staff && !access.activo)) {
+        if (staff && req.method === 'GET') return { mensajes: [] };
+        throw new InputError('Acceso a conversación no vigente.', staff ? 409 : 401);
+      }
+      if (req.method === 'GET') {
+        const after = req.query.desde == null ? 0 : id(req.query.desde);
+        const messages = await tx.$queryRaw`
+          SELECT TOP (50) id_mensaje, remitente, texto, publicado_utc, recibido_utc
+          FROM dbo.MensajesChatLead WHERE id_solicitud = ${requestId} AND id_mensaje > ${after}
+          ORDER BY id_mensaje
+        `;
+        return { mensajes: messages };
+      }
+      if (req.method === 'PATCH') {
+        const messageId = id(req.body?.id_mensaje);
+        await tx.$executeRaw`
+          UPDATE dbo.MensajesChatLead SET recibido_utc = SYSUTCDATETIME()
+          WHERE id_solicitud = ${requestId} AND id_mensaje = ${messageId}
+            AND remitente <> ${sender} AND recibido_utc IS NULL
+        `;
+        return { ok: true };
+      }
+      if (!access.activo) throw new InputError('La conversación no admite mensajes.', 409);
+      const key = req.body?.clave;
+      if (typeof key !== 'string' || !/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(key)) {
+        throw new InputError('Identificador de mensaje inválido.');
+      }
+      const message = requiredText(req.body?.texto, 2000);
+      const [previous] = await tx.$queryRaw<{ id_mensaje: number; texto: string }[]>`
+        SELECT id_mensaje, texto FROM dbo.MensajesChatLead
+        WHERE id_solicitud = ${requestId} AND remitente = ${sender} AND clave = ${key}
+      `;
+      if (previous) {
+        if (previous.texto !== message) throw new InputError('La clave ya corresponde a otro mensaje.', 409);
+        return { id_mensaje: previous.id_mensaje };
+      }
+      const [saved] = await tx.$queryRaw<{ id_mensaje: number }[]>`
+        INSERT dbo.MensajesChatLead (id_solicitud, clave, remitente, id_usuario, texto)
+        OUTPUT inserted.id_mensaje
+        VALUES (${requestId}, ${key}, ${sender}, ${user?.id_usuario ?? null}, ${message})
+      `;
+      return saved;
+    }, serializable);
+    res.json(result);
+  });
+}
+
+chat.route('/patient/:id').get(chatMessages(false)).post(chatMessages(false)).patch(chatMessages(false));
+chat.route('/staff/:id').get(chatMessages(true)).post(chatMessages(true)).patch(chatMessages(true));
 
 router.patch('/opportunities/:id/follow-up', route(async (req, res) => {
   if (!leadStaffAuthEnabled()) return res.sendStatus(404);
