@@ -65,6 +65,11 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [submittedRef, setSubmittedRef] = useState<string | null>(null);
   const [autoClarification, setAutoClarification] = useState<string | null>(null);
+  const [lastInteractionId, setLastInteractionId] = useState<number | null>(null);
+  const [clarificationReply, setClarificationReply] = useState('');
+  const [submittingReply, setSubmittingReply] = useState(false);
+  const [replySuccessMessage, setReplySuccessMessage] = useState<string | null>(null);
+  const [lastSubmittedDeclaredNeed, setLastSubmittedDeclaredNeed] = useState<string>('');
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [formStep, setFormStep] = useState<1 | 2>(1);
@@ -136,6 +141,8 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
         ? `[${reasonLabel}] ${consultaBreve.trim()}`
         : `[${reasonLabel}] Solicitud de información inicial`;
 
+      setLastSubmittedDeclaredNeed(declaredNeed);
+
       const result = await buyerService.registerOpportunity({
         nombre: nombre.trim(),
         telefono: telefono.trim(),
@@ -150,6 +157,9 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
         ? `OP-${String(opId).padStart(4, '0')}`
         : `OP-${Math.floor(1000 + Math.random() * 9000)}`;
 
+      if (result.data?.id_interaccion) {
+        setLastInteractionId(result.data.id_interaccion);
+      }
       if (result.data?.aclaracion) {
         setAutoClarification(result.data.aclaracion);
       } else {
@@ -168,6 +178,10 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
   const handleReset = () => {
     setSubmittedRef(null);
     setAutoClarification(null);
+    setLastInteractionId(null);
+    setClarificationReply('');
+    setReplySuccessMessage(null);
+    setLastSubmittedDeclaredNeed('');
     setNombre('');
     setTelefono('');
     setIdSede('');
@@ -201,15 +215,98 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
               ¡Mensaje recibido, {nombre.split(' ')[0]}!
             </h3>
             <p className="text-sm text-slate-600 max-w-sm mx-auto leading-relaxed">
-              Un asesor de NexoSalud revisará tu consulta y te responderá por WhatsApp en menos de <strong className="text-slate-900 font-semibold">15 minutos</strong>.
+              Un asesor de NexoSalud revisará tu consulta y te responderá por WhatsApp a la brevedad dentro de nuestros horarios de atención.
             </p>
             {autoClarification && (
-              <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-xs text-amber-900 text-left max-w-sm mx-auto space-y-1 mt-3">
-                <span className="font-semibold block text-amber-950 flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                  Orientación preliminar:
-                </span>
+              <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-xs text-amber-900 text-left max-w-sm mx-auto space-y-3 mt-3">
+                <div className="flex items-center gap-1.5 font-semibold text-amber-950">
+                  <Sparkles className="h-4 w-4 text-amber-600 shrink-0" />
+                  <span>Orientación preliminar:</span>
+                </div>
                 <p className="leading-relaxed text-amber-900">{autoClarification}</p>
+
+                {replySuccessMessage ? (
+                  <div className="rounded-xl bg-emerald-100/80 border border-emerald-300 p-2.5 text-xs text-emerald-800 font-medium">
+                    {replySuccessMessage}
+                  </div>
+                ) : (
+                  <div className="pt-2 border-t border-amber-200/80 space-y-2">
+                    <label className="block text-[11px] font-semibold text-amber-950">
+                      Continúa la consulta o especifica el tratamiento:
+                    </label>
+                    <textarea
+                      value={clarificationReply}
+                      onChange={(e) => setClarificationReply(e.target.value)}
+                      placeholder="Ej: Deseo agendar una limpieza dental o evaluación inicial..."
+                      rows={2}
+                      className="w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                      <Button
+                        type="button"
+                        disabled={submittingReply || !clarificationReply.trim()}
+                        onClick={async () => {
+                          if (!clarificationReply.trim()) return;
+                          setSubmittingReply(true);
+                          try {
+                            const res = await buyerService.registerOpportunity({
+                              nombre: nombre.trim(),
+                              telefono: telefono.trim(),
+                              id_sede: idSede ? Number(idSede) : null,
+                              id_servicio: idServicio ? Number(idServicio) : null,
+                              motivo_consulta: clarificationReply.trim(),
+                              consentimiento_atencion: true,
+                              id_interaccion_previa: lastInteractionId,
+                            });
+                            if (res.data?.id_interaccion) {
+                              setLastInteractionId(res.data.id_interaccion);
+                            }
+                            if (res.data?.aclaracion) {
+                              setAutoClarification(res.data.aclaracion);
+                              setClarificationReply('');
+                            } else {
+                              setAutoClarification(null);
+                              setReplySuccessMessage('¡Aclaración recibida! Tu solicitud fue actualizada y derivada con éxito.');
+                            }
+                          } catch (err: any) {
+                            setErrors({ form: err.message || 'Error al enviar la respuesta de aclaración' });
+                          } finally {
+                            setSubmittingReply(false);
+                          }
+                        }}
+                        className="rounded-xl bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
+                      >
+                        {submittingReply ? 'Enviando...' : 'Enviar respuesta'}
+                      </Button>
+                      <button
+                        type="button"
+                        disabled={submittingReply}
+                        onClick={async () => {
+                          if (!lastSubmittedDeclaredNeed) return;
+                          setSubmittingReply(true);
+                          try {
+                            await buyerService.registerOpportunity({
+                              nombre: nombre.trim(),
+                              telefono: telefono.trim(),
+                              id_sede: idSede ? Number(idSede) : null,
+                              id_servicio: idServicio ? Number(idServicio) : null,
+                              motivo_consulta: lastSubmittedDeclaredNeed,
+                              consentimiento_atencion: true,
+                            });
+                            setReplySuccessMessage('Mensaje revalidado mediante registro idempotente persistente.');
+                          } catch (e: any) {
+                            setErrors({ form: e.message || 'Error al revalidar consulta' });
+                          } finally {
+                            setSubmittingReply(false);
+                          }
+                        }}
+                        className="text-[11px] text-amber-800 underline hover:text-amber-950"
+                      >
+                        Reenviar consulta original
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -217,7 +314,7 @@ export const BuyerIntakeForm: React.FC<BuyerIntakeFormProps> = ({
           <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-xs text-slate-600 space-y-1.5 text-left max-w-sm mx-auto">
             <div className="flex items-center gap-2 text-slate-800 font-medium">
               <Clock className="h-4 w-4 text-sky-600 shrink-0" />
-              <span>Horario de atención: Lun a Sáb 8:00 AM – 8:00 PM</span>
+              <span>Horario de atención: Según disponibilidad y programación de cada sede</span>
             </div>
             <div className="flex items-center gap-2 text-slate-800 font-medium">
               <Lock className="h-4 w-4 text-emerald-600 shrink-0" />

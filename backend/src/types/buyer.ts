@@ -33,7 +33,9 @@ export interface BuyerClassificationAttempt {
 export interface BuyerClassificationResult {
   intencion: BuyerIntention;
   id_servicio: number | null;
+  intentosRealizados: number;
   intentos_realizados: number;
+  duracionTotalMs: number;
   duracion_total_ms: number;
   intentos: BuyerClassificationAttempt[];
 }
@@ -77,7 +79,19 @@ export type BuyerEvaluationAction =
   | 'ACLARACION'
   | 'REINTENTO_PENDIENTE'
   | 'CONSERVA_ETAPA_POSTERIOR'
+  | 'SOLICITUD_PENDIENTE_APERTURA'
   | 'REQUISITOS_INCOMPLETOS';
+
+/**
+ * Contexto conversacional persistente para interpretaciones en dos o más turnos.
+ */
+export interface BuyerClarificationContext {
+  mensajeAnterior?: string | null;
+  aclaracionPrevia?: string | null;
+  idDecisionPrevia?: number | null;
+  idInteraccionPrevia?: number | null;
+  turno?: number;
+}
 
 /**
  * Estructura del resultado integral de evaluación y orquestación Buyer.
@@ -97,8 +111,12 @@ export interface BuyerEvaluationOutcome {
   ya_convertido?: boolean;
   aclaracion?: string | null;
   error?: string | null;
+  intentosRealizados: number;
   intentos_realizados?: number;
+  duracionTotalMs: number;
   duracion_total_ms?: number;
+  entregaLeadEstado?: 'PENDIENTE' | 'CONFIRMADA' | 'NO_APLICA';
+  contextoConversacional?: BuyerClarificationContext;
 }
 
 

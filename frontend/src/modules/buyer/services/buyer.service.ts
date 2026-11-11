@@ -106,6 +106,7 @@ export const buyerService = {
     consentimiento_atencion: boolean;
     utm_source?: string;
     utm_campaign?: string;
+    id_interaccion_previa?: number | null;
   }) => {
     const nameParts = data.nombre.trim().split(/\s+/);
     const firstName = nameParts[0] || data.nombre;
@@ -124,6 +125,7 @@ export const buyerService = {
       consentimiento_atencion: data.consentimiento_atencion,
       utm_source: data.utm_source,
       utm_campaign: data.utm_campaign,
+      id_interaccion_previa: data.id_interaccion_previa || null,
     };
 
     const res = await postBuyerWeb(payload);

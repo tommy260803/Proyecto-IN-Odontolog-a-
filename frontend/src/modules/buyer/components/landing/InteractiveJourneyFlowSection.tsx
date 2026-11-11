@@ -54,7 +54,7 @@ const STAGES: StageData[] = [
       items: [
         'Ingresas tu nombre y WhatsApp en menos de 30 segundos',
         'Eliges la sede más cercana (California, El Golf o Centro)',
-        'Respuesta directa de nuestro equipo en menos de 15 minutos',
+        'Respuesta directa de nuestro equipo a la brevedad dentro de los horarios de atención',
         'Tus datos están protegidos bajo la Ley de Protección de Datos Personales',
       ],
     },
@@ -66,7 +66,7 @@ const STAGES: StageData[] = [
       title: 'Solicitud de Turno',
       subtitle: 'Portal de Admisión NexoSalud Dental',
       attributes: [
-        { label: 'Tiempo de respuesta', value: '< 15 minutos', highlight: true },
+        { label: 'Tiempo de respuesta', value: 'A la brevedad', highlight: true },
         { label: 'Canal de atención', value: 'WhatsApp Directo' },
         { label: 'Trámite previo', value: '0 formularios clínicos' },
         { label: 'Privacidad', value: 'Cifrado y protegido' },

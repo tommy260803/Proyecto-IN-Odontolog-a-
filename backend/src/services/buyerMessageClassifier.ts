@@ -235,7 +235,9 @@ export function validateClassificationResult(
   return {
     intencion,
     id_servicio: finalIdServicio,
+    intentosRealizados: 1,
     intentos_realizados: 1,
+    duracionTotalMs: 0,
     duracion_total_ms: 0,
     intentos: [],
   };
@@ -350,7 +352,9 @@ export class BuyerMessageClassifier {
       return {
         intencion: 'AMBIGUA',
         id_servicio: null,
+        intentosRealizados: 0,
         intentos_realizados: 0,
+        duracionTotalMs: 0,
         duracion_total_ms: 0,
         intentos: [],
       };
@@ -482,7 +486,9 @@ Mensaje recibido del paciente Buyer:
         return {
           intencion: validated.intencion,
           id_servicio: validated.id_servicio,
+          intentosRealizados: attemptNumber,
           intentos_realizados: attemptNumber,
+          duracionTotalMs: Date.now() - overallStartTime,
           duracion_total_ms: Date.now() - overallStartTime,
           intentos: attemptsRecord,
         };

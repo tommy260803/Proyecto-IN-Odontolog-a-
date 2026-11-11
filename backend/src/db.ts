@@ -5,7 +5,14 @@ import path from 'path';
 // Asegurar que las variables de entorno se cargan antes de instanciar Prisma
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
+const resolvedUrl =
+  process.env.TEST_SQLSERVER_URL ||
+  (process.env.RUN_SQL_TESTS === 'true' && process.env.SQLSERVER_URL
+    ? process.env.SQLSERVER_URL.replace(/database=[^;]+/i, 'database=NexoSalud_LeadEnsayoFinal')
+    : process.env.SQLSERVER_URL);
+
 export const prisma = new PrismaClient({
+  datasources: resolvedUrl ? { db: { url: resolvedUrl } } : undefined,
   log: ['warn', 'error'],
 });
 

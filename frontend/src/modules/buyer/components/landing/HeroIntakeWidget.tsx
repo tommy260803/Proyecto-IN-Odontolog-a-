@@ -406,7 +406,7 @@ export function HeroIntakeWidget({
           </h2>
 
           <p className="mt-1 max-w-md text-xs leading-relaxed text-slate-600">
-            Gracias, <strong className="font-semibold text-slate-900">{fullName}</strong>. Te escribiremos a tu WhatsApp en menos de 15 minutos con las opciones de horario y tu protocolo personalizado.
+            Gracias, <strong className="font-semibold text-slate-900">{fullName}</strong>. Te escribiremos a tu WhatsApp a la brevedad dentro de nuestros horarios de atención con las opciones de horario y tu protocolo personalizado.
           </p>
 
           {/* Resumen de la Solicitud Inicial */}

@@ -257,7 +257,7 @@ router.get('/check-duplicate', async (req, res) => {
   }
 });
 
-// Registrar BUYER: persiste contacto, captación y mensaje primero; evalúa intención con Gemini fuera de SQL
+// Registrar BUYER: persiste contacto, captación, mensaje y trabajo pendiente atómicamente; evalúa con Gemini fuera de SQL
 router.post('/register', async (req, res) => {
   const {
     nombres,
@@ -274,6 +274,7 @@ router.post('/register', async (req, res) => {
     tipo_persona,
     estado_calidad,
     id_servicio_interes,
+    id_interaccion_previa,
   } = req.body;
 
   try {
@@ -281,9 +282,6 @@ router.post('/register', async (req, res) => {
     if (requestKey && !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(requestKey)) {
       throw new BuyerInputError('La clave de registro web debe ser un UUID.', 400);
     }
-    const requestHash = requestKey ? createHash('sha256').update(JSON.stringify(
-      Object.entries(req.body).sort(([a], [b]) => a.localeCompare(b)),
-    )).digest('hex') : null;
 
     let etapaBuyer = await prisma.etapas.findFirst({ where: { nombre: 'BUYER' } });
     if (!etapaBuyer) etapaBuyer = await prisma.etapas.create({ data: { nombre: 'BUYER', descripcion: 'Contacto inicial' } });
@@ -310,26 +308,51 @@ router.post('/register', async (req, res) => {
     const cleanPhone = rawDigits.length >= 9 ? rawDigits.slice(-9) : (rawDigits.length >= 7 ? rawDigits : null);
     const cleanEmail = email ? String(email).trim().toLowerCase() : null;
 
-    // 1. Fase transaccional: guardar primero el contacto, la captación y el mensaje en BUYER
-    const txResult = await writeBuyer(async tx => {
-      if (requestKey) {
-        const [prior] = await tx.$queryRaw<{ id_solicitud: number; id_persona: number; request_hash: string }[]>`
-          SELECT id_solicitud,id_persona,hash_registro_web_lead AS request_hash
-          FROM dbo.Solicitudes WITH (UPDLOCK,HOLDLOCK) WHERE clave_registro_web_lead=${requestKey}
-        `;
-        if (prior) {
-          if (prior.request_hash !== requestHash) throw new BuyerInputError('La clave ya se usó para otra solicitud.');
-          const [persona, solicitud, totalConsultas] = await Promise.all([
-            tx.personas.findUniqueOrThrow({ where: { id_persona: prior.id_persona } }),
-            tx.solicitudes.findUniqueOrThrow({ where: { id_solicitud: prior.id_solicitud } }),
-            tx.solicitudes.count({ where: { id_persona: prior.id_persona } }),
-          ]);
-          return { persona, solicitud, oportunidad: { id_oportunidad: solicitud.id_solicitud, id_persona: persona.id_persona },
-            totalConsultas, isDuplicate: false, isNewPersonWithSharedContact: false, replayed: true };
-        }
-      }
+    const rawInquiry = String(
+      req.body.mensaje ||
+      req.body.motivo_consulta ||
+      req.body.necesidad_declarada ||
+      req.body.duda_especifica ||
+      req.body.concreteRequest ||
+      'Solicitud de información desde formulario web'
+    ).trim();
 
-      // Detectar duplicado por teléfono o correo
+    // Hash idempotente del mensaje por contacto
+    const messageHash = createHash('sha256')
+      .update(`${cleanPhone || ''}|${cleanEmail || ''}|${rawInquiry.toLowerCase()}`)
+      .digest('hex');
+
+    // Contexto de aclaración previa si se está continuando una conversación
+    let previousContext: {
+      mensajeAnterior?: string | null;
+      aclaracionPrevia?: string | null;
+      idInteraccionPrevia?: number | null;
+      idDecisionPrevia?: number | null;
+      turno?: number;
+    } | null = null;
+
+    if (id_interaccion_previa) {
+      const prevInteraction = await prisma.interacciones.findUnique({
+        where: { id_interaccion: Number(id_interaccion_previa) },
+      });
+      if (prevInteraction) {
+        const prevDecision = await prisma.decisionesIA.findFirst({
+          where: { id_interaccion: prevInteraction.id_interaccion },
+          orderBy: { id_decision: 'desc' },
+        });
+        previousContext = {
+          mensajeAnterior: prevInteraction.mensaje,
+          aclaracionPrevia: prevDecision?.resultado_revision,
+          idInteraccionPrevia: prevInteraction.id_interaccion,
+          idDecisionPrevia: prevDecision?.id_decision,
+          turno: 2,
+        };
+      }
+    }
+
+    // 1. Fase transaccional: guardar contacto, captación, mensaje y trabajo pendiente atómicamente
+    const txResult = await writeBuyer(async tx => {
+      // Detectar duplicado de persona por teléfono o correo
       let isDuplicate = false;
       let existingPerson = null;
       const isNewPersonConfirmed = Boolean(req.body.isNewPersonConfirmed);
@@ -337,6 +360,34 @@ router.post('/register', async (req, res) => {
       if (!isNewPersonConfirmed) {
         existingPerson = await findBuyerIdentity(tx, null, cleanEmail, cleanPhone);
         isDuplicate = Boolean(existingPerson);
+      }
+
+      // Comprobar idempotencia persistente del registro por mensaje
+      if (existingPerson) {
+        const priorDecision = await tx.decisionesIA.findFirst({
+          where: {
+            agente: 'BUYER',
+            id_persona: existingPerson.id_persona,
+            entrada: { contains: `"messageHash":"${messageHash}"` },
+          },
+          orderBy: { id_decision: 'desc' },
+        });
+
+        if (priorDecision) {
+          const priorInteraction = await tx.interacciones.findUnique({
+            where: { id_interaccion: priorDecision.id_interaccion || 0 },
+          });
+          const isCompleted = priorDecision.decision?.includes('"estado":"COMPLETADA"');
+          return {
+            replayed: true,
+            completed: isCompleted,
+            priorDecision,
+            priorInteraction,
+            persona: existingPerson,
+            totalConsultas: 1,
+            isDuplicate: true,
+          };
+        }
       }
 
       // Canal Web y Fuente Web
@@ -376,8 +427,7 @@ router.post('/register', async (req, res) => {
           data: {
             email: email ? String(email).trim() : existingPerson.email,
             fecha_actualizacion: new Date(),
-            // Conserva estrictamente su etapa actual
-            id_etapa_actual: existingPerson.id_etapa_actual,
+            id_etapa_actual: existingPerson.id_etapa_actual, // Conserva estrictamente su etapa
             estado_calidad: 'Valido',
           }
         });
@@ -400,9 +450,8 @@ router.post('/register', async (req, res) => {
         });
       }
 
-      // Detalle de la duda o consulta específica ingresada por el paciente
+      // Detalle del motivo
       const prefix = isNewPersonConfirmed ? '[Contacto Compartido] ' : '';
-      const rawInquiry = req.body.mensaje || req.body.motivo_consulta || req.body.necesidad_declarada || req.body.duda_especifica || req.body.concreteRequest || 'Solicitud de información desde formulario web';
       const motivoConsulta = String(prefix + rawInquiry).slice(0, 195);
 
       let resolvedSede = sede_preferida || req.body.sede || null;
@@ -439,6 +488,43 @@ router.post('/register', async (req, res) => {
         }
       });
 
+      // Guardar el trabajo pendiente de evaluación en la MISMA transacción SQL
+      const pendingPayload = JSON.stringify({
+        mensaje: rawInquiry,
+        messageHash,
+        requestKey: requestKey || null,
+        id_persona: persona.id_persona,
+        id_captacion: captacionRow.id_captacion,
+        id_interaccion: interaccion.id_interaccion,
+        motivo_consulta: motivoConsulta,
+        sede_preferida: resolvedSede,
+        id_servicio_declarado: validServicio,
+        contextoConversacional: previousContext || null,
+        fecha_registro: new Date().toISOString(),
+      });
+
+      const decisionRecord = await tx.decisionesIA.create({
+        data: {
+          agente: 'BUYER',
+          id_persona: persona.id_persona,
+          id_captacion: captacionRow.id_captacion,
+          id_interaccion: interaccion.id_interaccion,
+          fecha_hora: new Date(),
+          entrada: pendingPayload,
+          regla_aplicada: 'gemini-3.5-flash-lite',
+          decision: JSON.stringify({
+            estado: 'PENDIENTE',
+            intencion: null,
+            id_servicio: null,
+            intentosRealizados: 0,
+            duracionTotalMs: 0,
+          }),
+          accion: 'REINTENTO_PENDIENTE',
+          requiere_revision: true,
+          resultado_revision: 'Evaluación pendiente de procesamiento encolada en transacción',
+        }
+      });
+
       // Preferencias del paciente (Upsert)
       if (resolvedSede || validCanal || validServicioInteres) {
         const existingPref = await tx.personaPreferencias.findFirst({ where: { id_persona: persona.id_persona } });
@@ -467,6 +553,7 @@ router.post('/register', async (req, res) => {
         persona,
         id_captacion: captacionRow.id_captacion,
         id_interaccion: interaccion.id_interaccion,
+        id_decision: decisionRecord.id_decision,
         rawInquiry,
         validServicio,
         motivoConsulta,
@@ -475,31 +562,67 @@ router.post('/register', async (req, res) => {
         existingPerson,
         totalConsultas,
         isNewPersonWithSharedContact: isNewPersonConfirmed,
+        replayed: false,
       };
     });
 
-    if ('replayed' in txResult) {
-      return res.status(200).json({ success: true, consultationCount: txResult.totalConsultas, replayed: true, data: txResult });
+    // 2. Si el mensaje ya estaba completado, devolver el resultado persistido (Idempotencia)
+    if ('completed' in txResult && txResult.completed && txResult.priorDecision) {
+      const priorDec = txResult.priorDecision;
+      const parsedDecision = JSON.parse(priorDec.decision || '{}');
+      return res.status(200).json({
+        success: true,
+        replayed: true,
+        isDuplicate: true,
+        consultationCount: 1,
+        message: 'Mensaje idéntico recibido previamente. Se devuelve el resultado persistido.',
+        data: {
+          id_persona: txResult.persona.id_persona,
+          id_captacion: priorDec.id_captacion,
+          id_interaccion: priorDec.id_interaccion,
+          id_decision: priorDec.id_decision,
+          etapa: txResult.persona.id_etapa_actual === etapaLead.id_etapa ? 'LEAD' : 'BUYER',
+          intencion: parsedDecision.intencion ?? null,
+          id_servicio: parsedDecision.id_servicio ?? null,
+          accion: priorDec.accion,
+          estado_evaluacion: 'COMPLETADA',
+          aclaracion: priorDec.resultado_revision ?? null,
+          id_solicitud: parsedDecision.id_solicitud ?? null,
+          oportunidad: parsedDecision.id_solicitud
+            ? { id_oportunidad: parsedDecision.id_solicitud, id_persona: txResult.persona.id_persona }
+            : { id_oportunidad: priorDec.id_captacion, id_persona: txResult.persona.id_persona },
+          intentosRealizados: parsedDecision.intentosRealizados ?? 1,
+          duracionTotalMs: parsedDecision.duracionTotalMs ?? 0,
+        },
+      });
     }
 
-    // 2. Ejecutar la llamada de clasificación a Gemini FUERA de la transacción SQL
+    const interaccionId = 'priorInteraction' in txResult && txResult.priorInteraction
+      ? txResult.priorInteraction.id_interaccion
+      : (txResult as any).id_interaccion;
+    const captacionId = 'priorDecision' in txResult && txResult.priorDecision?.id_captacion
+      ? txResult.priorDecision.id_captacion
+      : (txResult as any).id_captacion;
+
+    // 3. Ejecutar la llamada de clasificación a Gemini FUERA de la transacción SQL con protección concurrente
     const evaluation = await BuyerEvaluationService.evaluateBuyerInteraction({
       id_persona: txResult.persona.id_persona,
-      id_captacion: txResult.id_captacion,
-      id_interaccion: txResult.id_interaccion,
-      mensaje: txResult.rawInquiry,
-      id_servicio_declarado: txResult.validServicio,
-      motivo_consulta: txResult.motivoConsulta,
-      sede_preferida: txResult.resolvedSede,
+      id_captacion: captacionId,
+      id_interaccion: interaccionId,
+      mensaje: rawInquiry,
+      id_servicio_declarado: (txResult as any).validServicio,
+      motivo_consulta: (txResult as any).motivoConsulta,
+      sede_preferida: (txResult as any).resolvedSede,
+      contextoConversacional: previousContext || undefined,
     });
 
-    // Sincronización analítica asíncrona
+    // Sincronización analítica asíncrona (desactivada en QA)
     MartSyncService.syncBuyer().catch(err => console.warn('[AutoSync] Error:', err.message));
 
     const responsePayload = {
       id_persona: txResult.persona.id_persona,
-      id_captacion: txResult.id_captacion,
-      id_interaccion: txResult.id_interaccion,
+      id_captacion: captacionId,
+      id_interaccion: interaccionId,
       id_decision: evaluation.id_decision,
       etapa: evaluation.etapa_final,
       intencion: evaluation.intencion,
@@ -510,11 +633,13 @@ router.post('/register', async (req, res) => {
       id_solicitud: evaluation.id_solicitud ?? null,
       oportunidad: evaluation.id_solicitud
         ? { id_oportunidad: evaluation.id_solicitud, id_persona: txResult.persona.id_persona }
-        : { id_oportunidad: txResult.id_captacion, id_persona: txResult.persona.id_persona },
+        : { id_oportunidad: captacionId, id_persona: txResult.persona.id_persona },
       totalConsultas: txResult.totalConsultas,
       isDuplicate: txResult.isDuplicate,
       isRecurring: txResult.isDuplicate,
-      isNewPersonWithSharedContact: txResult.isNewPersonWithSharedContact,
+      entregaLeadEstado: evaluation.entregaLeadEstado ?? 'NO_APLICA',
+      intentosRealizados: evaluation.intentosRealizados,
+      duracionTotalMs: evaluation.duracionTotalMs,
     };
 
     if (evaluation.accion === 'CONVERSION_LEAD') {
@@ -523,7 +648,7 @@ router.post('/register', async (req, res) => {
         isDuplicate: txResult.isDuplicate,
         isRecurring: txResult.isDuplicate,
         consultationCount: txResult.totalConsultas,
-        message: 'Intención de reserva confirmada. Se inició la oportunidad en etapa LEAD.',
+        message: 'Intención de reserva confirmada. Se inició la oportunidad en etapa LEAD y se notificó la entrada.',
         data: responsePayload,
       });
     }
@@ -545,7 +670,18 @@ router.post('/register', async (req, res) => {
         isDuplicate: txResult.isDuplicate,
         isRecurring: txResult.isDuplicate,
         consultationCount: txResult.totalConsultas,
-        message: `El contacto ya se encuentra en etapa ${evaluation.etapa_final}. Se conserva su etapa actual.`,
+        message: `El contacto ya se encuentra en etapa ${evaluation.etapa_final}. Se conserva su etapa actual y se vinculó por evidencia contextual.`,
+        data: responsePayload,
+      });
+    }
+
+    if (evaluation.accion === 'SOLICITUD_PENDIENTE_APERTURA') {
+      return res.status(200).json({
+        success: true,
+        isDuplicate: txResult.isDuplicate,
+        isRecurring: txResult.isDuplicate,
+        consultationCount: txResult.totalConsultas,
+        message: `El contacto ya se encuentra en etapa ${evaluation.etapa_final}. Nueva solicitud registrada y pendiente de apertura comercial por LEAD.`,
         data: responsePayload,
       });
     }
@@ -1221,4 +1357,5 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+export { router as buyerRouter };
 export default router;

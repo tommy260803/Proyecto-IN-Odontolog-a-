@@ -1,4 +1,5 @@
-import { prisma } from '../db';
+import { prisma as defaultPrisma } from '../db';
+import type { PrismaClient } from '@prisma/client';
 
 export interface LeadIntake {
   id_solicitud: number;
@@ -8,12 +9,13 @@ export interface LeadIntake {
 }
 
 /** Internal BUYER handoff. Call after the conversion has committed. */
-export async function registerLeadIntake(requestId: number): Promise<LeadIntake> {
+export async function registerLeadIntake(requestId: number, db?: PrismaClient): Promise<LeadIntake> {
   if (!Number.isInteger(requestId) || requestId < 1 || requestId > 2_147_483_647) {
     throw new RangeError('ID de solicitud inválido.');
   }
 
-  const [entry] = await prisma.$queryRaw<LeadIntake[]>`
+  const client = db || defaultPrisma;
+  const [entry] = await client.$queryRaw<LeadIntake[]>`
     EXEC dbo.usp_RegistrarEntradaAgenteLead @id_solicitud = ${requestId}
   `;
   if (!entry) throw new Error('No se pudo recuperar la entrada LEAD.');
