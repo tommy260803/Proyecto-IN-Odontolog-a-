@@ -281,6 +281,21 @@ async function run() {
           WHERE e.id_solicitud=${requestId}
         `;
         assert.equal(event.cantidad, 1);
+        const reference = 'Autorización #' + authorization.id_autorizacion;
+        await tx.$executeRaw`
+          UPDATE dbo.EventosEtapa SET evidencia = NULL
+          WHERE id_solicitud = ${requestId} AND evidencia = ${reference}
+        `;
+        const incomplete = await call(path + '/payer-readiness', 200);
+        assert.equal(incomplete.estado, 'bloqueado');
+        assert.ok(incomplete.requisitos.some((check: { codigo: string }) => check.codigo === 'evento_traspaso'));
+        await call(path + '/staff/payer-transfer', 409, 'POST', transferBody, token);
+        assert.equal(await tx.reservas.count({ where: { id_solicitud: requestId } }), 1);
+        await tx.$executeRaw`
+          UPDATE e SET evidencia = ${reference}
+          FROM dbo.EventosEtapa e JOIN dbo.Etapas t ON t.id_etapa = e.etapa_destino AND t.nombre = 'PAYER'
+          WHERE e.id_solicitud = ${requestId}
+        `;
         completed.push('reserva y evento únicos con reintento');
         const [measures] = await tx.$queryRaw<{ m1: number; m3: number; m6: number }[]>`
           SELECT

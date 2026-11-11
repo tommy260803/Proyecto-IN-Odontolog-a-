@@ -705,12 +705,25 @@ async function payerReadiness(tx: Prisma.TransactionClient, row: Awaited<ReturnT
       estado: authorization ? 'cumple' : 'pendiente', detalle: authorization
         ? 'Hay una autorización expresa registrada para estas condiciones.'
         : 'Falta una autorización expresa comprobable para las condiciones vigentes.' });
-    const [transfer] = storage?.permite_traspaso ? await tx.$queryRaw<{ id_reserva: number }[]>`
-      SELECT TOP (1) r.id_reserva FROM dbo.AutorizacionesReservaLead a
+    const [linkedTransfer] = storage?.permite_traspaso ? await tx.$queryRaw<{ id_reserva: number; acreditado: boolean }[]>`
+      SELECT TOP (1) r.id_reserva,
+        CAST(CASE WHEN (
+          SELECT COUNT(*) FROM dbo.EventosEtapa e
+          JOIN dbo.Etapas origen ON origen.id_etapa = e.etapa_origen AND origen.nombre = 'LEAD'
+          JOIN dbo.Etapas destino ON destino.id_etapa = e.etapa_destino AND destino.nombre = 'PAYER'
+          WHERE e.id_solicitud = a.id_solicitud AND e.id_persona = r.id_persona
+            AND e.evidencia = CONCAT(N'Autorización #', a.id_autorizacion)
+        ) = 1 THEN 1 ELSE 0 END AS bit) AS acreditado
+      FROM dbo.AutorizacionesReservaLead a
       JOIN dbo.Reservas r ON r.id_reserva = a.id_reserva AND r.id_solicitud = a.id_solicitud AND r.id_opcion = a.id_opcion
       WHERE a.id_solicitud = ${row.id_solicitud} AND r.id_persona = ${row.id_persona}
       ORDER BY a.id_autorizacion DESC
     ` : [];
+    const transfer = linkedTransfer?.acreditado ? { id_reserva: linkedTransfer.id_reserva } : null;
+    if (linkedTransfer && !transfer) {
+      check('evento_traspaso', 'Evidencia del traspaso', false, '',
+        'La reserva vinculada no tiene un evento único LEAD a PAYER para esta autorización. Requiere revisión.');
+    }
     return { estado: transfer ? 'traspasado' : authorization ? 'preparado' : 'bloqueado', requisitos: checks,
       condiciones_autorizables: reference, autorizacion: authorization ?? null, traspaso: transfer ?? null,
       puede_traspasar: Boolean(storage?.permite_traspaso && authorization && !transfer) };

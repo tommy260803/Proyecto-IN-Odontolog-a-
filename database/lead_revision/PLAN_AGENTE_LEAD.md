@@ -11,7 +11,7 @@ Chat web y Gemini con configuración propia de LEAD. La OLTP decide las operacio
 | 5. F2: alternativas | Recomendación asistida validada en QA | Agenda ordenada por rango confirmado y revalidación al ofrecer. Pendiente interpretar el chat con Gemini. |
 | 6. F3: negociación | Aceptación por chat validada en QA | El personal comparte una versión y el paciente confirma su importe. Pendiente la asistencia con Gemini para objeciones. |
 | 7. F4: seguimiento | Revisión humana validada en QA | Pausa y reanudación auditadas en el chat. Pendientes las reglas de contacto y el seguimiento automático. |
-| 8. F5: traspaso | Pendiente | Una reserva y un evento por traspaso autorizado, incluso ante reintentos. |
+| 8. F5: traspaso | Traspaso manual validado en QA | Una reserva y un evento por autorización, incluso ante reintentos y concurrencia. Pendiente la delegación para el agente. |
 | 9. Integración y entrega | Pendiente | Prueba conjunta en QA, regresión de indicadores y paquete de activación. |
 
 ## Interfaces entre etapas
@@ -79,3 +79,9 @@ Aplicar [REVISION_CHAT_LEAD_QA.sql](REVISION_CHAT_LEAD_QA.sql) después del esqu
 Durante una pausa, el chat bloquea los mensajes del personal y la publicación de cotizaciones. El paciente puede enviar mensajes y consultar las cotizaciones compartidas. Para reanudar se verifica que el acceso, la etapa y el consentimiento sigan vigentes. La pausa se aplica al chat de esa solicitud. Las reglas para automatizar contactos y limitar su frecuencia por persona están pendientes.
 
 Pasaron las compilaciones y el ensayo HTTP + SQL en QA. La prueba cubrió permisos, bloqueo de salida, recepción de mensajes durante la pausa, rechazo de una revisión desactualizada y registro de la reanudación.
+
+## Traspaso a PAYER en QA
+
+El personal registra la autorización para la propuesta aceptada y la revisión vigente de la alternativa. El traspaso revalida la agenda y registra en una sola transacción la reserva pendiente, la ocupación del horario, el cambio de etapa y el evento. Un reintento devuelve la reserva existente cuando consta exactamente un evento LEAD a PAYER para esa persona, solicitud y autorización. Si falta la evidencia o se duplica, el diagnóstico indica que requiere revisión.
+
+Pasaron `npm run test:lead:flow` y `npm run test:lead:concurrency`. El ensayo comprobó que retirar la evidencia bloquea el reintento sin duplicar la reserva. Con conexiones SQL independientes se verificó que los reintentos conservan la reserva original, que solo una solicitud obtiene un horario disputado y que un fallo antes de guardar el evento revierte todo el traspaso. La ejecución autónoma sigue pendiente de delegación y validación conjunta con PAYER.
