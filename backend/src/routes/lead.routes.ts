@@ -6,6 +6,8 @@ import { NegotiatorAgentService } from '../services/negotiatorAgentService';
 import { getServicioCommercialInfo } from './config.routes';
 import { leadTransferRouter } from './leadTransfer.routes';
 import { leadStaffAuthMode } from '../services/leadStaffAuth';
+import { checkTransferOffer, loadTransferOffer, TransferError, transferId, transferIsolation } from '../services/leadPayerTransfer';
+import { registerLeadFlyer } from '../services/leadFlyerAttachments';
 
 const router = Router();
 router.use('/commercial', leadCommercialRouter);
@@ -302,6 +304,7 @@ router.get('/', async (req, res) => {
           reservationId: reserva,
           buyer: { preferences: preferencias, consultasCount },
           id_negociacion: sol?.id_solicitud || p.id_persona,
+          id_solicitud: sol?.id_solicitud ?? null,
           estado_negociacion,
           resultado_final,
           fecha_cierre,
@@ -719,6 +722,8 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/canva-flyer', async (req, res) => {
   const { id } = req.params;
   const {
+    id_solicitud,
+    id_opcion,
     serviceName,
     sedeName,
     doctorName,
@@ -737,7 +742,21 @@ router.post('/:id/canva-flyer', async (req, res) => {
   } = req.body;
 
   try {
-    const lead = await withRetry(() =>
+    // A flyer that can be attached to WhatsApp must use the stored offer, not the draft.
+    const offer = id_solicitud !== undefined || id_opcion !== undefined
+      ? await prisma.$transaction(async tx => {
+          const selected = await loadTransferOffer(tx, transferId(id), transferId(id_solicitud), transferId(id_opcion));
+          await checkTransferOffer(tx, selected);
+          const now = new Date();
+          const tariff = await tx.tarifas.findFirst({
+            where: { id_servicio: selected.proposal.id_servicio, activo: true, fecha_inicio: { lte: now },
+              OR: [{ fecha_fin: null }, { fecha_fin: { gte: now } }] },
+            orderBy: [{ fecha_inicio: 'desc' }, { id_tarifa: 'desc' }],
+          });
+          return { ...selected, listPrice: tariff ? Number(tariff.precio) : undefined };
+        }, transferIsolation)
+      : null;
+    const lead = offer ? null : await withRetry(() =>
       prisma.personas.findUnique({
         where: { id_persona: Number(id) },
         include: {
@@ -750,14 +769,17 @@ router.post('/:id/canva-flyer', async (req, res) => {
       })
     );
 
-    const leadName = lead ? `${lead.nombres} ${lead.apellidos}` : 'Paciente';
+    const person = offer?.request.Persona ?? lead;
+    const leadName = person ? `${person.nombres} ${person.apellidos}` : 'Paciente';
     const finalEmail = leadEmail || lead?.email || undefined;
     const finalPhone = leadPhone || lead?.numero || undefined;
 
-    const numOffered = Number(offeredPrice) || 150;
-    const numOriginal = Number(originalPrice) || 180;
-    let computedDiscount = Number(discountPct);
-    if (isNaN(computedDiscount) || computedDiscount <= 0) {
+    const numOffered = offer ? Number(offer.proposal.precio_cotizado) : Number(offeredPrice) || 150;
+    const numOriginal = offer ? Math.max(offer.listPrice ?? numOffered, numOffered) : Number(originalPrice) || 180;
+    let computedDiscount = offer
+      ? (numOriginal > 0 ? Math.round((1 - numOffered / numOriginal) * 100) : 0)
+      : Number(discountPct);
+    if (!offer && (isNaN(computedDiscount) || computedDiscount <= 0)) {
       if (numOriginal > numOffered) {
         computedDiscount = Math.round(((numOriginal - numOffered) / numOriginal) * 100);
       } else {
@@ -765,8 +787,10 @@ router.post('/:id/canva-flyer', async (req, res) => {
       }
     }
 
-    let resolvedSede = (sedeName || '').trim();
-    if (!resolvedSede || (!resolvedSede.includes('-') && !resolvedSede.includes(','))) {
+    let resolvedSede = offer
+      ? [offer.slot.Sede.nombre, offer.slot.Sede.direccion].filter(Boolean).join(' - ')
+      : (sedeName || '').trim();
+    if (!offer && (!resolvedSede || (!resolvedSede.includes('-') && !resolvedSede.includes(',')))) {
       const matchSede = await prisma.sedes.findFirst({
         where: {
           OR: [
@@ -783,28 +807,38 @@ router.post('/:id/canva-flyer', async (req, res) => {
       }
     }
 
+    const expiry = offer?.proposal.fecha_vigencia_hasta_utc_lead;
+    const expiryLima = expiry ? new Intl.DateTimeFormat('es-PE', {
+      weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'America/Lima',
+    }).format(expiry) : undefined;
+    const hours = offer
+      ? `${offer.slot.fecha.toISOString().slice(0, 10)} ${offer.slot.hora_inicio.toISOString().slice(11, 16)} - ${offer.slot.hora_fin.toISOString().slice(11, 16)}`
+      : horarioTexto;
     const result = await NegotiatorAgentService.processAndDispatch({
       leadId: Number(id),
       leadName,
       leadEmail: finalEmail,
       leadPhone: finalPhone,
-      serviceName: serviceName || lead?.Solicitudes?.[0]?.Servicio?.nombre || 'Consulta Odontológica',
+      serviceName: offer?.request.Servicio?.nombre || serviceName || lead?.Solicitudes?.[0]?.Servicio?.nombre || 'Consulta Odontológica',
       sedeName: resolvedSede,
       offeredPrice: numOffered,
       originalPrice: numOriginal,
       discountPct: computedDiscount,
-      expirationDate: expirationDate || 'Vigente por 7 días',
-      fechaLimite: fechaLimite || expirationDate,
-      diasFaltantes,
-      horarioTexto,
+      expirationDate: expiryLima || expirationDate || 'Vigente por 7 días',
+      fechaLimite: expiryLima || fechaLimite || expirationDate,
+      diasFaltantes: expiry ? Math.max(1, Math.ceil((expiry.getTime() - Date.now()) / 86_400_000)) : diasFaltantes,
+      horarioTexto: hours,
       tituloFlyer,
-      conditions: conditions || 'Garantía clínica y reserva asegurada.',
+      conditions: offer ? (offer.proposal.promocion_aplicada || 'Atención con cita previa.')
+        : (conditions || 'Garantía clínica y reserva asegurada.'),
       canvaTemplateId: process.env.CANVA_BRAND_TEMPLATE_ID || process.env.CANVA_TEMPLATE_ID || 'EAHWLEXZ1lo',
-      sendEmail: Boolean(sendEmail),
+      sendEmail: !offer && Boolean(sendEmail),
     });
 
-    res.json(result);
+    const id_adjunto = offer && expiry ? registerLeadFlyer(offer.huella, expiry, result.canva) : undefined;
+    res.set('Cache-Control', 'no-store').json({ ...result, id_adjunto });
   } catch (error: any) {
+    if (error instanceof TransferError) return res.status(error.status).json({ error: error.message });
     console.error('Error al generar flyer en Canva:', error);
     res.status(500).json({ error: error.message || 'Error al procesar el flyer con Canva' });
   }

@@ -155,11 +155,11 @@ export default function ClinicalPerformancePage() {
             <span>Ver Cohortes</span>
           </Link>
           <Link
-            to="/reportes?tab=all"
+            to="/reportes"
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#0f766e] px-3.5 text-xs font-semibold text-white hover:bg-[#115e59]"
           >
             <FileSpreadsheet className="h-3.5 w-3.5" />
-            <span>Matrices del Embudo</span>
+            <span>Reportes LEAD</span>
           </Link>
         </div>
       </div>

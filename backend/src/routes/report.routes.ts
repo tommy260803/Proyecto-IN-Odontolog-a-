@@ -4,8 +4,26 @@ import { MartSyncService } from '../services/martSyncService';
 import { buildBuyerCampaignMatrix, type CampaignRow } from '../services/buyerCampaignMatrix';
 import { preserveUnknownCosts } from '../services/matrixUnknowns';
 import { buildBuyerDurationMatrix, type DurationRow } from '../services/buyerDurationMatrix';
+import { readLeadMartReport, readLeadMartCatalogs, type LeadReportCode } from '../services/leadMartReports';
 
 const router = Router();
+
+router.get('/lead-management/catalogs', async (_req, res) => {
+  try { res.json(await readLeadMartCatalogs()); }
+  catch (error: any) { res.status(500).json({ error: 'No se pudieron consultar las dimensiones LEAD.' }); }
+});
+
+router.get('/lead-management', async (req, res) => {
+  const report = String(req.query.report || 'L1');
+  if (!['L1', 'L2', 'L3'].includes(report)) return res.status(400).json({ error: 'Indicador LEAD inválido.' });
+  try {
+    const { report: _report, ...filters } = req.query;
+    res.json(await readLeadMartReport(report as LeadReportCode, filters));
+  } catch (error: any) {
+    const invalid = /inválido|no admite/.test(error.message);
+    res.status(invalid ? 400 : 500).json({ error: invalid ? error.message : 'No se pudo consultar el Mart de LEAD. Comprueba su instalación y poblamiento.' });
+  }
+});
 
 export interface ExecutiveReportCategory {
   categoryName: string;
@@ -306,7 +324,11 @@ router.get('/status', async (_req: Request, res: Response) => {
     const counts = await queryMart<{ tabla: string; registros: number; ultimaFecha: number | null }>(`
       SELECT 'Fact_CaptacionBuyer' as tabla, COUNT(*) as registros, MAX(KeyTiempo) as ultimaFecha FROM Fact_CaptacionBuyer
       UNION ALL SELECT 'Fact_InversionCampanaBuyer', COUNT(*), MAX(KeyTiempo) FROM fact_inversion_campana_buyer
-      UNION ALL SELECT 'Fact_NegociacionLead', COUNT(*), MAX(KeyTiempo) FROM Fact_NegociacionLead
+      UNION ALL SELECT 'fact_oportunidades_lead', COUNT(*), MAX(KeyTiempo) FROM fact_oportunidades_lead
+      UNION ALL SELECT 'fact_propuestas_aceptadas_lead', COUNT(*), MAX(KeyTiempo) FROM fact_propuestas_aceptadas_lead
+      UNION ALL SELECT 'fact_propuestas_rechazadas_lead', COUNT(*), MAX(KeyTiempo) FROM fact_propuestas_rechazadas_lead
+      UNION ALL SELECT 'fact_alternativas_aceptadas_lead', COUNT(*), MAX(KeyTiempo) FROM fact_alternativas_aceptadas_lead
+      UNION ALL SELECT 'fact_alternativas_rechazadas_lead', COUNT(*), MAX(KeyTiempo) FROM fact_alternativas_rechazadas_lead
       UNION ALL SELECT 'Fact_GestionPayer', COUNT(*), MAX(KeyTiempo) FROM Fact_GestionPayer
       UNION ALL SELECT 'Fact_AtencionCustomer', COUNT(*), MAX(KeyTiempo) FROM Fact_AtencionCustomer
       UNION ALL SELECT 'Fact_SeguimientoTurned', COUNT(*), MAX(KeyTiempo) FROM Fact_SeguimientoTurned
@@ -343,7 +365,11 @@ router.get('/periods', async (_req: Request, res: Response) => {
     const rows = await queryMart<{ ym: number }>(`
       SELECT DISTINCT ym FROM (
         SELECT KeyTiempo / 100 AS ym FROM Fact_CaptacionBuyer
-        UNION SELECT KeyTiempo / 100 FROM Fact_NegociacionLead
+        UNION SELECT KeyTiempo / 100 FROM fact_oportunidades_lead
+        UNION SELECT KeyTiempo / 100 FROM fact_propuestas_aceptadas_lead
+        UNION SELECT KeyTiempo / 100 FROM fact_propuestas_rechazadas_lead
+        UNION SELECT KeyTiempo / 100 FROM fact_alternativas_aceptadas_lead
+        UNION SELECT KeyTiempo / 100 FROM fact_alternativas_rechazadas_lead
         UNION SELECT KeyTiempo / 100 FROM Fact_GestionPayer
         UNION SELECT KeyTiempo / 100 FROM Fact_AtencionCustomer
       ) p
@@ -485,78 +511,26 @@ async function getBuyerMatrix(measure: string = 'contacto_registrado', range: Pe
 }
 
 // ── BUILDER: LEAD MATRIX (DINÁMICO) ──────────────────────────────────────────
-async function getLeadMatrix(measure: string = 'cohorte_evaluable', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
-  let measureSQL = 'SUM(f.cohorte_evaluable)';
-  let metricTitle = 'cohorte_evaluable';
-
-  switch (measure) {
-    case 'conversion_payer_14_dia':
-    case 'leads_convertidos_14d':
-      measureSQL = 'SUM(f.conversion_payer_14_dia)';
-      metricTitle = 'conversion_payer_14_dia';
-      break;
-    case 'solicitud_requiere_respuesta':
-    case 'leads_requieren_resp':
-      measureSQL = 'SUM(f.solicitud_requiere_respuesta)';
-      metricTitle = 'solicitud_requiere_respuesta';
-      break;
-    case 'respuesta_util_15_min':
-    case 'leads_resp_15m':
-      measureSQL = 'SUM(f.respuesta_util_15_min)';
-      metricTitle = 'respuesta_util_15_min';
-      break;
-    case 'negociacion_finalizada':
-    case 'leads_resultado_final':
-      measureSQL = 'SUM(f.negociacion_finalizada)';
-      metricTitle = 'negociacion_finalizada';
-      break;
-    case 'negociacion_abandonada':
-    case 'leads_abandonados':
-      measureSQL = 'SUM(f.negociacion_abandonada)';
-      metricTitle = 'negociacion_abandonada';
-      break;
-    case 'cohorte_evaluable':
-    case 'leads_cohorte':
-    default:
-      measureSQL = 'SUM(f.cohorte_evaluable)';
-      metricTitle = 'cohorte_evaluable';
-      break;
-  }
-
-  const filter = timeFilter('f', range);
-  const rawData = await queryMart<{
-    categoria: string;
-    item: string;
-    columna: string;
-    valor: number;
-  }>(`
-    SELECT 
-      ISNULL(s.Sede, 'Sede Principal') AS categoria,
-      ISNULL(n.NombreNegociador, 'Operador Asignado') AS item,
-      ISNULL(serv.Categoria, 'Clínica Odontológica') AS columna,
-      ${measureSQL} AS valor
-    FROM Fact_NegociacionLead f
-    LEFT JOIN Dim_Sede s ON s.KeySede = f.KeySede
-    LEFT JOIN Dim_Negociador n ON n.KeyNegociador = f.KeyNegociador
-    LEFT JOIN Dim_Servicio serv ON serv.KeyServicio = f.KeyServicio
-    ${filter.sql}
-    GROUP BY s.KeySede, s.Sede, n.KeyNegociador, n.NombreNegociador, serv.Categoria
-    ORDER BY s.KeySede ASC, n.KeyNegociador ASC
-  `, filter.params);
-
-  return buildDynamicMatrix(pivotRows(rawData), {
-    stage: 'LEAD',
-    reportTitle: 'Resumen de negociación',
-    period: range.label,
-    periodKey: range.key,
-    metric: metricTitle,
-    rowHeader: 'Sede / Negociador',
-    superHeader: 'Categoría del tratamiento',
-    totalColumnName: 'Total',
-    grandTotalLabel: 'Total general',
-    isCurrency: false,
-    sourceMart: 'NexoSalud_Mart.fact_negociacion_lead',
-    preferredColumnsOrder: ['Odontología Preventiva', 'Odontología Especializada'],
+async function getLeadMatrix(measure: string = 'oportunidad_aceptada', range: PeriodRange = ALL_PERIODS): Promise<ExecutiveReportData> {
+  const measures: Record<string, { report: LeadReportCode; field: 'aceptadas' | 'rechazadas' | 'especiales' }> = {
+    oportunidad_aceptada: { report: 'L1', field: 'aceptadas' },
+    oportunidad_cerrada_sin_acuerdo: { report: 'L1', field: 'rechazadas' },
+    propuesta_aceptada: { report: 'L2', field: 'aceptadas' },
+    propuesta_rechazada: { report: 'L2', field: 'rechazadas' },
+    propuesta_rechazada_economica: { report: 'L2', field: 'especiales' },
+    alternativa_aceptada: { report: 'L3', field: 'aceptadas' },
+    alternativa_rechazada: { report: 'L3', field: 'rechazadas' },
+    alternativa_rechazada_incompatibilidad: { report: 'L3', field: 'especiales' },
+  };
+  const metric = measures[measure] ? measure : 'oportunidad_aceptada';
+  const selected = measures[metric];
+  const data = await readLeadMartReport(selected.report, { period: range.key });
+  return buildDynamicMatrix(pivotRows(data.rows.map(row => ({
+    categoria: row.servicio, item: row.grupo, columna: metric, valor: row[selected.field],
+  }))), {
+    stage: 'LEAD', reportTitle: 'Resultados comerciales de LEAD', period: range.label, periodKey: range.key,
+    metric, rowHeader: 'Tratamiento / Desglose', superHeader: 'Medida', isCurrency: false,
+    sourceMart: 'NexoSalud_Mart · hechos LEAD (' + selected.report + ')',
   });
 }
 

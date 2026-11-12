@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Search,
   MoreHorizontal,
@@ -17,7 +17,6 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
   BarChart3,
   X,
   Stethoscope,
@@ -35,6 +34,7 @@ import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { ErrorState } from '@/shared/components/feedback/ErrorState';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 import type { LeadWithDetails } from '@/application/use-cases/lead';
+import { calculateLeadIndicators, formatLeadRate, type LeadMeasures } from '../lib/leadIndicators';
 
 export const LEAD_STATE_META: Record<
   string,
@@ -103,7 +103,7 @@ export function LeadListView() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: leads = [], isLoading, isError } = useLeads();
+  const { data: leads = [], isLoading, isError, dataUpdatedAt: leadsUpdatedAt } = useLeads();
   const {data:priorities=[]}=useLeadPriorities();
 
   // Filtros multi-selección y búsqueda
@@ -132,32 +132,20 @@ export function LeadListView() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
-  // Escuchar retorno OAuth de Canva Connect (?code=)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    if (code) {
-      toast({
-        title: 'Conectando con Canva Connect...',
-        description: 'Validando autorización oficial de diseño.',
-      });
-      leadService
-        .exchangeCanvaCode(code)
-        .then(() => {
-          toast({
-            title: 'Canva Connect vinculado',
-            description: 'Las plantillas de propuestas comerciales están listas.',
-          });
-          window.history.replaceState({}, document.title, window.location.pathname);
-        })
-        .catch(() => {
-          toast({
-            title: 'No se pudo completar la vinculación con Canva',
-            description: 'Puedes intentar conectarte nuevamente desde la barra superior.',
-            variant: 'destructive',
-          });
-        });
-    }
+    const url = new URL(window.location.href);
+    const status = url.searchParams.get('canva');
+    if (!status) return;
+    url.searchParams.delete('canva');
+    window.history.replaceState(window.history.state, '', url);
+
+    if (status === 'connected') toast({ title: 'Canva conectado' });
+    else if (status === 'cancelled') toast({ title: 'Conexión con Canva cancelada' });
+    else toast({
+      title: 'No se pudo conectar con Canva',
+      description: 'Vuelve a iniciar la conexión y comprueba la URL de retorno registrada.',
+      variant: 'destructive',
+    });
   }, [toast]);
 
   // Cerrar popovers y menús al hacer clic fuera
@@ -260,45 +248,24 @@ export function LeadListView() {
     setCurrentPage(1);
   }, [searchTerm, selectedStates, selectedServices, startDate, endDate]);
 
-  // Cálculo de KPIs Horizontales (sin códigos L1/L2/L3 ni etiqueta BI Metrix)
-  const kpiMetrics = useMemo(() => {
-    const total = filteredLeads.length;
-    const convertedOrPayment = filteredLeads.filter(
-      (l: any) =>
-        l.state === LeadState.CONVERTED ||
-        l.state === LeadState.PAYMENT_REQUESTED ||
-        l.state === LeadState.ALTERNATIVE_SELECTED
-    ).length;
-    const lostCount = filteredLeads.filter((l: any) => l.state === LeadState.LOST).length;
-    const activeCount = Math.max(0, total - lostCount);
-
-    const conversionRate = total > 0 ? ((convertedOrPayment / total) * 100).toFixed(1) : '0.0';
-    const retentionRate = total > 0 ? ((activeCount / total) * 100).toFixed(1) : '100.0';
-
-    return [
-      {
-        id: 'kpi-leads-active',
-        label: 'Oportunidades en Mesa de Negociación',
-        value: total.toLocaleString('es-PE'),
-        trend: '+9.6%',
-        trendContext: 'vs mes anterior',
-      },
-      {
-        id: 'kpi-leads-conversion',
-        label: 'Tasa de Avance hacia PAYER',
-        value: `${conversionRate}%`,
-        trend: '+5.1%',
-        trendContext: `${convertedOrPayment.toLocaleString('es-PE')} con propuesta/reserva`,
-      },
-      {
-        id: 'kpi-leads-retention',
-        label: 'Retención Comercial (Sin Abandono)',
-        value: `${retentionRate}%`,
-        trend: '+2.3%',
-        trendContext: `${activeCount.toLocaleString('es-PE')} oportunidades vigentes`,
-      },
-    ];
-  }, [filteredLeads]);
+  const indicatorIds = useMemo(() => [...new Set<number>(filteredLeads.map((lead: any) => Number(lead.id_solicitud))
+    .filter((id: number) => Number.isInteger(id) && id > 0))].sort((a, b) => a - b), [filteredLeads]);
+  const indicatorQuery = useQuery({
+    queryKey: ['lead', 'indicators', indicatorIds, leadsUpdatedAt],
+    enabled: !isLoading,
+    queryFn: async ({ signal }) => {
+      const api = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      const response = await fetch(api + '/lead/commercial/indicators', {
+        method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ solicitudes: indicatorIds }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || 'No se pudieron consultar los indicadores.');
+      return (body[0] || {}) as LeadMeasures;
+    },
+    staleTime: 15000,
+  });
+  const kpiMetrics = calculateLeadIndicators(indicatorQuery.data || {});
 
   const hasActiveFilters =
     Boolean(searchTerm) ||
@@ -405,8 +372,15 @@ export function LeadListView() {
           <button
             type="button"
             onClick={async () => {
-              const url = await leadService.getCanvaAuthUrl();
-              window.location.href = url;
+              try {
+                window.location.assign(await leadService.getCanvaAuthUrl());
+              } catch (error) {
+                toast({
+                  title: 'No se pudo conectar con Canva',
+                  description: error instanceof Error ? error.message : undefined,
+                  variant: 'destructive',
+                });
+              }
             }}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-2xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
           >
@@ -415,48 +389,33 @@ export function LeadListView() {
           </button>
 
           <Link
-            to="/reportes?tab=lead"
+            to="/reportes"
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-2xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             <BarChart3 className="h-3.5 w-3.5 text-slate-500" strokeWidth={1.75} />
-            <span>Matriz Analítica</span>
+            <span>Reportes LEAD</span>
           </Link>
         </div>
       </div>
 
-      {/* Tarjetas KPI Horizontales, Delgadas y Limpias */}
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-        {kpiMetrics.map((kpi) => (
-          <div
-            key={kpi.id}
-            className="flex flex-col justify-between gap-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:px-5 sm:py-3.5 shadow-2xs min-w-0"
-          >
-            <div className="flex items-start justify-between gap-2 min-w-0">
-              <p
-                className="text-[12px] font-medium text-slate-500 dark:text-slate-400 truncate"
-                title={kpi.label}
-              >
-                {kpi.label}
-              </p>
-              <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-                <TrendingUp className="h-3 w-3" strokeWidth={2} />
-                {kpi.trend}
-              </span>
+      <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3" aria-label="Indicadores LEAD de la lista filtrada">
+        {kpiMetrics.map(kpi => (
+          <article key={kpi.code} className="flex min-w-0 flex-col gap-3 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-start gap-3">
+              <span className="rounded-md bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-700 dark:bg-teal-950 dark:text-teal-300">{kpi.code}</span>
+              <h2 className="text-sm font-medium leading-5 text-slate-600 dark:text-slate-300">{kpi.label}</h2>
             </div>
-
-            <div className="flex items-baseline justify-between gap-3 min-w-0">
-              <span className="font-mono text-2xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-white shrink-0">
-                {kpi.value}
-              </span>
-              <span
-                className="text-[11px] font-medium text-slate-400 dark:text-slate-500 truncate text-right min-w-0"
-                title={kpi.trendContext}
-              >
-                {kpi.trendContext}
-              </span>
-            </div>
-          </div>
+            <strong className="text-2xl font-semibold tabular-nums tracking-tight text-slate-900 dark:text-white">
+              {indicatorQuery.isPending ? '…' : indicatorQuery.isError ? 'No disponible' : formatLeadRate(kpi.value)}
+            </strong>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{indicatorQuery.isSuccess
+              ? kpi.numerator + ' / ' + kpi.denominator + ' ' + kpi.unit : kpi.formula}</p>
+          </article>
         ))}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+        <p>Datos operativos · Oportunidades de la lista filtrada, antes de paginar. Los pendientes no entran en las tasas.</p>
+        {indicatorQuery.isError && <button type="button" className="text-rose-600 dark:text-rose-400 underline" onClick={() => indicatorQuery.refetch()}>Reintentar indicadores</button>}
       </div>
 
       {/* Barra de Filtros Horizontal Compacta en una sola línea */}

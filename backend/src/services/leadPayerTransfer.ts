@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../db';
 
 export class TransferError extends Error {
-  constructor(message:string, readonly status=409) { super(message); }
+  constructor(message:string, readonly status=409, readonly reason?: 'VIGENCIA_VENCIDA' | 'HORARIO_NO_DISPONIBLE') { super(message); }
 }
 export const transferIsolation = { isolationLevel:Prisma.TransactionIsolationLevel.Serializable, timeout:15000, maxWait:5000 } as const;
 export const hashAccess = (token:string) => createHash('sha256').update(token).digest('hex');
@@ -36,23 +36,35 @@ export async function loadTransferOffer(tx:Prisma.TransactionClient, personId:nu
     d.fecha.toISOString().slice(0,10),d.hora_inicio.toISOString().slice(11,19),d.hora_fin.toISOString().slice(11,19)]));
   return {request,option,proposal:p,slot:d,huella};
 }
-export async function checkTransferOffer(tx:Prisma.TransactionClient, offer:Awaited<ReturnType<typeof loadTransferOffer>>) {
-  const {request:r,option:o,proposal:p,slot:d}=offer;
+export async function checkLeadProposalTerms(tx:Prisma.TransactionClient, offer:Awaited<ReturnType<typeof loadTransferOffer>>) {
+  const {request:r,proposal:p}=offer;
   if(r.Persona.Etapa.nombre!=='LEAD'||r.archivada_lead_en||!['Abierta','En negociación'].includes(r.estado)||
     r.resultado_comercial_lead==='CERRADA_SIN_ACUERDO')throw new TransferError('La solicitud no admite un nuevo traspaso desde LEAD.');
-  if(o.archivada_lead_en||o.estado_respuesta==='Rechazada'||p.estado==='Rechazada'||p.id_solicitud!==r.id_solicitud||
-    p.id_servicio!==r.id_servicio||!o.precio_ofrecido.equals(p.precio_cotizado))throw new TransferError('La propuesta y la alternativa no tienen condiciones comerciales compatibles.');
-  if(!p.fecha_vigencia_hasta_utc_lead||p.fecha_vigencia_hasta_utc_lead<=new Date())throw new TransferError('La vigencia del precio venció o no está documentada. Solicita una propuesta vigente.');
+  if(p.estado==='Rechazada'||p.id_solicitud!==r.id_solicitud||p.id_servicio!==r.id_servicio||!r.Servicio?.activo)
+    throw new TransferError('La propuesta no tiene condiciones comerciales compatibles con la solicitud.');
   const newer=await tx.$queryRaw<{id:number}[]>`SELECT TOP(1) v.id_propuesta id FROM dbo.PropuestasEconomicasLead v
     WHERE COALESCE(v.id_propuesta_raiz,v.id_propuesta)=${p.id_propuesta_raiz??p.id_propuesta} AND v.numero_version>${p.numero_version}`;
   if(newer.length)throw new TransferError('La propuesta fue sustituida. Revisa la versión actual.');
   if(r.resultado_comercial_lead==='ACEPTADA' && (r.id_propuesta_aceptada_lead!==p.id_propuesta||!r.valor_acordado_lead?.equals(p.precio_cotizado)))
     throw new TransferError('Ya existe un acuerdo con otras condiciones.');
+  if(!p.fecha_vigencia_hasta_utc_lead)
+    throw new TransferError('La vigencia del precio no está documentada. Solicita una propuesta vigente.');
+  if(p.fecha_vigencia_hasta_utc_lead<=new Date())
+    throw new TransferError('La vigencia del precio venció. Solicita una propuesta vigente.',409,'VIGENCIA_VENCIDA');
+}
+
+export async function checkTransferOffer(tx:Prisma.TransactionClient, offer:Awaited<ReturnType<typeof loadTransferOffer>>) {
+  await checkLeadProposalTerms(tx, offer);
+  const {request:r,option:o,proposal:p,slot:d}=offer;
+  if(o.archivada_lead_en||o.estado_respuesta==='Rechazada'||!o.precio_ofrecido.equals(p.precio_cotizado))
+    throw new TransferError('La propuesta y la alternativa no tienen condiciones comerciales compatibles.');
+  if(await tx.reservas.findFirst({where:{id_solicitud:r.id_solicitud}}))
+    throw new TransferError('Existe una reserva previa o el horario está ocupado. No se creará otra.');
   const authorized=await tx.profesionalServicio.findFirst({where:{id_profesional:d.id_profesional,id_servicio:p.id_servicio}});
   const nowLima=new Date(Date.now()-5*3600000).toISOString();
   const start=d.fecha.toISOString().slice(0,10)+'T'+d.hora_inicio.toISOString().slice(11,19);
-  if(!authorized||!r.Servicio?.activo||!d.Profesional.activo||!d.Sede.activo||d.estado!=='Disponible'||start<=nowLima.slice(0,19)||d.hora_fin<=d.hora_inicio)
-    throw new TransferError('El horario ya no es futuro, libre o compatible con el servicio y especialista.');
+  if(!authorized||!d.Profesional.activo||!d.Sede.activo||d.estado!=='Disponible'||start<=nowLima.slice(0,19)||d.hora_fin<=d.hora_inicio)
+    throw new TransferError('El horario ya no es futuro, libre o compatible con el servicio y especialista.',409,'HORARIO_NO_DISPONIBLE');
   const [snapshot]=await tx.$queryRaw<{ok:number}[]>`SELECT TOP(1) 1 ok FROM (
       SELECT TOP(1) * FROM dbo.HistorialOpcionesLead WHERE id_opcion=${o.id_opcion}
       ORDER BY fecha_observacion_utc DESC,id_historial DESC) h
@@ -62,15 +74,15 @@ export async function checkTransferOffer(tx:Prisma.TransactionClient, offer:Awai
       AND CONVERT(varchar(8),h.hora_inicio,108)=${d.hora_inicio.toISOString().slice(11,19)}
       AND CONVERT(varchar(8),h.hora_fin,108)=${d.hora_fin.toISOString().slice(11,19)}`;
   if(!snapshot)throw new TransferError('El horario actual no coincide con la alternativa ofrecida y su historial.');
-  if(await tx.reservas.findFirst({where:{OR:[{id_solicitud:r.id_solicitud},{Opcion:{id_disponibilidad:d.id_disponibilidad},estado:{notIn:['Cancelada','Vencida']}}]}}))
-    throw new TransferError('Existe una reserva previa o el horario está ocupado. No se creará otra.');
+  if(await tx.reservas.findFirst({where:{Opcion:{id_disponibilidad:d.id_disponibilidad},estado:{notIn:['Cancelada','Vencida']}}}))
+    throw new TransferError('Existe una reserva previa o el horario está ocupado. No se creará otra.',409,'HORARIO_NO_DISPONIBLE');
   const [overlap]=await tx.$queryRaw<{id:number}[]>`SELECT TOP(1) rv.id_reserva id FROM dbo.Reservas rv
     JOIN dbo.Opciones op ON op.id_opcion=rv.id_opcion JOIN dbo.Disponibilidad ds ON ds.id_disponibilidad=op.id_disponibilidad
     WHERE rv.estado NOT IN ('Cancelada','Vencida') AND ds.id_profesional=${d.id_profesional}
       AND ds.fecha=CONVERT(date,${d.fecha})
       AND ds.hora_inicio<CONVERT(time,${d.hora_fin.toISOString().slice(11,19)})
       AND ds.hora_fin>CONVERT(time,${d.hora_inicio.toISOString().slice(11,19)})`;
-  if(overlap)throw new TransferError('El especialista ya tiene otra reserva que se superpone con este horario.');
+  if(overlap)throw new TransferError('El especialista ya tiene otra reserva que se superpone con este horario.',409,'HORARIO_NO_DISPONIBLE');
   const previous=await tx.eventosEtapa.findFirst({where:{id_solicitud:r.id_solicitud,EtapaDestino:{nombre:'PAYER'}}});
   if(previous)throw new TransferError('Existe un traspaso anterior que requiere conciliación.');
 }
@@ -141,11 +153,21 @@ export async function createPreReservationAccess(tx:Prisma.TransactionClient, pe
   await assertTransferSchema(tx);
   const offer=await loadTransferOffer(tx,person,request,option);
   await checkTransferOffer(tx,offer);
-  const token=randomBytes(32).toString('hex');
+  return storePreReservationAccess(tx, offer, actorId, randomBytes(32).toString('hex'));
+}
+
+export async function storePreReservationAccess(
+  tx: Prisma.TransactionClient,
+  offer: Awaited<ReturnType<typeof loadTransferOffer>>,
+  actorId: number | null,
+  token: string,
+) {
   // Access may not outlive the actual price expiry. No fixed clinic deadline is invented.
   const expiry=offer.proposal.fecha_vigencia_hasta_utc_lead!;
-  await tx.$executeRaw`INSERT dbo.AccesosPreReservaLead(hash_token,id_persona,id_solicitud,id_opcion,huella,vence_utc,id_usuario)
-    VALUES(${hashAccess(token)},${person},${request},${option},${offer.huella},${expiry},${actorId})`;
+  const hash = hashAccess(token);
+  await tx.$executeRaw`IF NOT EXISTS (SELECT 1 FROM dbo.AccesosPreReservaLead WITH (UPDLOCK,HOLDLOCK) WHERE hash_token=${hash})
+    INSERT dbo.AccesosPreReservaLead(hash_token,id_persona,id_solicitud,id_opcion,huella,vence_utc,id_usuario)
+    VALUES(${hash},${offer.request.id_persona},${offer.request.id_solicitud},${offer.option.id_opcion},${offer.huella},${expiry},${actorId})`;
   return {token,huella:offer.huella,vence_utc:expiry};
 }
 

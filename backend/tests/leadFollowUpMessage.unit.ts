@@ -45,6 +45,13 @@ test('missing evidence does not invent a prior conversation or a commercial reas
   assert.ok(!text.includes('descuento'));
   assert.ok(text.includes('importe, la sede'));
 });
+test('WhatsApp receipt changes the follow-up question without claiming interest or reading', () => {
+  const delivered = buildLeadFollowUpMessage({ ...base, whatsappStatus: 'delivered' });
+  const read = buildLeadFollowUpMessage({ ...base, whatsappStatus: 'read' });
+  assert.match(delivered, /¿Pudiste revisar la propuesta\?/);
+  assert.match(read, /¿Te gustaría que revisemos otro horario/);
+  assert.doesNotMatch(read, /vimos que|ya leíste|aceptaste|descuento/i);
+});
 test('bounded context remains inside persisted draft limit and past expiry is excluded',()=>{
   const text=buildLeadFollowUpMessage({...base,replies:['precio sede horario especialista '.repeat(100),'x'.repeat(1000)],
     proposals:[{id:1,price:'100',expiresAt:new Date('2026-11-01T15:00:00Z')}]});

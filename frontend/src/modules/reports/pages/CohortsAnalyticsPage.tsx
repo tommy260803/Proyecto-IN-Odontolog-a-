@@ -166,11 +166,11 @@ export default function CohortsAnalyticsPage() {
           </div>
 
           <Link
-            to="/reportes?tab=all"
+            to="/reportes"
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-[#0f766e]" />
-            <span>Matrices Ejecutivas</span>
+            <span>Reportes LEAD</span>
           </Link>
         </div>
       </div>

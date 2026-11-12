@@ -217,18 +217,9 @@ export function resolveBreadcrumbs(pathname: string, search: string): Breadcrumb
   }
 
   if (pathname.startsWith('/reportes')) {
-    const tab = params.get('tab') || 'buyer';
-    const tabLabels: Record<string, string> = {
-      all: 'Reportes Ejecutivos Matriciales',
-      buyer: 'Reportes Ejecutivos Matriciales · Buyer',
-      lead: 'Reportes Ejecutivos Matriciales · Lead',
-      payer: 'Reportes Ejecutivos Matriciales · Payer',
-      customer: 'Reportes Ejecutivos Matriciales · Customer',
-      turned: 'Reportes Ejecutivos Matriciales · Turned',
-    };
     return [
       { label: 'Analítica & BI', to: '/reportes' },
-      { label: tabLabels[tab] || 'Reportes Ejecutivos Matriciales' },
+      { label: 'Reportes Ejecutivos · LEAD' },
     ];
   }
 
@@ -422,9 +413,9 @@ export const STATIC_COMMAND_ITEMS: QuickCommandItem[] = [
     keywords: 'turned fidelizacion postventa controles',
   },
   {
-    id: 'cmd-reportes-all',
-    title: 'Reportes Ejecutivos Matriciales',
-    subtitle: 'Analítica & BI · Consolidado multidimensional del embudo',
+    id: 'cmd-reportes-lead',
+    title: 'Reportes Ejecutivos · LEAD',
+    subtitle: 'Analítica & BI · Indicadores de negociación comercial',
     category: 'Analítica & BI',
     to: '/reportes',
     icon: BarChart3,

@@ -23,13 +23,27 @@ export function excludedLeadSites(messages: string[], sites: { id_sede: number; 
 }
 export function excludedLeadShifts(text: string): string[] {
   const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  return ['manana', 'tarde', 'noche'].filter(shift => {
-    const prefix = shift === 'manana'
-      ? '(?:(?:en|por)\\s+la\\s+|el turno de la\\s+)'
-      : '(?:en\\s+|por\\s+)?(?:la\\s+|el turno de la\\s+)?';
-    return new RegExp('(?:no\\s+(?:puedo|podria|me sirve|quiero|estoy disponible)|excepto|menos)\\s+(?:asistir\\s+)?' + prefix + shift + '\\b').test(normalized);
-  })
-    .map(shift => shift === 'manana' ? 'mañana' : shift);
+  const excluded = new Set<string>();
+  for (const clause of scheduleClauses(normalized)) {
+    const unavailable = /\b(?:no (?:puedo|podria|podre|me sirve|me acomoda|me queda bien|quiero|estoy disponible|estoy libre|tengo disponibilidad)|se me complica|excepto|menos|descarto)\b/.test(clause);
+    const conflict = /\b(?:trabajo|estudio|tengo clases|estoy ocupad[oa])\b/.test(clause);
+    if (unavailable || conflict) mentionedLeadShifts(clause).forEach(shift => excluded.add(shift));
+  }
+  return [...excluded];
+}
+
+function scheduleClauses(text: string) {
+  return text.split(/[.!?;\n]|,(?=\s*(?:puedo|solo|si|prefiero|no|se me complica)\b)|\b(?:pero|en cambio)\b|(?=\b(?:ahora si|si puedo|prefiero)\b)/);
+}
+
+function mentionedLeadShifts(text: string) {
+  return ['mañana', 'tarde', 'noche'].filter(shift => {
+    const plain = shift === 'mañana' ? 'manana' : shift;
+    const prefix = shift === 'mañana'
+      ? '(?:la |turno (?:de la )?)'
+      : '(?:(?:la |turno (?:de la )?)?)';
+    return new RegExp('\\b' + prefix + plain + '\\b').test(text);
+  });
 }
 
 export function leadScheduleConstraints(messages: string[]) {
@@ -41,33 +55,31 @@ export function leadScheduleConstraints(messages: string[]) {
   const weekdays = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
   for (const text of messages) {
     const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    for (const clause of normalized.split(/[.!?;\n]|\bpero\b/)) {
-      const negative = /\b(?:no (?:puedo|puede|quiero|quiere|me sirve|le sirve)|excepto|menos|descarto)\b/.test(clause);
+    for (const clause of scheduleClauses(normalized)) {
+      const negative = /\b(?:no (?:puedo|puede|podria|podre|quiero|quiere|me sirve|le sirve|me acomoda|me queda bien|estoy disponible|estoy libre|tengo disponibilidad)|se me complica|excepto|menos|descarto)\b/.test(clause);
       const positive = /\b(?:si (?:puedo|puede)|puedo|puede|prefiero|prefiere|solo|solamente|me sirve|le sirve)\b/.test(clause);
       const mentionedDays = weekdays.flatMap((day, index) => new RegExp('\\b' + day + '(?:s)?\\b').test(clause) ? [index] : []);
+      const blockedShifts = excludedLeadShifts(clause);
       if (negative) {
         mentionedDays.forEach(day => excludedDays.add(day));
-        excludedLeadShifts(clause).forEach(shift => excludedShifts.add(shift));
         preferredDays = preferredDays.filter(day => !excludedDays.has(day));
-        preferredShifts = preferredShifts.filter(shift => !excludedShifts.has(shift));
       } else if (positive) {
         if (mentionedDays.length) {
           preferredDays = mentionedDays;
           mentionedDays.forEach(day => excludedDays.delete(day));
         }
-        const mentionedShifts = ['mañana', 'tarde', 'noche'].filter(shift => {
-          const plain = shift === 'mañana' ? 'manana' : shift;
-          return new RegExp('(?:por|en) la ' + plain + '\\b|turno (?:de la )?' + plain + '\\b').test(clause);
-        });
+        const mentionedShifts = mentionedLeadShifts(clause).filter(shift => !blockedShifts.includes(shift));
         if (mentionedShifts.length) {
           preferredShifts = mentionedShifts;
           mentionedShifts.forEach(shift => excludedShifts.delete(shift));
         }
       }
+      blockedShifts.forEach(shift => excludedShifts.add(shift));
+      preferredShifts = preferredShifts.filter(shift => !excludedShifts.has(shift));
     }
     // Until precise time/date ranges are supported, never claim a broad shift satisfies one.
     if (/(?:\b(?:a las|desde las|hasta las|despues de las|antes de las)\s*\d|\d{1,2}:\d{2}|\b(?:hoy|manana|pasado manana)\b|\d{1,2}\/\d{1,2})/.test(
-      normalized.replace(/(?:por|en) la manana|turno (?:de la )?manana/g, ''))) needsTimeClarification = true;
+      normalized.replace(/\bla manana\b|\bturno (?:de la )?manana\b/g, ''))) needsTimeClarification = true;
     if (/\b(?:sin restriccion de (?:hora|fecha)|cualquier (?:hora|horario|fecha))\b/.test(normalized)) needsTimeClarification = false;
   }
   return {

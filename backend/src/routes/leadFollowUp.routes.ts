@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { prisma } from '../db';
 import { leadOperationalPriority } from '../services/leadOperationalPriority';
 import { buildLeadFollowUpMessage } from '../services/leadFollowUpMessage';
+import { readWhatsAppTracking, whatsappFollowUpSuggestion } from '../services/leadWhatsAppTracking';
 import { leadStaffAuthEnabled, getLeadStaffIdentity } from '../services/leadStaffAuth';
 export const leadFollowUpRouter = Router();
 leadFollowUpRouter.use(async (req,res,next) => {
@@ -94,11 +95,16 @@ leadFollowUpRouter.get('/:id', async (req,res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isSafeInteger(id) || id < 1) return res.sendStatus(400);
-    const row = await prisma.solicitudes.findUnique({ where: { id_solicitud: id } });
+    const row = await prisma.solicitudes.findUnique({ where: { id_solicitud: id }, include: { Persona: { include: { Etapa: true } } } });
     if (!row) return res.sendStatus(404);
     const ready = await installed(prisma);
     const [state] = ready ? await prisma.$queryRaw<State[]>`SELECT * FROM dbo.SeguimientoOperativoLead WHERE id_solicitud=${id}` : [];
-    res.set('Cache-Control','no-store').json({ instalado: ready, seguimiento: state ?? null, fecha: row.fecha_proximo_seguimiento });
+    const [whatsapp] = await readWhatsAppTracking(prisma, id);
+    const canSuggest = row.Persona.Etapa.nombre === 'LEAD' && ['Abierta', 'En negociación'].includes(row.estado) && !row.archivada_lead_en &&
+      !['ACEPTADA', 'CERRADA_SIN_ACUERDO'].includes(row.resultado_comercial_lead ?? '') && state?.estado !== 'PAUSADO' &&
+      state?.estado !== 'CANCELADO' && state?.estado !== 'ENVIADO' && !row.fecha_proximo_seguimiento;
+    res.set('Cache-Control','no-store').json({ instalado: ready, seguimiento: state ?? null, fecha: row.fecha_proximo_seguimiento,
+      whatsapp, sugerencia_whatsapp: canSuggest ? whatsappFollowUpSuggestion(whatsapp) : null });
   } catch { res.status(500).json({ error: 'No se pudo consultar el seguimiento.' }); }
 });
 leadFollowUpRouter.post('/:id', async (req,res) => {
@@ -135,7 +141,7 @@ leadFollowUpRouter.post('/:id', async (req,res) => {
         if (old?.ultimo_envio_utc && (!Number.isFinite(hours) || hours<=0 || Date.now()-old.ultimo_envio_utc.getTime()<hours*3600000)) throw new Error('Revisa la frecuencia de contacto permitida.');
         const replies = await tx.interacciones.findMany({
           where: { id_solicitud:id, tipo:'Respuesta del paciente', mensaje:{not:null} },
-          orderBy:[{fecha_hora:'desc'},{id_interaccion:'desc'}],take:2,select:{mensaje:true},
+          orderBy:[{fecha_hora:'desc'},{id_interaccion:'desc'}],take:2,select:{mensaje:true,fecha_hora:true},
         });
         const proposals = await tx.$queryRaw<{id:number;price:string;expiresAt:Date}[]>`
           SELECT p.id_propuesta AS id, CONVERT(varchar(30),p.precio_cotizado) AS price,
@@ -148,8 +154,14 @@ leadFollowUpRouter.post('/:id', async (req,res) => {
                 AND v.numero_version>p.numero_version)
           ORDER BY p.fecha_presentacion DESC,p.id_propuesta DESC
         `;
+        const [whatsapp] = await readWhatsAppTracking(tx, id);
+        const unanswered = whatsapp?.contacto_permitido && !whatsapp.primera_respuesta_utc &&
+          !replies.some(reply => reply.fecha_hora >= whatsapp.enviada_utc);
+        const whatsappStatus = unanswered && (whatsapp.lectura_detectada_utc ? 'read' : whatsapp.entrega_detectada_utc ? 'delivered' : undefined);
         draft = buildLeadFollowUpMessage({name:row.Persona.nombres,service:row.Servicio?.nombre??'atención',
-          contactAt:row.fecha_proximo_seguimiento,now:new Date(),replies:replies.map(r=>r.mensaje??''),proposals});
+          contactAt:row.fecha_proximo_seguimiento,now:new Date(),replies:replies.map(r=>r.mensaje??''),
+          proposals: whatsappStatus ? proposals.filter(proposal => proposal.id === whatsapp.id_propuesta) : proposals,
+          whatsappStatus: whatsappStatus || undefined });
         key=old?.estado==='FALLIDO' && old.clave_envio ? old.clave_envio : randomUUID();
         if(old?.estado==='FALLIDO' && old.borrador)draft=old.borrador;
         state='PREPARADO';

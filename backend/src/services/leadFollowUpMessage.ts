@@ -5,6 +5,7 @@ export type FollowUpMessageContext = {
   now: Date;
   replies: string[]; // newest first; only actual patient responses for this request
   proposals: { id: number; price: string; expiresAt: Date }[];
+  whatsappStatus?: 'read' | 'delivered';
 };
 
 const clean = (value: string, limit: number) => value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, limit);
@@ -36,7 +37,11 @@ export function buildLeadFollowUpMessage(context: FollowUpMessageContext): strin
   if (/\b(especialista|profesional|doctor|doctora)\b/.test(latest))
     topics.push('Podemos revisar qué otros especialistas están habilitados para este servicio y comprobar su disponibilidad.');
   parts.push(...topics);
-  parts.push(replies.length
+  parts.push(context.whatsappStatus === 'read'
+    ? '¿Te gustaría que revisemos otro horario, otra sede o alguna condición de la propuesta?'
+    : context.whatsappStatus === 'delivered'
+    ? '¿Pudiste revisar la propuesta? Si prefieres, podemos enviarte un resumen o aclarar tus dudas.'
+    : replies.length
     ? '¿Deseas que retomemos la revisión con lo que nos comentaste o cambió alguna de tus preferencias? Ningún turno queda reservado por este mensaje.'
     : '¿Qué necesitas revisar para continuar: el importe, la sede, el especialista o el horario?');
   return parts.join('\n\n');

@@ -17,11 +17,9 @@ import {
   Phone,
   Copy,
   CheckCheck,
-  RefreshCw,
   Stethoscope,
   MapPin,
   Clock,
-  Activity,
   Download,
   ExternalLink,
   CheckCircle2,
@@ -33,16 +31,11 @@ import {
   CreditCard,
   ShieldAlert,
   Layers,
-  AlertTriangle,
-  Flame,
-  Zap,
   Building2,
   User,
   SlidersHorizontal,
   ChevronRight,
   Eye,
-  BadgePercent,
-  DollarSign,
 } from 'lucide-react';
 import { leadService } from '../services/lead.service';
 import { configService } from '@/modules/config/services/config.service';
@@ -52,18 +45,56 @@ import { useToast } from '@/shared/hooks/use-toast';
 import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { ErrorState } from '@/shared/components/feedback/ErrorState';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
-import { LeadInteraction, type LeadInteractionAnalysis } from './LeadInteraction';
+import { LeadInteraction, type LeadInteractionAnalysis, type WhatsAppProposalUpdate } from './LeadInteraction';
 import { LeadOperationalFollowUp } from './LeadOperationalFollowUp';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
-import {
-  predictLeadNegotiationStrategy,
-  type LeadNegotiationStrategy,
-} from '@/shared/services/groqService';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { renderLeadStatusBadge } from './LeadListView';
 import { LeadProfileEditModal } from './LeadProfileEditModal';
+import { OfferDateCalendar } from './OfferDateCalendar';
 
 interface LeadDetailViewProps {
   leadId: string;
+}
+
+const emptySchedule = { date: '', start: '', end: '' };
+type UpdatedOfferField = 'branch' | 'professional' | keyof typeof emptySchedule;
+const offerFieldClass = 'h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:border-[#0f766e] focus:outline-none disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:disabled:text-slate-500 [color-scheme:light] dark:[color-scheme:dark] data-[actualizado=true]:border-sky-600 data-[actualizado=true]:bg-sky-50 data-[actualizado=true]:ring-2 data-[actualizado=true]:ring-sky-600/30 dark:data-[actualizado=true]:border-sky-400 dark:data-[actualizado=true]:bg-sky-950 dark:data-[actualizado=true]:ring-sky-400/35';
+
+function OfferTimeField({ id, label, value, times, disabled, onChange, highlight }: {
+  id: string;
+  label: string;
+  value: string;
+  times: string[];
+  disabled: boolean;
+  onChange: (time: string) => void;
+  highlight: { 'data-actualizado'?: true; onFocus: () => void; onPointerDown: () => void };
+}) {
+  return (
+    <div className="grid min-w-0 gap-1.5">
+      <label htmlFor={id} className="text-xs font-medium text-slate-700 dark:text-slate-300">{label}</label>
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger id={id} {...highlight} className={`${offerFieldClass} tabular-nums shadow-none dark:data-[placeholder]:text-slate-400`}>
+          <SelectValue placeholder="--:--" />
+        </SelectTrigger>
+        <SelectContent className="border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+          {times.map(time => <SelectItem key={time} value={time}>{time}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function slotSchedule(slot: { fecha: string; hora_inicio: string; hora_fin: string }) {
+  return {
+    date: String(slot.fecha).slice(0, 10),
+    start: String(slot.hora_inicio).slice(11, 16),
+    end: String(slot.hora_fin).slice(11, 16),
+  };
+}
+
+function distinctTimes(values: string[]) {
+  return [...new Set(values)].sort();
 }
 
 function parseCompanyHours(companyHorario: string) {
@@ -102,6 +133,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   const [transferEvidence, setTransferEvidence] = useState('');
   const [transferError, setTransferError] = useState('');
   const [publicLink, setPublicLink] = useState<{option: string; url: string; expiry: string} | null>(null);
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
   const [interactionAnalysis, setInteractionAnalysis] = useState<{ requestId: number; result: LeadInteractionAnalysis } | null>(null);
   const [abandonOpen, setAbandonOpen] = useState(false);
   const [abandonReason, setAbandonReason] = useState('');
@@ -120,8 +152,10 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   const [selectedVigenciaCustom, setSelectedVigenciaCustom] = useState('');
   const [validityStartedAt, setValidityStartedAt] = useState(() => Date.now());
   const [selectedFranja, setSelectedFranja] = useState('Turno Mañana (08:00 AM – 01:00 PM)');
-  const [selectedDisponibilidadId, setSelectedDisponibilidadId] = useState('');
+  const [offerSchedule, setOfferSchedule] = useState(emptySchedule);
   const [activeProposal, setActiveProposal] = useState<{ id: number; terms: string } | null>(null);
+  const [whatsAppDraft, setWhatsAppDraft] = useState<{ originalExpiry: string | null } | null>(null);
+  const [updatedOfferFields, setUpdatedOfferFields] = useState<UpdatedOfferField[]>([]);
   const [companyHorario, setCompanyHorario] = useState('');
 
   const { openTime, closeTime } = useMemo(
@@ -141,26 +175,25 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   const [deletingOptionTarget, setDeletingOptionTarget] = useState<any | null>(null);
   const [isDeletingOption, setIsDeletingOption] = useState(false);
 
-  // Objeciones, WhatsApp, Canva y Estrategia IA
-  const [objectionCategory, setObjectionCategory] = useState<'PRECIO' | 'HORARIO' | 'SEDE'>(
-    'PRECIO'
-  );
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
-  const [copiedPitch, setCopiedPitch] = useState(false);
   const [generatingCanva, setGeneratingCanva] = useState(false);
-  const [canvaResult, setCanvaResult] = useState<any>(null);
-  const [aiStrategy, setAiStrategy] = useState<LeadNegotiationStrategy | null>(null);
-  const [loadingStrategy, setLoadingStrategy] = useState(false);
-
+  const [canvaResult, setCanvaResult] = useState<{
+    designUrl?: string;
+    previewUrl?: string;
+    downloadPngUrl?: string;
+    attachmentId?: string;
+    offerKey: string | null;
+    isPersonalized: boolean;
+  } | null>(null);
+  const [checkedFlyerId, setCheckedFlyerId] = useState<string>();
   // Estados para Organización del Perfil de Negociación
-  const [profileTab, setProfileTab] = useState<'VARIABLES' | 'CLINICA' | 'CONVENIOS' | 'CONTACTO'>('VARIABLES');
+  const [profileTab, setProfileTab] = useState<'CLINICA' | 'CONVENIOS' | 'CONTACTO'>('CONTACTO');
   const [profileViewMode, setProfileViewMode] = useState<'TABS' | 'ALL'>('TABS');
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
 
   const handleProfileUpdated = (updatedLead: any) => {
     if (updatedLead) {
       setLead(updatedLead);
-      runNegotiationStrategy(updatedLead);
     } else {
       fetchLeadData();
     }
@@ -193,14 +226,16 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   useEffect(() => {
     if (leadId) {
       setActiveProposal(null);
-      setSelectedDisponibilidadId('');
+      setWhatsAppDraft(null);
+      setUpdatedOfferFields([]);
+      setOfferSchedule(emptySchedule);
       fetchLeadData();
     }
   }, [leadId]);
 
   // Pre-carga inteligente al obtener datos
   useEffect(() => {
-    if (!lead || !options?.servicios?.length) return;
+    if (!lead || !options?.servicios?.length || whatsAppDraft) return;
 
     const reqServicio = lead.Solicitudes?.[0]?.Servicio;
     const reqServicioId = lead.Solicitudes?.[0]?.id_servicio;
@@ -244,31 +279,9 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     }
   }, [lead, options]);
 
-  // Diagnóstico Predictivo de Negociación (IA / BI)
-  const runNegotiationStrategy = async (l = lead) => {
-    if (!l) return;
-    setLoadingStrategy(true);
-    try {
-      const strategy = await predictLeadNegotiationStrategy({
-        lead: l,
-        catalogs: options,
-      });
-      setAiStrategy(strategy);
-    } catch (err) {
-      console.warn('Error calculando estrategia de negociación:', err);
-    } finally {
-      setLoadingStrategy(false);
-    }
-  };
-
-  useEffect(() => {
-    if (lead) {
-      runNegotiationStrategy(lead);
-    }
-  }, [lead?.id_persona]);
-
   // Vigencia calculada
   const calculatedExpiry = useMemo(() => {
+    if (whatsAppDraft?.originalExpiry) return new Date(whatsAppDraft.originalExpiry);
     const hoursByTerm = { '24h': 24, '48h': 48, '72h': 72, '7d': 168 } as const;
     if (selectedVigencia in hoursByTerm) {
       return new Date(validityStartedAt + hoursByTerm[selectedVigencia as keyof typeof hoursByTerm] * 60 * 60 * 1000);
@@ -282,7 +295,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
       }
     }
     return new Date(Date.now() + 48 * 60 * 60 * 1000);
-  }, [selectedVigencia, selectedVigenciaCustom, validityStartedAt]);
+  }, [selectedVigencia, selectedVigenciaCustom, validityStartedAt, whatsAppDraft?.originalExpiry]);
 
   const getVigenciaLabel = (vig: string, customVal: string) => {
     if (vig === '24h') return '24 horas (Flash)';
@@ -347,18 +360,40 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     return selectedFranja.startsWith(shift) &&
       (effectiveProfessionalId === 'ALL_PROFESSIONALS' || String(slot.id_profesional) === effectiveProfessionalId);
   });
-  const offeredSlot = matchingOfferSlots.find(
-    (slot: any) => String(slot.id_disponibilidad) === selectedDisponibilidadId
-  );
-  const hasOfferedSlot = Boolean(offeredSlot);
+  const scheduleSlots: Array<{ slot: any } & ReturnType<typeof slotSchedule>> = matchingOfferSlots.map((slot: any) => ({ slot, ...slotSchedule(slot) }));
+  const scheduleDates = distinctTimes(scheduleSlots.map(({ date }) => date));
+  const slotsOnDate = scheduleSlots.filter(({ date }) => date === offerSchedule.date);
+  const scheduleStarts = distinctTimes(slotsOnDate.map(({ start }) => start));
+  const slotsAtStart = slotsOnDate.filter(({ start }) => start === offerSchedule.start);
+  const scheduleEnds = distinctTimes(slotsAtStart.map(({ end }) => end));
+  const selectedSlots = slotsAtStart.filter(({ end }) => end === offerSchedule.end);
+  const ambiguousSchedule = selectedSlots.length > 1;
+  const offeredSlot = selectedSlots.length === 1 ? selectedSlots[0].slot : null;
+  const validDate = scheduleDates.includes(offerSchedule.date);
+  const validStart = scheduleStarts.includes(offerSchedule.start);
+  const validEnd = scheduleEnds.includes(offerSchedule.end);
+
   useEffect(() => {
     if (selectedProfesionalId !== effectiveProfessionalId) {
       setSelectedProfesionalId(effectiveProfessionalId);
     }
-    if (selectedDisponibilidadId && !hasOfferedSlot) {
-      setSelectedDisponibilidadId('');
-    }
-  }, [selectedProfesionalId, effectiveProfessionalId, selectedDisponibilidadId, hasOfferedSlot]);
+  }, [selectedProfesionalId, effectiveProfessionalId]);
+
+  useEffect(() => {
+    if (offerSchedule.date && !validDate) setOfferSchedule(emptySchedule);
+    else if (offerSchedule.start && !validStart) setOfferSchedule({ ...offerSchedule, start: '', end: '' });
+    else if (offerSchedule.end && !validEnd) setOfferSchedule({ ...offerSchedule, end: '' });
+  }, [offerSchedule, validDate, validStart, validEnd]);
+
+  function updateOfferSchedule(schedule: typeof emptySchedule) {
+    setOfferSchedule(schedule);
+    setOfferErrors(current => ({ ...current, horario: '' }));
+  }
+
+  function highlightProps(field: UpdatedOfferField) {
+    const clear = () => setUpdatedOfferFields(current => current.includes(field) ? current.filter(item => item !== field) : current);
+    return { 'data-actualizado': updatedOfferFields.includes(field) ? true as const : undefined, onFocus: clear, onPointerDown: clear };
+  }
   const requestedServiceId = lead?.Solicitudes?.[0]?.id_servicio == null
     ? ''
     : String(lead.Solicitudes[0].id_servicio);
@@ -370,7 +405,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     if (!ultimaSolicitud || !options.servicios?.some((s: any) => String(s.id_servicio) === selectedServicioId)) {
       errors.servicio = 'Selecciona un servicio activo para esta solicitud.';
     }
-    if (selectedVigencia === 'custom' && !selectedVigenciaCustom) {
+    if (!whatsAppDraft?.originalExpiry && selectedVigencia === 'custom' && !selectedVigenciaCustom) {
       errors.vigencia = 'Selecciona la fecha hasta la que será válida la propuesta.';
     } else if (calculatedExpiry.getTime() <= Date.now()) {
       errors.vigencia = 'La vigencia debe terminar en una fecha futura.';
@@ -380,7 +415,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     }
     if (!offeredSlot) {
       errors.horario = matchingOfferSlots.length
-        ? 'Elige el horario que quieres ofrecer antes de añadir la propuesta.'
+        ? ambiguousSchedule ? 'Selecciona una sede y un especialista para identificar el horario exacto.' : 'Selecciona la fecha, la hora inicial y la hora final.'
         : 'No hay horarios disponibles con estos filtros. Cambia la sede, el especialista o la franja.';
     }
     if (Object.keys(errors).length > 0) {
@@ -395,10 +430,11 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
 
     setOfferErrors({});
     setAddingAlternative(true);
-    const fullCondiciones = `[Vigencia: ${getVigenciaLabel(
+    const validityLabel = whatsAppDraft?.originalExpiry ? 'Vigencia de la propuesta original' : getVigenciaLabel(
       selectedVigencia,
       selectedVigenciaCustom
-    )} · Vence: ${format(calculatedExpiry, 'dd/MM/yyyy HH:mm')}] [${selectedFranja}] ${
+    );
+    const fullCondiciones = `[Vigencia: ${validityLabel} · Vence: ${format(calculatedExpiry, 'dd/MM/yyyy HH:mm')}] [${selectedFranja}] ${
       condiciones ? `| ${condiciones}` : ''
     }`.trim();
 
@@ -435,8 +471,14 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
       if (Number.isInteger(proposalId) && proposalId > 0) {
         setActiveProposal({ id: proposalId, terms: proposalTerms });
       }
+      if (whatsAppDraft) {
+        const optionId = Number(response?.data?.id_opcion);
+        if (Number.isInteger(optionId) && optionId > 0) setSelectedOpcion(optionId);
+        setWhatsAppDraft(null);
+      }
+      setUpdatedOfferFields([]);
       fetchLeadData();
-      setSelectedDisponibilidadId('');
+      setOfferSchedule(emptySchedule);
       setCondiciones('');
       setPromocionAplicada('');
       toast({
@@ -598,96 +640,81 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   };
   const opciones: any[] = ultimaSolicitud?.Opciones || [];
   const selectedOptData = opciones.find((o: any) => o.id_opcion === selectedOpcion);
+  const selectedOfferKey = ultimaSolicitud?.id_solicitud && selectedOpcion
+    ? `${leadId}:${ultimaSolicitud.id_solicitud}:${selectedOpcion}`
+    : null;
+  const availableFlyerId = selectedOfferKey && canvaResult?.offerKey === selectedOfferKey
+    ? canvaResult.attachmentId
+    : undefined;
 
-  const hasUrgentPain =
-    salud.nivel_dolor === 'Moderado' ||
-    salud.nivel_dolor === 'Severo' ||
-    aiStrategy?.urgencyLevel === 'CRÍTICA_DOLOR';
+  async function updateFromWhatsApp(update: WhatsAppProposalUpdate) {
+    const slot = update.horario;
+    if (!ultimaSolicitud?.id_solicitud || isConverted || isAbandoned) {
+      throw new Error('La oportunidad ya no está abierta para negociar.');
+    }
+    const requestId = ultimaSolicitud.id_solicitud;
+    const offer = await leadService.transferPreview(leadId, requestId, update.id_opcion, Boolean(slot));
+    if (offer.id_propuesta !== update.id_propuesta || (!slot && update.huella && offer.huella !== update.huella)) {
+      throw new Error('La propuesta cambió. Revisa las opciones vigentes de la mesa.');
+    }
 
-  const isStudent = Boolean(
-    academico.estudianteAplica ||
-    academico.universidad ||
-    academico.carrera
-  );
-
-  const isWorker = Boolean(
-    laboral.laboralAplica ||
-    laboral.ocupacion ||
-    laboral.empresa
-  );
-
-  const convenioTexto = isStudent
-    ? `Convenio Estudiantil (${academico.universidad || 'Universidad'}) · 15% OFF`
-    : isWorker && laboral.empresa
-    ? `Convenio Corporativo (${laboral.empresa})`
-    : 'Tarifa Particular Regular';
-
-  // Matching Comercial & Estrategia Recomendada (Figura 15 del Informe NexoSalud)
-  const matchingData = (() => {
-    // 1. Sede Sugerida (Matching territorial y disponibilidad en Trujillo)
-    let suggestedSedeName = 'Sede California';
-    let suggestedSedeReason = '';
-    const zona = lead?.zona ? String(lead.zona).trim() : '';
-    const prefSede = pref?.sede_preferida ? String(pref.sede_preferida).trim() : '';
-
-    if (prefSede) {
-      suggestedSedeName = prefSede;
-      suggestedSedeReason = `Recomendada según preferencia declarada por el paciente en la prospección.`;
-    } else if (zona) {
-      const z = zona.toLowerCase();
-      if (z.includes('huanchaco') || z.includes('centro') || z.includes('moche') || z.includes('esperanza') || z.includes('florencia')) {
-        suggestedSedeName = 'Sede Centro Historico';
-        suggestedSedeReason = `Sede Centro Histórico recomendada por proximidad geográfica a ${zona}.`;
-      } else if (z.includes('golf')) {
-        suggestedSedeName = 'Sede El Golf';
-        suggestedSedeReason = `Sede El Golf recomendada por cercanía a zona residencial (${zona}).`;
-      } else {
-        suggestedSedeName = 'Sede California';
-        suggestedSedeReason = `Sede California recomendada por accesibilidad desde ${zona}.`;
+    if (!slot) {
+      const current = await leadService.getLeadDetails(leadId);
+      const currentRequest = current?.Solicitudes?.[0];
+      if (currentRequest?.id_solicitud !== requestId || !currentRequest.Opciones?.some((option: any) => option.id_opcion === update.id_opcion)) {
+        throw new Error('La propuesta ya no aparece entre las opciones vigentes.');
       }
-    } else {
-      suggestedSedeName = 'Sede California';
-      suggestedSedeReason = `Sede California recomendada por alta disponibilidad de especialistas de guardia.`;
+      setLead(current);
+      setWhatsAppDraft(null);
+      setUpdatedOfferFields([]);
+      setActiveProposal(null);
+      setOfferSchedule(emptySchedule);
+      setSelectedOpcion(update.id_opcion);
+      toast({ title: 'Propuesta vigente seleccionada', description: 'Revisa el mensaje antes de enviarlo de nuevo.' });
+      document.getElementById('lead-proposal-dispatch')?.scrollIntoView({ block: 'start' });
+      return;
     }
 
-    // 2. Tratamiento Solicitado (Matching Clínico)
-    const serviceName = ultimaSolicitud?.Servicio?.nombre || 'Odontología preventiva o diagnóstica';
-    let treatmentDetail = '';
-    if (salud?.nivel_dolor && salud.nivel_dolor !== 'Ninguno') {
-      treatmentDetail = `Dolor ${salud.nivel_dolor}. Priorizar turno cercano para alivio inmediato (Alta urgencia clínica).`;
-    } else if (salud?.motivo_consulta) {
-      treatmentDetail = `${salud.motivo_consulta}. Alta probabilidad de cierre ágil.`;
-    } else {
-      treatmentDetail = `Odontología preventiva o diagnóstica. Alta probabilidad de cierre ágil.`;
+    const serviceId = Number(ultimaSolicitud.id_servicio);
+    const fresh = await leadService.getAvailabilityOptions();
+    const available = fresh.disponibilidades?.some((item: any) => {
+      const schedule = slotSchedule(item);
+      return item.id_disponibilidad === slot.id_disponibilidad && item.id_sede === slot.id_sede &&
+        item.id_profesional === slot.id_profesional && schedule.date === slot.fecha &&
+        schedule.start === slot.inicio && schedule.end === slot.fin &&
+        item.Profesional?.ProfesionalServicio?.some((entry: { id_servicio: number }) => entry.id_servicio === serviceId);
+    });
+    if (!available) throw new Error('Ese horario cambió o ya no está disponible. Elige otro horario en la mesa.');
+
+    const expiry = new Date(offer.vence).toISOString();
+    const promotion = offer.promocion ?? null;
+    const nextSchedule = { date: slot.fecha, start: slot.inicio, end: slot.fin };
+    const originalSchedule = { date: offer.fecha, start: offer.inicio, end: offer.fin };
+    const changedFields: UpdatedOfferField[] = [];
+    if (offer.id_sede != null && Number(offer.id_sede) !== slot.id_sede) changedFields.push('branch');
+    if (offer.id_profesional != null && Number(offer.id_profesional) !== slot.id_profesional) changedFields.push('professional');
+    for (const field of ['date', 'start', 'end'] as const) {
+      if (originalSchedule[field] && originalSchedule[field] !== nextSchedule[field]) changedFields.push(field);
     }
-
-    // 3. Margen de Cierre (LEAD) (SLA de dos semanas y gatillador económico)
-    let closingTarget = 'Meta de conversión a PAYER en ≤ 14 días';
-    let closingRationale = 'Tarifa promocional activa con seguimiento omnicanal oportuno.';
-
-    if (hasUrgentPain) {
-      closingTarget = 'Meta de conversión urgente en ≤ 48 horas';
-      closingRationale = 'Turno de alivio prioritario para asegurar la atención médica antes de abandono.';
-    } else if (isStudent) {
-      closingTarget = 'Meta de conversión a PAYER en ≤ 14 días';
-      closingRationale = `Convenio Estudiantil (${academico.universidad ? String(academico.universidad).split(' ')[0] : 'Universidad'} -15% OFF) activo como gatillador clave.`;
-    } else if (isWorker && laboral.empresa) {
-      closingTarget = 'Meta de conversión a PAYER en ≤ 14 días';
-      closingRationale = `Convenio Corporativo (${laboral.empresa}) disponible para cierre preferencial.`;
-    } else if (aiStrategy?.leadScore && aiStrategy.leadScore >= 80) {
-      closingTarget = `Meta de conversión alta (${aiStrategy.leadScore}%)`;
-      closingRationale = 'Lead con alto score de intención; aplicar propuesta flash.';
-    }
-
-    return {
-      sede: suggestedSedeName,
-      sedeReason: suggestedSedeReason,
-      treatmentName: serviceName,
-      treatmentDetail: treatmentDetail,
-      closingTarget: closingTarget,
-      closingRationale: closingRationale,
-    };
-  })();
+    setUpdatedOfferFields(changedFields);
+    setWhatsAppDraft({ originalExpiry: expiry });
+    setOptions(fresh);
+    setSelectedServicioId(String(serviceId));
+    setSelectedSedeId(String(slot.id_sede));
+    setSelectedProfesionalId(String(slot.id_profesional));
+    setSelectedFranja(slot.inicio < '13:00' ? `Turno Mañana (${openTime} – 01:00 PM)` :
+      slot.inicio < '18:00' ? 'Turno Tarde (01:00 PM – 06:00 PM)' : `Turno Noche (06:00 PM – ${closeTime})`);
+    setOfferSchedule(nextSchedule);
+    setPrecioOfrecido(offer.precio);
+    setPromocionAplicada(promotion ?? '');
+    setCondiciones('');
+    setActiveProposal({ id: update.id_propuesta, terms: JSON.stringify({
+      serviceId, price: offer.precio, promotion, validUntil: expiry,
+    }) });
+    setOfferErrors({});
+    document.getElementById('lead-proposal-form')?.scrollIntoView({ block: 'start' });
+    toast({ title: 'Horario cargado en la propuesta', description: 'Revisa la sede y las condiciones, y guarda la propuesta antes de enviarla.' });
+  }
 
   const generateWhatsAppMessage = (linkOverride?: string) => {
     const patientFirstName = lead?.nombres || 'Paciente';
@@ -726,6 +753,33 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   };
 
   const handleSendWhatsApp = async () => {
+    if (whatsAppDraft || sendingWhatsApp || generatingCanva || !selectedOpcion || !ultimaSolicitud?.id_solicitud) return;
+    setSendingWhatsApp(true);
+    try {
+      const result = await leadService.sendProposalWhatsApp(
+        leadId, ultimaSolicitud.id_solicitud, selectedOpcion,
+        checkedFlyerId === availableFlyerId ? availableFlyerId : undefined,
+      );
+      toast({
+        title: result.reutilizado ? 'Envío anterior confirmado por OpenWA' : 'Envío aceptado por OpenWA',
+        description: [
+          result.incluye_flyer ? 'Se adjuntó el flyer de Canva.' : undefined,
+          result.incluye_enlace ? 'La propuesta incluye el enlace de prerreserva.'
+            : 'La propuesta pide al cliente responder para coordinar su prerreserva.',
+        ].filter(Boolean).join(' '),
+      });
+    } catch (error) {
+      toast({
+        title: 'No se pudo confirmar el envío',
+        description: error instanceof Error ? error.message : 'Verifica la conexión a OpenWA.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingWhatsApp(false);
+    }
+  };
+
+  const handleOpenWhatsApp = async () => {
     let link: string | undefined;
     try { if(selectedOpcion)link=await preparePublicLink(); }
     catch(error) {toast({title:'Revisa la propuesta',description:error instanceof Error?error.message:'No se pudo generar el enlace.',variant:'destructive'});return;}
@@ -766,6 +820,8 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
 
   const handleGenerateCanva = async () => {
     setGeneratingCanva(true);
+    setCheckedFlyerId(undefined);
+    setCanvaResult(null);
     try {
       const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
       const precio = selectedOptData
@@ -784,6 +840,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         format(calculatedExpiry, 'yyyy-MM-dd');
 
       const resData = await leadService.generateCanvaFlyer(leadId, {
+        ...(selectedOfferKey ? { id_solicitud: ultimaSolicitud.id_solicitud, id_opcion: selectedOpcion } : {}),
         serviceName: reqServicio,
         sedeName: sede,
         doctorName: doctor,
@@ -802,20 +859,25 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
 
       const canva = resData.canva;
       setCanvaResult({
-        success: true,
         designUrl: canva?.designUrl,
         previewUrl: canva?.previewUrl,
         downloadPngUrl: canva?.downloadPngUrl || canva?.previewUrl,
+        attachmentId: resData.id_adjunto,
+        offerKey: selectedOfferKey,
+        isPersonalized: canva.source === 'canva_autofill',
       });
 
       toast({
-        title: 'Flyer generado con Canva Connect',
-        description: 'La pieza gráfica está lista para previsualizar o descargar.',
+        title: canva.source === 'canva_autofill' ? 'Flyer generado con Canva'
+          : canva.source === 'canva_template' ? 'Plantilla base exportada de Canva' : 'Flyer generado localmente',
+        description: canva.source === 'canva_template'
+          ? 'Canva no completó la personalización de la plantilla.'
+          : 'La pieza gráfica está lista para previsualizar o descargar.',
       });
-    } catch {
+    } catch (error) {
       toast({
-        title: 'Sesión de Canva requerida',
-        description: 'Haz clic en "Conectar Canva" en la cabecera para vincular tu cuenta.',
+        title: 'No se pudo generar el flyer',
+        description: error instanceof Error ? error.message : undefined,
         variant: 'destructive',
       });
     } finally {
@@ -823,14 +885,12 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     }
   };
 
-  const closeProbability = aiStrategy?.leadScore ?? (opciones.length > 0 ? 84 : 68);
-
   return (
     <div className="w-full max-w-none space-y-6 overflow-x-hidden">
       {/* Cabecera Fija de la Mesa de Negociación */}
       <div className="sticky top-0 z-20 py-3.5 sm:py-4 bg-[#f8fafc]/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0 flex-1 basis-64 space-y-1">
             <Link
               to="/lead"
               className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
@@ -855,7 +915,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
           </div>
 
           {/* Barra de Acciones Fijas Arriba */}
-          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <div className="flex max-w-full flex-wrap items-center gap-2 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
             <button
               type="button"
               onClick={handleReserveAndConvert}
@@ -869,7 +929,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                 </>
               ) : (
                 <>
-                  <span>Cerrar Trato (Pasar a PAYER)</span>
+                  <span>Verificar y pasar a PAYER</span>
                   <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
                 </>
               )}
@@ -910,11 +970,8 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         </div>
       </div>
 
-      {/* Arquitectura a 2 Columnas (Layout 65/35 -> 8 cols / 4 cols) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-        {/* COLUMNA IZQUIERDA (65%): Description List + Mesa de Negociación */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Bloque 1: Perfil de Negociación Comercial & Expediente Integral del LEAD */}
+        <div className="min-w-0 space-y-6">
+          {/* Bloque 1: Perfil de la oportunidad Integral del LEAD */}
           <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs overflow-hidden">
             {/* Cabecera del Perfil con Selector de Vista */}
             <div className="flex flex-col gap-3 border-b border-slate-200/80 dark:border-slate-800 px-6 py-4 sm:flex-row sm:items-center sm:justify-between bg-slate-50/50 dark:bg-slate-950/40">
@@ -932,7 +989,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Variables clave de decisión, gatilladores clínicos y convenios institucionales para cerrar el trato.
+                    Datos de contacto, preferencias y antecedentes registrados.
                   </p>
                 </div>
               </div>
@@ -977,66 +1034,22 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
               </div>
             </div>
 
-            {/* Cinta Superior de Métricas Clave de Negociación (KPIs de Cierre) */}
-            <div className="grid grid-cols-2 gap-3 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:grid-cols-4 text-xs">
-              <div className="border-l-2 border-[#0f766e] pl-3 py-0.5">
-                <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
-                  Lead Score & Cierre
-                </span>
-                <div className="mt-0.5 flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
-                  <Flame className="h-3.5 w-3.5 text-amber-500" />
-                  <span>{closeProbability}% · {aiStrategy?.scoreLevel || 'HOT'}</span>
-                </div>
-              </div>
-
-              <div className={`border-l-2 pl-3 py-0.5 ${hasUrgentPain ? 'border-rose-500' : 'border-emerald-500'}`}>
-                <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
-                  Gatillador Clínico
-                </span>
-                <div className="mt-0.5 flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white truncate">
-                  <HeartPulse className={`h-3.5 w-3.5 ${hasUrgentPain ? 'text-rose-500' : 'text-emerald-500'}`} />
-                  <span className="truncate">{salud.nivel_dolor ? `Dolor: ${salud.nivel_dolor}` : (hasUrgentPain ? 'Dolor Urgente' : 'Evaluación Electiva')}</span>
-                </div>
-              </div>
-
-              <div className="border-l-2 border-teal-500 pl-3 py-0.5">
-                <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
-                  Sensibilidad al Precio
-                </span>
-                <div className="mt-0.5 flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
-                  <BadgePercent className="h-3.5 w-3.5 text-teal-600" />
-                  <span>{aiStrategy?.priceSensitivity || 'MODERADA'}</span>
-                </div>
-              </div>
-
-              <div className={`border-l-2 pl-3 py-0.5 ${isStudent ? 'border-sky-500' : 'border-slate-300 dark:border-slate-700'}`}>
-                <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
-                  Convenio / Tarifa
-                </span>
-                <div className="mt-0.5 flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white truncate">
-                  <GraduationCap className={`h-3.5 w-3.5 ${isStudent ? 'text-sky-600' : 'text-slate-400'}`} />
-                  <span className="truncate">{isStudent ? 'Convenio Estudiantil' : (isWorker && laboral.empresa ? 'Corporativo' : 'Particular')}</span>
-                </div>
-              </div>
-            </div>
-
             {/* Pestañas de Navegación Segmentada (Segmented Control Responsive sin Scroll Horizontal) */}
             {profileViewMode === 'TABS' && (
               <div className="border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 p-2 sm:p-2.5">
-                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-                  {[
-                    { id: 'VARIABLES', label: 'Variables de Cierre', sub: 'IA & Scoring', icon: Target },
-                    { id: 'CLINICA', label: 'Salud Odontológica', sub: 'Gatilladores', icon: HeartPulse },
-                    { id: 'CONVENIOS', label: 'Ocupación & Convenio', sub: 'Estudio / Trabajo', icon: GraduationCap },
-                    { id: 'CONTACTO', label: 'Datos de Contacto', sub: 'Canal & Registro', icon: User },
-                  ].map((tab) => {
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                  {([
+                    { id: 'CONTACTO', label: 'Datos de contacto', icon: User },
+                    { id: 'CLINICA', label: 'Salud odontológica', icon: HeartPulse },
+                    { id: 'CONVENIOS', label: 'Estudio y trabajo', icon: GraduationCap },
+                  ] as const).map((tab) => {
                     const Icon = tab.icon;
                     const active = profileTab === tab.id;
                     return (
                       <button
                         key={tab.id}
                         type="button"
-                        onClick={() => setProfileTab(tab.id as any)}
+                        onClick={() => setProfileTab(tab.id)}
                         className={`flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 py-2 text-xs transition-all cursor-pointer ${
                           active
                             ? 'bg-white dark:bg-slate-900 text-[#0f766e] dark:text-teal-400 font-semibold shadow-xs ring-1 ring-slate-200/80 dark:ring-slate-700/80'
@@ -1054,112 +1067,14 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
 
             {/* Contenido Modular de las Secciones */}
             <div className="divide-y divide-slate-200/70 dark:divide-slate-800">
-              {/* SECCIÓN A: Variables de Negociación Comercial & Factores de Cierre */}
-              {(profileViewMode === 'ALL' || profileTab === 'VARIABLES') && (
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <Target className="h-3.5 w-3.5 text-[#0f766e]" />
-                      <span>Factores Determinantes para la Negociación Comercial</span>
-                    </h3>
-                    <span className="font-mono text-[10px] text-teal-700 dark:text-teal-300 font-semibold bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 rounded border border-teal-200/50">
-                      Inferencia Analítica NexoSalud
-                    </span>
-                  </div>
-
-                  <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 text-xs">
-                    <div className="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3">
-                      <dt className="font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                        <BadgePercent className="h-3.5 w-3.5 text-teal-600" />
-                        <span>Sensibilidad al Precio</span>
-                      </dt>
-                      <dd className="mt-1.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
-                          aiStrategy?.priceSensitivity === 'ALTA'
-                            ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300'
-                            : aiStrategy?.priceSensitivity === 'MODERADA'
-                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
-                            : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
-                        }`}>
-                          {aiStrategy?.priceSensitivity || 'MODERADA'}
-                        </span>
-                        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                          {aiStrategy?.priceSensitivity === 'ALTA'
-                            ? 'Altamente sensible. Prioriza promociones de campaña (-15% a -20%) y facilidades de pago.'
-                            : aiStrategy?.priceSensitivity === 'MODERADA'
-                            ? 'Sensibilidad media. Receptivo a tarifa promocional con vigencia activa o cuotas.'
-                            : 'Sensibilidad baja. Valora principalmente prestigio, garantía y rapidez de atención.'}
-                        </p>
-                      </dd>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3">
-                      <dt className="font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                        <CreditCard className="h-3.5 w-3.5 text-amber-600" />
-                        <span>Modalidad de Pago Idónea</span>
-                      </dt>
-                      <dd className="mt-1.5 font-medium text-slate-900 dark:text-white">
-                        {aiStrategy?.paymentPreference || 'Pago al contado (Yape/Efectivo) con descuento sugerido'}
-                      </dd>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3">
-                      <dt className="font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                        <Target className="h-3.5 w-3.5 text-indigo-600" />
-                        <span>Factor Clave de Decisión (Driver)</span>
-                      </dt>
-                      <dd className="mt-1.5 font-medium text-slate-900 dark:text-white">
-                        {aiStrategy?.decisionDriver || 'Calidad médica, alivio del dolor y precio transparente'}
-                      </dd>
-                    </div>
-
-                    <div className="rounded-lg border border-rose-200/70 dark:border-rose-900/60 bg-rose-50/30 dark:bg-rose-950/20 p-3">
-                      <dt className="font-medium text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
-                        <ShieldAlert className="h-3.5 w-3.5 text-rose-500" />
-                        <span>Freno / Objeción Principal Prevista</span>
-                      </dt>
-                      <dd className="mt-1.5 text-slate-700 dark:text-slate-300">
-                        {aiStrategy?.primaryBarrier || 'Comparación de presupuestos y dudas sobre tiempo total de tratamiento'}
-                      </dd>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3">
-                      <dt className="font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                        <Layers className="h-3.5 w-3.5 text-teal-600" />
-                        <span>Disposición a Venta Cruzada (Cross-Selling)</span>
-                      </dt>
-                      <dd className="mt-1.5 text-slate-700 dark:text-slate-300">
-                        {aiStrategy?.crossSellingOpenness || 'Receptivo a profilaxis previa o radiografía panorámica de diagnóstico'}
-                      </dd>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3">
-                      <dt className="font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5 text-slate-500" />
-                        <span>Flexibilidad de Agenda</span>
-                      </dt>
-                      <dd className="mt-1.5 text-slate-700 dark:text-slate-300">
-                        {aiStrategy?.agendaFlexibility || (pref?.Horario ? `Turno asignado: ${pref.Horario.hora_inicio || 'Vespertino'}` : 'Horario flexible a convenir')}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-              )}
-
               {/* SECCIÓN B: Gatilladores Clínicos (Salud Odontológica) */}
               {(profileViewMode === 'ALL' || profileTab === 'CLINICA') && (
                 <div className="p-6 space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                       <HeartPulse className="h-3.5 w-3.5 text-rose-500" />
-                      <span>Salud Odontológica & Gatilladores de Cierre Clínico</span>
+                      <span>Salud odontológica registrada</span>
                     </h3>
-                    {hasUrgentPain && (
-                      <span className="flex items-center gap-1 font-mono text-[10px] text-rose-700 dark:text-rose-300 font-bold bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded border border-rose-200/60">
-                        <AlertTriangle className="h-3 w-3" />
-                        <span>Atención Prioritaria por Dolor</span>
-                      </span>
-                    )}
                   </div>
 
                   <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4 text-xs">
@@ -1173,7 +1088,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                             ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
                             : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                         }`}>
-                          {salud.nivel_dolor || 'Ninguno / Sin dolor declarado'}
+                          {salud.nivel_dolor || 'No registrado'}
                         </span>
                       </dd>
                     </div>
@@ -1207,7 +1122,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                             {salud.condicion_atencion_especial}
                           </span>
                         ) : (
-                          'Ninguna (Atención clínica convencional sin fobia reportada)'
+                          'No registrada'
                         )}
                       </dd>
                     </div>
@@ -1215,7 +1130,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                     <div className="sm:col-span-2">
                       <dt className="font-medium text-slate-500 dark:text-slate-400">Uso de Aparatos o Prótesis</dt>
                       <dd className="mt-1 text-slate-900 dark:text-white">
-                        {salud.usa_aparato_o_protesis || 'No usa prótesis ni aparatos actualmente'}
+                        {salud.usa_aparato_o_protesis || 'No registrado'}
                       </dd>
                     </div>
 
@@ -1225,7 +1140,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                           Motivo Concreto Declarado por el Paciente
                         </dt>
                         <dd className="mt-1 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
-                          "${ultimaSolicitud.motivo}"
+                          “{ultimaSolicitud.motivo}”
                         </dd>
                       </div>
                     )}
@@ -1239,24 +1154,17 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                   <div className="flex items-center justify-between">
                     <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                       <GraduationCap className="h-3.5 w-3.5 text-sky-600" />
-                      <span>Contexto Ocupacional, Flexibilidad & Convenios Institucionales</span>
+                    <span>Datos de estudio, trabajo y disponibilidad</span>
                     </h3>
                   </div>
 
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    {/* Tarjeta Perfil Académico & Convenio */}
+                    {/* Perfil académico registrado */}
                     <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
                           <GraduationCap className="h-4 w-4 text-sky-600" />
                           <span>Perfil Académico (Estudiante)</span>
-                        </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          isStudent
-                            ? 'bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-200'
-                            : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
-                        }`}>
-                          {isStudent ? 'Aplica Convenio' : 'No Estudiante'}
                         </span>
                       </div>
 
@@ -1275,11 +1183,6 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                         </div>
                       </dl>
 
-                      {isStudent && (
-                        <div className="mt-2 rounded-lg border border-sky-200/80 bg-sky-50 dark:border-sky-900/60 dark:bg-sky-950/30 p-2.5 text-[11px] text-sky-900 dark:text-sky-200">
-                          ✨ <strong>Convenio Universitario Activo:</strong> Paciente califica para <strong>15% OFF</strong> en evaluación y tratamientos de ortodoncia/profilaxis.
-                        </div>
-                      )}
                     </div>
 
                     {/* Tarjeta Perfil Laboral & Disponibilidad de Agenda */}
@@ -1310,7 +1213,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                         <div className="flex justify-between">
                           <dt className="text-slate-500">Disponibilidad de Horario:</dt>
                           <dd className="font-medium text-slate-800 dark:text-slate-200">
-                            {laboral.disponibilidadLaboral || (pref?.Horario ? 'Horario vespertino coordinado' : 'Flexible previa coordinación')}
+                            {laboral.disponibilidadLaboral || laboral.disponibilidad || 'No registrada'}
                           </dd>
                         </div>
                       </dl>
@@ -1360,7 +1263,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                     <div>
                       <dt className="font-medium text-slate-500 dark:text-slate-400">Canal de Captación</dt>
                       <dd className="mt-1 font-medium text-slate-900 dark:text-white">
-                        {lead.Interacciones?.[0]?.Canal?.nombre || lead.CanalOrigen?.nombre || 'Portal Web'}
+                        {lead.Interacciones?.[0]?.Canal?.nombre || lead.CanalOrigen?.nombre || 'No registrado'}
                       </dd>
                     </div>
 
@@ -1376,7 +1279,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                       <dt className="font-medium text-slate-500 dark:text-slate-400">Sede Preferida</dt>
                       <dd className="mt-1 font-medium text-slate-900 dark:text-white flex items-center gap-1.5">
                         <MapPin className="h-3.5 w-3.5 text-slate-400" strokeWidth={1.75} />
-                        <span>{pref?.sede_preferida || 'Sede California'}</span>
+                        <span>{pref?.sede_preferida || 'Sin preferencia registrada'}</span>
                       </dd>
                     </div>
 
@@ -1394,87 +1297,10 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
             </div>
           </div>
 
-          {/* Bloque 1.5: Estrategia Comercial Recomendada & Matching (Figura 15 del Informe NexoSalud) */}
-          <div className="rounded-xl border border-teal-200/90 dark:border-teal-800/80 bg-gradient-to-br from-teal-50/70 via-white to-slate-50 dark:from-teal-950/30 dark:via-slate-900 dark:to-slate-950 p-4 shadow-2xs space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-100 dark:border-teal-900/60 pb-2.5">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300 border border-teal-200 dark:border-teal-400/30 shadow-2xs">
-                  <Zap className="h-4 w-4 text-teal-600 dark:text-teal-300" />
-                </span>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-teal-950 dark:text-teal-200">
-                  Estrategia Comercial Recomendada & Matching
-                </h3>
-              </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide bg-teal-100/80 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-300/60 dark:border-teal-800/80 shadow-2xs select-none">
-                <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-300" />
-                <span>Inteligencia BUYER → LEAD</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              {/* Tratamiento Solicitado */}
-              <div className="rounded-xl border border-slate-200/90 dark:border-teal-800/50 bg-white/95 dark:bg-slate-900/95 p-3.5 space-y-1 shadow-2xs">
-                <div className="flex items-center gap-1.5 text-teal-800 dark:text-teal-300 font-bold text-xs">
-                  <Stethoscope className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                  <span>Tratamiento Solicitado</span>
-                </div>
-                <div className="font-semibold text-slate-900 dark:text-white text-xs pt-0.5 truncate">
-                  {matchingData.treatmentName}
-                </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                  {matchingData.treatmentDetail}
-                </p>
-              </div>
-
-              {/* Sede Sugerida */}
-              <div className="rounded-xl border border-slate-200/90 dark:border-teal-800/50 bg-white/95 dark:bg-slate-900/95 p-3.5 space-y-1 shadow-2xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-teal-800 dark:text-teal-300 font-bold text-xs">
-                    <MapPin className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                    <span>Sede Sugerida</span>
-                  </div>
-                  {options.sedes?.some((s: any) => s.nombre.toLowerCase().includes(matchingData.sede.toLowerCase())) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const found = options.sedes.find((s: any) => s.nombre.toLowerCase().includes(matchingData.sede.toLowerCase()));
-                        if (found) setSelectedSedeId(String(found.id_sede));
-                      }}
-                      className="text-[10px] text-teal-700 dark:text-teal-400 hover:underline font-semibold cursor-pointer"
-                      title="Aplicar esta sede a la propuesta"
-                    >
-                      Aplicar Sede
-                    </button>
-                  )}
-                </div>
-                <div className="font-semibold text-slate-900 dark:text-white text-xs pt-0.5 truncate">
-                  {matchingData.sede}
-                </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                  {matchingData.sedeReason}
-                </p>
-              </div>
-
-              {/* Margen de Cierre (LEAD) */}
-              <div className="rounded-xl border border-slate-200/90 dark:border-teal-800/50 bg-white/95 dark:bg-slate-900/95 p-3.5 space-y-1 shadow-2xs">
-                <div className="flex items-center gap-1.5 text-teal-800 dark:text-teal-300 font-bold text-xs">
-                  <Clock className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                  <span>Margen de Cierre (LEAD)</span>
-                </div>
-                <div className="font-semibold text-slate-900 dark:text-white text-xs pt-0.5 truncate">
-                  {matchingData.closingTarget}
-                </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                  {matchingData.closingRationale}
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Bloque 2: Configuración de Oferta Comercial y Tablero de Propuestas */}
           <div className="divide-y divide-slate-200/80 dark:divide-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs overflow-hidden">
             {/* Sección 1: Configurar Nueva Propuesta Comercial */}
-            <section className="p-6 space-y-5">
+            <section id="lead-proposal-form" className="scroll-mt-28 p-6 space-y-5">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -1489,6 +1315,19 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                 </span>
               </div>
 
+              {whatsAppDraft && <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-teal-200 bg-teal-50 p-3 text-xs text-teal-900 dark:border-teal-800 dark:bg-teal-950/50 dark:text-teal-200">
+                <p>Horario cargado desde WhatsApp. Revisa las condiciones y añade la propuesta a la mesa para enviarla.</p>
+                <button type="button" className="font-semibold underline" onClick={() => {
+                  setWhatsAppDraft(null);
+                  setUpdatedOfferFields([]);
+                  setActiveProposal(null);
+                  setOfferSchedule(emptySchedule);
+                  setPromocionAplicada('');
+                  setOfferErrors({});
+                  fetchLeadData();
+                }}>Descartar cambios</button>
+              </div>}
+
               {/* Chips de Vigencia */}
               <div className="space-y-2">
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
@@ -1502,13 +1341,14 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                     { id: '7d', label: '7 Días (Semanal)' },
                     { id: 'custom', label: 'Personalizado' },
                   ].map((v) => {
-                    const active = selectedVigencia === v.id;
+                    const active = !whatsAppDraft?.originalExpiry && selectedVigencia === v.id;
                     return (
                       <button
                         key={v.id}
                         type="button"
                         onClick={() => {
                           setSelectedVigencia(v.id as any);
+                          setWhatsAppDraft(current => current ? { originalExpiry: null } : null);
                           setValidityStartedAt(Date.now());
                           setOfferErrors((current) => ({ ...current, vigencia: '' }));
                         }}
@@ -1523,7 +1363,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                     );
                   })}
                 </div>
-                {selectedVigencia === 'custom' && (
+                {selectedVigencia === 'custom' && !whatsAppDraft?.originalExpiry && (
                   <div className="pt-2">
                     <input
                       type="date"
@@ -1542,15 +1382,16 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
               {/* Grid de Servicio, Sede y Especialista */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label htmlFor="lead-offer-service" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     Servicio Ofertado
                   </label>
                   <select
+                    id="lead-offer-service"
                     value={selectedServicioId}
                     onChange={(e) => {
                       const val = e.target.value;
                       setSelectedServicioId(val);
-                      setSelectedDisponibilidadId('');
+                      setOfferSchedule(emptySchedule);
                       setOfferErrors({});
                       const serv = options.servicios?.find(
                         (s: any) => String(s.id_servicio) === val
@@ -1559,7 +1400,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                       setPrecioOfrecido(baseP.toFixed(2));
                       setPromocionAplicada('');
                     }}
-                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-xs text-slate-900 dark:text-white focus:border-[#0f766e] focus:outline-none"
+                    className={offerFieldClass}
                   >
                     {options.servicios?.map((s: any) => (
                       <option key={s.id_servicio} value={String(s.id_servicio)}>
@@ -1581,16 +1422,17 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label htmlFor="lead-offer-branch" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     Sede Clínica
                   </label>
                   <select
+                    id="lead-offer-branch"
+                    {...highlightProps('branch')}
                     value={selectedSedeId}
                     onChange={(e) => {
                       setSelectedSedeId(e.target.value);
-                      setSelectedDisponibilidadId('');
                     }}
-                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-xs text-slate-900 dark:text-white focus:border-[#0f766e] focus:outline-none"
+                    className={offerFieldClass}
                   >
                     <option value="ALL_SEDES">Todas las sedes (A elección)</option>
                     {options.sedes?.map((s: any) => (
@@ -1602,17 +1444,18 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label htmlFor="lead-offer-professional" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     Especialista Sugerido
                   </label>
                   <select
+                    id="lead-offer-professional"
+                    {...highlightProps('professional')}
                     value={effectiveProfessionalId}
                     disabled={eligibleProfessionals.length === 0}
                     onChange={(e) => {
                       setSelectedProfesionalId(e.target.value);
-                      setSelectedDisponibilidadId('');
                     }}
-                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-xs text-slate-900 dark:text-white focus:border-[#0f766e] focus:outline-none"
+                    className={offerFieldClass}
                   >
                     <option value="ALL_PROFESSIONALS">
                       {eligibleProfessionals.length ? 'Cualquier especialista disponible' : 'Sin especialistas con horarios para este servicio y sede'}
@@ -1656,7 +1499,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                         type="button"
                         onClick={() => {
                           setSelectedFranja(slot.full);
-                          setSelectedDisponibilidadId('');
+                          setOfferSchedule(emptySchedule);
                         }}
                         className={`flex items-center justify-between rounded-lg border px-3.5 py-2 text-xs transition-colors cursor-pointer ${
                           active
@@ -1760,61 +1603,54 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-stretch justify-end gap-3 sm:flex-row sm:items-end">
+                <div className="space-y-3">
                   <div className="text-xs">
                     {analysis && (analysis.dia || analysis.turno) && (
                       <div className="mb-3 space-y-1">
-                        <p className="font-semibold">Horarios sugeridos</p>
+                        <p className="font-semibold">Horarios sugeridos para la interacción</p>
                         {!suggestedSlots.length && <p>No hay coincidencias para la preferencia con este servicio y sede.</p>}
                         {suggestedSlots.map((slot: any) => {
                           const time = String(slot.hora_inicio).slice(11, 16);
                           return <button type="button" key={slot.id_disponibilidad} className="block rounded border px-2 py-1"
                             onClick={() => {
+                              setSelectedSedeId(String(slot.id_sede));
                               setSelectedProfesionalId(String(slot.id_profesional));
                               setSelectedFranja(time < '13:00' ? `Turno Mañana (${openTime} – 01:00 PM)` :
                                 time < '18:00' ? 'Turno Tarde (01:00 PM – 06:00 PM)' : `Turno Noche (06:00 PM – ${closeTime})`);
-                              setSelectedDisponibilidadId(String(slot.id_disponibilidad));
+                              updateOfferSchedule(slotSchedule(slot));
                             }}>
                             {String(slot.fecha).slice(0, 10)} · {time} · {slot.Sede?.nombre} · {slot.Profesional?.apellidos}
                           </button>;
                         })}
                       </div>
                     )}
-                    <label htmlFor="lead-offered-availability" className="mb-1 block font-semibold">
-                      Elige el horario que quieres ofrecer
-                    </label>
-                    <select
-                      id="lead-offered-availability"
-                      value={offeredSlot ? selectedDisponibilidadId : ''}
-                      onChange={(event) => {
-                        setSelectedDisponibilidadId(event.target.value);
-                        setOfferErrors((current) => ({ ...current, horario: '' }));
-                      }}
-                      disabled={matchingOfferSlots.length === 0}
-                      className="min-w-64 rounded border bg-white p-2 text-xs disabled:bg-slate-100"
-                    >
-                      <option value="">
-                        {matchingOfferSlots.length
-                          ? `Selecciona un horario (${matchingOfferSlots.length} disponibles)`
-                          : 'No hay horarios disponibles con estos filtros'}
-                      </option>
-                      {matchingOfferSlots.map((slot: any) => (
-                        <option key={slot.id_disponibilidad} value={String(slot.id_disponibilidad)}>
-                          {String(slot.fecha).slice(0, 10)} · {String(slot.hora_inicio).slice(11, 16)}–{String(slot.hora_fin).slice(11, 16)} · {slot.Sede?.nombre} · Esp. {slot.Profesional?.nombres} {slot.Profesional?.apellidos}
-                        </option>
-                      ))}
-                    </select>
-                    {offerErrors.horario && (
-                      <p role="alert" className="mt-1 max-w-80 text-xs text-rose-600">
-                        {offerErrors.horario}
-                      </p>
-                    )}
+                    <fieldset className="min-w-0">
+                      <legend className="mb-2 text-xs font-semibold text-slate-900 dark:text-white">Horario</legend>
+                      <div className="grid grid-cols-2 gap-3 sm:max-w-2xl sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                        <div className="col-span-2 min-w-0 sm:col-span-1">
+                          <OfferDateCalendar dates={scheduleDates} value={validDate ? offerSchedule.date : ''} fieldClass={offerFieldClass}
+                            highlight={highlightProps('date')}
+                            onChange={date => { if (date !== offerSchedule.date) updateOfferSchedule({ date, start: '', end: '' }); }} />
+                        </div>
+                        <OfferTimeField id="lead-offer-start" label="Hora inicial" times={scheduleStarts}
+                          highlight={highlightProps('start')}
+                          value={validStart ? offerSchedule.start : ''} disabled={!validDate}
+                          onChange={start => updateOfferSchedule({ ...offerSchedule, start, end: '' })} />
+                        <OfferTimeField id="lead-offer-end" label="Hora final" times={scheduleEnds}
+                          highlight={highlightProps('end')}
+                          value={validEnd ? offerSchedule.end : ''} disabled={!validStart}
+                          onChange={end => updateOfferSchedule({ ...offerSchedule, end })} />
+                      </div>
+                      {offerErrors.horario ? <p role="alert" className="mt-2 text-xs text-rose-600 dark:text-rose-400">{offerErrors.horario}</p>
+                        : !scheduleDates.length ? <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">No hay horarios disponibles con estos filtros.</p>
+                        : ambiguousSchedule ? <p role="status" className="mt-2 text-xs text-slate-500 dark:text-slate-400">Hay más de una coincidencia. Ajusta la sede o el especialista.</p> : null}
+                    </fieldset>
                   </div>
                   <button
                     type="button"
                     onClick={handleAddAlternative}
                     disabled={addingAlternative}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#0f766e] px-4 text-xs font-semibold text-white shadow-2xs transition-all hover:bg-teal-800 disabled:opacity-50 cursor-pointer"
+                    className="ml-auto flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-[#0f766e] px-4 py-2 text-xs font-semibold text-white shadow-2xs transition-all hover:bg-teal-800 disabled:opacity-50 sm:w-auto"
                   >
                     <Plus className="h-3.5 w-3.5" strokeWidth={2} />
                     <span>
@@ -1985,7 +1821,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
             </section>
 
             {/* Sección 3: Despacho Omnicanal y Generación de Pieza Gráfica (Canva) */}
-            <section className="p-6 space-y-4">
+            <section id="lead-proposal-dispatch" className="scroll-mt-28 p-6 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -2010,7 +1846,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                 </button>
               </div>
 
-              <div className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 p-3.5 text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">
+              <div className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 p-3.5 text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed" aria-label="Borrador para copiar o enviar por correo">
                 {generateWhatsAppMessage()}
               </div>
 
@@ -2018,10 +1854,20 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                 <button
                   type="button"
                   onClick={handleSendWhatsApp}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#0f766e] px-4 text-xs font-semibold text-white hover:bg-teal-800 transition-colors cursor-pointer"
+                  disabled={Boolean(whatsAppDraft) || sendingWhatsApp || generatingCanva || !selectedOpcion}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#0f766e] px-4 text-xs font-semibold text-white hover:bg-teal-800 transition-colors cursor-pointer disabled:opacity-50"
                 >
                   <MessageSquare className="h-3.5 w-3.5" strokeWidth={2} />
-                  <span>Enviar por WhatsApp</span>
+                  <span>{sendingWhatsApp ? 'Enviando…' : 'Enviar por WhatsApp'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenWhatsApp}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                  Abrir WhatsApp manualmente
                 </button>
 
                 <button
@@ -2036,7 +1882,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                 <button
                   type="button"
                   onClick={handleGenerateCanva}
-                  disabled={generatingCanva}
+                  disabled={generatingCanva || sendingWhatsApp}
                   className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors cursor-pointer"
                 >
                   {generatingCanva ? (
@@ -2050,7 +1896,26 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                 </button>
               </div>
 
-              {canvaResult?.previewUrl && (
+              <div className="space-y-1 text-xs">
+                <label className="flex w-fit items-center gap-2 font-medium text-slate-700 dark:text-slate-200">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-teal-700"
+                    disabled={!availableFlyerId || sendingWhatsApp || generatingCanva}
+                    checked={Boolean(availableFlyerId && checkedFlyerId === availableFlyerId)}
+                    onChange={event => setCheckedFlyerId(event.target.checked ? availableFlyerId : undefined)}
+                    aria-describedby="lead-whatsapp-flyer-help"
+                  />
+                  Adjuntar flyer de Canva al WhatsApp (opcional)
+                </label>
+                <p id="lead-whatsapp-flyer-help" className="text-slate-500 dark:text-slate-400">
+                  {availableFlyerId
+                    ? 'Si lo marcas, el flyer se enviará como imagen con el mensaje debajo.'
+                    : 'Selecciona una alternativa y genera su flyer personalizado en Canva para adjuntarlo.'}
+                </p>
+              </div>
+
+              {canvaResult?.offerKey === selectedOfferKey && canvaResult.previewUrl && (
                 <div className="mt-3 flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <img
@@ -2063,7 +1928,8 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                         Flyer Promocional Generado
                       </p>
                       <p className="text-[11px] text-slate-500">
-                        Personalizado con tarifa y sede para {fullName}
+                        {canvaResult.isPersonalized ? `Personalizado con tarifa y sede para ${fullName}`
+                          : 'Vista previa sin adjunto de Canva disponible'}
                       </p>
                     </div>
                   </div>
@@ -2094,27 +1960,34 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
             {canAbandon && (
               <>
                 <details key={'conversation-panel-'+ultimaSolicitud.id_solicitud} className="group border-t border-slate-200 dark:border-slate-800">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-6 text-sm font-semibold text-slate-900 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-600 dark:text-white dark:hover:bg-slate-800 [&::-webkit-details-marker]:hidden">
-                    <span>4. Conversación de negociación</span>
-                    <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" />
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-5 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-600 sm:px-6 dark:hover:bg-slate-800 [&::-webkit-details-marker]:hidden">
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-900 dark:text-white">4. Conversación de negociación</span>
+                      <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Mensajes del paciente y del ChatBot, y actividades internas del Agente Negociador.</span>
+                    </span>
+                    <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-90 dark:text-slate-400" />
                   </summary>
                   <LeadInteraction key={ultimaSolicitud.id_solicitud} requestId={ultimaSolicitud.id_solicitud}
+                    onUpdateProposal={updateFromWhatsApp}
                     onChooseSlot={(slot) => {
                       setSelectedServicioId(String(ultimaSolicitud.id_servicio));
                       setSelectedSedeId(String(slot.id_sede));
                       setSelectedProfesionalId(String(slot.id_profesional));
                       setSelectedFranja(slot.inicio < '13:00' ? `Turno Mañana (${openTime} – 01:00 PM)` :
                         slot.inicio < '18:00' ? 'Turno Tarde (01:00 PM – 06:00 PM)' : `Turno Noche (06:00 PM – ${closeTime})`);
-                      setSelectedDisponibilidadId(String(slot.id_disponibilidad));
+                      updateOfferSchedule({ date: slot.fecha, start: slot.inicio, end: slot.fin });
                       setOfferErrors({});
                       toast({ title: 'Horario seleccionado', description: 'Revisa la configuración y añade la propuesta a la mesa.' });
                     }}
                     onAnalysis={(result) => setInteractionAnalysis(result ? { requestId: ultimaSolicitud.id_solicitud, result } : null)} />
                 </details>
                 <details key={'follow-up-panel-'+ultimaSolicitud.id_solicitud} className="group border-t border-slate-200 dark:border-slate-800">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-6 text-sm font-semibold text-slate-900 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-600 dark:text-white dark:hover:bg-slate-800 [&::-webkit-details-marker]:hidden">
-                    <span>5. Programación y seguimiento</span>
-                    <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" />
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-5 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-600 sm:px-6 dark:hover:bg-slate-800 [&::-webkit-details-marker]:hidden">
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-900 dark:text-white">5. Prioridad y seguimiento</span>
+                      <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Consulta la prioridad operativa y programa el próximo contacto.</span>
+                    </span>
+                    <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-90 dark:text-slate-400" />
                   </summary>
                   <LeadOperationalFollowUp key={'follow-up-'+ultimaSolicitud.id_solicitud} requestId={ultimaSolicitud.id_solicitud}/>
                 </details>
@@ -2123,294 +1996,6 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
           </div>
         </div>
 
-        {/* COLUMNA DERECHA (35%): Tarjeta de "Diagnóstico Comercial / BI" */}
-        <div className="lg:col-span-4 space-y-5">
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 p-5 shadow-2xs space-y-5">
-            {/* Cabecera */}
-            <div className="flex items-start justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-4">
-              <div>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  Inteligencia de Cierre
-                </span>
-                <h2 className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Activity className="h-4 w-4 text-[#0f766e]" strokeWidth={1.75} />
-                  <span>Diagnóstico de Negociación / BI</span>
-                </h2>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => runNegotiationStrategy(lead)}
-                disabled={loadingStrategy}
-                className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 disabled:opacity-50 cursor-pointer"
-              >
-                <RefreshCw className={`h-3 w-3 ${loadingStrategy ? 'animate-spin' : ''}`} />
-                <span>{loadingStrategy ? 'Calculando' : 'Actualizar'}</span>
-              </button>
-            </div>
-
-            {/* Probabilidad de Cierre */}
-            <div className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-2.5">
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Probabilidad Estimada de Cierre
-                </span>
-                <span className="font-mono text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
-                  {closeProbability}%
-                </span>
-              </div>
-
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                <div
-                  className="h-full rounded-full bg-[#0f766e] transition-all duration-300"
-                  style={{ width: `${closeProbability}%` }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between pt-1 text-[11px]">
-                <span className="text-slate-500">Descuento óptimo sugerido:</span>
-                <span className="font-mono font-semibold text-[#0f766e] dark:text-teal-400">
-                  {aiStrategy?.suggestedDiscountPct ?? 15}% OFF
-                </span>
-              </div>
-            </div>
-
-            {/* Dictamen Comercial con Borde Lateral de 2px */}
-            <div className="space-y-2.5">
-              <div className="border-l-2 border-[#0f766e] bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    Argumento de Cierre Sugerido
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const pitch =
-                        aiStrategy?.persuasiveSalesPitch ||
-                        'Ofrecer reserva prioritaria con evaluación digital 3D incluida y tarifa congelada por 48 horas.';
-                      navigator.clipboard.writeText(pitch);
-                      setCopiedPitch(true);
-                      setTimeout(() => setCopiedPitch(false), 1800);
-                    }}
-                    className="text-[10px] font-medium text-[#0f766e] hover:underline cursor-pointer"
-                  >
-                    {copiedPitch ? 'Copiado' : 'Copiar pitch'}
-                  </button>
-                </div>
-                <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                  {aiStrategy?.strategyReason ||
-                    aiStrategy?.persuasiveSalesPitch ||
-                    'Destaca la evaluación diagnóstica integral en la sede seleccionada y congela la tarifa promocional por 48 horas.'}
-                </p>
-              </div>
-
-              {/* Copiloto de Apoyo ante Objeciones (Figura 19 del Informe NexoSalud - Asistente en Vivo) */}
-              <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3.5 shadow-2xs">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0f766e] text-white text-[10px] font-bold">
-                      4
-                    </span>
-                    <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                      Copiloto ante Objeciones
-                    </h3>
-                  </div>
-                  <span className="text-[10px] font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/80 px-2 py-0.5 rounded-full border border-teal-200/80 dark:border-teal-800/80">
-                    Asistente en Vivo
-                  </span>
-                </div>
-
-                {analysis && (
-                  <div className="space-y-1 rounded border border-teal-200 p-3 text-xs">
-                    <p className="font-semibold">Sugerencia para la interacción registrada</p>
-                    <p>{analysis.sugerencia}</p>
-                    {analysis.promociones.length > 0 && (
-                      <p>Promociones activas para revisar: {analysis.promociones.join(', ')}.</p>
-                    )}
-                  </div>
-                )}
-                {/* Selector de Objeciones (Pills Responsivas) */}
-                <div className="grid grid-cols-3 gap-1 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[11px] font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => setObjectionCategory('PRECIO')}
-                    className={`rounded-md py-1 px-1.5 text-center transition-all cursor-pointer truncate ${
-                      objectionCategory === 'PRECIO'
-                        ? 'bg-[#0f766e] text-white shadow-2xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                    }`}
-                  >
-                    "Está caro"
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setObjectionCategory('HORARIO')}
-                    className={`rounded-md py-1 px-1.5 text-center transition-all cursor-pointer truncate ${
-                      objectionCategory === 'HORARIO'
-                        ? 'bg-[#0f766e] text-white shadow-2xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                    }`}
-                  >
-                    "Mala hora"
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setObjectionCategory('SEDE')}
-                    className={`rounded-md py-1 px-1.5 text-center transition-all cursor-pointer truncate ${
-                      objectionCategory === 'SEDE'
-                        ? 'bg-[#0f766e] text-white shadow-2xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                    }`}
-                  >
-                    "Queda lejos"
-                  </button>
-                </div>
-
-                {/* Objeción: PRECIO (Dinámica según perfil real del paciente) */}
-                {objectionCategory === 'PRECIO' && (
-                  <div className="p-3 bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 rounded-lg space-y-2 text-xs">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 text-[11px]">
-                      <Sparkles className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                      <span>Solución Comercial Dinámica</span>
-                    </div>
-
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                      Sensibilidad al precio: <strong className="text-teal-700 dark:text-teal-300">{aiStrategy?.priceSensitivity || 'MODERADA'}</strong>. 
-                      {aiStrategy?.persuasiveSalesPitch
-                        ? ` Argumento sugerido: "${aiStrategy.persuasiveSalesPitch.substring(0, 110)}..."`
-                        : ' Argumenta la esterilización instrumental y especialista colegiado de NexoSalud.'}
-                    </p>
-
-                    <div className="space-y-1.5 pt-1">
-                      {isStudent && (
-                        <button
-                          type="button"
-                          onClick={() => applyQuickDiscount(15, 'CAMPANA')}
-                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-semibold py-1.5 px-2 flex items-center justify-between shadow-2xs transition-all cursor-pointer"
-                        >
-                          <span className="flex items-center gap-1">
-                            <GraduationCap className="w-3.5 h-3.5" />
-                            <span>Convenio Estudiantil (-15%)</span>
-                          </span>
-                          <span className="text-[10px] opacity-80 truncate max-w-[100px]">
-                            {academico.universidad ? String(academico.universidad).split(' ')[0] : 'Universidad'}
-                          </span>
-                        </button>
-                      )}
-
-                      {isWorker && laboral.empresa && (
-                        <button
-                          type="button"
-                          onClick={() => applyQuickDiscount(15, 'CAMPANA')}
-                          className="w-full bg-sky-600 hover:bg-sky-700 text-white rounded-md text-[11px] font-semibold py-1.5 px-2 flex items-center justify-between shadow-2xs transition-all cursor-pointer"
-                        >
-                          <span className="flex items-center gap-1">
-                            <Briefcase className="w-3.5 h-3.5" />
-                            <span>Convenio Corporativo (-15%)</span>
-                          </span>
-                          <span className="text-[10px] opacity-80 truncate max-w-[100px]">
-                            {String(laboral.empresa).split(' ')[0]}
-                          </span>
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          applyQuickDiscount(20, 'CAMPANA');
-                          setSelectedVigencia('24h');
-                        }}
-                        className="w-full bg-amber-600 hover:bg-amber-700 text-white rounded-md text-[11px] font-semibold py-1.5 px-2 flex items-center justify-between shadow-2xs transition-all cursor-pointer"
-                      >
-                        <span className="flex items-center gap-1">
-                          <Zap className="w-3.5 h-3.5" />
-                          <span>Tarifa Flash de Campaña (-20%)</span>
-                        </span>
-                        <span className="text-[10px] opacity-90 font-mono">
-                          24 horas
-                        </span>
-                      </button>
-                    </div>
-
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 italic pt-0.5">
-                      Recuerda pulsar "Añadir Propuesta" para reflejar el valor en la mesa.
-                    </p>
-                  </div>
-                )}
-
-                {/* Objeción: HORARIO (Basada en disponibilidad y turno del lead) */}
-                {objectionCategory === 'HORARIO' && (
-                  <div className="p-3 bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 rounded-lg space-y-2 text-xs">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 text-[11px]">
-                      <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span>Flexibilidad Horaria Dinámica</span>
-                    </div>
-
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                      {laboral.disponibilidad
-                        ? `Disponibilidad declarada por el paciente: "${laboral.disponibilidad}".`
-                        : 'El paciente no cuenta con franja horaria fija. Habilita turno flexible.'}
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSelectedFranja(
-                          'Horario Flexible (A elección del paciente al validar en PAYER)'
-                        )
-                      }
-                      className="w-full bg-amber-600 hover:bg-amber-700 text-white rounded-md text-[11px] font-semibold py-1.5 px-2 flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                    >
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>Pactar Horario Flexible sin Penalidad</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Objeción: SEDE (Basada en zona geográfica de Trujillo) */}
-                {objectionCategory === 'SEDE' && (
-                  <div className="p-3 bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 rounded-lg space-y-2 text-xs">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 text-[11px]">
-                      <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                      <span>Red de Sedes en Trujillo</span>
-                    </div>
-
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                      Zona del paciente: <strong className="text-indigo-700 dark:text-indigo-300">{lead.zona || 'Trujillo'}</strong>. 
-                      Permite que la tarifa sea transferible entre California, El Golf y Centro Histórico.
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedSedeId('ALL_SEDES')}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[11px] font-semibold py-1.5 px-2 flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                    >
-                      <MapPin className="w-3.5 h-3.5" />
-                      <span>Habilitar Multisede Trujillo</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Acción Directa: Iniciar Chat de WhatsApp Clínico */}
-            <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800 space-y-2">
-              <button
-                type="button"
-                onClick={handleSendWhatsApp}
-                className="flex h-9.5 w-full items-center justify-center gap-2 rounded-lg bg-[#0f766e] px-4 text-xs font-semibold text-white shadow-2xs transition-all hover:bg-teal-800 active:scale-[0.99] cursor-pointer"
-              >
-                <MessageSquare className="h-3.5 w-3.5" strokeWidth={2} />
-                <span>Contactar Paciente por WhatsApp</span>
-                <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
-              </button>
-              <p className="text-center text-[11px] text-slate-400 dark:text-slate-500">
-                Incluye enlace de pre-reserva y condiciones vigentes
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <Dialog open={!!transferPreview} onOpenChange={(open)=>{if(!open&&!reserving)setTransferPreview(null);}}>
         <DialogContent>

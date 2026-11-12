@@ -193,11 +193,11 @@ export default function CustomerPage() {
         description="Gestión de citas confirmadas y flujo de atención clínica básica."
         actions={
           <Link
-            to="/reportes?tab=customer"
+            to="/reportes"
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all shadow-sm"
           >
             <BarChart3 className="w-3.5 h-3.5" />
-            Reporte DataMart
+            Reportes LEAD
           </Link>
         }
       />

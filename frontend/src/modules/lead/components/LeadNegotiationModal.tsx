@@ -1108,8 +1108,11 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
       });
 
       toast({
-        title: '🎨 ¡Flyer Canva Generado!',
-        description: 'Imagen del flyer publicitario generada y lista para previsualizar o descargar.',
+        title: canva.source === 'canva_autofill' ? 'Flyer generado con Canva'
+          : canva.source === 'canva_template' ? 'Plantilla base exportada de Canva' : 'Flyer generado localmente',
+        description: canva.source === 'canva_template'
+          ? 'Canva no completó la personalización de la plantilla.'
+          : 'La pieza gráfica está lista para previsualizar o descargar.',
       });
 
       if (autoDispatch) {
@@ -2228,8 +2231,15 @@ export function LeadNegotiationModal({ leadId, isOpen, onClose }: LeadNegotiatio
                         type="button"
                         variant="outline"
                         onClick={async () => {
-                          const url = await leadService.getCanvaAuthUrl();
-                          window.location.href = url;
+                          try {
+                            window.location.assign(await leadService.getCanvaAuthUrl());
+                          } catch (error) {
+                            toast({
+                              title: 'No se pudo conectar con Canva',
+                              description: error instanceof Error ? error.message : undefined,
+                              variant: 'destructive',
+                            });
+                          }
                         }}
                         className="border border-purple-300 hover:border-purple-400 bg-purple-50 hover:bg-purple-100 text-purple-800 hover:text-purple-950 dark:bg-purple-950/60 dark:hover:bg-purple-900/80 dark:text-purple-200 dark:hover:text-white rounded-xl text-xs h-9 px-3 font-semibold flex items-center gap-1.5 shadow-none transition-colors cursor-pointer"
                       >

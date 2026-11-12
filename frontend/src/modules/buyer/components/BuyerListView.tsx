@@ -407,11 +407,11 @@ export function BuyerListView() {
 
         <div className="flex items-center gap-2.5 self-start sm:self-auto">
           <Link
-            to="/reportes?tab=buyer"
+            to="/reportes"
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-2xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             <BarChart3 className="h-3.5 w-3.5 text-slate-500" strokeWidth={1.75} />
-            <span>Matriz Analítica</span>
+            <span>Reportes LEAD</span>
           </Link>
 
           <Link

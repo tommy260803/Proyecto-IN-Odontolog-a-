@@ -47,6 +47,7 @@ export interface CanvaAutofillParams {
 export interface CanvaAutofillResult {
   jobId: string;
   status: 'completed' | 'in_progress' | 'failed';
+  source: 'canva_autofill' | 'canva_template' | 'local';
   designId?: string;
   designUrl: string;
   previewUrl: string;
@@ -634,6 +635,7 @@ export class CanvaService {
                 return {
                   jobId: exportJobId || jobId,
                   status: 'completed',
+                  source: 'canva_autofill',
                   designId: customizedDesignId,
                   designUrl,
                   previewUrl: officialPngUrl,
@@ -687,6 +689,7 @@ export class CanvaService {
             return {
               jobId: fJson.job?.id || jobId,
               status: 'completed',
+              source: 'canva_template',
               designId,
               designUrl: `https://www.canva.com/design/${designId}/view`,
               previewUrl: pngUrl,
@@ -708,6 +711,7 @@ export class CanvaService {
     return {
       jobId,
       status: 'completed',
+      source: 'local',
       designId: brandTemplateId,
       designUrl: `https://www.canva.com/`,
       previewUrl: visualFlyerImage,

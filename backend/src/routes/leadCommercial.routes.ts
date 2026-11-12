@@ -6,6 +6,12 @@ import { executePayerTransfer, loadTransferOffer, TransferError } from '../servi
 import { classifyLeadChat, excludedLeadSites, leadScheduleConstraints, LeadGeminiError } from '../services/leadGemini';
 import { getLeadStaffIdentity, leadStaffAuthEnabled, leadStaffAuthMode, loginLeadStaff, logoutLeadStaff, type LeadStaffIdentity } from '../services/leadStaffAuth';
 
+import { findLeadNegotiationSlots } from '../services/leadNegotiationSlots';
+import { chatbotSchemaInstalled } from '../services/leadWhatsAppInbox';
+import { describeWhatsAppNegotiation } from '../services/leadNegotiationTrace';
+import { readWhatsAppTracking } from '../services/leadWhatsAppTracking';
+import { readLeadInteractionAnalyses, saveLeadInteractionAnalysis } from '../services/leadInteractionAnalysis';
+
 export const leadCommercialRouter = Router();
 const router = leadCommercialRouter;
 const serializable = { isolationLevel: Prisma.TransactionIsolationLevel.Serializable } as const;
@@ -15,7 +21,7 @@ const serializable = { isolationLevel: Prisma.TransactionIsolationLevel.Serializ
 // verify both the session and request assignment inside their transaction.
 router.use((req, res, next) => {
   if (leadStaffAuthMode() !== 'enabled' || ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ||
-      req.path === '/staff/session') return next();
+      req.path === '/staff/session' || (req.method === 'POST' && req.path === '/indicators')) return next();
   const supported =
     (req.method === 'PATCH' && /^\/opportunities\/\d+\/(follow-up|alternatives\/\d+)$/.test(req.path)) ||
     (req.method === 'POST' && /^\/opportunities\/\d+\/alternatives$/.test(req.path)) ||
@@ -1154,18 +1160,89 @@ async function activeConversation(tx: Prisma.TransactionClient, value: unknown) 
   return row;
 }
 
+const manualConversationFilter: Prisma.InteraccionesWhereInput = {
+  tipo: 'Respuesta del paciente',
+  AND: [
+    { OR: [
+      { id_canal: null },
+      { Canal: { OR: [
+        { nombre: { contains: 'Presencial' } }, { nombre: { contains: 'Llamada' } },
+        { nombre: { contains: 'Telef' } },
+      ] } },
+    ] },
+    { OR: [{ resultado: null }, { NOT: { resultado: { startsWith: 'WhatsApp' } } }] },
+  ],
+};
+
 router.get('/opportunities/:id/conversation', route(async (req, res) => {
   const before = req.query.antes === undefined ? undefined : id(req.query.antes);
+  const communication = req.query.comunicacion;
+  if (communication !== undefined && !['whatsapp', 'presencial'].includes(String(communication))) {
+    throw new InputError('Selecciona WhatsApp o Presencial.');
+  }
+  const whatsappFilter: Prisma.InteraccionesWhereInput = {
+    OR: [
+      { Canal: { nombre: { contains: 'WhatsApp' } } },
+      { tipo: 'Respuesta del chatbot' },
+      { resultado: { startsWith: 'WhatsApp' } },
+    ],
+  };
   const messages = await prisma.$transaction(async tx => {
+    if (leadStaffAuthMode() === 'enabled') await staffOpportunity(tx, req);
     await activeConversation(tx, req.params.id);
-    return tx.interacciones.findMany({
-      where: { id_solicitud: id(req.params.id), tipo: 'Respuesta del paciente',
+    const entries = await tx.interacciones.findMany({
+      where: { id_solicitud: id(req.params.id), tipo: { in: ['Respuesta del paciente', 'Respuesta del chatbot'] },
+        ...(communication === 'whatsapp' ? { AND: whatsappFilter }
+          : communication === 'presencial' ? { AND: manualConversationFilter } : {}),
         ...(before ? { id_interaccion: { lt: before } } : {}) },
       orderBy: { id_interaccion: 'desc' }, take: 21,
-      select: { id_interaccion: true, mensaje: true, fecha_hora: true, id_canal: true },
+      select: { id_interaccion: true, mensaje: true, fecha_hora: true, id_canal: true, tipo: true, resultado: true,
+        Canal: { select: { nombre: true } } },
+    });
+    const analyses = await readLeadInteractionAnalyses(tx, entries.filter(entry =>
+      entry.tipo === 'Respuesta del paciente').map(entry => entry.id_interaccion));
+    const withAnalysis = entries.map(({ Canal, ...entry }) => ({
+      ...entry, nombre_canal: Canal?.nombre,
+      analisis_agente: analyses.get(entry.id_interaccion),
+    }));
+    const external = withAnalysis.filter(entry => entry.tipo === 'Respuesta del chatbot' || entry.resultado?.startsWith('WhatsApp'));
+    if (!external.length || !await chatbotSchemaInstalled(tx)) return withAnalysis;
+    const whatsapp = await tx.$queryRaw<{
+      id_interaccion: number; texto: string; decision: string | null; plan_respuesta: string | null;
+      id_opcion: number | null; id_propuesta: number | null; huella: string | null;
+      plan_agenda_anterior: string | null;
+    }[]>`
+      SELECT m.id_interaccion,m.texto,m.decision,m.plan_respuesta,m.id_opcion,m.id_propuesta,m.huella,
+        anterior.plan_respuesta AS plan_agenda_anterior
+      FROM dbo.MensajesWhatsAppLead m
+      OUTER APPLY (
+        SELECT TOP (1) a.plan_respuesta FROM dbo.MensajesWhatsAppLead a
+        WHERE m.tipo='BOT' AND m.decision='ASESOR' AND m.texto LIKE N'Anoté que prefieres %'
+          AND a.id_sesion=m.id_sesion AND a.chat=m.chat AND a.id_solicitud=m.id_solicitud AND a.id_opcion=m.id_opcion
+          AND a.id_mensaje<m.id_mensaje AND a.tipo='BOT' AND a.decision='AGENDA'
+        ORDER BY a.id_mensaje DESC
+      ) anterior
+      WHERE m.id_solicitud=${id(req.params.id)} AND m.id_interaccion IN (${Prisma.join(external.map(entry => entry.id_interaccion))})
+    `;
+    const messagesById = new Map(whatsapp.map(message => [message.id_interaccion, message]));
+    return withAnalysis.map(entry => {
+      const message = messagesById.get(entry.id_interaccion);
+      if (!message) return entry;
+      const trace = entry.tipo === 'Respuesta del chatbot'
+        ? describeWhatsAppNegotiation(message.decision, message.plan_respuesta, entry.resultado === 'Requiere asesor', message)
+        : {};
+      return { ...entry, mensaje: message.texto ?? entry.mensaje, ...trace };
     });
   });
-  res.set('Cache-Control', 'no-store').json({ mensajes: messages.slice(0, 20).reverse(), hay_anteriores: messages.length > 20 });
+  const page = messages.slice(0, 20).reverse();
+  const tracking = communication === 'whatsapp'
+    ? await readWhatsAppTracking(prisma, id(req.params.id), page.map(message => message.id_interaccion)) : [];
+  const byInteraction = new Map(tracking.map(record => [record.id_interaccion, record]));
+  res.set('Cache-Control', 'no-store').json({
+    mensajes: page.map(message => ({ ...message, confirmaciones_whatsapp: byInteraction.get(message.id_interaccion) })),
+    ultima_oferta_whatsapp: tracking.find(record => record.tipo === 'OFERTA'),
+    hay_anteriores: messages.length > 20,
+  });
 }));
 
 router.post('/opportunities/:id/interactions', route(async (req, res) => {
@@ -1173,9 +1250,14 @@ router.post('/opportunities/:id/interactions', route(async (req, res) => {
     const row = await activeConversation(tx, req.params.id);
     const channel = await tx.canales.findFirst({ where: { id_canal: id(req.body.id_canal), activo: true } });
     if (!channel) throw new InputError('Selecciona un canal activo.');
+    const manual = req.body.comunicacion === 'presencial';
+    if (manual && (!/presencial|llamada|telef/i.test(channel.nombre) || req.body.tipo !== 'Respuesta del paciente')) {
+      throw new InputError('Selecciona atención presencial o telefónica.');
+    }
     if (req.body.ultima_interaccion_esperada !== undefined) {
       const latest = await tx.interacciones.findFirst({
-        where: { id_solicitud: row.id_solicitud, tipo: 'Respuesta del paciente' },
+        where: { id_solicitud: row.id_solicitud, tipo: 'Respuesta del paciente',
+          ...(manual ? { AND: manualConversationFilter } : {}) },
         orderBy: { id_interaccion: 'desc' },
       });
       if ((latest?.id_interaccion ?? null) !== req.body.ultima_interaccion_esperada) {
@@ -1292,56 +1374,18 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
   const cacheKey = createHash('sha256').update(JSON.stringify([req.params.id, req.params.interaction, context,
     process.env.LEAD_GEMINI_MODEL])).digest('hex');
   const cached = geminiSuggestions.get(cacheKey);
-  if (cached && !['HORARIO', 'SEDE'].includes(cached.intencion)) return res.json({ ...cached, promociones: context.facts.promociones });
+  if (cached && !['HORARIO', 'SEDE'].includes(cached.intencion)) {
+    const result = { ...cached, promociones: context.facts.promociones };
+    await saveLeadInteractionAnalysis(prisma, id(req.params.interaction), cacheKey, result);
+    return res.json(result);
+  }
   if (geminiBusy) throw new InputError('Hay otro análisis en curso. Intenta de nuevo.', 429);
   geminiBusy = true;
   try {
     const analysis = cached ?? await classifyLeadChat(context.messages, {
       key: process.env.GEMINI_API_KEY ?? '', model: process.env.LEAD_GEMINI_MODEL || 'gemini-3.5-flash-lite',
     }, fetch, true, context.facts);
-    let alternativas: { id_disponibilidad: number; id_sede: number; id_profesional: number;
-      fecha: string; inicio: string; fin: string; sede: string; profesional: string }[] = [];
-    if ((analysis.intencion === 'HORARIO' || analysis.intencion === 'SEDE') && !context.constraints.needsTimeClarification) {
-      const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
-      const modelDay = analysis.dia ? days.indexOf(analysis.dia) : -1;
-      const allowedDays = days.map((_, index) => index).filter(day =>
-        !context.constraints.excludedDays.includes(day) &&
-        (context.constraints.preferredDays.length ? context.constraints.preferredDays.includes(day) :
-          modelDay < 0 || context.constraints.excludedDays.includes(modelDay) || day === modelDay));
-      const excluded = [...context.constraints.excludedShifts, ...(analysis.turnos_excluidos ?? [])];
-      const allowed = ['mañana', 'tarde', 'noche'].filter(shift =>
-        !excluded.includes(shift) && (context.constraints.preferredShifts.length
-          ? context.constraints.preferredShifts.includes(shift)
-          : !analysis.turno || excluded.includes(analysis.turno) || analysis.turno === shift));
-      alternativas = await prisma.$queryRaw`
-        SELECT TOP (3) d.id_disponibilidad,d.id_sede,d.id_profesional,
-          CONVERT(varchar(10),d.fecha,23) AS fecha,
-          CONVERT(varchar(5),d.hora_inicio,108) AS inicio,
-          CONVERT(varchar(5),d.hora_fin,108) AS fin,
-          s.nombre AS sede,CONCAT(p.nombres,' ',p.apellidos) AS profesional
-        FROM dbo.Disponibilidad d
-        JOIN dbo.Sedes s ON s.id_sede=d.id_sede AND s.activo=1
-        JOIN dbo.Profesionales p ON p.id_profesional=d.id_profesional AND p.activo=1
-        JOIN dbo.ProfesionalServicio ps ON ps.id_profesional=p.id_profesional
-        JOIN dbo.Solicitudes sol ON sol.id_solicitud=${id(req.params.id)} AND sol.id_servicio=ps.id_servicio
-        JOIN dbo.Servicios sv ON sv.id_servicio=ps.id_servicio AND sv.activo=1
-        WHERE d.estado='Disponible'
-          ${context.excludedSites.length ? Prisma.sql`AND d.id_sede NOT IN (${Prisma.join(context.excludedSites)})` : Prisma.empty}
-          ${context.excludedProfessionals.length ? Prisma.sql`AND d.id_profesional NOT IN (${Prisma.join(context.excludedProfessionals)})` : Prisma.empty}
-          AND (d.fecha>CONVERT(date,DATEADD(hour,-5,SYSUTCDATETIME()))
-            OR (d.fecha=CONVERT(date,DATEADD(hour,-5,SYSUTCDATETIME()))
-              AND d.hora_inicio>CONVERT(time,DATEADD(hour,-5,SYSUTCDATETIME()))))
-          ${allowedDays.length ? Prisma.sql`AND DATEDIFF(day,CONVERT(date,'19000101'),d.fecha)%7 IN (${Prisma.join(allowedDays)})` : Prisma.sql`AND 1=0`}
-          AND ((${allowed.includes('mañana') ? 1 : 0}=1 AND d.hora_inicio>='08:00' AND d.hora_inicio<'13:00')
-            OR (${allowed.includes('tarde') ? 1 : 0}=1 AND d.hora_inicio>='13:00' AND d.hora_inicio<'18:00')
-            OR (${allowed.includes('noche') ? 1 : 0}=1 AND d.hora_inicio>='18:00' AND d.hora_inicio<'20:00'))
-          AND NOT EXISTS (
-            SELECT 1 FROM dbo.Opciones o JOIN dbo.Reservas r ON r.id_opcion=o.id_opcion
-            WHERE o.id_disponibilidad=d.id_disponibilidad AND r.estado NOT IN ('Cancelada','Vencida')
-          )
-        ORDER BY d.fecha,d.hora_inicio,d.id_disponibilidad
-      `;
-    }
+    const alternativas = await findLeadNegotiationSlots(prisma, id(req.params.id), analysis, context);
     const result = { ...analysis, alternativas,
       sugerencia: ['HORARIO', 'SEDE'].includes(analysis.intencion) && context.constraints.needsTimeClarification
         ? 'El paciente indicó una hora, fecha o rango que esta búsqueda por franjas todavía no comprueba con precisión. Revisa esa condición en la agenda y confirma el turno exacto antes de ofrecerlo.'
@@ -1359,8 +1403,10 @@ router.post('/opportunities/:id/interactions/:interaction/analyze', route(async 
       const oldest = geminiSuggestions.keys().next().value;
       if (oldest !== undefined) geminiSuggestions.delete(oldest);
     }
+    const response = { ...result, promociones: context.facts.promociones };
+    await saveLeadInteractionAnalysis(prisma, id(req.params.interaction), cacheKey, response);
     geminiSuggestions.set(cacheKey, result);
-    res.json({ ...result, promociones: context.facts.promociones });
+    res.json(response);
   } catch (error) {
     if (error instanceof LeadGeminiError) throw new InputError(error.message, error.status);
     throw error;
@@ -1653,6 +1699,30 @@ function calendarDate(value: unknown, label = 'La fecha del período') {
   }
   return value;
 }
+
+// Consulta de lectura: las identidades pertenecen a la lista operativa filtrada.
+// OPENJSON usa un solo parámetro y no alcanza el límite de 2100 parámetros SQL.
+router.post('/indicators', route(async (req, res) => {
+  if (!Array.isArray(req.body?.solicitudes) || req.body.solicitudes.length > 20000) throw new InputError('Lista de oportunidades inválida.');
+  const ids = [...new Set(req.body.solicitudes.map((value: unknown) => id(value)))];
+  const result = await prisma.$queryRaw(Prisma.sql`
+    DECLARE @corte datetime2(7)=SYSUTCDATETIME();
+    WITH selected AS (SELECT CONVERT(int,[value]) id FROM OPENJSON(${JSON.stringify(ids)})),
+    o AS (SELECT SUM(CONVERT(bigint,o.oportunidad_aceptada)) oportunidad_aceptada,
+      SUM(CONVERT(bigint,o.oportunidad_cerrada_sin_acuerdo)) oportunidad_cerrada_sin_acuerdo
+      FROM dbo.fn_Lead_Oportunidades_Corte(@corte) o JOIN selected s ON s.id=o.id_solicitud),
+    p AS (SELECT SUM(CONVERT(bigint,p.propuesta_aceptada)) propuesta_aceptada,
+      SUM(CONVERT(bigint,p.propuesta_rechazada)) propuesta_rechazada,
+      SUM(CONVERT(bigint,p.propuesta_rechazada_economica)) propuesta_rechazada_economica
+      FROM dbo.fn_Lead_Propuestas_Corte(@corte) p JOIN selected s ON s.id=p.id_solicitud),
+    a AS (SELECT SUM(CONVERT(bigint,a.alternativa_aceptada)) alternativa_aceptada,
+      SUM(CONVERT(bigint,a.alternativa_rechazada)) alternativa_rechazada,
+      SUM(CONVERT(bigint,a.alternativa_rechazada_incompatibilidad)) alternativa_rechazada_incompatibilidad
+      FROM dbo.fn_Lead_Alternativas_Corte(@corte) a JOIN selected s ON s.id=a.id_solicitud)
+    SELECT o.*,p.*,a.* FROM o CROSS JOIN p CROSS JOIN a;
+  `);
+  res.type('json').send(JSON.stringify(result, (_, value) => typeof value === 'bigint' ? value.toString() : value));
+}));
 
 router.get('/reports/:report', route(async (req, res) => {
   const q = req.query;

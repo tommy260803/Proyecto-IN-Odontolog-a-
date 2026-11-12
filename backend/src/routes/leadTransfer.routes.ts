@@ -2,17 +2,22 @@ import { Router, type Request, type Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../db';
 import { getLeadStaffIdentity, leadStaffAuthEnabled } from '../services/leadStaffAuth';
-import { assertTransferSchema, checkTransferOffer, createPreReservationAccess, executePayerTransfer,
-  loadTransferOffer, publicAccess, TransferError, transferId, transferIsolation, transferLock } from '../services/leadPayerTransfer';
+import { assertTransferSchema, checkLeadProposalTerms, checkTransferOffer, createPreReservationAccess, executePayerTransfer,
+  loadTransferOffer, publicAccess, storePreReservationAccess, TransferError, transferId, transferIsolation, transferLock } from '../services/leadPayerTransfer';
+import { leadWhatsAppSettings, proposalWhatsAppToken, sendLeadWhatsApp, whatsAppChatId } from '../services/leadWhatsApp';
+import { resolveLeadFlyer } from '../services/leadFlyerAttachments';
+import { assertWhatsAppContactAllowed, chatbotSchemaInstalled, recordWhatsAppOffer } from '../services/leadWhatsAppInbox';
 
 export const leadTransferRouter=Router();
-const handler=(fn:(req:Request,res:Response)=>Promise<unknown>)=>async(req:Request,res:Response)=>{
+const handler=(fn:(req:Request,res:Response)=>Promise<unknown>, failure?: string)=>async(req:Request,res:Response)=>{
   res.set('Cache-Control','no-store');res.set('Referrer-Policy','no-referrer');
   try { await fn(req,res); } catch(error) {
     if(error instanceof TransferError)return res.status(error.status).json({error:error.message});
     if(error instanceof Prisma.PrismaClientKnownRequestError && ['P2002','P2034','P2028'].includes(error.code))
-      return res.status(409).json({error:'Otra operación cambió el expediente. Reintenta la misma confirmación.'});
-    return res.status(500).json({error:'No se pudo confirmar el traspaso. No cambies la selección: reintenta para recuperar el resultado.'});
+      return res.status(409).json({error:failure
+        ? 'Otra operación cambió el expediente. Vuelve a intentar con la misma propuesta.'
+        : 'Otra operación cambió el expediente. Reintenta la misma confirmación.'});
+    return res.status(500).json({error:failure??'No se pudo confirmar el traspaso. No cambies la selección: reintenta para recuperar el resultado.'});
   }
 };
 async function staff(req:Request,tx:Prisma.TransactionClient,person:number,request:number) {
@@ -28,10 +33,18 @@ leadTransferRouter.get('/:id/transfer-preview',handler(async(req,res)=>{
   const person=transferId(req.params.id),request=transferId(req.query.id_solicitud),option=transferId(req.query.id_opcion);
   const offer=await prisma.$transaction(async tx=>{
     await assertTransferSchema(tx);await staff(req,tx,person,request);
-    const offer=await loadTransferOffer(tx,person,request,option);await checkTransferOffer(tx,offer);return offer;
+    const offer=await loadTransferOffer(tx,person,request,option);
+    if (req.query.para_otro_horario === 'true') {
+      await checkLeadProposalTerms(tx,offer);
+      if (offer.proposal.estado !== 'Pendiente' || offer.request.resultado_comercial_lead === 'ACEPTADA') {
+        throw new TransferError('La propuesta ya tiene una decisión comercial. Revisa la oportunidad antes de cambiarla.');
+      }
+    } else await checkTransferOffer(tx,offer);
+    return offer;
   },transferIsolation);
   res.json({huella:offer.huella,id_solicitud:request,id_opcion:option,id_propuesta:offer.proposal.id_propuesta,
-    precio:offer.proposal.precio_cotizado.toFixed(2),servicio:offer.request.Servicio?.nombre,
+    precio:offer.proposal.precio_cotizado.toFixed(2),promocion:offer.proposal.promocion_aplicada,servicio:offer.request.Servicio?.nombre,
+    id_sede:offer.slot.id_sede,id_profesional:offer.slot.id_profesional,
     sede:offer.slot.Sede.nombre,profesional:offer.slot.Profesional.nombres+' '+offer.slot.Profesional.apellidos,
     fecha:offer.slot.fecha.toISOString().slice(0,10),inicio:offer.slot.hora_inicio.toISOString().slice(11,16),
     fin:offer.slot.hora_fin.toISOString().slice(11,16),vence:offer.proposal.fecha_vigencia_hasta_utc_lead});
@@ -43,6 +56,83 @@ leadTransferRouter.post('/:id/pre-reservation-access',handler(async(req,res)=>{
   },transferIsolation);
   res.json(result);
 }));
+
+leadTransferRouter.post('/:id/proposal-whatsapp', handler(async (req, res) => {
+  const origin = URL.parse(req.get('Origin') ?? '');
+  const localNames = ['localhost', '127.0.0.1', '[::1]'];
+  const isLocalWorkspace = origin && ['http:', 'https:'].includes(origin.protocol) &&
+    localNames.includes(origin.hostname) && localNames.includes(req.hostname) &&
+    ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '') &&
+    !req.get('Forwarded') && !req.get('X-Forwarded-For');
+  if (!isLocalWorkspace && !leadStaffAuthEnabled()) {
+    throw new TransferError('Abre la mesa LEAD en localhost para enviar por WhatsApp.', 403);
+  }
+  if (!req.is('application/json')) throw new TransferError('Se requiere una solicitud JSON.', 415);
+
+  const person = transferId(req.params.id);
+  const request = transferId(req.body?.id_solicitud);
+  const option = transferId(req.body?.id_opcion);
+  const settings = leadWhatsAppSettings();
+  const message = await prisma.$transaction(async tx => {
+    const actor = await staff(req, tx, person, request);
+    await assertTransferSchema(tx);
+    const offer = await loadTransferOffer(tx, person, request, option);
+    await checkTransferOffer(tx, offer);
+    const imageUrl = resolveLeadFlyer(req.body.id_adjunto, offer.huella);
+    const patient = offer.request.Persona;
+    if (!patient.autoriza_contacto) {
+      throw new TransferError('El cliente no tiene autorización vigente de contacto por WhatsApp.', 403);
+    }
+    const chatId = whatsAppChatId(patient.numero);
+    const trackWhatsApp = await chatbotSchemaInstalled(tx);
+    if (trackWhatsApp) await assertWhatsAppContactAllowed(tx, { sessionId: settings.sessionId, chat: chatId });
+    const appointment = offer.slot;
+    const expiry = offer.proposal.fecha_vigencia_hasta_utc_lead!;
+    const limaDate = new Intl.DateTimeFormat('es-PE', {
+      dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Lima',
+    });
+    const appointmentDate = new Intl.DateTimeFormat('es-PE', {
+      dateStyle: 'long', timeZone: 'UTC',
+    }).format(appointment.fecha);
+    const appointmentStart = appointment.hora_inicio.toISOString().slice(11, 16);
+    const appointmentEnd = appointment.hora_fin.toISOString().slice(11, 16);
+    const sections = [
+      `Hola, ${patient.nombres.trim().split(/\s+/)[0]} 👋 Te saludamos de NexoSalud Dental. Esta es tu propuesta:`,
+      [
+        `🦷 *Tratamiento:* ${offer.request.Servicio!.nombre}`,
+        `💰 *Tarifa:* S/ ${offer.proposal.precio_cotizado.toFixed(2)}`,
+        `📍 *Sede:* ${appointment.Sede.nombre}`,
+        `👤 *Especialista:* ${appointment.Profesional.nombres} ${appointment.Profesional.apellidos}`,
+        `📅 *Cita propuesta:* ${appointmentDate}, de ${appointmentStart} a ${appointmentEnd} (hora de Lima)`,
+        `⏳ *Tarifa vigente hasta:* ${limaDate.format(expiry)} (hora de Lima)`,
+      ].join('\n'),
+    ];
+    if (settings.publicUrl) {
+      const token = proposalWhatsAppToken(settings, offer.huella, chatId);
+      await storePreReservationAccess(tx, offer, actor, token);
+      const link = new URL(`/pre-reserva/${person}`, settings.publicUrl);
+      link.hash = 'token=' + token;
+      sections.push(settings.localReservation
+        ? `🔗 *Prerreserva de prueba:* Copia esta dirección en el navegador de la PC donde corre NexoSalud.\n${link.href}\n\nSi estás en el celular, responde a este mensaje para coordinar tu cita.`
+        : `🔗 *Confirma tu prerreserva:*\n${link.href}`);
+    } else {
+      sections.push('💬 Si deseas continuar, responde a este mensaje y coordinaremos tu prerreserva.');
+    }
+    return { chatId, fingerprint: offer.huella, proposalId: offer.proposal.id_propuesta,
+      text: sections.join('\n\n'), imageUrl, trackWhatsApp };
+  }, transferIsolation);
+
+  // OpenWA can take several seconds to send. Release the SQL transaction first.
+  const result = await sendLeadWhatsApp(settings, message.fingerprint, message.chatId, message.text, message.imageUrl);
+  if (message.trackWhatsApp) {
+    await recordWhatsAppOffer(prisma, { sessionId: settings.sessionId, chat: message.chatId }, {
+      personId: person, requestId: request, optionId: option, proposalId: message.proposalId, fingerprint: message.fingerprint,
+    }, result.messageId);
+  }
+  res.json({ id_mensaje: result.messageId, reutilizado: result.reused,
+    incluye_enlace: Boolean(settings.publicUrl), incluye_flyer: Boolean(message.imageUrl) });
+}, 'No se pudo preparar o enviar la propuesta por WhatsApp.'));
+
 leadTransferRouter.post('/:id/reserve',handler(async(req,res)=>{
   const person=transferId(req.params.id),request=transferId(req.body.id_solicitud),option=transferId(req.body.id_opcion);
   const result=await prisma.$transaction(async tx=>{
