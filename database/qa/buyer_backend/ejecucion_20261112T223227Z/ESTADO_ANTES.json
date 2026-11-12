@@ -1,0 +1,189 @@
+{
+  "inspection": {
+    "identity": {
+      "servidor": "DANIELPC",
+      "base": "NexoSalud_LeadEnsayoFinal",
+      "utc": "2026-11-12T22:32:44.232Z"
+    },
+    "active": [],
+    "transactions": [],
+    "modules": [
+      {
+        "nombre": "usp_ConvertirBuyerALead",
+        "sha256": "6A42F2ADD1BE9F827074A50A6DCB579C6341F71C35E8F0216E4E04A70DC634A5"
+      },
+      {
+        "nombre": "usp_RegistrarEntradaAgenteLead",
+        "sha256": "280708E81E3BE607A3772F082961EBE6E8371C1698414F3FDAC8B82D8A0C087E"
+      },
+      {
+        "nombre": "v_DatosCaptacionBuyer",
+        "sha256": "BAC8AB4A8AF43E8FB98BFABFE29FA8DC4F4D17F42CB5389EDEF23844EE85665D"
+      }
+    ],
+    "stages": [
+      {
+        "id_etapa": 1,
+        "nombre": "BUYER",
+        "descripcion": "Contacto identificable con autorización de contacto"
+      },
+      {
+        "id_etapa": 2,
+        "nombre": "LEAD",
+        "descripcion": "Persona con intención administrativa concreta"
+      },
+      {
+        "id_etapa": 3,
+        "nombre": "PAYER",
+        "descripcion": "Persona con pago inicial validado"
+      }
+    ],
+    "service": {
+      "id_servicio": 1,
+      "nombre": "Evaluación odontológica",
+      "descripcion": "Evaluación odontológica inicial",
+      "activo": true
+    },
+    "decisionColumns": [
+      {
+        "name": "id_decision",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "id_persona",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "id_usuario",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "agente",
+        "tipo": "varchar",
+        "max_length": 50
+      },
+      {
+        "name": "fecha_hora",
+        "tipo": "datetime2",
+        "max_length": 8
+      },
+      {
+        "name": "entrada",
+        "tipo": "varchar",
+        "max_length": -1
+      },
+      {
+        "name": "regla_aplicada",
+        "tipo": "varchar",
+        "max_length": 300
+      },
+      {
+        "name": "decision",
+        "tipo": "varchar",
+        "max_length": 500
+      },
+      {
+        "name": "accion",
+        "tipo": "varchar",
+        "max_length": 500
+      },
+      {
+        "name": "requiere_revision",
+        "tipo": "bit",
+        "max_length": 1
+      },
+      {
+        "name": "resultado_revision",
+        "tipo": "varchar",
+        "max_length": 300
+      },
+      {
+        "name": "id_captacion",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "id_interaccion",
+        "tipo": "int",
+        "max_length": 4
+      }
+    ]
+  },
+  "snapshot": {
+    "rows": [
+      {
+        "table": "Personas",
+        "total": "10818",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "8B24750D775C22AF651840FA160DFE5E6C21DD0C358DDF0E954EC6D490D74B0E"
+      },
+      {
+        "table": "CaptacionesBuyer",
+        "total": "10818",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "9F3005CCB225986036FDFDE1C5D816899C026B672929735206D9411CBFACA08A"
+      },
+      {
+        "table": "Interacciones",
+        "total": "20013",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "30C0DA8E3C5167B68358E4C3840E3924145CEA6064F0012A6A0AD722AF8C80D7"
+      },
+      {
+        "table": "DecisionesIA",
+        "total": "10",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "5D29FA198DCA4F26C42D1E8A1BCD8FF0100D5727EA80A8EF4FFD7BA2EDE110CA"
+      },
+      {
+        "table": "Solicitudes",
+        "total": "2866",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "8DFE18B1399CDBFCDF07E175DA21E263488591776BF1C3898BD08E1F2138AB69"
+      },
+      {
+        "table": "EventosEtapa",
+        "total": "4046",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "2FA4DE0D0C0EE12C6619A9B7E01D5FEC162DB0312C898D119EF2F083F2A56E8B"
+      },
+      {
+        "table": "EntradasAgenteLead",
+        "total": "5",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "43E493A5E23621EC33FC9240A57DE1A5389542F4D10279B1EEF1D2D7BE1AD241"
+      },
+      {
+        "table": "PersonaPreferencias",
+        "total": "8",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "277743ADBF5E8168BECF4CB92E9D27483D7DD79EF5790C2A11818D0AC989AB03"
+      }
+    ],
+    "other": [
+      {
+        "opciones": "310",
+        "reservas": "124",
+        "propuestas": "0",
+        "objetos": 256
+      }
+    ]
+  },
+  "version": {
+    "branch": "feature/buyer-orientacion-interactiva",
+    "HEAD": "70a09e3e32059d183ced2b96503d7ed298362900",
+    "sourceHashes": {
+      "backend/src/db.ts": "CE14302F5ED3B5457471878AF9290FBFFB0AD63083F36F1BC2BF77CFEE51E0C3",
+      "backend/prisma/schema.prisma": "66D541DDE034837AFF46ACD52DCB58C8DF029B2A0F7ECA3B7F9EB70A1CD725FD",
+      "backend/src/routes/buyer.routes.ts": "BD86CBD74716A434634DC8945EA26EDCA5F75D22F37D6BA30BBF549EAB5D1D62",
+      "backend/src/services/buyerEvaluationService.ts": "30AA39AE2850D012A99DBE4BD93E8D3DDF3828ACA8442AA91C22BF4C0C95541C",
+      "backend/src/services/buyerMessageClassifier.ts": "F7E7C640CED2384006369E3960BA20D7E8BA7E60C773C08822F67189AF53C158",
+      "backend/src/services/leadIntake.ts": "B447FFC9E53D957D79583DB831F52B880F0F9206C4745E096F86FF9C6A8C4622",
+      "backend/src/services/martSyncService.ts": "CEC7B12EF94BF0D5C941F0787E660B3AC2016ACF0D439A5755690200192C5C98",
+      "backend/src/types/buyer.ts": "49C7D117A22E4DFF4E9CCA41FAC2E1767793B3162279925867A464FF2401835E"
+    }
+  }
+}

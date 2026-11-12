@@ -1,0 +1,15 @@
+▶ Buyer QA fallos y concurrencia: SQL real y solo Gemini controlado
+  ✔ A: fallo transitorio Gemini agotado, mensaje durable y evaluacion pendiente sin conversion (1691.7864ms)
+  ✔ B: retry explicito de la misma interaccion conserva identidad y acumula intentos e historial (55.5596ms)
+  ✔ C: dos registros publicos simultaneos con misma Idempotency-Key y conversion real (741.8688ms)
+QA_EVIDENCIA=C:\Users\Daniel\Downloads\Proyecto-IN-Odontolog-a-\database\qa\buyer_fallos_concurrencia\ejecucion_20261112T223500Z
+QA_RESULTADO=APROBADO
+✔ Buyer QA fallos y concurrencia: SQL real y solo Gemini controlado (26508.1194ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 26593.1637

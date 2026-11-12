@@ -1,0 +1,383 @@
+[
+  {
+    "kind": "backend_antes",
+    "file": "database/qa/buyer_backend/ejecucion_20261112T223227Z/RESULTADOS.json",
+    "prefix": "QA_BBE_20261112T223227Z_",
+    "result": "APROBADO",
+    "subjects": [
+      {
+        "person": 10992,
+        "captures": [
+          10990
+        ],
+        "interactions": [
+          20195
+        ],
+        "decisions": [
+          169
+        ],
+        "requests": [],
+        "events": [],
+        "stage": "BUYER"
+      },
+      {
+        "person": 10993,
+        "captures": [
+          10991
+        ],
+        "interactions": [
+          20196
+        ],
+        "decisions": [
+          170
+        ],
+        "requests": [],
+        "events": [],
+        "stage": "BUYER"
+      },
+      {
+        "person": 10994,
+        "captures": [
+          10992
+        ],
+        "interactions": [
+          20197
+        ],
+        "decisions": [
+          171
+        ],
+        "requests": [
+          2921
+        ],
+        "events": [
+          4093
+        ],
+        "stage": "LEAD"
+      },
+      {
+        "person": 10995,
+        "captures": [
+          10993
+        ],
+        "interactions": [
+          20198,
+          20199
+        ],
+        "decisions": [
+          172,
+          173
+        ],
+        "requests": [
+          2922
+        ],
+        "events": [
+          4094
+        ],
+        "stage": "PAYER"
+      }
+    ]
+  },
+  {
+    "kind": "backend_final",
+    "file": "database/qa/buyer_backend/ejecucion_20261112T224800Z_b/RESULTADOS.json",
+    "prefix": "QA_BBE_20261112T224800Z_b_",
+    "result": "APROBADO",
+    "subjects": [
+      {
+        "person": 11004,
+        "captures": [
+          11002
+        ],
+        "interactions": [
+          20210
+        ],
+        "decisions": [
+          184
+        ],
+        "requests": [],
+        "events": [],
+        "stage": "BUYER"
+      },
+      {
+        "person": 11005,
+        "captures": [
+          11003
+        ],
+        "interactions": [
+          20211
+        ],
+        "decisions": [
+          185
+        ],
+        "requests": [],
+        "events": [],
+        "stage": "BUYER"
+      },
+      {
+        "person": 11006,
+        "captures": [
+          11004
+        ],
+        "interactions": [
+          20212
+        ],
+        "decisions": [
+          186
+        ],
+        "requests": [
+          2928
+        ],
+        "events": [
+          4100
+        ],
+        "stage": "LEAD"
+      },
+      {
+        "person": 11007,
+        "captures": [
+          11005
+        ],
+        "interactions": [
+          20213,
+          20214
+        ],
+        "decisions": [
+          187,
+          188
+        ],
+        "requests": [
+          2929
+        ],
+        "events": [
+          4101
+        ],
+        "stage": "PAYER"
+      }
+    ]
+  },
+  {
+    "kind": "fallos_antes",
+    "file": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T223227Z/RESULTADOS.json",
+    "prefix": "QA_BFC_20261112T223227Z_",
+    "result": "FALLO",
+    "subjects": [
+      {
+        "person": 10996,
+        "captures": [
+          10994
+        ],
+        "interactions": [
+          20200
+        ],
+        "decisions": [
+          174
+        ],
+        "requests": [],
+        "events": [],
+        "stage": "BUYER"
+      },
+      {
+        "person": 10997,
+        "captures": [
+          10995
+        ],
+        "interactions": [
+          20201,
+          20202
+        ],
+        "decisions": [
+          175,
+          176
+        ],
+        "requests": [
+          2923
+        ],
+        "events": [
+          4095
+        ],
+        "stage": "LEAD"
+      }
+    ]
+  },
+  {
+    "kind": "correccion_intermedia",
+    "file": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T223500Z/RESULTADOS.json",
+    "prefix": "QA_BFC_20261112T223500Z_",
+    "result": "APROBADO",
+    "subjects": [
+      {
+        "person": 10998,
+        "captures": [
+          10996
+        ],
+        "interactions": [
+          20203
+        ],
+        "decisions": [
+          177
+        ],
+        "requests": [],
+        "events": [],
+        "stage": "BUYER"
+      },
+      {
+        "person": 10999,
+        "captures": [
+          10997
+        ],
+        "interactions": [
+          20204
+        ],
+        "decisions": [
+          178
+        ],
+        "requests": [
+          2924
+        ],
+        "events": [
+          4096
+        ],
+        "stage": "LEAD"
+      }
+    ]
+  },
+  {
+    "kind": "fallos_final",
+    "file": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T224800Z_c/RESULTADOS.json",
+    "prefix": "QA_BFC_20261112T224800Z_c_",
+    "result": "APROBADO",
+    "subjects": [
+      {
+        "person": 11008,
+        "captures": [
+          11006
+        ],
+        "interactions": [
+          20215
+        ],
+        "decisions": [
+          189
+        ],
+        "requests": [],
+        "events": [],
+        "stage": "BUYER"
+      },
+      {
+        "person": 11009,
+        "captures": [
+          11007
+        ],
+        "interactions": [
+          20216
+        ],
+        "decisions": [
+          190
+        ],
+        "requests": [
+          2930
+        ],
+        "events": [
+          4102
+        ],
+        "stage": "LEAD"
+      }
+    ]
+  },
+  {
+    "kind": "gemini_real",
+    "file": "database/qa/buyer_backend/ejecucion_20261112T223700Z_a11e/GEMINI_REAL_RESULTADOS.json",
+    "prefix": "QA_BBE_20261112T223700Z_a11e_",
+    "result": "APROBADO",
+    "subjects": [
+      {
+        "case": "Consulta informativa",
+        "result": "APROBADO",
+        "person": 11000,
+        "interactions": [
+          20205
+        ],
+        "decisions": [
+          179
+        ],
+        "requests": [],
+        "events": [],
+        "stage": "BUYER"
+      },
+      {
+        "case": "Saludo ambiguo",
+        "result": "APROBADO",
+        "person": 11001,
+        "interactions": [
+          20206
+        ],
+        "decisions": [
+          180
+        ],
+        "requests": [],
+        "events": [],
+        "stage": "BUYER"
+      },
+      {
+        "case": "Solicitud explicita",
+        "result": "APROBADO",
+        "person": 11002,
+        "interactions": [
+          20207
+        ],
+        "decisions": [
+          181
+        ],
+        "requests": [
+          2925
+        ],
+        "events": [
+          4097
+        ],
+        "stage": "LEAD"
+      },
+      {
+        "case": "Respuesta a aclaracion con contexto",
+        "result": "APROBADO",
+        "person": 11001,
+        "interactions": [
+          20206,
+          20208
+        ],
+        "decisions": [
+          180,
+          182
+        ],
+        "requests": [
+          2926
+        ],
+        "events": [
+          4098
+        ],
+        "stage": "LEAD"
+      }
+    ]
+  },
+  {
+    "kind": "conflicto_concurrente",
+    "file": "database/qa/buyer_backend/ejecucion_20261112T224800Z_a/CONFLICTO_CONCURRENTE.json",
+    "prefix": "QA_BBE_20261112T224800Z_a_",
+    "result": "APROBADO",
+    "subjects": [
+      {
+        "person": 11003,
+        "interactions": [
+          20209
+        ],
+        "decisions": [
+          183
+        ],
+        "requests": [
+          2927
+        ],
+        "events": [
+          4099
+        ]
+      }
+    ]
+  }
+]

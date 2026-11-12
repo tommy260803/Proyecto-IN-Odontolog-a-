@@ -1,0 +1,17 @@
+DANIELPC NexoSalud_LeadEnsayoFinal
+id_evento_etapa
+id_persona
+etapa_origen
+etapa_destino
+fecha_hora
+id_usuario
+motivo
+evidencia
+id_captacion
+id_solicitud
+clave_operacion_buyer
+NULL BUYER 805
+CUSTOMER TURNED 80
+PAYER CUSTOMER 185
+BUYER LEAD 2870
+LEAD PAYER 110

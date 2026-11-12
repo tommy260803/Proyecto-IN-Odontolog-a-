@@ -1,0 +1,153 @@
+{
+  "code": "B",
+  "startedUtc": "2026-11-12T22:47:44.667Z",
+  "registration": {
+    "status": 201,
+    "body": {
+      "id_persona": 11005,
+      "nombres": "QA_BBE_20261112T224800Z_b_B",
+      "apellidos": "QA SINTETICO",
+      "dni": null,
+      "email": "qa_bbe_20261112t224800z_b_b@example.invalid",
+      "numero": null,
+      "fecha_nacimiento": null,
+      "zona": null,
+      "tipo_persona": "Adulto General",
+      "autoriza_contacto": true,
+      "fecha_autorizacion": "2026-11-12T22:47:44.678Z",
+      "estado_calidad": "Valido",
+      "id_campana_origen": null,
+      "id_canal_origen": null,
+      "id_etapa_actual": 1,
+      "fecha_registro": "2026-11-12T22:47:44.680Z",
+      "fecha_actualizacion": null,
+      "id": 11005,
+      "isDuplicate": false
+    }
+  },
+  "adminDoesNotEvaluateAutomatically": true,
+  "evaluation": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "data": {
+        "id_persona": 11005,
+        "id_captacion": 11003,
+        "id_interaccion": 20211,
+        "id_decision": 185,
+        "estado": "COMPLETADA",
+        "intencion": "AMBIGUA",
+        "id_servicio": null,
+        "accion": "ACLARACION",
+        "etapa_final": "BUYER",
+        "aclaracion": "Gracias por escribir a NexoSalud. ¿Deseas solicitar una cita de reserva para algún tratamiento específico o necesitas consultar información sobre nuestros servicios odontológicos?",
+        "intentosRealizados": 1,
+        "intentos_realizados": 1,
+        "duracionTotalMs": 0,
+        "duracion_total_ms": 0,
+        "entregaLeadEstado": "NO_APLICA",
+        "contextFingerprint": "6bfd2ff89161d894d75765e3b1d81b33"
+      },
+      "latestEvaluation": {
+        "id_decision": 185,
+        "id_interaccion": 20211,
+        "id_interaccion_vigente": 20211,
+        "es_mensaje_vigente": true,
+        "es_contexto_vigente": true,
+        "context_fingerprint": "6bfd2ff89161d894d75765e3b1d81b33",
+        "current_context_fingerprint": "6bfd2ff89161d894d75765e3b1d81b33",
+        "estado": "COMPLETADA",
+        "intencion": "AMBIGUA",
+        "id_servicio": null,
+        "servicio_nombre": "Evaluación odontológica",
+        "accion": "ACLARACION",
+        "explicacion": "Gracias por escribir a NexoSalud. ¿Deseas solicitar una cita de reserva para algún tratamiento específico o necesitas consultar información sobre nuestros servicios odontológicos?",
+        "fecha_hora": "2026-11-12T22:47:44.754Z",
+        "mensaje_evaluado": "QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.",
+        "mensaje_vigente": "QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.",
+        "discrepancia_horario": null
+      }
+    }
+  },
+  "result": "APROBADO",
+  "finishedUtc": "2026-11-12T22:47:44.763Z",
+  "persisted": {
+    "person": {
+      "id_persona": 11005,
+      "nombres": "QA_BBE_20261112T224800Z_b_B",
+      "apellidos": "QA SINTETICO",
+      "dni": null,
+      "email": "qa_bbe_20261112t224800z_b_b@example.invalid",
+      "numero": null,
+      "fecha_nacimiento": null,
+      "zona": null,
+      "tipo_persona": "Adulto General",
+      "autoriza_contacto": true,
+      "fecha_autorizacion": "2026-11-12T22:47:44.678Z",
+      "estado_calidad": "Valido",
+      "id_campana_origen": null,
+      "id_canal_origen": null,
+      "id_etapa_actual": 1,
+      "fecha_registro": "2026-11-12T22:47:44.680Z",
+      "fecha_actualizacion": null,
+      "Etapa": {
+        "id_etapa": 1,
+        "nombre": "BUYER",
+        "descripcion": "Contacto identificable con autorización de contacto"
+      }
+    },
+    "captures": [
+      {
+        "id_captacion": 11003,
+        "id_persona": 11005,
+        "fecha_captacion": "2026-11-12T17:47:44.704Z",
+        "id_canal": null,
+        "id_fuente": null,
+        "id_campana": null,
+        "id_sede": null,
+        "id_servicio": 1,
+        "motivo_consulta": "QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.",
+        "estado_calidad": "Valido",
+        "autoriza_contacto": true,
+        "fecha_autorizacion": "2026-11-12T22:47:44.678Z",
+        "origen_datos": "REGISTRO_DIRECTO",
+        "fecha_observacion": "2026-11-12T17:47:44.704Z"
+      }
+    ],
+    "interactions": [
+      {
+        "id_solicitud": null,
+        "id_interaccion": 20211,
+        "id_persona": 11005,
+        "id_canal": null,
+        "id_fuente": null,
+        "id_usuario": null,
+        "fecha_hora": "2026-11-12T22:47:44.687Z",
+        "tipo": "Consulta Inicial",
+        "mensaje": "QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.",
+        "es_respuesta_util": false,
+        "resultado": "Aclaración requerida"
+      }
+    ],
+    "decisions": [
+      {
+        "id_decision": 185,
+        "id_persona": 11005,
+        "id_usuario": null,
+        "id_captacion": 11003,
+        "id_interaccion": 20211,
+        "agente": "BUYER",
+        "fecha_hora": "2026-11-12T22:47:44.743Z",
+        "entrada": "{\"mensaje\":\"QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.\",\"id_persona\":11005,\"id_captacion\":11003,\"id_interaccion\":20211,\"motivo_consulta\":null,\"sede_preferida\":null,\"id_servicio_declarado\":1,\"pref_id_horario\":null,\"contextFingerprint\":\"6bfd2ff89161d894d75765e3b1d81b33\",\"contextoConversacional\":null,\"catalogo_snapshot\":[{\"id\":1,\"nombre\":\"Evaluación odontológica\"},{\"id\":2,\"nombre\":\"Limpieza dental\"},{\"id\":3,\"nombre\":\"Profilaxis\"},{\"id\":4,\"nombre\":\"Fluorización\"},{\"id\":5,\"nombre\":\"Restauración dental\"},{\"id\":6,\"nombre\":\"Control odontológico\"},{\"id\":8,\"nombre\":\"Evaluación General\"},{\"id\":9,\"nombre\":\"Limpieza / Profilaxis\"},{\"id\":10,\"nombre\":\"Ortodoncia Inicial\"},{\"id\":11,\"nombre\":\"Implante Dental\"},{\"id\":12,\"nombre\":\"Restauración Estética\"},{\"id\":13,\"nombre\":\"Blanqueamiento Dental\"}],\"fecha_evaluacion\":\"2026-11-12T22:47:44.739Z\"}",
+        "regla_aplicada": "gemini-3.5-flash-lite",
+        "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"AMBIGUA\",\"id_servicio\":null,\"intentosRealizados\":1,\"intentos_realizados\":1,\"duracionTotalMs\":0,\"duracion_total_ms\":0,\"contextFingerprint\":\"6bfd2ff89161d894d75765e3b1d81b33\"}",
+        "accion": "ACLARACION",
+        "requiere_revision": true,
+        "resultado_revision": "Gracias por escribir a NexoSalud. ¿Deseas solicitar una cita de reserva para algún tratamiento específico o necesitas consultar información sobre nuestros servicios odontológicos?"
+      }
+    ],
+    "requests": [],
+    "events": [],
+    "intake": []
+  }
+}

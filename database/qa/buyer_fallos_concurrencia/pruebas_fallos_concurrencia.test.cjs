@@ -180,6 +180,9 @@ test('Buyer QA fallos y concurrencia: SQL real y solo Gemini controlado', { time
       check(checks, 'Barrera antes del router con ambas recibidas', traces.length === 2 && traces.every(x => x.gateReleasedMs >= Math.max(...ingressGate.arrivals.map(a => a.ms))), true);
       check(checks, 'Sin bloqueo del arnes', traces.some(x => x.harnessError), false);
       check(checks, 'Ambos HTTP exitosos', clients.map(x => [200,201].includes(x.status)), [true,true]);
+      const replayTrace = traces.find(x => x.status === 200);
+      const classification = controlled.calls.find(x => x.message === message);
+      check(checks, 'Replay responde antes de terminar Gemini; no espera bajo transaccion', Boolean(replayTrace && classification && replayTrace.finishedMs < classification.finishedMs), true);
       const [personCount] = await db.$queryRaw`SELECT COUNT(*) cantidad FROM dbo.Personas WHERE email=${fixtures.C.email}`;
       check(checks, 'Persona unica', personCount.cantidad, 1);
       check(checks, 'Captacion unica', state?.captures.length, 1);
@@ -194,6 +197,13 @@ test('Buyer QA fallos y concurrencia: SQL real y solo Gemini controlado', { time
       check(checks, 'Identidad de interaccion devuelta igual', new Set(clients.map(x => x.responseBody?.data?.id_interaccion)).size, 1);
       check(checks, 'Interaccion persistida enlazada', state?.interactions.map(x => x.id_solicitud), [s?.id_solicitud]);
       check(checks, 'Entrega confirmada en decision', state?.decisions.map(x => JSON.parse(x.decision).entregaLeadEstado), ['CONFIRMADA']);
+      const sdkBeforeReplay = controlled.calls.length;
+      item.replay = await request('B', '/api/buyer/register', data, fixtures.C.key);
+      check(checks, 'Replay conserva interaccion y decision', [item.replay.responseBody.data?.id_interaccion,item.replay.responseBody.data?.id_decision], [state?.interactions[0]?.id_interaccion,state?.decisions[0]?.id_decision]);
+      item.conflict = await request('B', '/api/buyer/register', { ...data, mensaje: message + ' Contenido diferente.' }, fixtures.C.key);
+      check(checks, 'Misma clave con contenido distinto rechazada', [item.conflict.status,item.conflict.responseBody.code], [409,'IDEMPOTENCY_CONFLICT']);
+      check(checks, 'Replay y conflicto no vuelven a clasificar', controlled.calls.length, sdkBeforeReplay);
+      check(checks, 'Replay y conflicto no cambian filas persistidas', await load('C'), state);
     }));
   } catch (error) { result.setupOrHarnessFailure = env.errorInfo(error); throw error; }
   finally {

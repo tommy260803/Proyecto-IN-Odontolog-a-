@@ -20,9 +20,9 @@ export interface BuyerPage {
   };
   indicators?: {
     period: string;
-    b1: { numerator: number; denominator: number; rate: number | null };
-    b2: { numerator: number; denominator: number; rate: number | null };
-    b3: { averageDays: number | null; conversions: number; totalDays: number | null };
+    b1: { numerator: number; denominator: number; rate: number | null; explanation?: string; source?: string };
+    b2: { numerator: number; denominator: number; rate: number | null; explanation?: string; source?: string };
+    b3: { averageDays: number | null; conversions: number; totalDays: number | null; explanation?: string; source?: string };
   };
 }
 

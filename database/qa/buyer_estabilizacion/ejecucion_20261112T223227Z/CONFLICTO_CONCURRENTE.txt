@@ -1,0 +1,27 @@
+{
+  "result": "APROBADO",
+  "evidence": "C:\\Users\\Daniel\\Downloads\\Proyecto-IN-Odontolog-a-\\database\\qa\\buyer_backend\\ejecucion_20261112T224800Z_a",
+  "reads": [
+    {
+      "transaction": false,
+      "id": null
+    },
+    {
+      "transaction": false,
+      "id": null
+    },
+    {
+      "transaction": true,
+      "id": null
+    },
+    {
+      "transaction": true,
+      "id": 183
+    }
+  ],
+  "responses": [
+    201,
+    409
+  ],
+  "person": 11003
+}

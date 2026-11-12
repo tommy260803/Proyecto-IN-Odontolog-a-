@@ -1,0 +1,317 @@
+{
+  "code": "A",
+  "startedUtc": "2026-11-12T22:34:02.796Z",
+  "checks": [
+    {
+      "name": "HTTP recuperable",
+      "actual": 202,
+      "expected": 202,
+      "passed": true
+    },
+    {
+      "name": "Mensaje guardado una vez",
+      "actual": [
+        "QA_BFC_20261112T223500Z_AB Solo deseo información sobre el precio de la evaluación odontológica."
+      ],
+      "expected": [
+        "QA_BFC_20261112T223500Z_AB Solo deseo información sobre el precio de la evaluación odontológica."
+      ],
+      "passed": true
+    },
+    {
+      "name": "Decision unica",
+      "actual": 1,
+      "expected": 1,
+      "passed": true
+    },
+    {
+      "name": "Etapa preservada",
+      "actual": "BUYER",
+      "expected": "BUYER",
+      "passed": true
+    },
+    {
+      "name": "Sin filas comerciales",
+      "actual": [
+        0,
+        0,
+        0
+      ],
+      "expected": [
+        0,
+        0,
+        0
+      ],
+      "passed": true
+    },
+    {
+      "name": "SDK agotado segun contrato default",
+      "actual": 3,
+      "expected": 3,
+      "passed": true
+    },
+    {
+      "name": "Tres errores 503 simulados",
+      "actual": [
+        503,
+        503,
+        503
+      ],
+      "expected": [
+        503,
+        503,
+        503
+      ],
+      "passed": true
+    },
+    {
+      "name": "Estado persistido recuperable",
+      "actual": "PENDIENTE",
+      "expected": "PENDIENTE",
+      "passed": true
+    },
+    {
+      "name": "Accion de retry",
+      "actual": "REINTENTO_PENDIENTE",
+      "expected": "REINTENTO_PENDIENTE",
+      "passed": true
+    },
+    {
+      "name": "Revision pendiente",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "name": "Intentos persistidos acumulados",
+      "actual": 3,
+      "expected": 3,
+      "passed": true
+    },
+    {
+      "name": "Error e historial persistidos",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "name": "Identidad HTTP y SQL coincide",
+      "actual": [
+        20203,
+        177
+      ],
+      "expected": [
+        20203,
+        177
+      ],
+      "passed": true
+    }
+  ],
+  "response": {
+    "label": "A",
+    "route": "/api/buyer/register",
+    "requestBody": {
+      "nombres": "QA_BFC_20261112T223500Z_AB",
+      "apellidos": "QA SINTETICO",
+      "email": "qa_bfc_20261112t223500z_ab@example.invalid",
+      "autoriza_contacto": true,
+      "mensaje": "QA_BFC_20261112T223500Z_AB Solo deseo información sobre el precio de la evaluación odontológica."
+    },
+    "idempotencyKey": "qa_bfc_20261112t223500z_ab",
+    "startedMs": 23524.0683,
+    "startedUtc": "2026-11-12T22:34:02.796Z",
+    "status": 202,
+    "responseBody": {
+      "success": true,
+      "isDuplicate": false,
+      "isRecurring": false,
+      "consultationCount": 1,
+      "message": "Mensaje registrado. Evaluación semántica pendiente por indisponibilidad temporal del clasificador.",
+      "data": {
+        "id_persona": 10998,
+        "id_captacion": 10996,
+        "id_interaccion": 20203,
+        "id_decision": 177,
+        "etapa": "BUYER",
+        "intencion": null,
+        "id_servicio": null,
+        "accion": "REINTENTO_PENDIENTE",
+        "estado_evaluacion": "PENDIENTE",
+        "aclaracion": null,
+        "id_solicitud": null,
+        "oportunidad": {
+          "id_oportunidad": 10996,
+          "id_persona": 10998
+        },
+        "totalConsultas": 1,
+        "isDuplicate": false,
+        "isRecurring": false,
+        "entregaLeadEstado": "PENDIENTE",
+        "intentosRealizados": 3,
+        "duracionTotalMs": 1526
+      }
+    },
+    "finishedMs": 25185.798,
+    "finishedUtc": "2026-11-12T22:34:04.458Z"
+  },
+  "stateAfterFailure": {
+    "person": {
+      "id_persona": 10998,
+      "nombres": "QA_BFC_20261112T223500Z_AB",
+      "apellidos": "QA SINTETICO",
+      "dni": null,
+      "email": "qa_bfc_20261112t223500z_ab@example.invalid",
+      "numero": null,
+      "fecha_nacimiento": null,
+      "zona": null,
+      "tipo_persona": "Adulto General",
+      "autoriza_contacto": true,
+      "fecha_autorizacion": "2026-11-12T22:34:02.860Z",
+      "estado_calidad": "Valido",
+      "id_campana_origen": null,
+      "id_canal_origen": 4,
+      "id_etapa_actual": 1,
+      "fecha_registro": "2026-11-12T22:34:02.862Z",
+      "fecha_actualizacion": null,
+      "Etapa": {
+        "id_etapa": 1,
+        "nombre": "BUYER",
+        "descripcion": "Contacto identificable con autorización de contacto"
+      }
+    },
+    "captures": [
+      {
+        "id_captacion": 10996,
+        "id_persona": 10998,
+        "fecha_captacion": "2026-11-12T17:34:02.878Z",
+        "id_canal": 4,
+        "id_fuente": 3,
+        "id_campana": null,
+        "id_sede": null,
+        "id_servicio": null,
+        "motivo_consulta": "QA_BFC_20261112T223500Z_AB Solo deseo información sobre el precio de la evaluación odontológica.",
+        "estado_calidad": "Valido",
+        "autoriza_contacto": true,
+        "fecha_autorizacion": "2026-11-12T22:34:02.860Z",
+        "origen_datos": "REGISTRO_DIRECTO",
+        "fecha_observacion": "2026-11-12T17:34:02.878Z"
+      }
+    ],
+    "interactions": [
+      {
+        "id_solicitud": null,
+        "id_interaccion": 20203,
+        "id_persona": 10998,
+        "id_canal": 4,
+        "id_fuente": 3,
+        "id_usuario": null,
+        "fecha_hora": "2026-11-12T22:34:02.881Z",
+        "tipo": "Registro y Consulta Inicial (#1)",
+        "mensaje": "QA_BFC_20261112T223500Z_AB Solo deseo información sobre el precio de la evaluación odontológica.",
+        "es_respuesta_util": false,
+        "resultado": "Registrado - Pendiente de Evaluación"
+      }
+    ],
+    "decisions": [
+      {
+        "id_decision": 177,
+        "id_persona": 10998,
+        "id_usuario": null,
+        "id_captacion": 10996,
+        "id_interaccion": 20203,
+        "agente": "BUYER",
+        "fecha_hora": "2026-11-12T22:34:02.885Z",
+        "entrada": "{\"idempotencyKey\":\"qa_bfc_20261112t223500z_ab\",\"contentHash\":\"87ebcc00d95f212663757f7fc16846dc5c3d03e820bf48ff2b8c123ada3adb58\",\"mensaje\":\"QA_BFC_20261112T223500Z_AB Solo deseo información sobre el precio de la evaluación odontológica.\",\"id_persona\":10998,\"id_captacion\":10996,\"id_interaccion\":20203,\"motivo_consulta\":\"QA_BFC_20261112T223500Z_AB Solo deseo información sobre el precio de la evaluación odontológica.\",\"sede_preferida\":null,\"id_servicio_declarado\":null,\"contextoConversacional\":null,\"fecha_registro\":\"2026-11-12T22:34:02.885Z\"}",
+        "regla_aplicada": "gemini-3.5-flash-lite",
+        "decision": "{\"estado\":\"PENDIENTE\",\"intencion\":null,\"id_servicio\":null,\"error\":\"Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503\",\"historial_errores\":[\"Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503\"],\"intentosRealizados\":3,\"intentos_realizados\":3,\"duracionTotalMs\":1526,\"duracion_total_ms\":1526,\"contextFingerprint\":\"733b6c9b1dec05377d43c58d2cabe761\"}",
+        "accion": "REINTENTO_PENDIENTE",
+        "requiere_revision": true,
+        "resultado_revision": "Fallo clasificador (intento 3): Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503"
+      }
+    ],
+    "requests": [],
+    "events": [],
+    "intake": []
+  },
+  "result": "APROBADO",
+  "persisted": {
+    "person": {
+      "id_persona": 10998,
+      "nombres": "QA_BFC_20261112T223500Z_AB",
+      "apellidos": "QA SINTETICO",
+      "dni": null,
+      "email": "qa_bfc_20261112t223500z_ab@example.invalid",
+      "numero": null,
+      "fecha_nacimiento": null,
+      "zona": null,
+      "tipo_persona": "Adulto General",
+      "autoriza_contacto": true,
+      "fecha_autorizacion": "2026-11-12T22:34:02.860Z",
+      "estado_calidad": "Valido",
+      "id_campana_origen": null,
+      "id_canal_origen": 4,
+      "id_etapa_actual": 1,
+      "fecha_registro": "2026-11-12T22:34:02.862Z",
+      "fecha_actualizacion": null,
+      "Etapa": {
+        "id_etapa": 1,
+        "nombre": "BUYER",
+        "descripcion": "Contacto identificable con autorización de contacto"
+      }
+    },
+    "captures": [
+      {
+        "id_captacion": 10996,
+        "id_persona": 10998,
+        "fecha_captacion": "2026-11-12T17:34:02.878Z",
+        "id_canal": 4,
+        "id_fuente": 3,
+        "id_campana": null,
+        "id_sede": null,
+        "id_servicio": null,
+        "motivo_consulta": "QA_BFC_20261112T223500Z_AB Solo deseo información sobre el precio de la evaluación odontológica.",
+        "estado_calidad": "Valido",
+        "autoriza_contacto": true,
+        "fecha_autorizacion": "2026-11-12T22:34:02.860Z",
+        "origen_datos": "REGISTRO_DIRECTO",
+        "fecha_observacion": "2026-11-12T17:34:02.878Z"
+      }
+    ],
+    "interactions": [
+      {
+        "id_solicitud": null,
+        "id_interaccion": 20203,
+        "id_persona": 10998,
+        "id_canal": 4,
+        "id_fuente": 3,
+        "id_usuario": null,
+        "fecha_hora": "2026-11-12T22:34:02.881Z",
+        "tipo": "Registro y Consulta Inicial (#1)",
+        "mensaje": "QA_BFC_20261112T223500Z_AB Solo deseo información sobre el precio de la evaluación odontológica.",
+        "es_respuesta_util": false,
+        "resultado": "Registrado - Pendiente de Evaluación"
+      }
+    ],
+    "decisions": [
+      {
+        "id_decision": 177,
+        "id_persona": 10998,
+        "id_usuario": null,
+        "id_captacion": 10996,
+        "id_interaccion": 20203,
+        "agente": "BUYER",
+        "fecha_hora": "2026-11-12T22:34:02.885Z",
+        "entrada": "{\"idempotencyKey\":\"qa_bfc_20261112t223500z_ab\",\"contentHash\":\"87ebcc00d95f212663757f7fc16846dc5c3d03e820bf48ff2b8c123ada3adb58\",\"mensaje\":\"QA_BFC_20261112T223500Z_AB Solo deseo información sobre el precio de la evaluación odontológica.\",\"id_persona\":10998,\"id_captacion\":10996,\"id_interaccion\":20203,\"motivo_consulta\":\"QA_BFC_20261112T223500Z_AB Solo deseo información sobre el precio de la evaluación odontológica.\",\"sede_preferida\":null,\"id_servicio_declarado\":null,\"contextoConversacional\":null,\"fecha_registro\":\"2026-11-12T22:34:02.885Z\"}",
+        "regla_aplicada": "gemini-3.5-flash-lite",
+        "decision": "{\"estado\":\"PENDIENTE\",\"intencion\":null,\"id_servicio\":null,\"error\":\"Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503\",\"historial_errores\":[\"Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503\"],\"intentosRealizados\":3,\"intentos_realizados\":3,\"duracionTotalMs\":1526,\"duracion_total_ms\":1526,\"contextFingerprint\":\"733b6c9b1dec05377d43c58d2cabe761\"}",
+        "accion": "REINTENTO_PENDIENTE",
+        "requiere_revision": true,
+        "resultado_revision": "Fallo clasificador (intento 3): Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503"
+      }
+    ],
+    "requests": [],
+    "events": [],
+    "intake": []
+  },
+  "finishedUtc": "2026-11-12T22:34:04.486Z"
+}

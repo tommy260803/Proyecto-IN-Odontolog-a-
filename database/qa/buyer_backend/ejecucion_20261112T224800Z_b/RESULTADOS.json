@@ -1,0 +1,2587 @@
+{
+  "version": {
+    "branch": "feature/buyer-orientacion-interactiva",
+    "HEAD": "70a09e3e32059d183ced2b96503d7ed298362900",
+    "sourceHashes": {
+      "backend/src/db.ts": "CE14302F5ED3B5457471878AF9290FBFFB0AD63083F36F1BC2BF77CFEE51E0C3",
+      "backend/prisma/schema.prisma": "66D541DDE034837AFF46ACD52DCB58C8DF029B2A0F7ECA3B7F9EB70A1CD725FD",
+      "backend/src/routes/buyer.routes.ts": "77119E3645B3AAAAF3322544F7BDB6E59DD8678DC464D701BB49760E4EFA632A",
+      "backend/src/services/buyerEvaluationService.ts": "30AA39AE2850D012A99DBE4BD93E8D3DDF3828ACA8442AA91C22BF4C0C95541C",
+      "backend/src/services/buyerMessageClassifier.ts": "F7E7C640CED2384006369E3960BA20D7E8BA7E60C773C08822F67189AF53C158",
+      "backend/src/services/leadIntake.ts": "B447FFC9E53D957D79583DB831F52B880F0F9206C4745E096F86FF9C6A8C4622",
+      "backend/src/services/martSyncService.ts": "CEC7B12EF94BF0D5C941F0787E660B3AC2016ACF0D439A5755690200192C5C98",
+      "backend/src/types/buyer.ts": "49C7D117A22E4DFF4E9CCA41FAC2E1767793B3162279925867A464FF2401835E"
+    }
+  },
+  "prefix": "QA_BBE_20261112T224800Z_b_",
+  "startedUtc": "2026-11-12T22:47:42.819Z",
+  "connectionSourceBeforePin": "SQLSERVER_URL",
+  "simulation": "Solo Models.generateContent, devuelve text JSON",
+  "productionCodeChanged": false,
+  "cases": [
+    {
+      "code": "A",
+      "startedUtc": "2026-11-12T22:47:44.357Z",
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "isDuplicate": false,
+          "isRecurring": false,
+          "consultationCount": 1,
+          "message": "Consulta informativa registrada. El paciente permanece en etapa BUYER.",
+          "data": {
+            "id_persona": 11004,
+            "id_captacion": 11002,
+            "id_interaccion": 20210,
+            "id_decision": 184,
+            "etapa": "BUYER",
+            "intencion": "SOLO_CONSULTA",
+            "id_servicio": null,
+            "accion": "SOLO_CONSULTA",
+            "estado_evaluacion": "COMPLETADA",
+            "aclaracion": null,
+            "id_solicitud": null,
+            "oportunidad": {
+              "id_oportunidad": 11002,
+              "id_persona": 11004
+            },
+            "totalConsultas": 1,
+            "isDuplicate": false,
+            "isRecurring": false,
+            "entregaLeadEstado": "NO_APLICA",
+            "intentosRealizados": 1,
+            "duracionTotalMs": 0
+          }
+        }
+      },
+      "publicAutoEvaluation": true,
+      "result": "APROBADO",
+      "finishedUtc": "2026-11-12T22:47:44.565Z",
+      "persisted": {
+        "person": {
+          "id_persona": 11004,
+          "nombres": "QA_BBE_20261112T224800Z_b_A",
+          "apellidos": "QA SINTETICO",
+          "dni": null,
+          "email": "qa_bbe_20261112t224800z_b_a@example.invalid",
+          "numero": null,
+          "fecha_nacimiento": null,
+          "zona": null,
+          "tipo_persona": "Adulto General",
+          "autoriza_contacto": true,
+          "fecha_autorizacion": "2026-11-12T22:47:44.415Z",
+          "estado_calidad": "Valido",
+          "id_campana_origen": null,
+          "id_canal_origen": 4,
+          "id_etapa_actual": 1,
+          "fecha_registro": "2026-11-12T22:47:44.416Z",
+          "fecha_actualizacion": null,
+          "Etapa": {
+            "id_etapa": 1,
+            "nombre": "BUYER",
+            "descripcion": "Contacto identificable con autorización de contacto"
+          }
+        },
+        "captures": [
+          {
+            "id_captacion": 11002,
+            "id_persona": 11004,
+            "fecha_captacion": "2026-11-12T17:47:44.430Z",
+            "id_canal": 4,
+            "id_fuente": 3,
+            "id_campana": null,
+            "id_sede": null,
+            "id_servicio": null,
+            "motivo_consulta": "QA_BBE_20261112T224800Z_b_A ¿Cuál es el precio de la evaluación odontológica? Solo deseo información.",
+            "estado_calidad": "Valido",
+            "autoriza_contacto": true,
+            "fecha_autorizacion": "2026-11-12T22:47:44.415Z",
+            "origen_datos": "REGISTRO_DIRECTO",
+            "fecha_observacion": "2026-11-12T17:47:44.430Z"
+          }
+        ],
+        "interactions": [
+          {
+            "id_solicitud": null,
+            "id_interaccion": 20210,
+            "id_persona": 11004,
+            "id_canal": 4,
+            "id_fuente": 3,
+            "id_usuario": null,
+            "fecha_hora": "2026-11-12T22:47:44.433Z",
+            "tipo": "Registro y Consulta Inicial (#1)",
+            "mensaje": "QA_BBE_20261112T224800Z_b_A ¿Cuál es el precio de la evaluación odontológica? Solo deseo información.",
+            "es_respuesta_util": false,
+            "resultado": "Consulta Informativa"
+          }
+        ],
+        "decisions": [
+          {
+            "id_decision": 184,
+            "id_persona": 11004,
+            "id_usuario": null,
+            "id_captacion": 11002,
+            "id_interaccion": 20210,
+            "agente": "BUYER",
+            "fecha_hora": "2026-11-12T22:47:44.439Z",
+            "entrada": "{\"idempotencyKey\":null,\"contentHash\":\"bdc796b9f37afabc4b46221209fe3b74d856d465c71b971b354a5ca9902b515c\",\"mensaje\":\"QA_BBE_20261112T224800Z_b_A ¿Cuál es el precio de la evaluación odontológica? Solo deseo información.\",\"id_persona\":11004,\"id_captacion\":11002,\"id_interaccion\":20210,\"motivo_consulta\":\"QA_BBE_20261112T224800Z_b_A ¿Cuál es el precio de la evaluación odontológica? Solo deseo información.\",\"sede_preferida\":null,\"id_servicio_declarado\":null,\"contextoConversacional\":null,\"fecha_registro\":\"2026-11-12T22:47:44.439Z\"}",
+            "regla_aplicada": "gemini-3.5-flash-lite",
+            "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"SOLO_CONSULTA\",\"id_servicio\":null,\"intentosRealizados\":1,\"intentos_realizados\":1,\"duracionTotalMs\":0,\"duracion_total_ms\":0,\"contextFingerprint\":\"d2c034b8e8d601d245e4fbfdf23dc885\"}",
+            "accion": "SOLO_CONSULTA",
+            "requiere_revision": false,
+            "resultado_revision": "Consulta informativa registrada; el contacto permanece en etapa BUYER."
+          }
+        ],
+        "requests": [],
+        "events": [],
+        "intake": []
+      }
+    },
+    {
+      "code": "B",
+      "startedUtc": "2026-11-12T22:47:44.667Z",
+      "registration": {
+        "status": 201,
+        "body": {
+          "id_persona": 11005,
+          "nombres": "QA_BBE_20261112T224800Z_b_B",
+          "apellidos": "QA SINTETICO",
+          "dni": null,
+          "email": "qa_bbe_20261112t224800z_b_b@example.invalid",
+          "numero": null,
+          "fecha_nacimiento": null,
+          "zona": null,
+          "tipo_persona": "Adulto General",
+          "autoriza_contacto": true,
+          "fecha_autorizacion": "2026-11-12T22:47:44.678Z",
+          "estado_calidad": "Valido",
+          "id_campana_origen": null,
+          "id_canal_origen": null,
+          "id_etapa_actual": 1,
+          "fecha_registro": "2026-11-12T22:47:44.680Z",
+          "fecha_actualizacion": null,
+          "id": 11005,
+          "isDuplicate": false
+        }
+      },
+      "adminDoesNotEvaluateAutomatically": true,
+      "evaluation": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "id_persona": 11005,
+            "id_captacion": 11003,
+            "id_interaccion": 20211,
+            "id_decision": 185,
+            "estado": "COMPLETADA",
+            "intencion": "AMBIGUA",
+            "id_servicio": null,
+            "accion": "ACLARACION",
+            "etapa_final": "BUYER",
+            "aclaracion": "Gracias por escribir a NexoSalud. ¿Deseas solicitar una cita de reserva para algún tratamiento específico o necesitas consultar información sobre nuestros servicios odontológicos?",
+            "intentosRealizados": 1,
+            "intentos_realizados": 1,
+            "duracionTotalMs": 0,
+            "duracion_total_ms": 0,
+            "entregaLeadEstado": "NO_APLICA",
+            "contextFingerprint": "6bfd2ff89161d894d75765e3b1d81b33"
+          },
+          "latestEvaluation": {
+            "id_decision": 185,
+            "id_interaccion": 20211,
+            "id_interaccion_vigente": 20211,
+            "es_mensaje_vigente": true,
+            "es_contexto_vigente": true,
+            "context_fingerprint": "6bfd2ff89161d894d75765e3b1d81b33",
+            "current_context_fingerprint": "6bfd2ff89161d894d75765e3b1d81b33",
+            "estado": "COMPLETADA",
+            "intencion": "AMBIGUA",
+            "id_servicio": null,
+            "servicio_nombre": "Evaluación odontológica",
+            "accion": "ACLARACION",
+            "explicacion": "Gracias por escribir a NexoSalud. ¿Deseas solicitar una cita de reserva para algún tratamiento específico o necesitas consultar información sobre nuestros servicios odontológicos?",
+            "fecha_hora": "2026-11-12T22:47:44.754Z",
+            "mensaje_evaluado": "QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.",
+            "mensaje_vigente": "QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.",
+            "discrepancia_horario": null
+          }
+        }
+      },
+      "result": "APROBADO",
+      "finishedUtc": "2026-11-12T22:47:44.763Z",
+      "persisted": {
+        "person": {
+          "id_persona": 11005,
+          "nombres": "QA_BBE_20261112T224800Z_b_B",
+          "apellidos": "QA SINTETICO",
+          "dni": null,
+          "email": "qa_bbe_20261112t224800z_b_b@example.invalid",
+          "numero": null,
+          "fecha_nacimiento": null,
+          "zona": null,
+          "tipo_persona": "Adulto General",
+          "autoriza_contacto": true,
+          "fecha_autorizacion": "2026-11-12T22:47:44.678Z",
+          "estado_calidad": "Valido",
+          "id_campana_origen": null,
+          "id_canal_origen": null,
+          "id_etapa_actual": 1,
+          "fecha_registro": "2026-11-12T22:47:44.680Z",
+          "fecha_actualizacion": null,
+          "Etapa": {
+            "id_etapa": 1,
+            "nombre": "BUYER",
+            "descripcion": "Contacto identificable con autorización de contacto"
+          }
+        },
+        "captures": [
+          {
+            "id_captacion": 11003,
+            "id_persona": 11005,
+            "fecha_captacion": "2026-11-12T17:47:44.704Z",
+            "id_canal": null,
+            "id_fuente": null,
+            "id_campana": null,
+            "id_sede": null,
+            "id_servicio": 1,
+            "motivo_consulta": "QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.",
+            "estado_calidad": "Valido",
+            "autoriza_contacto": true,
+            "fecha_autorizacion": "2026-11-12T22:47:44.678Z",
+            "origen_datos": "REGISTRO_DIRECTO",
+            "fecha_observacion": "2026-11-12T17:47:44.704Z"
+          }
+        ],
+        "interactions": [
+          {
+            "id_solicitud": null,
+            "id_interaccion": 20211,
+            "id_persona": 11005,
+            "id_canal": null,
+            "id_fuente": null,
+            "id_usuario": null,
+            "fecha_hora": "2026-11-12T22:47:44.687Z",
+            "tipo": "Consulta Inicial",
+            "mensaje": "QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.",
+            "es_respuesta_util": false,
+            "resultado": "Aclaración requerida"
+          }
+        ],
+        "decisions": [
+          {
+            "id_decision": 185,
+            "id_persona": 11005,
+            "id_usuario": null,
+            "id_captacion": 11003,
+            "id_interaccion": 20211,
+            "agente": "BUYER",
+            "fecha_hora": "2026-11-12T22:47:44.743Z",
+            "entrada": "{\"mensaje\":\"QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.\",\"id_persona\":11005,\"id_captacion\":11003,\"id_interaccion\":20211,\"motivo_consulta\":null,\"sede_preferida\":null,\"id_servicio_declarado\":1,\"pref_id_horario\":null,\"contextFingerprint\":\"6bfd2ff89161d894d75765e3b1d81b33\",\"contextoConversacional\":null,\"catalogo_snapshot\":[{\"id\":1,\"nombre\":\"Evaluación odontológica\"},{\"id\":2,\"nombre\":\"Limpieza dental\"},{\"id\":3,\"nombre\":\"Profilaxis\"},{\"id\":4,\"nombre\":\"Fluorización\"},{\"id\":5,\"nombre\":\"Restauración dental\"},{\"id\":6,\"nombre\":\"Control odontológico\"},{\"id\":8,\"nombre\":\"Evaluación General\"},{\"id\":9,\"nombre\":\"Limpieza / Profilaxis\"},{\"id\":10,\"nombre\":\"Ortodoncia Inicial\"},{\"id\":11,\"nombre\":\"Implante Dental\"},{\"id\":12,\"nombre\":\"Restauración Estética\"},{\"id\":13,\"nombre\":\"Blanqueamiento Dental\"}],\"fecha_evaluacion\":\"2026-11-12T22:47:44.739Z\"}",
+            "regla_aplicada": "gemini-3.5-flash-lite",
+            "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"AMBIGUA\",\"id_servicio\":null,\"intentosRealizados\":1,\"intentos_realizados\":1,\"duracionTotalMs\":0,\"duracion_total_ms\":0,\"contextFingerprint\":\"6bfd2ff89161d894d75765e3b1d81b33\"}",
+            "accion": "ACLARACION",
+            "requiere_revision": true,
+            "resultado_revision": "Gracias por escribir a NexoSalud. ¿Deseas solicitar una cita de reserva para algún tratamiento específico o necesitas consultar información sobre nuestros servicios odontológicos?"
+          }
+        ],
+        "requests": [],
+        "events": [],
+        "intake": []
+      }
+    },
+    {
+      "code": "C",
+      "startedUtc": "2026-11-12T22:47:44.772Z",
+      "registration": {
+        "status": 201,
+        "body": {
+          "id_persona": 11006,
+          "nombres": "QA_BBE_20261112T224800Z_b_C",
+          "apellidos": "QA SINTETICO",
+          "dni": null,
+          "email": "qa_bbe_20261112t224800z_b_c@example.invalid",
+          "numero": null,
+          "fecha_nacimiento": null,
+          "zona": null,
+          "tipo_persona": "Adulto General",
+          "autoriza_contacto": true,
+          "fecha_autorizacion": "2026-11-12T22:47:44.781Z",
+          "estado_calidad": "Valido",
+          "id_campana_origen": null,
+          "id_canal_origen": null,
+          "id_etapa_actual": 1,
+          "fecha_registro": "2026-11-12T22:47:44.782Z",
+          "fecha_actualizacion": null,
+          "id": 11006,
+          "isDuplicate": false
+        }
+      },
+      "evaluation": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "id_persona": 11006,
+            "id_captacion": 11004,
+            "id_interaccion": 20212,
+            "id_decision": 186,
+            "estado": "COMPLETADA",
+            "intencion": "SOLICITA_RESERVA",
+            "id_servicio": 1,
+            "accion": "CONVERSION_LEAD",
+            "etapa_final": "LEAD",
+            "id_solicitud": 2928,
+            "id_evento_etapa": 4100,
+            "ya_convertido": false,
+            "intentosRealizados": 1,
+            "intentos_realizados": 1,
+            "duracionTotalMs": 0,
+            "duracion_total_ms": 0,
+            "entregaLeadEstado": "CONFIRMADA",
+            "contextFingerprint": "7b8a226c3f4a0fed8d1e78e15795c5c7"
+          },
+          "latestEvaluation": {
+            "id_decision": 186,
+            "id_interaccion": 20212,
+            "id_interaccion_vigente": 20212,
+            "es_mensaje_vigente": true,
+            "es_contexto_vigente": true,
+            "context_fingerprint": "7b8a226c3f4a0fed8d1e78e15795c5c7",
+            "current_context_fingerprint": "7b8a226c3f4a0fed8d1e78e15795c5c7",
+            "estado": "COMPLETADA",
+            "intencion": "SOLICITA_RESERVA",
+            "id_servicio": 1,
+            "servicio_nombre": "Evaluación odontológica",
+            "accion": "CONVERSION_LEAD",
+            "explicacion": "Evaluación persistida correctamente.",
+            "fecha_hora": "2026-11-12T22:47:44.874Z",
+            "mensaje_evaluado": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+            "mensaje_vigente": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+            "discrepancia_horario": null
+          }
+        }
+      },
+      "result": "APROBADO",
+      "finishedUtc": "2026-11-12T22:47:44.891Z",
+      "persisted": {
+        "person": {
+          "id_persona": 11006,
+          "nombres": "QA_BBE_20261112T224800Z_b_C",
+          "apellidos": "QA SINTETICO",
+          "dni": null,
+          "email": "qa_bbe_20261112t224800z_b_c@example.invalid",
+          "numero": null,
+          "fecha_nacimiento": null,
+          "zona": null,
+          "tipo_persona": "Adulto General",
+          "autoriza_contacto": true,
+          "fecha_autorizacion": "2026-11-12T22:47:44.781Z",
+          "estado_calidad": "Valido",
+          "id_campana_origen": null,
+          "id_canal_origen": null,
+          "id_etapa_actual": 2,
+          "fecha_registro": "2026-11-12T22:47:44.782Z",
+          "fecha_actualizacion": "2026-11-12T17:47:44.854Z",
+          "Etapa": {
+            "id_etapa": 2,
+            "nombre": "LEAD",
+            "descripcion": "Persona con intención administrativa concreta"
+          }
+        },
+        "captures": [
+          {
+            "id_captacion": 11004,
+            "id_persona": 11006,
+            "fecha_captacion": "2026-11-12T17:47:44.801Z",
+            "id_canal": null,
+            "id_fuente": null,
+            "id_campana": null,
+            "id_sede": null,
+            "id_servicio": 1,
+            "motivo_consulta": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+            "estado_calidad": "Valido",
+            "autoriza_contacto": true,
+            "fecha_autorizacion": "2026-11-12T22:47:44.781Z",
+            "origen_datos": "REGISTRO_DIRECTO",
+            "fecha_observacion": "2026-11-12T17:47:44.801Z"
+          }
+        ],
+        "interactions": [
+          {
+            "id_solicitud": 2928,
+            "id_interaccion": 20212,
+            "id_persona": 11006,
+            "id_canal": null,
+            "id_fuente": null,
+            "id_usuario": null,
+            "fecha_hora": "2026-11-12T22:47:44.788Z",
+            "tipo": "Consulta Inicial",
+            "mensaje": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+            "es_respuesta_util": false,
+            "resultado": "Convertido a LEAD"
+          }
+        ],
+        "decisions": [
+          {
+            "id_decision": 186,
+            "id_persona": 11006,
+            "id_usuario": null,
+            "id_captacion": 11004,
+            "id_interaccion": 20212,
+            "agente": "BUYER",
+            "fecha_hora": "2026-11-12T22:47:44.830Z",
+            "entrada": "{\"mensaje\":\"QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.\",\"id_persona\":11006,\"id_captacion\":11004,\"id_interaccion\":20212,\"motivo_consulta\":null,\"sede_preferida\":null,\"id_servicio_declarado\":1,\"pref_id_horario\":null,\"contextFingerprint\":\"7b8a226c3f4a0fed8d1e78e15795c5c7\",\"contextoConversacional\":null,\"catalogo_snapshot\":[{\"id\":1,\"nombre\":\"Evaluación odontológica\"},{\"id\":2,\"nombre\":\"Limpieza dental\"},{\"id\":3,\"nombre\":\"Profilaxis\"},{\"id\":4,\"nombre\":\"Fluorización\"},{\"id\":5,\"nombre\":\"Restauración dental\"},{\"id\":6,\"nombre\":\"Control odontológico\"},{\"id\":8,\"nombre\":\"Evaluación General\"},{\"id\":9,\"nombre\":\"Limpieza / Profilaxis\"},{\"id\":10,\"nombre\":\"Ortodoncia Inicial\"},{\"id\":11,\"nombre\":\"Implante Dental\"},{\"id\":12,\"nombre\":\"Restauración Estética\"},{\"id\":13,\"nombre\":\"Blanqueamiento Dental\"}],\"fecha_evaluacion\":\"2026-11-12T22:47:44.827Z\"}",
+            "regla_aplicada": "gemini-3.5-flash-lite",
+            "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"SOLICITA_RESERVA\",\"id_servicio\":1,\"intentosRealizados\":1,\"intentos_realizados\":1,\"duracionTotalMs\":0,\"duracion_total_ms\":0,\"id_solicitud\":2928,\"id_evento_etapa\":4100,\"entregaLeadEstado\":\"CONFIRMADA\",\"contextFingerprint\":\"7b8a226c3f4a0fed8d1e78e15795c5c7\"}",
+            "accion": "CONVERSION_LEAD",
+            "requiere_revision": false,
+            "resultado_revision": "Conversión confirmada y entregada al Agente LEAD (Solicitud #2928, Entrada #2928)."
+          }
+        ],
+        "requests": [
+          {
+            "id_negociador": null,
+            "id_canal_origen": null,
+            "id_sede_interes_lead": null,
+            "fecha_ingreso_lead": null,
+            "archivada_lead_en": null,
+            "resultado_comercial_lead": null,
+            "fecha_decision_comercial_lead": null,
+            "valor_acordado_lead": null,
+            "id_propuesta_aceptada_lead": null,
+            "motivo_cierre_lead": null,
+            "fecha_proximo_seguimiento": null,
+            "id_solicitud": 2928,
+            "id_persona": 11006,
+            "id_servicio": 1,
+            "fecha_solicitud": "2026-11-12T17:47:44.854Z",
+            "motivo": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+            "tipo_consulta": null,
+            "prioridad": null,
+            "estado": "Abierta",
+            "fecha_primera_respuesta": null,
+            "fecha_cierre": null
+          }
+        ],
+        "events": [
+          {
+            "id_evento_etapa": 4100,
+            "id_persona": 11006,
+            "etapa_origen": 1,
+            "etapa_destino": 2,
+            "fecha_hora": "2026-11-12T17:47:44.854Z",
+            "id_usuario": null,
+            "motivo": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+            "evidencia": "Conversion validada desde captacion inicial",
+            "id_captacion": 11004,
+            "id_solicitud": 2928,
+            "clave_operacion_buyer": "BUYER_LEAD:11004"
+          }
+        ],
+        "intake": [
+          {
+            "id_solicitud": 2928,
+            "id_evento_etapa": 4100,
+            "id_captacion": 11004,
+            "id_persona": 11006,
+            "fecha_registro_utc": "2026-11-12T22:47:44.868Z"
+          }
+        ]
+      }
+    },
+    {
+      "code": "D",
+      "startedUtc": "2026-11-12T22:47:44.911Z",
+      "evaluation": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "id_persona": 11006,
+            "id_captacion": 11004,
+            "id_interaccion": 20212,
+            "id_decision": 186,
+            "estado": "COMPLETADA",
+            "intencion": "SOLICITA_RESERVA",
+            "id_servicio": 1,
+            "accion": "CONVERSION_LEAD",
+            "etapa_final": "LEAD",
+            "id_solicitud": 2928,
+            "id_evento_etapa": 4100,
+            "ya_convertido": true,
+            "aclaracion": "Conversión confirmada y entregada al Agente LEAD (Solicitud #2928, Entrada #2928).",
+            "discrepancia_horario": null,
+            "intentosRealizados": 1,
+            "intentos_realizados": 1,
+            "duracionTotalMs": 0,
+            "duracion_total_ms": 0,
+            "entregaLeadEstado": "CONFIRMADA",
+            "contextFingerprint": "7b8a226c3f4a0fed8d1e78e15795c5c7"
+          }
+        }
+      },
+      "noNewSdkCall": true,
+      "result": "APROBADO",
+      "finishedUtc": "2026-11-12T22:47:44.943Z",
+      "persisted": {
+        "person": {
+          "id_persona": 11006,
+          "nombres": "QA_BBE_20261112T224800Z_b_C",
+          "apellidos": "QA SINTETICO",
+          "dni": null,
+          "email": "qa_bbe_20261112t224800z_b_c@example.invalid",
+          "numero": null,
+          "fecha_nacimiento": null,
+          "zona": null,
+          "tipo_persona": "Adulto General",
+          "autoriza_contacto": true,
+          "fecha_autorizacion": "2026-11-12T22:47:44.781Z",
+          "estado_calidad": "Valido",
+          "id_campana_origen": null,
+          "id_canal_origen": null,
+          "id_etapa_actual": 2,
+          "fecha_registro": "2026-11-12T22:47:44.782Z",
+          "fecha_actualizacion": "2026-11-12T17:47:44.854Z",
+          "Etapa": {
+            "id_etapa": 2,
+            "nombre": "LEAD",
+            "descripcion": "Persona con intención administrativa concreta"
+          }
+        },
+        "captures": [
+          {
+            "id_captacion": 11004,
+            "id_persona": 11006,
+            "fecha_captacion": "2026-11-12T17:47:44.801Z",
+            "id_canal": null,
+            "id_fuente": null,
+            "id_campana": null,
+            "id_sede": null,
+            "id_servicio": 1,
+            "motivo_consulta": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+            "estado_calidad": "Valido",
+            "autoriza_contacto": true,
+            "fecha_autorizacion": "2026-11-12T22:47:44.781Z",
+            "origen_datos": "REGISTRO_DIRECTO",
+            "fecha_observacion": "2026-11-12T17:47:44.801Z"
+          }
+        ],
+        "interactions": [
+          {
+            "id_solicitud": 2928,
+            "id_interaccion": 20212,
+            "id_persona": 11006,
+            "id_canal": null,
+            "id_fuente": null,
+            "id_usuario": null,
+            "fecha_hora": "2026-11-12T22:47:44.788Z",
+            "tipo": "Consulta Inicial",
+            "mensaje": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+            "es_respuesta_util": false,
+            "resultado": "Convertido a LEAD"
+          }
+        ],
+        "decisions": [
+          {
+            "id_decision": 186,
+            "id_persona": 11006,
+            "id_usuario": null,
+            "id_captacion": 11004,
+            "id_interaccion": 20212,
+            "agente": "BUYER",
+            "fecha_hora": "2026-11-12T22:47:44.830Z",
+            "entrada": "{\"mensaje\":\"QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.\",\"id_persona\":11006,\"id_captacion\":11004,\"id_interaccion\":20212,\"motivo_consulta\":null,\"sede_preferida\":null,\"id_servicio_declarado\":1,\"pref_id_horario\":null,\"contextFingerprint\":\"7b8a226c3f4a0fed8d1e78e15795c5c7\",\"contextoConversacional\":null,\"catalogo_snapshot\":[{\"id\":1,\"nombre\":\"Evaluación odontológica\"},{\"id\":2,\"nombre\":\"Limpieza dental\"},{\"id\":3,\"nombre\":\"Profilaxis\"},{\"id\":4,\"nombre\":\"Fluorización\"},{\"id\":5,\"nombre\":\"Restauración dental\"},{\"id\":6,\"nombre\":\"Control odontológico\"},{\"id\":8,\"nombre\":\"Evaluación General\"},{\"id\":9,\"nombre\":\"Limpieza / Profilaxis\"},{\"id\":10,\"nombre\":\"Ortodoncia Inicial\"},{\"id\":11,\"nombre\":\"Implante Dental\"},{\"id\":12,\"nombre\":\"Restauración Estética\"},{\"id\":13,\"nombre\":\"Blanqueamiento Dental\"}],\"fecha_evaluacion\":\"2026-11-12T22:47:44.827Z\"}",
+            "regla_aplicada": "gemini-3.5-flash-lite",
+            "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"SOLICITA_RESERVA\",\"id_servicio\":1,\"intentosRealizados\":1,\"intentos_realizados\":1,\"duracionTotalMs\":0,\"duracion_total_ms\":0,\"id_solicitud\":2928,\"id_evento_etapa\":4100,\"entregaLeadEstado\":\"CONFIRMADA\",\"contextFingerprint\":\"7b8a226c3f4a0fed8d1e78e15795c5c7\"}",
+            "accion": "CONVERSION_LEAD",
+            "requiere_revision": false,
+            "resultado_revision": "Conversión confirmada y entregada al Agente LEAD (Solicitud #2928, Entrada #2928)."
+          }
+        ],
+        "requests": [
+          {
+            "id_negociador": null,
+            "id_canal_origen": null,
+            "id_sede_interes_lead": null,
+            "fecha_ingreso_lead": null,
+            "archivada_lead_en": null,
+            "resultado_comercial_lead": null,
+            "fecha_decision_comercial_lead": null,
+            "valor_acordado_lead": null,
+            "id_propuesta_aceptada_lead": null,
+            "motivo_cierre_lead": null,
+            "fecha_proximo_seguimiento": null,
+            "id_solicitud": 2928,
+            "id_persona": 11006,
+            "id_servicio": 1,
+            "fecha_solicitud": "2026-11-12T17:47:44.854Z",
+            "motivo": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+            "tipo_consulta": null,
+            "prioridad": null,
+            "estado": "Abierta",
+            "fecha_primera_respuesta": null,
+            "fecha_cierre": null
+          }
+        ],
+        "events": [
+          {
+            "id_evento_etapa": 4100,
+            "id_persona": 11006,
+            "etapa_origen": 1,
+            "etapa_destino": 2,
+            "fecha_hora": "2026-11-12T17:47:44.854Z",
+            "id_usuario": null,
+            "motivo": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+            "evidencia": "Conversion validada desde captacion inicial",
+            "id_captacion": 11004,
+            "id_solicitud": 2928,
+            "clave_operacion_buyer": "BUYER_LEAD:11004"
+          }
+        ],
+        "intake": [
+          {
+            "id_solicitud": 2928,
+            "id_evento_etapa": 4100,
+            "id_captacion": 11004,
+            "id_persona": 11006,
+            "fecha_registro_utc": "2026-11-12T22:47:44.868Z"
+          }
+        ]
+      }
+    },
+    {
+      "code": "E",
+      "startedUtc": "2026-11-12T22:47:44.959Z",
+      "fixtureRegistration": {
+        "status": 201,
+        "body": {
+          "id_persona": 11007,
+          "nombres": "QA_BBE_20261112T224800Z_b_E",
+          "apellidos": "QA SINTETICO",
+          "dni": null,
+          "email": "qa_bbe_20261112t224800z_b_e@example.invalid",
+          "numero": null,
+          "fecha_nacimiento": null,
+          "zona": null,
+          "tipo_persona": "Adulto General",
+          "autoriza_contacto": true,
+          "fecha_autorizacion": "2026-11-12T22:47:44.968Z",
+          "estado_calidad": "Valido",
+          "id_campana_origen": null,
+          "id_canal_origen": null,
+          "id_etapa_actual": 1,
+          "fecha_registro": "2026-11-12T22:47:44.970Z",
+          "fecha_actualizacion": null,
+          "id": 11007,
+          "isDuplicate": false
+        }
+      },
+      "fixtureConversion": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "id_persona": 11007,
+            "id_captacion": 11005,
+            "id_interaccion": 20213,
+            "id_decision": 187,
+            "estado": "COMPLETADA",
+            "intencion": "SOLICITA_RESERVA",
+            "id_servicio": 1,
+            "accion": "CONVERSION_LEAD",
+            "etapa_final": "LEAD",
+            "id_solicitud": 2929,
+            "id_evento_etapa": 4101,
+            "ya_convertido": false,
+            "intentosRealizados": 1,
+            "intentos_realizados": 1,
+            "duracionTotalMs": 0,
+            "duracion_total_ms": 0,
+            "entregaLeadEstado": "CONFIRMADA",
+            "contextFingerprint": "5eda92bf9fad7ba816c74375d53d16eb"
+          },
+          "latestEvaluation": {
+            "id_decision": 187,
+            "id_interaccion": 20213,
+            "id_interaccion_vigente": 20213,
+            "es_mensaje_vigente": true,
+            "es_contexto_vigente": true,
+            "context_fingerprint": "5eda92bf9fad7ba816c74375d53d16eb",
+            "current_context_fingerprint": "5eda92bf9fad7ba816c74375d53d16eb",
+            "estado": "COMPLETADA",
+            "intencion": "SOLICITA_RESERVA",
+            "id_servicio": 1,
+            "servicio_nombre": "Evaluación odontológica",
+            "accion": "CONVERSION_LEAD",
+            "explicacion": "Evaluación persistida correctamente.",
+            "fecha_hora": "2026-11-12T22:47:45.065Z",
+            "mensaje_evaluado": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+            "mensaje_vigente": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+            "discrepancia_horario": null
+          }
+        }
+      },
+      "fixturePayerStaging": "UPDATE SQL real limitado a la persona sintetica; no valida el flujo de pagos",
+      "beforeNewMessage": {
+        "person": {
+          "id_persona": 11007,
+          "nombres": "QA_BBE_20261112T224800Z_b_E",
+          "apellidos": "QA SINTETICO",
+          "dni": null,
+          "email": "qa_bbe_20261112t224800z_b_e@example.invalid",
+          "numero": null,
+          "fecha_nacimiento": null,
+          "zona": null,
+          "tipo_persona": "Adulto General",
+          "autoriza_contacto": true,
+          "fecha_autorizacion": "2026-11-12T22:47:44.968Z",
+          "estado_calidad": "Valido",
+          "id_campana_origen": null,
+          "id_canal_origen": null,
+          "id_etapa_actual": 3,
+          "fecha_registro": "2026-11-12T22:47:44.970Z",
+          "fecha_actualizacion": "2026-11-12T17:47:45.085Z",
+          "Etapa": {
+            "id_etapa": 3,
+            "nombre": "PAYER",
+            "descripcion": "Persona con pago inicial validado"
+          }
+        },
+        "captures": [
+          {
+            "id_captacion": 11005,
+            "id_persona": 11007,
+            "fecha_captacion": "2026-11-12T17:47:44.992Z",
+            "id_canal": null,
+            "id_fuente": null,
+            "id_campana": null,
+            "id_sede": null,
+            "id_servicio": 1,
+            "motivo_consulta": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+            "estado_calidad": "Valido",
+            "autoriza_contacto": true,
+            "fecha_autorizacion": "2026-11-12T22:47:44.968Z",
+            "origen_datos": "REGISTRO_DIRECTO",
+            "fecha_observacion": "2026-11-12T17:47:44.992Z"
+          }
+        ],
+        "interactions": [
+          {
+            "id_solicitud": 2929,
+            "id_interaccion": 20213,
+            "id_persona": 11007,
+            "id_canal": null,
+            "id_fuente": null,
+            "id_usuario": null,
+            "fecha_hora": "2026-11-12T22:47:44.977Z",
+            "tipo": "Consulta Inicial",
+            "mensaje": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+            "es_respuesta_util": false,
+            "resultado": "Convertido a LEAD"
+          }
+        ],
+        "decisions": [
+          {
+            "id_decision": 187,
+            "id_persona": 11007,
+            "id_usuario": null,
+            "id_captacion": 11005,
+            "id_interaccion": 20213,
+            "agente": "BUYER",
+            "fecha_hora": "2026-11-12T22:47:45.025Z",
+            "entrada": "{\"mensaje\":\"QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.\",\"id_persona\":11007,\"id_captacion\":11005,\"id_interaccion\":20213,\"motivo_consulta\":null,\"sede_preferida\":null,\"id_servicio_declarado\":1,\"pref_id_horario\":null,\"contextFingerprint\":\"5eda92bf9fad7ba816c74375d53d16eb\",\"contextoConversacional\":null,\"catalogo_snapshot\":[{\"id\":1,\"nombre\":\"Evaluación odontológica\"},{\"id\":2,\"nombre\":\"Limpieza dental\"},{\"id\":3,\"nombre\":\"Profilaxis\"},{\"id\":4,\"nombre\":\"Fluorización\"},{\"id\":5,\"nombre\":\"Restauración dental\"},{\"id\":6,\"nombre\":\"Control odontológico\"},{\"id\":8,\"nombre\":\"Evaluación General\"},{\"id\":9,\"nombre\":\"Limpieza / Profilaxis\"},{\"id\":10,\"nombre\":\"Ortodoncia Inicial\"},{\"id\":11,\"nombre\":\"Implante Dental\"},{\"id\":12,\"nombre\":\"Restauración Estética\"},{\"id\":13,\"nombre\":\"Blanqueamiento Dental\"}],\"fecha_evaluacion\":\"2026-11-12T22:47:45.022Z\"}",
+            "regla_aplicada": "gemini-3.5-flash-lite",
+            "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"SOLICITA_RESERVA\",\"id_servicio\":1,\"intentosRealizados\":1,\"intentos_realizados\":1,\"duracionTotalMs\":0,\"duracion_total_ms\":0,\"id_solicitud\":2929,\"id_evento_etapa\":4101,\"entregaLeadEstado\":\"CONFIRMADA\",\"contextFingerprint\":\"5eda92bf9fad7ba816c74375d53d16eb\"}",
+            "accion": "CONVERSION_LEAD",
+            "requiere_revision": false,
+            "resultado_revision": "Conversión confirmada y entregada al Agente LEAD (Solicitud #2929, Entrada #2929)."
+          }
+        ],
+        "requests": [
+          {
+            "id_negociador": null,
+            "id_canal_origen": null,
+            "id_sede_interes_lead": null,
+            "fecha_ingreso_lead": null,
+            "archivada_lead_en": null,
+            "resultado_comercial_lead": null,
+            "fecha_decision_comercial_lead": null,
+            "valor_acordado_lead": null,
+            "id_propuesta_aceptada_lead": null,
+            "motivo_cierre_lead": null,
+            "fecha_proximo_seguimiento": null,
+            "id_solicitud": 2929,
+            "id_persona": 11007,
+            "id_servicio": 1,
+            "fecha_solicitud": "2026-11-12T17:47:45.049Z",
+            "motivo": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+            "tipo_consulta": null,
+            "prioridad": null,
+            "estado": "Abierta",
+            "fecha_primera_respuesta": null,
+            "fecha_cierre": null
+          }
+        ],
+        "events": [
+          {
+            "id_evento_etapa": 4101,
+            "id_persona": 11007,
+            "etapa_origen": 1,
+            "etapa_destino": 2,
+            "fecha_hora": "2026-11-12T17:47:45.049Z",
+            "id_usuario": null,
+            "motivo": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+            "evidencia": "Conversion validada desde captacion inicial",
+            "id_captacion": 11005,
+            "id_solicitud": 2929,
+            "clave_operacion_buyer": "BUYER_LEAD:11005"
+          }
+        ],
+        "intake": [
+          {
+            "id_solicitud": 2929,
+            "id_evento_etapa": 4101,
+            "id_captacion": 11005,
+            "id_persona": 11007,
+            "fecha_registro_utc": "2026-11-12T22:47:45.062Z"
+          }
+        ]
+      },
+      "registration": {
+        "status": 200,
+        "body": {
+          "id_persona": 11007,
+          "nombres": "QA_BBE_20261112T224800Z_b_E",
+          "apellidos": "QA SINTETICO",
+          "dni": null,
+          "email": "qa_bbe_20261112t224800z_b_e@example.invalid",
+          "numero": null,
+          "fecha_nacimiento": null,
+          "zona": null,
+          "tipo_persona": "Adulto General",
+          "autoriza_contacto": true,
+          "fecha_autorizacion": "2026-11-12T22:47:44.968Z",
+          "estado_calidad": "Valido",
+          "id_campana_origen": null,
+          "id_canal_origen": null,
+          "id_etapa_actual": 3,
+          "fecha_registro": "2026-11-12T22:47:44.970Z",
+          "fecha_actualizacion": "2026-11-12T17:47:45.085Z",
+          "id": 11007,
+          "isDuplicate": true
+        }
+      },
+      "evaluation": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "id_persona": 11007,
+            "id_captacion": 11005,
+            "id_interaccion": 20214,
+            "id_decision": 188,
+            "estado": "COMPLETADA",
+            "intencion": "SOLO_CONSULTA",
+            "id_servicio": null,
+            "accion": "SOLO_CONSULTA",
+            "etapa_final": "PAYER",
+            "intentosRealizados": 1,
+            "intentos_realizados": 1,
+            "duracionTotalMs": 0,
+            "duracion_total_ms": 0,
+            "entregaLeadEstado": "NO_APLICA",
+            "contextFingerprint": "452f8c7ec3663f77d4b1c3746f71368d"
+          },
+          "latestEvaluation": {
+            "id_decision": 188,
+            "id_interaccion": 20214,
+            "id_interaccion_vigente": 20214,
+            "es_mensaje_vigente": true,
+            "es_contexto_vigente": true,
+            "context_fingerprint": "452f8c7ec3663f77d4b1c3746f71368d",
+            "current_context_fingerprint": "452f8c7ec3663f77d4b1c3746f71368d",
+            "estado": "COMPLETADA",
+            "intencion": "SOLO_CONSULTA",
+            "id_servicio": null,
+            "servicio_nombre": "Evaluación odontológica",
+            "accion": "SOLO_CONSULTA",
+            "explicacion": "Evaluación persistida correctamente.",
+            "fecha_hora": "2026-11-12T22:47:45.183Z",
+            "mensaje_evaluado": "QA_BBE_20261112T224800Z_b_E_NUEVA ¿Cuáles son los horarios y precios? Solo información, no quiero otra cita.",
+            "mensaje_vigente": "QA_BBE_20261112T224800Z_b_E_NUEVA ¿Cuáles son los horarios y precios? Solo información, no quiero otra cita.",
+            "discrepancia_horario": null
+          }
+        }
+      },
+      "result": "APROBADO",
+      "finishedUtc": "2026-11-12T22:47:45.199Z",
+      "persisted": {
+        "person": {
+          "id_persona": 11007,
+          "nombres": "QA_BBE_20261112T224800Z_b_E",
+          "apellidos": "QA SINTETICO",
+          "dni": null,
+          "email": "qa_bbe_20261112t224800z_b_e@example.invalid",
+          "numero": null,
+          "fecha_nacimiento": null,
+          "zona": null,
+          "tipo_persona": "Adulto General",
+          "autoriza_contacto": true,
+          "fecha_autorizacion": "2026-11-12T22:47:44.968Z",
+          "estado_calidad": "Valido",
+          "id_campana_origen": null,
+          "id_canal_origen": null,
+          "id_etapa_actual": 3,
+          "fecha_registro": "2026-11-12T22:47:44.970Z",
+          "fecha_actualizacion": "2026-11-12T17:47:45.085Z",
+          "Etapa": {
+            "id_etapa": 3,
+            "nombre": "PAYER",
+            "descripcion": "Persona con pago inicial validado"
+          }
+        },
+        "captures": [
+          {
+            "id_captacion": 11005,
+            "id_persona": 11007,
+            "fecha_captacion": "2026-11-12T17:47:44.992Z",
+            "id_canal": null,
+            "id_fuente": null,
+            "id_campana": null,
+            "id_sede": null,
+            "id_servicio": 1,
+            "motivo_consulta": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+            "estado_calidad": "Valido",
+            "autoriza_contacto": true,
+            "fecha_autorizacion": "2026-11-12T22:47:44.968Z",
+            "origen_datos": "REGISTRO_DIRECTO",
+            "fecha_observacion": "2026-11-12T17:47:44.992Z"
+          }
+        ],
+        "interactions": [
+          {
+            "id_solicitud": 2929,
+            "id_interaccion": 20213,
+            "id_persona": 11007,
+            "id_canal": null,
+            "id_fuente": null,
+            "id_usuario": null,
+            "fecha_hora": "2026-11-12T22:47:44.977Z",
+            "tipo": "Consulta Inicial",
+            "mensaje": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+            "es_respuesta_util": false,
+            "resultado": "Convertido a LEAD"
+          },
+          {
+            "id_solicitud": null,
+            "id_interaccion": 20214,
+            "id_persona": 11007,
+            "id_canal": null,
+            "id_fuente": null,
+            "id_usuario": null,
+            "fecha_hora": "2026-11-12T22:47:45.119Z",
+            "tipo": "Nueva Consulta",
+            "mensaje": "QA_BBE_20261112T224800Z_b_E_NUEVA ¿Cuáles son los horarios y precios? Solo información, no quiero otra cita.",
+            "es_respuesta_util": false,
+            "resultado": "Consulta Informativa"
+          }
+        ],
+        "decisions": [
+          {
+            "id_decision": 187,
+            "id_persona": 11007,
+            "id_usuario": null,
+            "id_captacion": 11005,
+            "id_interaccion": 20213,
+            "agente": "BUYER",
+            "fecha_hora": "2026-11-12T22:47:45.025Z",
+            "entrada": "{\"mensaje\":\"QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.\",\"id_persona\":11007,\"id_captacion\":11005,\"id_interaccion\":20213,\"motivo_consulta\":null,\"sede_preferida\":null,\"id_servicio_declarado\":1,\"pref_id_horario\":null,\"contextFingerprint\":\"5eda92bf9fad7ba816c74375d53d16eb\",\"contextoConversacional\":null,\"catalogo_snapshot\":[{\"id\":1,\"nombre\":\"Evaluación odontológica\"},{\"id\":2,\"nombre\":\"Limpieza dental\"},{\"id\":3,\"nombre\":\"Profilaxis\"},{\"id\":4,\"nombre\":\"Fluorización\"},{\"id\":5,\"nombre\":\"Restauración dental\"},{\"id\":6,\"nombre\":\"Control odontológico\"},{\"id\":8,\"nombre\":\"Evaluación General\"},{\"id\":9,\"nombre\":\"Limpieza / Profilaxis\"},{\"id\":10,\"nombre\":\"Ortodoncia Inicial\"},{\"id\":11,\"nombre\":\"Implante Dental\"},{\"id\":12,\"nombre\":\"Restauración Estética\"},{\"id\":13,\"nombre\":\"Blanqueamiento Dental\"}],\"fecha_evaluacion\":\"2026-11-12T22:47:45.022Z\"}",
+            "regla_aplicada": "gemini-3.5-flash-lite",
+            "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"SOLICITA_RESERVA\",\"id_servicio\":1,\"intentosRealizados\":1,\"intentos_realizados\":1,\"duracionTotalMs\":0,\"duracion_total_ms\":0,\"id_solicitud\":2929,\"id_evento_etapa\":4101,\"entregaLeadEstado\":\"CONFIRMADA\",\"contextFingerprint\":\"5eda92bf9fad7ba816c74375d53d16eb\"}",
+            "accion": "CONVERSION_LEAD",
+            "requiere_revision": false,
+            "resultado_revision": "Conversión confirmada y entregada al Agente LEAD (Solicitud #2929, Entrada #2929)."
+          },
+          {
+            "id_decision": 188,
+            "id_persona": 11007,
+            "id_usuario": null,
+            "id_captacion": 11005,
+            "id_interaccion": 20214,
+            "agente": "BUYER",
+            "fecha_hora": "2026-11-12T22:47:45.170Z",
+            "entrada": "{\"mensaje\":\"QA_BBE_20261112T224800Z_b_E_NUEVA ¿Cuáles son los horarios y precios? Solo información, no quiero otra cita.\",\"id_persona\":11007,\"id_captacion\":11005,\"id_interaccion\":20214,\"motivo_consulta\":null,\"sede_preferida\":null,\"id_servicio_declarado\":1,\"pref_id_horario\":null,\"contextFingerprint\":\"452f8c7ec3663f77d4b1c3746f71368d\",\"contextoConversacional\":null,\"catalogo_snapshot\":[{\"id\":1,\"nombre\":\"Evaluación odontológica\"},{\"id\":2,\"nombre\":\"Limpieza dental\"},{\"id\":3,\"nombre\":\"Profilaxis\"},{\"id\":4,\"nombre\":\"Fluorización\"},{\"id\":5,\"nombre\":\"Restauración dental\"},{\"id\":6,\"nombre\":\"Control odontológico\"},{\"id\":8,\"nombre\":\"Evaluación General\"},{\"id\":9,\"nombre\":\"Limpieza / Profilaxis\"},{\"id\":10,\"nombre\":\"Ortodoncia Inicial\"},{\"id\":11,\"nombre\":\"Implante Dental\"},{\"id\":12,\"nombre\":\"Restauración Estética\"},{\"id\":13,\"nombre\":\"Blanqueamiento Dental\"}],\"fecha_evaluacion\":\"2026-11-12T22:47:45.167Z\"}",
+            "regla_aplicada": "gemini-3.5-flash-lite",
+            "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"SOLO_CONSULTA\",\"id_servicio\":null,\"intentosRealizados\":1,\"intentos_realizados\":1,\"duracionTotalMs\":0,\"duracion_total_ms\":0,\"contextFingerprint\":\"452f8c7ec3663f77d4b1c3746f71368d\"}",
+            "accion": "SOLO_CONSULTA",
+            "requiere_revision": false,
+            "resultado_revision": "Consulta informativa registrada; el contacto permanece en etapa PAYER."
+          }
+        ],
+        "requests": [
+          {
+            "id_negociador": null,
+            "id_canal_origen": null,
+            "id_sede_interes_lead": null,
+            "fecha_ingreso_lead": null,
+            "archivada_lead_en": null,
+            "resultado_comercial_lead": null,
+            "fecha_decision_comercial_lead": null,
+            "valor_acordado_lead": null,
+            "id_propuesta_aceptada_lead": null,
+            "motivo_cierre_lead": null,
+            "fecha_proximo_seguimiento": null,
+            "id_solicitud": 2929,
+            "id_persona": 11007,
+            "id_servicio": 1,
+            "fecha_solicitud": "2026-11-12T17:47:45.049Z",
+            "motivo": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+            "tipo_consulta": null,
+            "prioridad": null,
+            "estado": "Abierta",
+            "fecha_primera_respuesta": null,
+            "fecha_cierre": null
+          }
+        ],
+        "events": [
+          {
+            "id_evento_etapa": 4101,
+            "id_persona": 11007,
+            "etapa_origen": 1,
+            "etapa_destino": 2,
+            "fecha_hora": "2026-11-12T17:47:45.049Z",
+            "id_usuario": null,
+            "motivo": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+            "evidencia": "Conversion validada desde captacion inicial",
+            "id_captacion": 11005,
+            "id_solicitud": 2929,
+            "clave_operacion_buyer": "BUYER_LEAD:11005"
+          }
+        ],
+        "intake": [
+          {
+            "id_solicitud": 2929,
+            "id_evento_etapa": 4101,
+            "id_captacion": 11005,
+            "id_persona": 11007,
+            "fecha_registro_utc": "2026-11-12T22:47:45.062Z"
+          }
+        ]
+      }
+    }
+  ],
+  "http": [
+    {
+      "phase": "A",
+      "method": "POST",
+      "route": "/api/buyer/register",
+      "requestBody": {
+        "nombres": "QA_BBE_20261112T224800Z_b_A",
+        "apellidos": "QA SINTETICO",
+        "email": "qa_bbe_20261112t224800z_b_a@example.invalid",
+        "autoriza_contacto": true,
+        "mensaje": "QA_BBE_20261112T224800Z_b_A ¿Cuál es el precio de la evaluación odontológica? Solo deseo información."
+      },
+      "status": 200,
+      "responseBody": {
+        "success": true,
+        "isDuplicate": false,
+        "isRecurring": false,
+        "consultationCount": 1,
+        "message": "Consulta informativa registrada. El paciente permanece en etapa BUYER.",
+        "data": {
+          "id_persona": 11004,
+          "id_captacion": 11002,
+          "id_interaccion": 20210,
+          "id_decision": 184,
+          "etapa": "BUYER",
+          "intencion": "SOLO_CONSULTA",
+          "id_servicio": null,
+          "accion": "SOLO_CONSULTA",
+          "estado_evaluacion": "COMPLETADA",
+          "aclaracion": null,
+          "id_solicitud": null,
+          "oportunidad": {
+            "id_oportunidad": 11002,
+            "id_persona": 11004
+          },
+          "totalConsultas": 1,
+          "isDuplicate": false,
+          "isRecurring": false,
+          "entregaLeadEstado": "NO_APLICA",
+          "intentosRealizados": 1,
+          "duracionTotalMs": 0
+        }
+      }
+    },
+    {
+      "phase": "B",
+      "method": "POST",
+      "route": "/api/buyer",
+      "requestBody": {
+        "firstName": "QA_BBE_20261112T224800Z_b_B",
+        "lastName": "QA SINTETICO",
+        "email": "qa_bbe_20261112t224800z_b_b@example.invalid",
+        "contactAuthorization": true,
+        "estado_calidad": "Valido",
+        "serviceOfInterestId": 1,
+        "concreteRequest": "QA_BBE_20261112T224800Z_b_B Hola, buenas tardes."
+      },
+      "status": 201,
+      "responseBody": {
+        "id_persona": 11005,
+        "nombres": "QA_BBE_20261112T224800Z_b_B",
+        "apellidos": "QA SINTETICO",
+        "dni": null,
+        "email": "qa_bbe_20261112t224800z_b_b@example.invalid",
+        "numero": null,
+        "fecha_nacimiento": null,
+        "zona": null,
+        "tipo_persona": "Adulto General",
+        "autoriza_contacto": true,
+        "fecha_autorizacion": "2026-11-12T22:47:44.678Z",
+        "estado_calidad": "Valido",
+        "id_campana_origen": null,
+        "id_canal_origen": null,
+        "id_etapa_actual": 1,
+        "fecha_registro": "2026-11-12T22:47:44.680Z",
+        "fecha_actualizacion": null,
+        "id": 11005,
+        "isDuplicate": false
+      }
+    },
+    {
+      "phase": "B",
+      "method": "POST",
+      "route": "/api/buyer/11005/evaluate",
+      "requestBody": {},
+      "status": 200,
+      "responseBody": {
+        "success": true,
+        "data": {
+          "id_persona": 11005,
+          "id_captacion": 11003,
+          "id_interaccion": 20211,
+          "id_decision": 185,
+          "estado": "COMPLETADA",
+          "intencion": "AMBIGUA",
+          "id_servicio": null,
+          "accion": "ACLARACION",
+          "etapa_final": "BUYER",
+          "aclaracion": "Gracias por escribir a NexoSalud. ¿Deseas solicitar una cita de reserva para algún tratamiento específico o necesitas consultar información sobre nuestros servicios odontológicos?",
+          "intentosRealizados": 1,
+          "intentos_realizados": 1,
+          "duracionTotalMs": 0,
+          "duracion_total_ms": 0,
+          "entregaLeadEstado": "NO_APLICA",
+          "contextFingerprint": "6bfd2ff89161d894d75765e3b1d81b33"
+        },
+        "latestEvaluation": {
+          "id_decision": 185,
+          "id_interaccion": 20211,
+          "id_interaccion_vigente": 20211,
+          "es_mensaje_vigente": true,
+          "es_contexto_vigente": true,
+          "context_fingerprint": "6bfd2ff89161d894d75765e3b1d81b33",
+          "current_context_fingerprint": "6bfd2ff89161d894d75765e3b1d81b33",
+          "estado": "COMPLETADA",
+          "intencion": "AMBIGUA",
+          "id_servicio": null,
+          "servicio_nombre": "Evaluación odontológica",
+          "accion": "ACLARACION",
+          "explicacion": "Gracias por escribir a NexoSalud. ¿Deseas solicitar una cita de reserva para algún tratamiento específico o necesitas consultar información sobre nuestros servicios odontológicos?",
+          "fecha_hora": "2026-11-12T22:47:44.754Z",
+          "mensaje_evaluado": "QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.",
+          "mensaje_vigente": "QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.",
+          "discrepancia_horario": null
+        }
+      }
+    },
+    {
+      "phase": "C",
+      "method": "POST",
+      "route": "/api/buyer",
+      "requestBody": {
+        "firstName": "QA_BBE_20261112T224800Z_b_C",
+        "lastName": "QA SINTETICO",
+        "email": "qa_bbe_20261112t224800z_b_c@example.invalid",
+        "contactAuthorization": true,
+        "estado_calidad": "Valido",
+        "serviceOfInterestId": 1,
+        "concreteRequest": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica."
+      },
+      "status": 201,
+      "responseBody": {
+        "id_persona": 11006,
+        "nombres": "QA_BBE_20261112T224800Z_b_C",
+        "apellidos": "QA SINTETICO",
+        "dni": null,
+        "email": "qa_bbe_20261112t224800z_b_c@example.invalid",
+        "numero": null,
+        "fecha_nacimiento": null,
+        "zona": null,
+        "tipo_persona": "Adulto General",
+        "autoriza_contacto": true,
+        "fecha_autorizacion": "2026-11-12T22:47:44.781Z",
+        "estado_calidad": "Valido",
+        "id_campana_origen": null,
+        "id_canal_origen": null,
+        "id_etapa_actual": 1,
+        "fecha_registro": "2026-11-12T22:47:44.782Z",
+        "fecha_actualizacion": null,
+        "id": 11006,
+        "isDuplicate": false
+      }
+    },
+    {
+      "phase": "C",
+      "method": "POST",
+      "route": "/api/buyer/11006/evaluate",
+      "requestBody": {},
+      "status": 200,
+      "responseBody": {
+        "success": true,
+        "data": {
+          "id_persona": 11006,
+          "id_captacion": 11004,
+          "id_interaccion": 20212,
+          "id_decision": 186,
+          "estado": "COMPLETADA",
+          "intencion": "SOLICITA_RESERVA",
+          "id_servicio": 1,
+          "accion": "CONVERSION_LEAD",
+          "etapa_final": "LEAD",
+          "id_solicitud": 2928,
+          "id_evento_etapa": 4100,
+          "ya_convertido": false,
+          "intentosRealizados": 1,
+          "intentos_realizados": 1,
+          "duracionTotalMs": 0,
+          "duracion_total_ms": 0,
+          "entregaLeadEstado": "CONFIRMADA",
+          "contextFingerprint": "7b8a226c3f4a0fed8d1e78e15795c5c7"
+        },
+        "latestEvaluation": {
+          "id_decision": 186,
+          "id_interaccion": 20212,
+          "id_interaccion_vigente": 20212,
+          "es_mensaje_vigente": true,
+          "es_contexto_vigente": true,
+          "context_fingerprint": "7b8a226c3f4a0fed8d1e78e15795c5c7",
+          "current_context_fingerprint": "7b8a226c3f4a0fed8d1e78e15795c5c7",
+          "estado": "COMPLETADA",
+          "intencion": "SOLICITA_RESERVA",
+          "id_servicio": 1,
+          "servicio_nombre": "Evaluación odontológica",
+          "accion": "CONVERSION_LEAD",
+          "explicacion": "Evaluación persistida correctamente.",
+          "fecha_hora": "2026-11-12T22:47:44.874Z",
+          "mensaje_evaluado": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+          "mensaje_vigente": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+          "discrepancia_horario": null
+        }
+      }
+    },
+    {
+      "phase": "D",
+      "method": "POST",
+      "route": "/api/buyer/evaluations/20212/retry",
+      "requestBody": {},
+      "status": 200,
+      "responseBody": {
+        "success": true,
+        "data": {
+          "id_persona": 11006,
+          "id_captacion": 11004,
+          "id_interaccion": 20212,
+          "id_decision": 186,
+          "estado": "COMPLETADA",
+          "intencion": "SOLICITA_RESERVA",
+          "id_servicio": 1,
+          "accion": "CONVERSION_LEAD",
+          "etapa_final": "LEAD",
+          "id_solicitud": 2928,
+          "id_evento_etapa": 4100,
+          "ya_convertido": true,
+          "aclaracion": "Conversión confirmada y entregada al Agente LEAD (Solicitud #2928, Entrada #2928).",
+          "discrepancia_horario": null,
+          "intentosRealizados": 1,
+          "intentos_realizados": 1,
+          "duracionTotalMs": 0,
+          "duracion_total_ms": 0,
+          "entregaLeadEstado": "CONFIRMADA",
+          "contextFingerprint": "7b8a226c3f4a0fed8d1e78e15795c5c7"
+        }
+      }
+    },
+    {
+      "phase": "E_PREPARACION",
+      "method": "POST",
+      "route": "/api/buyer",
+      "requestBody": {
+        "firstName": "QA_BBE_20261112T224800Z_b_E",
+        "lastName": "QA SINTETICO",
+        "email": "qa_bbe_20261112t224800z_b_e@example.invalid",
+        "contactAuthorization": true,
+        "estado_calidad": "Valido",
+        "serviceOfInterestId": 1,
+        "concreteRequest": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica."
+      },
+      "status": 201,
+      "responseBody": {
+        "id_persona": 11007,
+        "nombres": "QA_BBE_20261112T224800Z_b_E",
+        "apellidos": "QA SINTETICO",
+        "dni": null,
+        "email": "qa_bbe_20261112t224800z_b_e@example.invalid",
+        "numero": null,
+        "fecha_nacimiento": null,
+        "zona": null,
+        "tipo_persona": "Adulto General",
+        "autoriza_contacto": true,
+        "fecha_autorizacion": "2026-11-12T22:47:44.968Z",
+        "estado_calidad": "Valido",
+        "id_campana_origen": null,
+        "id_canal_origen": null,
+        "id_etapa_actual": 1,
+        "fecha_registro": "2026-11-12T22:47:44.970Z",
+        "fecha_actualizacion": null,
+        "id": 11007,
+        "isDuplicate": false
+      }
+    },
+    {
+      "phase": "E_PREPARACION",
+      "method": "POST",
+      "route": "/api/buyer/11007/evaluate",
+      "requestBody": {},
+      "status": 200,
+      "responseBody": {
+        "success": true,
+        "data": {
+          "id_persona": 11007,
+          "id_captacion": 11005,
+          "id_interaccion": 20213,
+          "id_decision": 187,
+          "estado": "COMPLETADA",
+          "intencion": "SOLICITA_RESERVA",
+          "id_servicio": 1,
+          "accion": "CONVERSION_LEAD",
+          "etapa_final": "LEAD",
+          "id_solicitud": 2929,
+          "id_evento_etapa": 4101,
+          "ya_convertido": false,
+          "intentosRealizados": 1,
+          "intentos_realizados": 1,
+          "duracionTotalMs": 0,
+          "duracion_total_ms": 0,
+          "entregaLeadEstado": "CONFIRMADA",
+          "contextFingerprint": "5eda92bf9fad7ba816c74375d53d16eb"
+        },
+        "latestEvaluation": {
+          "id_decision": 187,
+          "id_interaccion": 20213,
+          "id_interaccion_vigente": 20213,
+          "es_mensaje_vigente": true,
+          "es_contexto_vigente": true,
+          "context_fingerprint": "5eda92bf9fad7ba816c74375d53d16eb",
+          "current_context_fingerprint": "5eda92bf9fad7ba816c74375d53d16eb",
+          "estado": "COMPLETADA",
+          "intencion": "SOLICITA_RESERVA",
+          "id_servicio": 1,
+          "servicio_nombre": "Evaluación odontológica",
+          "accion": "CONVERSION_LEAD",
+          "explicacion": "Evaluación persistida correctamente.",
+          "fecha_hora": "2026-11-12T22:47:45.065Z",
+          "mensaje_evaluado": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+          "mensaje_vigente": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+          "discrepancia_horario": null
+        }
+      }
+    },
+    {
+      "phase": "E",
+      "method": "POST",
+      "route": "/api/buyer",
+      "requestBody": {
+        "firstName": "QA_BBE_20261112T224800Z_b_E",
+        "lastName": "QA SINTETICO",
+        "email": "qa_bbe_20261112t224800z_b_e@example.invalid",
+        "contactAuthorization": true,
+        "estado_calidad": "Valido",
+        "serviceOfInterestId": 1,
+        "concreteRequest": "QA_BBE_20261112T224800Z_b_E_NUEVA ¿Cuáles son los horarios y precios? Solo información, no quiero otra cita."
+      },
+      "status": 200,
+      "responseBody": {
+        "id_persona": 11007,
+        "nombres": "QA_BBE_20261112T224800Z_b_E",
+        "apellidos": "QA SINTETICO",
+        "dni": null,
+        "email": "qa_bbe_20261112t224800z_b_e@example.invalid",
+        "numero": null,
+        "fecha_nacimiento": null,
+        "zona": null,
+        "tipo_persona": "Adulto General",
+        "autoriza_contacto": true,
+        "fecha_autorizacion": "2026-11-12T22:47:44.968Z",
+        "estado_calidad": "Valido",
+        "id_campana_origen": null,
+        "id_canal_origen": null,
+        "id_etapa_actual": 3,
+        "fecha_registro": "2026-11-12T22:47:44.970Z",
+        "fecha_actualizacion": "2026-11-12T17:47:45.085Z",
+        "id": 11007,
+        "isDuplicate": true
+      }
+    },
+    {
+      "phase": "E",
+      "method": "POST",
+      "route": "/api/buyer/11007/evaluate",
+      "requestBody": {},
+      "status": 200,
+      "responseBody": {
+        "success": true,
+        "data": {
+          "id_persona": 11007,
+          "id_captacion": 11005,
+          "id_interaccion": 20214,
+          "id_decision": 188,
+          "estado": "COMPLETADA",
+          "intencion": "SOLO_CONSULTA",
+          "id_servicio": null,
+          "accion": "SOLO_CONSULTA",
+          "etapa_final": "PAYER",
+          "intentosRealizados": 1,
+          "intentos_realizados": 1,
+          "duracionTotalMs": 0,
+          "duracion_total_ms": 0,
+          "entregaLeadEstado": "NO_APLICA",
+          "contextFingerprint": "452f8c7ec3663f77d4b1c3746f71368d"
+        },
+        "latestEvaluation": {
+          "id_decision": 188,
+          "id_interaccion": 20214,
+          "id_interaccion_vigente": 20214,
+          "es_mensaje_vigente": true,
+          "es_contexto_vigente": true,
+          "context_fingerprint": "452f8c7ec3663f77d4b1c3746f71368d",
+          "current_context_fingerprint": "452f8c7ec3663f77d4b1c3746f71368d",
+          "estado": "COMPLETADA",
+          "intencion": "SOLO_CONSULTA",
+          "id_servicio": null,
+          "servicio_nombre": "Evaluación odontológica",
+          "accion": "SOLO_CONSULTA",
+          "explicacion": "Evaluación persistida correctamente.",
+          "fecha_hora": "2026-11-12T22:47:45.183Z",
+          "mensaje_evaluado": "QA_BBE_20261112T224800Z_b_E_NUEVA ¿Cuáles son los horarios y precios? Solo información, no quiero otra cita.",
+          "mensaje_vigente": "QA_BBE_20261112T224800Z_b_E_NUEVA ¿Cuáles son los horarios y precios? Solo información, no quiero otra cita.",
+          "discrepancia_horario": null
+        }
+      }
+    }
+  ],
+  "sqlCalls": [
+    {
+      "phase": "C",
+      "sqlTemplate": "EXEC dbo.usp_ConvertirBuyerALead\n          @id_captacion=?,\n          @id_servicio=?,\n          @motivo=?",
+      "persistence": "REAL_SQL_SERVER"
+    },
+    {
+      "phase": "C",
+      "sqlTemplate": "EXEC dbo.usp_RegistrarEntradaAgenteLead @id_solicitud = ?",
+      "persistence": "REAL_SQL_SERVER"
+    },
+    {
+      "phase": "E_PREPARACION",
+      "sqlTemplate": "EXEC dbo.usp_ConvertirBuyerALead\n          @id_captacion=?,\n          @id_servicio=?,\n          @motivo=?",
+      "persistence": "REAL_SQL_SERVER"
+    },
+    {
+      "phase": "E_PREPARACION",
+      "sqlTemplate": "EXEC dbo.usp_RegistrarEntradaAgenteLead @id_solicitud = ?",
+      "persistence": "REAL_SQL_SERVER"
+    }
+  ],
+  "modelWrites": [
+    {
+      "phase": "A",
+      "model": "Personas",
+      "action": "create"
+    },
+    {
+      "phase": "A",
+      "model": "Interacciones",
+      "action": "create"
+    },
+    {
+      "phase": "A",
+      "model": "DecisionesIA",
+      "action": "create"
+    },
+    {
+      "phase": "A",
+      "model": "PersonaPreferencias",
+      "action": "create"
+    },
+    {
+      "phase": "A",
+      "model": "DecisionesIA",
+      "action": "update"
+    },
+    {
+      "phase": "A",
+      "model": "DecisionesIA",
+      "action": "update"
+    },
+    {
+      "phase": "B",
+      "model": "Personas",
+      "action": "create"
+    },
+    {
+      "phase": "B",
+      "model": "Interacciones",
+      "action": "create"
+    },
+    {
+      "phase": "B",
+      "model": "PersonaPreferencias",
+      "action": "create"
+    },
+    {
+      "phase": "B",
+      "model": "DecisionesIA",
+      "action": "create"
+    },
+    {
+      "phase": "B",
+      "model": "DecisionesIA",
+      "action": "update"
+    },
+    {
+      "phase": "C",
+      "model": "Personas",
+      "action": "create"
+    },
+    {
+      "phase": "C",
+      "model": "Interacciones",
+      "action": "create"
+    },
+    {
+      "phase": "C",
+      "model": "PersonaPreferencias",
+      "action": "create"
+    },
+    {
+      "phase": "C",
+      "model": "DecisionesIA",
+      "action": "create"
+    },
+    {
+      "phase": "C",
+      "model": "DecisionesIA",
+      "action": "update"
+    },
+    {
+      "phase": "C",
+      "model": "DecisionesIA",
+      "action": "update"
+    },
+    {
+      "phase": "C",
+      "model": "DecisionesIA",
+      "action": "update"
+    },
+    {
+      "phase": "E_PREPARACION",
+      "model": "Personas",
+      "action": "create"
+    },
+    {
+      "phase": "E_PREPARACION",
+      "model": "Interacciones",
+      "action": "create"
+    },
+    {
+      "phase": "E_PREPARACION",
+      "model": "PersonaPreferencias",
+      "action": "create"
+    },
+    {
+      "phase": "E_PREPARACION",
+      "model": "DecisionesIA",
+      "action": "create"
+    },
+    {
+      "phase": "E_PREPARACION",
+      "model": "DecisionesIA",
+      "action": "update"
+    },
+    {
+      "phase": "E_PREPARACION",
+      "model": "DecisionesIA",
+      "action": "update"
+    },
+    {
+      "phase": "E_PREPARACION",
+      "model": "DecisionesIA",
+      "action": "update"
+    },
+    {
+      "phase": "E",
+      "model": "Interacciones",
+      "action": "create"
+    },
+    {
+      "phase": "E",
+      "model": "PersonaPreferencias",
+      "action": "update"
+    },
+    {
+      "phase": "E",
+      "model": "DecisionesIA",
+      "action": "create"
+    },
+    {
+      "phase": "E",
+      "model": "DecisionesIA",
+      "action": "update"
+    }
+  ],
+  "logs": [],
+  "externalHttpBlocked": [],
+  "inspectionBefore": {
+    "identity": {
+      "servidor": "DANIELPC",
+      "base": "NexoSalud_LeadEnsayoFinal",
+      "utc": "2026-11-12T22:47:42.932Z"
+    },
+    "active": [],
+    "transactions": [],
+    "modules": [
+      {
+        "nombre": "usp_ConvertirBuyerALead",
+        "sha256": "6A42F2ADD1BE9F827074A50A6DCB579C6341F71C35E8F0216E4E04A70DC634A5"
+      },
+      {
+        "nombre": "usp_RegistrarEntradaAgenteLead",
+        "sha256": "280708E81E3BE607A3772F082961EBE6E8371C1698414F3FDAC8B82D8A0C087E"
+      },
+      {
+        "nombre": "v_DatosCaptacionBuyer",
+        "sha256": "BAC8AB4A8AF43E8FB98BFABFE29FA8DC4F4D17F42CB5389EDEF23844EE85665D"
+      }
+    ],
+    "stages": [
+      {
+        "id_etapa": 1,
+        "nombre": "BUYER",
+        "descripcion": "Contacto identificable con autorización de contacto"
+      },
+      {
+        "id_etapa": 2,
+        "nombre": "LEAD",
+        "descripcion": "Persona con intención administrativa concreta"
+      },
+      {
+        "id_etapa": 3,
+        "nombre": "PAYER",
+        "descripcion": "Persona con pago inicial validado"
+      }
+    ],
+    "service": {
+      "id_servicio": 1,
+      "nombre": "Evaluación odontológica",
+      "descripcion": "Evaluación odontológica inicial",
+      "activo": true
+    },
+    "decisionColumns": [
+      {
+        "name": "id_decision",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "id_persona",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "id_usuario",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "agente",
+        "tipo": "varchar",
+        "max_length": 50
+      },
+      {
+        "name": "fecha_hora",
+        "tipo": "datetime2",
+        "max_length": 8
+      },
+      {
+        "name": "entrada",
+        "tipo": "varchar",
+        "max_length": -1
+      },
+      {
+        "name": "regla_aplicada",
+        "tipo": "varchar",
+        "max_length": 300
+      },
+      {
+        "name": "decision",
+        "tipo": "varchar",
+        "max_length": 500
+      },
+      {
+        "name": "accion",
+        "tipo": "varchar",
+        "max_length": 500
+      },
+      {
+        "name": "requiere_revision",
+        "tipo": "bit",
+        "max_length": 1
+      },
+      {
+        "name": "resultado_revision",
+        "tipo": "varchar",
+        "max_length": 300
+      },
+      {
+        "name": "id_captacion",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "id_interaccion",
+        "tipo": "int",
+        "max_length": 4
+      }
+    ]
+  },
+  "before": {
+    "rows": [
+      {
+        "table": "Personas",
+        "total": "10830",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "5CEE5D08AA8550F85549B1F04A0C13CFC6180DE0E9862CEEAD3917817073556F"
+      },
+      {
+        "table": "CaptacionesBuyer",
+        "total": "10830",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "33209BCEC7771CAEB15FEDD5750CCE799BD96CA05EAF90940C1E1C4D09E27251"
+      },
+      {
+        "table": "Interacciones",
+        "total": "20028",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "C1C2EB56B2688A156339301C4C2B6226751DD76AEA2C17AA02B217F46464D57D"
+      },
+      {
+        "table": "DecisionesIA",
+        "total": "25",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "4C5B214653E6C8BDD0C72F001E478C40A8DC2D0E3B348DE8438AE48EF1892873"
+      },
+      {
+        "table": "Solicitudes",
+        "total": "2873",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "A8CDEFF6CE9B9F9909FE5ED41B58D198F1586DB1F383DAD2C7D946347B42BD54"
+      },
+      {
+        "table": "EventosEtapa",
+        "total": "4053",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "31E0CB339A2C34A79FECF5435A963FF72CE31B4A967D9E8414A218F953308004"
+      },
+      {
+        "table": "EntradasAgenteLead",
+        "total": "12",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "EF21623048A063B2CAA265F3E0C188722DC942E3C8EAEA39D847C41B06DE5538"
+      },
+      {
+        "table": "PersonaPreferencias",
+        "total": "20",
+        "sinteticos": "0",
+        "sha256_fuera_prefijo": "5597AEC497F0EF29F58B17D6D0EA7074ABE5AE68885EB8BB60DEC1AAD3C9FB0D"
+      }
+    ],
+    "other": [
+      {
+        "opciones": "310",
+        "reservas": "124",
+        "propuestas": "0",
+        "objetos": 256
+      }
+    ]
+  },
+  "isolation": {
+    "generalIndexLoaded": false,
+    "dunningLoaded": false,
+    "martEnabled": false,
+    "autoRecoveryInvoked": false,
+    "realClassifierAndEvaluator": true,
+    "realRouter": true,
+    "sdkMethodReplacedOnlyInMemory": true
+  },
+  "geminiCalls": [
+    {
+      "message": "QA_BBE_20261112T224800Z_b_A ¿Cuál es el precio de la evaluación odontológica? Solo deseo información.",
+      "response": {
+        "intencion": "SOLO_CONSULTA",
+        "id_servicio": null
+      },
+      "model": "gemini-3.5-flash-lite",
+      "responseMimeType": "application/json",
+      "promptContainsCatalog": true,
+      "utc": "2026-11-12T22:47:44.472Z"
+    },
+    {
+      "message": "QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.",
+      "response": {
+        "intencion": "AMBIGUA",
+        "id_servicio": null
+      },
+      "model": "gemini-3.5-flash-lite",
+      "responseMimeType": "application/json",
+      "promptContainsCatalog": true,
+      "utc": "2026-11-12T22:47:44.749Z"
+    },
+    {
+      "message": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+      "response": {
+        "intencion": "SOLICITA_RESERVA",
+        "id_servicio": 1
+      },
+      "model": "gemini-3.5-flash-lite",
+      "responseMimeType": "application/json",
+      "promptContainsCatalog": true,
+      "utc": "2026-11-12T22:47:44.838Z"
+    },
+    {
+      "message": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+      "response": {
+        "intencion": "SOLICITA_RESERVA",
+        "id_servicio": 1
+      },
+      "model": "gemini-3.5-flash-lite",
+      "responseMimeType": "application/json",
+      "promptContainsCatalog": true,
+      "utc": "2026-11-12T22:47:45.032Z"
+    },
+    {
+      "message": "QA_BBE_20261112T224800Z_b_E_NUEVA ¿Cuáles son los horarios y precios? Solo información, no quiero otra cita.",
+      "response": {
+        "intencion": "SOLO_CONSULTA",
+        "id_servicio": null
+      },
+      "model": "gemini-3.5-flash-lite",
+      "responseMimeType": "application/json",
+      "promptContainsCatalog": true,
+      "utc": "2026-11-12T22:47:45.178Z"
+    }
+  ],
+  "sdkConstructors": 5,
+  "after": {
+    "rows": [
+      {
+        "table": "Personas",
+        "total": "10834",
+        "sinteticos": "4",
+        "sha256_fuera_prefijo": "5CEE5D08AA8550F85549B1F04A0C13CFC6180DE0E9862CEEAD3917817073556F"
+      },
+      {
+        "table": "CaptacionesBuyer",
+        "total": "10834",
+        "sinteticos": "4",
+        "sha256_fuera_prefijo": "33209BCEC7771CAEB15FEDD5750CCE799BD96CA05EAF90940C1E1C4D09E27251"
+      },
+      {
+        "table": "Interacciones",
+        "total": "20033",
+        "sinteticos": "5",
+        "sha256_fuera_prefijo": "C1C2EB56B2688A156339301C4C2B6226751DD76AEA2C17AA02B217F46464D57D"
+      },
+      {
+        "table": "DecisionesIA",
+        "total": "30",
+        "sinteticos": "5",
+        "sha256_fuera_prefijo": "4C5B214653E6C8BDD0C72F001E478C40A8DC2D0E3B348DE8438AE48EF1892873"
+      },
+      {
+        "table": "Solicitudes",
+        "total": "2875",
+        "sinteticos": "2",
+        "sha256_fuera_prefijo": "A8CDEFF6CE9B9F9909FE5ED41B58D198F1586DB1F383DAD2C7D946347B42BD54"
+      },
+      {
+        "table": "EventosEtapa",
+        "total": "4055",
+        "sinteticos": "2",
+        "sha256_fuera_prefijo": "31E0CB339A2C34A79FECF5435A963FF72CE31B4A967D9E8414A218F953308004"
+      },
+      {
+        "table": "EntradasAgenteLead",
+        "total": "14",
+        "sinteticos": "2",
+        "sha256_fuera_prefijo": "EF21623048A063B2CAA265F3E0C188722DC942E3C8EAEA39D847C41B06DE5538"
+      },
+      {
+        "table": "PersonaPreferencias",
+        "total": "24",
+        "sinteticos": "4",
+        "sha256_fuera_prefijo": "5597AEC497F0EF29F58B17D6D0EA7074ABE5AE68885EB8BB60DEC1AAD3C9FB0D"
+      }
+    ],
+    "other": [
+      {
+        "opciones": "310",
+        "reservas": "124",
+        "propuestas": "0",
+        "objetos": 256
+      }
+    ]
+  },
+  "inspectionAfter": {
+    "identity": {
+      "servidor": "DANIELPC",
+      "base": "NexoSalud_LeadEnsayoFinal",
+      "utc": "2026-11-12T22:47:45.719Z"
+    },
+    "active": [],
+    "transactions": [],
+    "modules": [
+      {
+        "nombre": "usp_ConvertirBuyerALead",
+        "sha256": "6A42F2ADD1BE9F827074A50A6DCB579C6341F71C35E8F0216E4E04A70DC634A5"
+      },
+      {
+        "nombre": "usp_RegistrarEntradaAgenteLead",
+        "sha256": "280708E81E3BE607A3772F082961EBE6E8371C1698414F3FDAC8B82D8A0C087E"
+      },
+      {
+        "nombre": "v_DatosCaptacionBuyer",
+        "sha256": "BAC8AB4A8AF43E8FB98BFABFE29FA8DC4F4D17F42CB5389EDEF23844EE85665D"
+      }
+    ],
+    "stages": [
+      {
+        "id_etapa": 1,
+        "nombre": "BUYER",
+        "descripcion": "Contacto identificable con autorización de contacto"
+      },
+      {
+        "id_etapa": 2,
+        "nombre": "LEAD",
+        "descripcion": "Persona con intención administrativa concreta"
+      },
+      {
+        "id_etapa": 3,
+        "nombre": "PAYER",
+        "descripcion": "Persona con pago inicial validado"
+      }
+    ],
+    "service": {
+      "id_servicio": 1,
+      "nombre": "Evaluación odontológica",
+      "descripcion": "Evaluación odontológica inicial",
+      "activo": true
+    },
+    "decisionColumns": [
+      {
+        "name": "id_decision",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "id_persona",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "id_usuario",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "agente",
+        "tipo": "varchar",
+        "max_length": 50
+      },
+      {
+        "name": "fecha_hora",
+        "tipo": "datetime2",
+        "max_length": 8
+      },
+      {
+        "name": "entrada",
+        "tipo": "varchar",
+        "max_length": -1
+      },
+      {
+        "name": "regla_aplicada",
+        "tipo": "varchar",
+        "max_length": 300
+      },
+      {
+        "name": "decision",
+        "tipo": "varchar",
+        "max_length": 500
+      },
+      {
+        "name": "accion",
+        "tipo": "varchar",
+        "max_length": 500
+      },
+      {
+        "name": "requiere_revision",
+        "tipo": "bit",
+        "max_length": 1
+      },
+      {
+        "name": "resultado_revision",
+        "tipo": "varchar",
+        "max_length": 300
+      },
+      {
+        "name": "id_captacion",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "id_interaccion",
+        "tipo": "int",
+        "max_length": 4
+      }
+    ]
+  },
+  "finalSubjects": {
+    "A": {
+      "person": {
+        "id_persona": 11004,
+        "nombres": "QA_BBE_20261112T224800Z_b_A",
+        "apellidos": "QA SINTETICO",
+        "dni": null,
+        "email": "qa_bbe_20261112t224800z_b_a@example.invalid",
+        "numero": null,
+        "fecha_nacimiento": null,
+        "zona": null,
+        "tipo_persona": "Adulto General",
+        "autoriza_contacto": true,
+        "fecha_autorizacion": "2026-11-12T22:47:44.415Z",
+        "estado_calidad": "Valido",
+        "id_campana_origen": null,
+        "id_canal_origen": 4,
+        "id_etapa_actual": 1,
+        "fecha_registro": "2026-11-12T22:47:44.416Z",
+        "fecha_actualizacion": null,
+        "Etapa": {
+          "id_etapa": 1,
+          "nombre": "BUYER",
+          "descripcion": "Contacto identificable con autorización de contacto"
+        }
+      },
+      "captures": [
+        {
+          "id_captacion": 11002,
+          "id_persona": 11004,
+          "fecha_captacion": "2026-11-12T17:47:44.430Z",
+          "id_canal": 4,
+          "id_fuente": 3,
+          "id_campana": null,
+          "id_sede": null,
+          "id_servicio": null,
+          "motivo_consulta": "QA_BBE_20261112T224800Z_b_A ¿Cuál es el precio de la evaluación odontológica? Solo deseo información.",
+          "estado_calidad": "Valido",
+          "autoriza_contacto": true,
+          "fecha_autorizacion": "2026-11-12T22:47:44.415Z",
+          "origen_datos": "REGISTRO_DIRECTO",
+          "fecha_observacion": "2026-11-12T17:47:44.430Z"
+        }
+      ],
+      "interactions": [
+        {
+          "id_solicitud": null,
+          "id_interaccion": 20210,
+          "id_persona": 11004,
+          "id_canal": 4,
+          "id_fuente": 3,
+          "id_usuario": null,
+          "fecha_hora": "2026-11-12T22:47:44.433Z",
+          "tipo": "Registro y Consulta Inicial (#1)",
+          "mensaje": "QA_BBE_20261112T224800Z_b_A ¿Cuál es el precio de la evaluación odontológica? Solo deseo información.",
+          "es_respuesta_util": false,
+          "resultado": "Consulta Informativa"
+        }
+      ],
+      "decisions": [
+        {
+          "id_decision": 184,
+          "id_persona": 11004,
+          "id_usuario": null,
+          "id_captacion": 11002,
+          "id_interaccion": 20210,
+          "agente": "BUYER",
+          "fecha_hora": "2026-11-12T22:47:44.439Z",
+          "entrada": "{\"idempotencyKey\":null,\"contentHash\":\"bdc796b9f37afabc4b46221209fe3b74d856d465c71b971b354a5ca9902b515c\",\"mensaje\":\"QA_BBE_20261112T224800Z_b_A ¿Cuál es el precio de la evaluación odontológica? Solo deseo información.\",\"id_persona\":11004,\"id_captacion\":11002,\"id_interaccion\":20210,\"motivo_consulta\":\"QA_BBE_20261112T224800Z_b_A ¿Cuál es el precio de la evaluación odontológica? Solo deseo información.\",\"sede_preferida\":null,\"id_servicio_declarado\":null,\"contextoConversacional\":null,\"fecha_registro\":\"2026-11-12T22:47:44.439Z\"}",
+          "regla_aplicada": "gemini-3.5-flash-lite",
+          "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"SOLO_CONSULTA\",\"id_servicio\":null,\"intentosRealizados\":1,\"intentos_realizados\":1,\"duracionTotalMs\":0,\"duracion_total_ms\":0,\"contextFingerprint\":\"d2c034b8e8d601d245e4fbfdf23dc885\"}",
+          "accion": "SOLO_CONSULTA",
+          "requiere_revision": false,
+          "resultado_revision": "Consulta informativa registrada; el contacto permanece en etapa BUYER."
+        }
+      ],
+      "requests": [],
+      "events": [],
+      "intake": []
+    },
+    "B": {
+      "person": {
+        "id_persona": 11005,
+        "nombres": "QA_BBE_20261112T224800Z_b_B",
+        "apellidos": "QA SINTETICO",
+        "dni": null,
+        "email": "qa_bbe_20261112t224800z_b_b@example.invalid",
+        "numero": null,
+        "fecha_nacimiento": null,
+        "zona": null,
+        "tipo_persona": "Adulto General",
+        "autoriza_contacto": true,
+        "fecha_autorizacion": "2026-11-12T22:47:44.678Z",
+        "estado_calidad": "Valido",
+        "id_campana_origen": null,
+        "id_canal_origen": null,
+        "id_etapa_actual": 1,
+        "fecha_registro": "2026-11-12T22:47:44.680Z",
+        "fecha_actualizacion": null,
+        "Etapa": {
+          "id_etapa": 1,
+          "nombre": "BUYER",
+          "descripcion": "Contacto identificable con autorización de contacto"
+        }
+      },
+      "captures": [
+        {
+          "id_captacion": 11003,
+          "id_persona": 11005,
+          "fecha_captacion": "2026-11-12T17:47:44.704Z",
+          "id_canal": null,
+          "id_fuente": null,
+          "id_campana": null,
+          "id_sede": null,
+          "id_servicio": 1,
+          "motivo_consulta": "QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.",
+          "estado_calidad": "Valido",
+          "autoriza_contacto": true,
+          "fecha_autorizacion": "2026-11-12T22:47:44.678Z",
+          "origen_datos": "REGISTRO_DIRECTO",
+          "fecha_observacion": "2026-11-12T17:47:44.704Z"
+        }
+      ],
+      "interactions": [
+        {
+          "id_solicitud": null,
+          "id_interaccion": 20211,
+          "id_persona": 11005,
+          "id_canal": null,
+          "id_fuente": null,
+          "id_usuario": null,
+          "fecha_hora": "2026-11-12T22:47:44.687Z",
+          "tipo": "Consulta Inicial",
+          "mensaje": "QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.",
+          "es_respuesta_util": false,
+          "resultado": "Aclaración requerida"
+        }
+      ],
+      "decisions": [
+        {
+          "id_decision": 185,
+          "id_persona": 11005,
+          "id_usuario": null,
+          "id_captacion": 11003,
+          "id_interaccion": 20211,
+          "agente": "BUYER",
+          "fecha_hora": "2026-11-12T22:47:44.743Z",
+          "entrada": "{\"mensaje\":\"QA_BBE_20261112T224800Z_b_B Hola, buenas tardes.\",\"id_persona\":11005,\"id_captacion\":11003,\"id_interaccion\":20211,\"motivo_consulta\":null,\"sede_preferida\":null,\"id_servicio_declarado\":1,\"pref_id_horario\":null,\"contextFingerprint\":\"6bfd2ff89161d894d75765e3b1d81b33\",\"contextoConversacional\":null,\"catalogo_snapshot\":[{\"id\":1,\"nombre\":\"Evaluación odontológica\"},{\"id\":2,\"nombre\":\"Limpieza dental\"},{\"id\":3,\"nombre\":\"Profilaxis\"},{\"id\":4,\"nombre\":\"Fluorización\"},{\"id\":5,\"nombre\":\"Restauración dental\"},{\"id\":6,\"nombre\":\"Control odontológico\"},{\"id\":8,\"nombre\":\"Evaluación General\"},{\"id\":9,\"nombre\":\"Limpieza / Profilaxis\"},{\"id\":10,\"nombre\":\"Ortodoncia Inicial\"},{\"id\":11,\"nombre\":\"Implante Dental\"},{\"id\":12,\"nombre\":\"Restauración Estética\"},{\"id\":13,\"nombre\":\"Blanqueamiento Dental\"}],\"fecha_evaluacion\":\"2026-11-12T22:47:44.739Z\"}",
+          "regla_aplicada": "gemini-3.5-flash-lite",
+          "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"AMBIGUA\",\"id_servicio\":null,\"intentosRealizados\":1,\"intentos_realizados\":1,\"duracionTotalMs\":0,\"duracion_total_ms\":0,\"contextFingerprint\":\"6bfd2ff89161d894d75765e3b1d81b33\"}",
+          "accion": "ACLARACION",
+          "requiere_revision": true,
+          "resultado_revision": "Gracias por escribir a NexoSalud. ¿Deseas solicitar una cita de reserva para algún tratamiento específico o necesitas consultar información sobre nuestros servicios odontológicos?"
+        }
+      ],
+      "requests": [],
+      "events": [],
+      "intake": []
+    },
+    "C": {
+      "person": {
+        "id_persona": 11006,
+        "nombres": "QA_BBE_20261112T224800Z_b_C",
+        "apellidos": "QA SINTETICO",
+        "dni": null,
+        "email": "qa_bbe_20261112t224800z_b_c@example.invalid",
+        "numero": null,
+        "fecha_nacimiento": null,
+        "zona": null,
+        "tipo_persona": "Adulto General",
+        "autoriza_contacto": true,
+        "fecha_autorizacion": "2026-11-12T22:47:44.781Z",
+        "estado_calidad": "Valido",
+        "id_campana_origen": null,
+        "id_canal_origen": null,
+        "id_etapa_actual": 2,
+        "fecha_registro": "2026-11-12T22:47:44.782Z",
+        "fecha_actualizacion": "2026-11-12T17:47:44.854Z",
+        "Etapa": {
+          "id_etapa": 2,
+          "nombre": "LEAD",
+          "descripcion": "Persona con intención administrativa concreta"
+        }
+      },
+      "captures": [
+        {
+          "id_captacion": 11004,
+          "id_persona": 11006,
+          "fecha_captacion": "2026-11-12T17:47:44.801Z",
+          "id_canal": null,
+          "id_fuente": null,
+          "id_campana": null,
+          "id_sede": null,
+          "id_servicio": 1,
+          "motivo_consulta": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+          "estado_calidad": "Valido",
+          "autoriza_contacto": true,
+          "fecha_autorizacion": "2026-11-12T22:47:44.781Z",
+          "origen_datos": "REGISTRO_DIRECTO",
+          "fecha_observacion": "2026-11-12T17:47:44.801Z"
+        }
+      ],
+      "interactions": [
+        {
+          "id_solicitud": 2928,
+          "id_interaccion": 20212,
+          "id_persona": 11006,
+          "id_canal": null,
+          "id_fuente": null,
+          "id_usuario": null,
+          "fecha_hora": "2026-11-12T22:47:44.788Z",
+          "tipo": "Consulta Inicial",
+          "mensaje": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+          "es_respuesta_util": false,
+          "resultado": "Convertido a LEAD"
+        }
+      ],
+      "decisions": [
+        {
+          "id_decision": 186,
+          "id_persona": 11006,
+          "id_usuario": null,
+          "id_captacion": 11004,
+          "id_interaccion": 20212,
+          "agente": "BUYER",
+          "fecha_hora": "2026-11-12T22:47:44.830Z",
+          "entrada": "{\"mensaje\":\"QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.\",\"id_persona\":11006,\"id_captacion\":11004,\"id_interaccion\":20212,\"motivo_consulta\":null,\"sede_preferida\":null,\"id_servicio_declarado\":1,\"pref_id_horario\":null,\"contextFingerprint\":\"7b8a226c3f4a0fed8d1e78e15795c5c7\",\"contextoConversacional\":null,\"catalogo_snapshot\":[{\"id\":1,\"nombre\":\"Evaluación odontológica\"},{\"id\":2,\"nombre\":\"Limpieza dental\"},{\"id\":3,\"nombre\":\"Profilaxis\"},{\"id\":4,\"nombre\":\"Fluorización\"},{\"id\":5,\"nombre\":\"Restauración dental\"},{\"id\":6,\"nombre\":\"Control odontológico\"},{\"id\":8,\"nombre\":\"Evaluación General\"},{\"id\":9,\"nombre\":\"Limpieza / Profilaxis\"},{\"id\":10,\"nombre\":\"Ortodoncia Inicial\"},{\"id\":11,\"nombre\":\"Implante Dental\"},{\"id\":12,\"nombre\":\"Restauración Estética\"},{\"id\":13,\"nombre\":\"Blanqueamiento Dental\"}],\"fecha_evaluacion\":\"2026-11-12T22:47:44.827Z\"}",
+          "regla_aplicada": "gemini-3.5-flash-lite",
+          "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"SOLICITA_RESERVA\",\"id_servicio\":1,\"intentosRealizados\":1,\"intentos_realizados\":1,\"duracionTotalMs\":0,\"duracion_total_ms\":0,\"id_solicitud\":2928,\"id_evento_etapa\":4100,\"entregaLeadEstado\":\"CONFIRMADA\",\"contextFingerprint\":\"7b8a226c3f4a0fed8d1e78e15795c5c7\"}",
+          "accion": "CONVERSION_LEAD",
+          "requiere_revision": false,
+          "resultado_revision": "Conversión confirmada y entregada al Agente LEAD (Solicitud #2928, Entrada #2928)."
+        }
+      ],
+      "requests": [
+        {
+          "id_negociador": null,
+          "id_canal_origen": null,
+          "id_sede_interes_lead": null,
+          "fecha_ingreso_lead": null,
+          "archivada_lead_en": null,
+          "resultado_comercial_lead": null,
+          "fecha_decision_comercial_lead": null,
+          "valor_acordado_lead": null,
+          "id_propuesta_aceptada_lead": null,
+          "motivo_cierre_lead": null,
+          "fecha_proximo_seguimiento": null,
+          "id_solicitud": 2928,
+          "id_persona": 11006,
+          "id_servicio": 1,
+          "fecha_solicitud": "2026-11-12T17:47:44.854Z",
+          "motivo": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+          "tipo_consulta": null,
+          "prioridad": null,
+          "estado": "Abierta",
+          "fecha_primera_respuesta": null,
+          "fecha_cierre": null
+        }
+      ],
+      "events": [
+        {
+          "id_evento_etapa": 4100,
+          "id_persona": 11006,
+          "etapa_origen": 1,
+          "etapa_destino": 2,
+          "fecha_hora": "2026-11-12T17:47:44.854Z",
+          "id_usuario": null,
+          "motivo": "QA_BBE_20261112T224800Z_b_C Quiero reservar una cita para Evaluación odontológica.",
+          "evidencia": "Conversion validada desde captacion inicial",
+          "id_captacion": 11004,
+          "id_solicitud": 2928,
+          "clave_operacion_buyer": "BUYER_LEAD:11004"
+        }
+      ],
+      "intake": [
+        {
+          "id_solicitud": 2928,
+          "id_evento_etapa": 4100,
+          "id_captacion": 11004,
+          "id_persona": 11006,
+          "fecha_registro_utc": "2026-11-12T22:47:44.868Z"
+        }
+      ]
+    },
+    "E": {
+      "person": {
+        "id_persona": 11007,
+        "nombres": "QA_BBE_20261112T224800Z_b_E",
+        "apellidos": "QA SINTETICO",
+        "dni": null,
+        "email": "qa_bbe_20261112t224800z_b_e@example.invalid",
+        "numero": null,
+        "fecha_nacimiento": null,
+        "zona": null,
+        "tipo_persona": "Adulto General",
+        "autoriza_contacto": true,
+        "fecha_autorizacion": "2026-11-12T22:47:44.968Z",
+        "estado_calidad": "Valido",
+        "id_campana_origen": null,
+        "id_canal_origen": null,
+        "id_etapa_actual": 3,
+        "fecha_registro": "2026-11-12T22:47:44.970Z",
+        "fecha_actualizacion": "2026-11-12T17:47:45.085Z",
+        "Etapa": {
+          "id_etapa": 3,
+          "nombre": "PAYER",
+          "descripcion": "Persona con pago inicial validado"
+        }
+      },
+      "captures": [
+        {
+          "id_captacion": 11005,
+          "id_persona": 11007,
+          "fecha_captacion": "2026-11-12T17:47:44.992Z",
+          "id_canal": null,
+          "id_fuente": null,
+          "id_campana": null,
+          "id_sede": null,
+          "id_servicio": 1,
+          "motivo_consulta": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+          "estado_calidad": "Valido",
+          "autoriza_contacto": true,
+          "fecha_autorizacion": "2026-11-12T22:47:44.968Z",
+          "origen_datos": "REGISTRO_DIRECTO",
+          "fecha_observacion": "2026-11-12T17:47:44.992Z"
+        }
+      ],
+      "interactions": [
+        {
+          "id_solicitud": 2929,
+          "id_interaccion": 20213,
+          "id_persona": 11007,
+          "id_canal": null,
+          "id_fuente": null,
+          "id_usuario": null,
+          "fecha_hora": "2026-11-12T22:47:44.977Z",
+          "tipo": "Consulta Inicial",
+          "mensaje": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+          "es_respuesta_util": false,
+          "resultado": "Convertido a LEAD"
+        },
+        {
+          "id_solicitud": null,
+          "id_interaccion": 20214,
+          "id_persona": 11007,
+          "id_canal": null,
+          "id_fuente": null,
+          "id_usuario": null,
+          "fecha_hora": "2026-11-12T22:47:45.119Z",
+          "tipo": "Nueva Consulta",
+          "mensaje": "QA_BBE_20261112T224800Z_b_E_NUEVA ¿Cuáles son los horarios y precios? Solo información, no quiero otra cita.",
+          "es_respuesta_util": false,
+          "resultado": "Consulta Informativa"
+        }
+      ],
+      "decisions": [
+        {
+          "id_decision": 187,
+          "id_persona": 11007,
+          "id_usuario": null,
+          "id_captacion": 11005,
+          "id_interaccion": 20213,
+          "agente": "BUYER",
+          "fecha_hora": "2026-11-12T22:47:45.025Z",
+          "entrada": "{\"mensaje\":\"QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.\",\"id_persona\":11007,\"id_captacion\":11005,\"id_interaccion\":20213,\"motivo_consulta\":null,\"sede_preferida\":null,\"id_servicio_declarado\":1,\"pref_id_horario\":null,\"contextFingerprint\":\"5eda92bf9fad7ba816c74375d53d16eb\",\"contextoConversacional\":null,\"catalogo_snapshot\":[{\"id\":1,\"nombre\":\"Evaluación odontológica\"},{\"id\":2,\"nombre\":\"Limpieza dental\"},{\"id\":3,\"nombre\":\"Profilaxis\"},{\"id\":4,\"nombre\":\"Fluorización\"},{\"id\":5,\"nombre\":\"Restauración dental\"},{\"id\":6,\"nombre\":\"Control odontológico\"},{\"id\":8,\"nombre\":\"Evaluación General\"},{\"id\":9,\"nombre\":\"Limpieza / Profilaxis\"},{\"id\":10,\"nombre\":\"Ortodoncia Inicial\"},{\"id\":11,\"nombre\":\"Implante Dental\"},{\"id\":12,\"nombre\":\"Restauración Estética\"},{\"id\":13,\"nombre\":\"Blanqueamiento Dental\"}],\"fecha_evaluacion\":\"2026-11-12T22:47:45.022Z\"}",
+          "regla_aplicada": "gemini-3.5-flash-lite",
+          "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"SOLICITA_RESERVA\",\"id_servicio\":1,\"intentosRealizados\":1,\"intentos_realizados\":1,\"duracionTotalMs\":0,\"duracion_total_ms\":0,\"id_solicitud\":2929,\"id_evento_etapa\":4101,\"entregaLeadEstado\":\"CONFIRMADA\",\"contextFingerprint\":\"5eda92bf9fad7ba816c74375d53d16eb\"}",
+          "accion": "CONVERSION_LEAD",
+          "requiere_revision": false,
+          "resultado_revision": "Conversión confirmada y entregada al Agente LEAD (Solicitud #2929, Entrada #2929)."
+        },
+        {
+          "id_decision": 188,
+          "id_persona": 11007,
+          "id_usuario": null,
+          "id_captacion": 11005,
+          "id_interaccion": 20214,
+          "agente": "BUYER",
+          "fecha_hora": "2026-11-12T22:47:45.170Z",
+          "entrada": "{\"mensaje\":\"QA_BBE_20261112T224800Z_b_E_NUEVA ¿Cuáles son los horarios y precios? Solo información, no quiero otra cita.\",\"id_persona\":11007,\"id_captacion\":11005,\"id_interaccion\":20214,\"motivo_consulta\":null,\"sede_preferida\":null,\"id_servicio_declarado\":1,\"pref_id_horario\":null,\"contextFingerprint\":\"452f8c7ec3663f77d4b1c3746f71368d\",\"contextoConversacional\":null,\"catalogo_snapshot\":[{\"id\":1,\"nombre\":\"Evaluación odontológica\"},{\"id\":2,\"nombre\":\"Limpieza dental\"},{\"id\":3,\"nombre\":\"Profilaxis\"},{\"id\":4,\"nombre\":\"Fluorización\"},{\"id\":5,\"nombre\":\"Restauración dental\"},{\"id\":6,\"nombre\":\"Control odontológico\"},{\"id\":8,\"nombre\":\"Evaluación General\"},{\"id\":9,\"nombre\":\"Limpieza / Profilaxis\"},{\"id\":10,\"nombre\":\"Ortodoncia Inicial\"},{\"id\":11,\"nombre\":\"Implante Dental\"},{\"id\":12,\"nombre\":\"Restauración Estética\"},{\"id\":13,\"nombre\":\"Blanqueamiento Dental\"}],\"fecha_evaluacion\":\"2026-11-12T22:47:45.167Z\"}",
+          "regla_aplicada": "gemini-3.5-flash-lite",
+          "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"SOLO_CONSULTA\",\"id_servicio\":null,\"intentosRealizados\":1,\"intentos_realizados\":1,\"duracionTotalMs\":0,\"duracion_total_ms\":0,\"contextFingerprint\":\"452f8c7ec3663f77d4b1c3746f71368d\"}",
+          "accion": "SOLO_CONSULTA",
+          "requiere_revision": false,
+          "resultado_revision": "Consulta informativa registrada; el contacto permanece en etapa PAYER."
+        }
+      ],
+      "requests": [
+        {
+          "id_negociador": null,
+          "id_canal_origen": null,
+          "id_sede_interes_lead": null,
+          "fecha_ingreso_lead": null,
+          "archivada_lead_en": null,
+          "resultado_comercial_lead": null,
+          "fecha_decision_comercial_lead": null,
+          "valor_acordado_lead": null,
+          "id_propuesta_aceptada_lead": null,
+          "motivo_cierre_lead": null,
+          "fecha_proximo_seguimiento": null,
+          "id_solicitud": 2929,
+          "id_persona": 11007,
+          "id_servicio": 1,
+          "fecha_solicitud": "2026-11-12T17:47:45.049Z",
+          "motivo": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+          "tipo_consulta": null,
+          "prioridad": null,
+          "estado": "Abierta",
+          "fecha_primera_respuesta": null,
+          "fecha_cierre": null
+        }
+      ],
+      "events": [
+        {
+          "id_evento_etapa": 4101,
+          "id_persona": 11007,
+          "etapa_origen": 1,
+          "etapa_destino": 2,
+          "fecha_hora": "2026-11-12T17:47:45.049Z",
+          "id_usuario": null,
+          "motivo": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+          "evidencia": "Conversion validada desde captacion inicial",
+          "id_captacion": 11005,
+          "id_solicitud": 2929,
+          "clave_operacion_buyer": "BUYER_LEAD:11005"
+        }
+      ],
+      "intake": [
+        {
+          "id_solicitud": 2929,
+          "id_evento_etapa": 4101,
+          "id_captacion": 11005,
+          "id_persona": 11007,
+          "fecha_registro_utc": "2026-11-12T22:47:45.062Z"
+        }
+      ]
+    }
+  },
+  "historicalComparison": [
+    {
+      "table": "Personas",
+      "before": "10830",
+      "after": "10834",
+      "syntheticRows": "4",
+      "outsidePrefixHashSame": true,
+      "countDeltaMatchesSynthetic": true
+    },
+    {
+      "table": "CaptacionesBuyer",
+      "before": "10830",
+      "after": "10834",
+      "syntheticRows": "4",
+      "outsidePrefixHashSame": true,
+      "countDeltaMatchesSynthetic": true
+    },
+    {
+      "table": "Interacciones",
+      "before": "20028",
+      "after": "20033",
+      "syntheticRows": "5",
+      "outsidePrefixHashSame": true,
+      "countDeltaMatchesSynthetic": true
+    },
+    {
+      "table": "DecisionesIA",
+      "before": "25",
+      "after": "30",
+      "syntheticRows": "5",
+      "outsidePrefixHashSame": true,
+      "countDeltaMatchesSynthetic": true
+    },
+    {
+      "table": "Solicitudes",
+      "before": "2873",
+      "after": "2875",
+      "syntheticRows": "2",
+      "outsidePrefixHashSame": true,
+      "countDeltaMatchesSynthetic": true
+    },
+    {
+      "table": "EventosEtapa",
+      "before": "4053",
+      "after": "4055",
+      "syntheticRows": "2",
+      "outsidePrefixHashSame": true,
+      "countDeltaMatchesSynthetic": true
+    },
+    {
+      "table": "EntradasAgenteLead",
+      "before": "12",
+      "after": "14",
+      "syntheticRows": "2",
+      "outsidePrefixHashSame": true,
+      "countDeltaMatchesSynthetic": true
+    },
+    {
+      "table": "PersonaPreferencias",
+      "before": "20",
+      "after": "24",
+      "syntheticRows": "4",
+      "outsidePrefixHashSame": true,
+      "countDeltaMatchesSynthetic": true
+    }
+  ],
+  "sourceHashesAfter": {
+    "backend/src/db.ts": "CE14302F5ED3B5457471878AF9290FBFFB0AD63083F36F1BC2BF77CFEE51E0C3",
+    "backend/prisma/schema.prisma": "66D541DDE034837AFF46ACD52DCB58C8DF029B2A0F7ECA3B7F9EB70A1CD725FD",
+    "backend/src/routes/buyer.routes.ts": "77119E3645B3AAAAF3322544F7BDB6E59DD8678DC464D701BB49760E4EFA632A",
+    "backend/src/services/buyerEvaluationService.ts": "30AA39AE2850D012A99DBE4BD93E8D3DDF3828ACA8442AA91C22BF4C0C95541C",
+    "backend/src/services/buyerMessageClassifier.ts": "F7E7C640CED2384006369E3960BA20D7E8BA7E60C773C08822F67189AF53C158",
+    "backend/src/services/leadIntake.ts": "B447FFC9E53D957D79583DB831F52B880F0F9206C4745E096F86FF9C6A8C4622",
+    "backend/src/services/martSyncService.ts": "CEC7B12EF94BF0D5C941F0787E660B3AC2016ACF0D439A5755690200192C5C98",
+    "backend/src/types/buyer.ts": "49C7D117A22E4DFF4E9CCA41FAC2E1767793B3162279925867A464FF2401835E"
+  },
+  "finishedUtc": "2026-11-12T22:47:45.777Z",
+  "result": "APROBADO"
+}

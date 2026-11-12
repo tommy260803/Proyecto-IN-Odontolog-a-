@@ -1,0 +1,3 @@
+intervalos_negativos minimo_minutos maximo_minutos
+-------------------- -------------- --------------
+13 -300 -300

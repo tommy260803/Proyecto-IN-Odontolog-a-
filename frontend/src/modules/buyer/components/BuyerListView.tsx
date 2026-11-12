@@ -189,13 +189,13 @@ export function BuyerListView() {
   const kpiMetrics = useMemo(() => {
     const indicators = buyerPage?.indicators;
     const percentage = (value: number | null) =>
-      value === null ? 'N/D' : `${value.toFixed(1)}%`;
+      value === null ? 'No disponible' : `${value.toFixed(1)}%`;
     return [
       {
         id: 'kpi-b1',
         label: 'B1 · Conversión a LEAD en 14 días',
         value: percentage(indicators?.b1.rate ?? null),
-        detail: indicators
+        detail: indicators?.b1.rate === null ? indicators.b1.explanation || 'Sin evidencia suficiente.' : indicators
           ? `${indicators.b1.numerator.toLocaleString('es-PE')} conversiones / ${indicators.b1.denominator.toLocaleString('es-PE')} Buyers utilizables`
           : 'Cargando indicadores...',
       },
@@ -203,7 +203,7 @@ export function BuyerListView() {
         id: 'kpi-b2',
         label: 'B2 · Contactos utilizables',
         value: percentage(indicators?.b2.rate ?? null),
-        detail: indicators
+        detail: indicators?.b2.rate === null ? indicators.b2.explanation || 'Sin registros verificables.' : indicators
           ? `${indicators.b2.numerator.toLocaleString('es-PE')} utilizables / ${indicators.b2.denominator.toLocaleString('es-PE')} registrados`
           : 'Cargando indicadores...',
       },
@@ -211,11 +211,11 @@ export function BuyerListView() {
         id: 'kpi-b3',
         label: 'B3 · Tiempo promedio de conversión',
         value: indicators?.b3.averageDays === null || indicators?.b3.averageDays === undefined
-          ? 'N/D'
+          ? 'No disponible'
           : `${indicators.b3.averageDays.toFixed(1)} días`,
         detail: indicators
           ? indicators.b3.totalDays === null
-            ? 'N/D · no hay conversiones con fechas válidas'
+            ? indicators.b3.explanation || 'Sin eventos de conversión verificables.'
             : `${indicators.b3.totalDays.toLocaleString('es-PE', { maximumFractionDigits: 1 })} días acumulados / ${indicators.b3.conversions.toLocaleString('es-PE')} conversiones`
           : 'Cargando indicadores...',
       },
@@ -383,7 +383,7 @@ export function BuyerListView() {
               >
                 {kpi.label}
               </p>
-              <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Histórico</span>
+              <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{buyerPage?.indicators?.period || 'Histórico'}</span>
             </div>
 
             <div className="flex items-baseline justify-between gap-3 min-w-0">

@@ -1,0 +1,43 @@
+prisma:error Se han especificado múltiples columnas en una expresión de agregado que contiene una referencia externa. Si una expresión agregada contiene una referencia externa, ésta deberá ser la única columna a la que se haga referencia en la expresión.
+prisma:error 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `8124`. Message: `Se han especificado múltiples columnas en una expresión de agregado que contiene una referencia externa. Si una expresión agregada contiene una referencia externa, ésta deberá ser la única columna a la que se haga referencia en la expresión.`
+{
+  "result": "FALLO",
+  "evidence": "C:\\Users\\Daniel\\Downloads\\Proyecto-IN-Odontolog-a-\\database\\qa\\buyer_backend\\ejecucion_20261112T224200Z_cafe",
+  "cases": [
+    {
+      "name": "historico",
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 2872,
+          "denominator": 9203,
+          "rate": 31.207215038574375,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 9203,
+          "denominator": 10829,
+          "rate": 84.98476313602364,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 2872,
+          "totalDays": null,
+          "explanation": "9 conversiones sin evento BUYER → LEAD o intervalo válido; no se estima el promedio.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      }
+    }
+  ],
+  "error": {
+    "name": "PrismaClientKnownRequestError",
+    "message": "\nInvalid `prisma.$queryRawUnsafe()` invocation:\n\n\nRaw query failed. Code: `8124`. Message: `Se han especificado múltiples columnas en una expresión de agregado que contiene una referencia externa. Si una expresión agregada contiene una referencia externa, ésta deberá ser la única columna a la que se haga referencia en la expresión.`"
+  }
+}

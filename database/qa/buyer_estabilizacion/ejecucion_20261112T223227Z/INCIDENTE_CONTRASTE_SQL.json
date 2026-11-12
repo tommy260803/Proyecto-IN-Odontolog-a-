@@ -1,0 +1,7 @@
+{
+  "utc": "2026-11-12T22:46:23.2668537Z",
+  "incident": "Consulta independiente de contraste en espera RESOURCE_SEMAPHORE; se detuvo solo el proceso QA de lectura PID 33560",
+  "dataWrites": false,
+  "nonStandardPhones": 0,
+  "next": "Simplificar normalizacion de telefonos a los caracteres existentes; no se cambia produccion para resolver este incidente"
+}

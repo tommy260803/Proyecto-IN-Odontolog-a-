@@ -1,0 +1,6 @@
+{
+  "backendExit": 0,
+  "concurrencyExit": 1,
+  "backendEvidence": "database/qa/buyer_backend/ejecucion_20261112T223227Z",
+  "concurrencyEvidence": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T223227Z"
+}

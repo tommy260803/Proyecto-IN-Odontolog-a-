@@ -1,0 +1,16 @@
+{
+  "utc": "2026-11-12T22:54:30.129Z",
+  "branch": "feature/buyer-orientacion-interactiva",
+  "HEAD": "70a09e3e32059d183ced2b96503d7ed298362900",
+  "checkedFiles": 67,
+  "secretFindings": [],
+  "brokenLinks": [],
+  "productionAndTestHashes": {
+    "backend/src/routes/buyer.routes.ts": "77119e3645b3aaaaf3322544f7bdb6e59dd8678dc464d701bb49760e4efa632a",
+    "frontend/src/modules/buyer/components/BuyerListView.tsx": "8eb2b09d2eed194a850cd28f86bd8bce3941bd7ab0f3bbc4a51d133630e5820d",
+    "frontend/src/modules/buyer/services/buyer.service.ts": "5549132144b03b72bf35bcb8f97ef251edd310b0520a6bd5cd09c4225fc41c5e",
+    "backend/src/services/buyerIndicators.ts": "a40ad5424756a7a4331923367beadfede028e45abdfe6c60846bfcfd845357f4",
+    "backend/tests/buyerIndicators.test.ts": "15ad2fe260804ece35b5cc742792364fcde6162f4015adbbc8cb6410ab4f31a3"
+  },
+  "stagedFiles": ""
+}

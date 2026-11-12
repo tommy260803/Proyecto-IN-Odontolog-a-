@@ -1,0 +1,342 @@
+{
+  "result": "APROBADO",
+  "evidence": "C:\\Users\\Daniel\\Downloads\\Proyecto-IN-Odontolog-a-\\database\\qa\\buyer_backend\\ejecucion_20261112T224600Z_cafe",
+  "cases": [
+    {
+      "name": "historico",
+      "result": "APROBADO",
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 2872,
+          "denominator": 9203,
+          "rate": 31.207215038574375,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 9203,
+          "denominator": 10829,
+          "rate": 84.98476313602364,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 2872,
+          "totalDays": null,
+          "explanation": "9 conversiones sin evento BUYER → LEAD o intervalo válido; no se estima el promedio.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 2872,
+        "b1_d": 9203,
+        "b1_faltantes": 0,
+        "b2_n": 9203,
+        "b2_d": 10829,
+        "b3_d": 2872,
+        "b3_faltantes": 9,
+        "suma_dias": "17907.8160645457",
+        "b1_porcentaje": "31.207215038574",
+        "b2_porcentaje": "84.984763136023",
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      }
+    },
+    {
+      "name": "hoy",
+      "result": "APROBADO",
+      "http": {
+        "period": "Filtros: 2026-11-12 a 2026-11-12",
+        "b1": {
+          "numerator": 11,
+          "denominator": 20,
+          "rate": 55.00000000000001,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 20,
+          "denominator": 20,
+          "rate": 100,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 11,
+          "totalDays": null,
+          "explanation": "9 conversiones sin evento BUYER → LEAD o intervalo válido; no se estima el promedio.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 11,
+        "b1_d": 20,
+        "b1_faltantes": 0,
+        "b2_n": 20,
+        "b2_d": 20,
+        "b3_d": 11,
+        "b3_faltantes": 9,
+        "suma_dias": "-1.8749078122",
+        "b1_porcentaje": "55",
+        "b2_porcentaje": "100",
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      }
+    },
+    {
+      "name": "sinteticos_live",
+      "result": "APROBADO",
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 2,
+          "denominator": 3,
+          "rate": 66.66666666666666,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 3,
+          "denominator": 3,
+          "rate": 100,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 2,
+          "totalDays": null,
+          "explanation": "2 conversiones sin evento BUYER → LEAD o intervalo válido; no se estima el promedio.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 2,
+        "b1_d": 3,
+        "b1_faltantes": 0,
+        "b2_n": 3,
+        "b2_d": 3,
+        "b3_d": 2,
+        "b3_faltantes": 2,
+        "suma_dias": "-0.4166029166",
+        "b1_porcentaje": "66.666666666666",
+        "b2_porcentaje": "100",
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      }
+    },
+    {
+      "name": "convertidos",
+      "result": "APROBADO",
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 2872,
+          "denominator": 2872,
+          "rate": 100,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 2872,
+          "denominator": 2872,
+          "rate": 100,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 2872,
+          "totalDays": null,
+          "explanation": "9 conversiones sin evento BUYER → LEAD o intervalo válido; no se estima el promedio.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 2872,
+        "b1_d": 2872,
+        "b1_faltantes": 0,
+        "b2_n": 2872,
+        "b2_d": 2872,
+        "b3_d": 2872,
+        "b3_faltantes": 9,
+        "suma_dias": "17907.8160645457",
+        "b1_porcentaje": "100",
+        "b2_porcentaje": "100",
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      }
+    },
+    {
+      "name": "nuevos",
+      "result": "APROBADO",
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 0,
+          "denominator": 6331,
+          "rate": 0,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 6331,
+          "denominator": 7920,
+          "rate": 79.93686868686869,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 0,
+          "totalDays": null,
+          "explanation": "Sin conversiones verificables en el período.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 0,
+        "b1_d": 6331,
+        "b1_faltantes": 0,
+        "b2_n": 6331,
+        "b2_d": 7920,
+        "b3_d": 0,
+        "b3_faltantes": 0,
+        "suma_dias": "0",
+        "b1_porcentaje": "0",
+        "b2_porcentaje": "79.936868686868",
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      }
+    },
+    {
+      "name": "canal",
+      "result": "APROBADO",
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 1334,
+          "denominator": 3856,
+          "rate": 34.5954356846473,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 3856,
+          "denominator": 4542,
+          "rate": 84.89652135623074,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": 5.726544540429425,
+          "conversions": 1334,
+          "totalDays": 7639.210416932853,
+          "explanation": "Cohorte por fecha de registro; registro → primer evento BUYER → LEAD. El divisor corresponde a esos mismos intervalos.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 1334,
+        "b1_d": 3856,
+        "b1_faltantes": 0,
+        "b2_n": 3856,
+        "b2_d": 4542,
+        "b3_d": 1334,
+        "b3_faltantes": 0,
+        "suma_dias": "7639.2104168709",
+        "b1_porcentaje": "34.595435684647",
+        "b2_porcentaje": "84.89652135623",
+        "b3_total_dias": "7639.2104168709",
+        "b3_promedio_dias": "5.7265445403"
+      }
+    },
+    {
+      "name": "vacio",
+      "result": "APROBADO",
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null,
+          "explanation": "Sin contactos utilizables captados en el período.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null,
+          "explanation": "Sin registros en el período.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 0,
+          "totalDays": null,
+          "explanation": "Sin conversiones verificables en el período.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 0,
+        "b1_d": 0,
+        "b1_faltantes": 0,
+        "b2_n": 0,
+        "b2_d": 0,
+        "b3_d": 0,
+        "b3_faltantes": 0,
+        "suma_dias": null,
+        "b1_porcentaje": null,
+        "b2_porcentaje": null,
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      }
+    },
+    {
+      "name": "pagina2",
+      "result": "APROBADO",
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 2872,
+          "denominator": 9203,
+          "rate": 31.207215038574375,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 9203,
+          "denominator": 10829,
+          "rate": 84.98476313602364,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 2872,
+          "totalDays": null,
+          "explanation": "9 conversiones sin evento BUYER → LEAD o intervalo válido; no se estima el promedio.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 2872,
+        "b1_d": 9203,
+        "b1_faltantes": 0,
+        "b2_n": 9203,
+        "b2_d": 10829,
+        "b3_d": 2872,
+        "b3_faltantes": 9,
+        "suma_dias": "17907.8160645457",
+        "b1_porcentaje": "31.207215038574",
+        "b2_porcentaje": "84.984763136023",
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      }
+    }
+  ]
+}

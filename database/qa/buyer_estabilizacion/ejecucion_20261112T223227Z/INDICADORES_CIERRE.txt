@@ -1,0 +1,48 @@
+{
+  "result": "APROBADO",
+  "evidence": "C:\\Users\\Daniel\\Downloads\\Proyecto-IN-Odontolog-a-\\database\\qa\\buyer_backend\\ejecucion_20261112T224900Z_cafe",
+  "cases": [
+    {
+      "name": "historico",
+      "result": "APROBADO",
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 2876,
+          "denominator": 9210,
+          "rate": 31.226927252985888,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 9210,
+          "denominator": 10836,
+          "rate": 84.99446290143965,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 2876,
+          "totalDays": null,
+          "explanation": "13 conversiones sin evento BUYER → LEAD o intervalo válido; no se estima el promedio.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 2876,
+        "b1_d": 9210,
+        "b1_faltantes": 0,
+        "b2_n": 9210,
+        "b2_d": 10836,
+        "b3_d": 2876,
+        "b3_faltantes": 13,
+        "suma_dias": "17906.9827417103",
+        "b1_porcentaje": "31.226927252985",
+        "b2_porcentaje": "84.994462901439",
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "result": "APROBADO",
+  "evidence": "C:\\Users\\Daniel\\Downloads\\Proyecto-IN-Odontolog-a-\\database\\qa\\buyer_backend\\ejecucion_20261112T223700Z_a11e",
+  "sdkCalls": 4,
+  "providerHttp": 4,
+  "cases": [
+    {
+      "name": "Consulta informativa",
+      "result": "APROBADO",
+      "person": 11000,
+      "interactions": [
+        20205
+      ],
+      "requests": []
+    },
+    {
+      "name": "Saludo ambiguo",
+      "result": "APROBADO",
+      "person": 11001,
+      "interactions": [
+        20206
+      ],
+      "requests": []
+    },
+    {
+      "name": "Solicitud explicita",
+      "result": "APROBADO",
+      "person": 11002,
+      "interactions": [
+        20207
+      ],
+      "requests": [
+        2925
+      ]
+    },
+    {
+      "name": "Respuesta a aclaracion con contexto",
+      "result": "APROBADO",
+      "person": 11001,
+      "interactions": [
+        20206,
+        20208
+      ],
+      "requests": [
+        2926
+      ]
+    }
+  ]
+}

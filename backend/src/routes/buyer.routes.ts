@@ -4,6 +4,7 @@ import { Prisma, type Personas } from '@prisma/client';
 import { prisma } from '../db';
 import { MartSyncService } from '../services/martSyncService';
 import { BuyerEvaluationService, computeEvaluationContextFingerprint } from '../services/buyerEvaluationService';
+import { calculateBuyerIndicators, type BuyerTemporalEvidence } from '../services/buyerIndicators';
 
 const router = Router();
 
@@ -558,6 +559,46 @@ router.post('/register', async (req, res) => {
 
     // 1. Fase transaccional: guardar contacto, captación, mensaje y trabajo pendiente atómicamente
     const txResult = await writeBuyer(async tx => {
+      if (requestKey) {
+        // Reserva por clave, compartida entre procesos y liberada al terminar esta
+        // transaccion. Gemini se ejecuta despues del commit, nunca bajo este lock.
+        const resource = 'Buyer:Registro:' + createHash('sha256').update(requestKey).digest('hex');
+        const [lock] = await tx.$queryRaw<{ lock_result: number }[]>`
+          DECLARE @lockResult int;
+          EXEC @lockResult = sys.sp_getapplock
+            @Resource=${resource}, @LockMode=N'Exclusive',
+            @LockOwner=N'Transaction', @LockTimeout=4000;
+          SELECT @lockResult AS lock_result;
+        `;
+        if (!lock || lock.lock_result < 0) throw new BuyerInputError('El registro está en curso. Reintenta con la misma Idempotency-Key.', 503);
+
+        // La comprobacion previa es solo una via rapida. Esta lectura bajo la
+        // reserva es la autoridad antes de crear cualquier fila del formulario.
+        const prior = await tx.decisionesIA.findFirst({
+          where: { agente: 'BUYER', entrada: { contains: `"idempotencyKey":"${requestKey}"` } },
+          orderBy: { id_decision: 'desc' },
+        });
+        if (prior) {
+          const entrada = JSON.parse(prior.entrada || '{}');
+          if (entrada.contentHash && entrada.contentHash !== contentHash) {
+            return { idempotentConflict: true as const };
+          }
+          const decision = JSON.parse(prior.decision || '{}');
+          const interaction = prior.id_interaccion
+            ? await tx.interacciones.findUnique({ where: { id_interaccion: prior.id_interaccion } }) : null;
+          return { idempotentReplay: {
+            success: true, replayed: true,
+            data: {
+              id_persona: prior.id_persona, id_captacion: prior.id_captacion,
+              id_interaccion: prior.id_interaccion, id_decision: prior.id_decision,
+              id_solicitud: decision.id_solicitud || interaction?.id_solicitud || null,
+              id_evento_etapa: decision.id_evento_etapa || null,
+              estado_decision: decision.estado || 'PENDIENTE', accion: prior.accion,
+              aclaracion: prior.resultado_revision || null,
+            },
+          } };
+        }
+      }
       // Detectar duplicado de persona por teléfono o correo
       let isDuplicate = false;
       let existingPerson = null;
@@ -758,6 +799,12 @@ router.post('/register', async (req, res) => {
       };
     });
 
+    if ('idempotentConflict' in txResult) return res.status(409).json({
+      success: false, code: 'IDEMPOTENCY_CONFLICT',
+      error: 'Conflicto de idempotencia: la Idempotency-Key ya fue utilizada previamente con un contenido diferente.',
+    });
+    if ('idempotentReplay' in txResult) return res.status(200).json(txResult.idempotentReplay);
+
     // 2. Ejecutar la llamada de clasificación a Gemini FUERA de la transacción SQL con protección concurrente
     const evaluation = await BuyerEvaluationService.evaluateBuyerInteraction({
       id_persona: txResult.persona.id_persona,
@@ -953,6 +1000,9 @@ router.get('/', async (req, res) => {
     // Los indicadores reutilizan los filtros de búsqueda, fecha y canal, pero
     // aplican la deduplicación en memoria para no construir un IN/NOT IN masivo.
     const indicatorWhere = { ...where };
+    // B1 usa cohorte de captacion; B2/B3 de registro. Aplicar la fecha en el
+    // calculo correspondiente, sin cambiar la paginacion/filtro del listado.
+    delete indicatorWhere.fecha_registro;
 
     // Detectar duplicados entre todos los BUYER antes de paginar. Si se hace
     // sobre la página actual, el filtro y el estado mostrado dependen del
@@ -1038,7 +1088,6 @@ router.get('/', async (req, res) => {
             autoriza_contacto: true,
             estado_calidad: true,
             fecha_registro: true,
-            fecha_actualizacion: true,
             id_campana_origen: true,
             Etapa: { select: { nombre: true } },
           },
@@ -1059,39 +1108,16 @@ router.get('/', async (req, res) => {
           };
           return selectedStates.some(matchesState);
         });
-
-    const indicatorRegistered = indicatorPersons.length;
-    const usableIndicatorPersons = indicatorPersons.filter((person) => {
-      const hasName = Boolean(person.nombres?.trim() && person.apellidos?.trim());
-      const hasContact = Boolean(person.numero?.trim() || person.email?.trim());
-      const isDuplicate = duplicateBuyerIds.has(person.id_persona) || person.estado_calidad === 'Duplicado';
-      return hasName && hasContact && person.autoriza_contacto === true &&
-        !isDuplicate && person.estado_calidad !== 'Rechazado';
-    });
-    const convertedWithin14Days = usableIndicatorPersons.filter((person) => {
-      const conversionDate = ['LEAD', 'PAYER', 'CUSTOMER', 'TURNED'].includes(person.Etapa?.nombre || '')
-        ? person.fecha_actualizacion
-        : null;
-      if (!conversionDate) return false;
-      const days = (conversionDate.getTime() - person.fecha_registro.getTime()) / 86400000;
-      return days >= 0 && days <= 14;
-    }).length;
-    const indicatorLeads = indicatorPersons.filter((person) =>
-      ['LEAD', 'PAYER', 'CUSTOMER', 'TURNED'].includes(person.Etapa?.nombre || '')
-    ).length;
-    const conversionDays = indicatorPersons
-      .filter((person) =>
-        ['LEAD', 'PAYER', 'CUSTOMER', 'TURNED'].includes(person.Etapa?.nombre || '') &&
-        person.fecha_actualizacion
-      )
-      .map((person) => (person.fecha_actualizacion!.getTime() - person.fecha_registro.getTime()) / 86400000)
-      .filter((days) => days >= 0);
-    const averageConversionDays = conversionDays.length > 0
-      ? conversionDays.reduce((sum, days) => sum + days, 0) / conversionDays.length
-      : null;
-    const totalConversionDays = conversionDays.length > 0
-      ? conversionDays.reduce((sum, days) => sum + days, 0)
-      : null;
+    const temporalEvidence = hasPagination ? await prisma.$queryRaw<BuyerTemporalEvidence[]>`
+      SELECT p.id_persona, c.fecha_captacion, e.fecha_conversion
+      FROM dbo.Personas p
+      OUTER APPLY (SELECT MIN(c.fecha_captacion) fecha_captacion FROM dbo.CaptacionesBuyer c WHERE c.id_persona=p.id_persona) c
+      OUTER APPLY (SELECT MIN(ev.fecha_hora) fecha_conversion FROM dbo.EventosEtapa ev
+        JOIN dbo.Etapas eo ON eo.id_etapa=ev.etapa_origen
+        JOIN dbo.Etapas ed ON ed.id_etapa=ev.etapa_destino
+        WHERE ev.id_persona=p.id_persona AND eo.nombre='BUYER' AND ed.nombre='LEAD') e
+    ` : [];
+    const indicators = calculateBuyerIndicators(indicatorPersons, duplicateBuyerIds, temporalEvidence, fromDate, toDate);
 
     const queryOptions: any = {
       where,
@@ -1402,24 +1428,7 @@ router.get('/', async (req, res) => {
           total,
           totalPages: Math.max(1, Math.ceil(total / pageSize)),
         },
-        indicators: {
-          period: 'Histórico completo',
-          b1: {
-            numerator: convertedWithin14Days,
-            denominator: usableIndicatorPersons.length,
-            rate: usableIndicatorPersons.length > 0 ? (convertedWithin14Days / usableIndicatorPersons.length) * 100 : null,
-          },
-          b2: {
-            numerator: usableIndicatorPersons.length,
-            denominator: indicatorRegistered,
-            rate: indicatorRegistered > 0 ? (usableIndicatorPersons.length / indicatorRegistered) * 100 : null,
-          },
-          b3: {
-            averageDays: averageConversionDays,
-            conversions: indicatorLeads,
-            totalDays: totalConversionDays,
-          },
-        },
+        indicators,
       });
     }
 

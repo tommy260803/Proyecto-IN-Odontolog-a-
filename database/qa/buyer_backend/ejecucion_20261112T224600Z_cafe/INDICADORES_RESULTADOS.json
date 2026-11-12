@@ -1,0 +1,935 @@
+{
+  "version": {
+    "branch": "feature/buyer-orientacion-interactiva",
+    "HEAD": "70a09e3e32059d183ced2b96503d7ed298362900",
+    "sourceHashes": {
+      "backend/src/db.ts": "CE14302F5ED3B5457471878AF9290FBFFB0AD63083F36F1BC2BF77CFEE51E0C3",
+      "backend/prisma/schema.prisma": "66D541DDE034837AFF46ACD52DCB58C8DF029B2A0F7ECA3B7F9EB70A1CD725FD",
+      "backend/src/routes/buyer.routes.ts": "77119E3645B3AAAAF3322544F7BDB6E59DD8678DC464D701BB49760E4EFA632A",
+      "backend/src/services/buyerEvaluationService.ts": "30AA39AE2850D012A99DBE4BD93E8D3DDF3828ACA8442AA91C22BF4C0C95541C",
+      "backend/src/services/buyerMessageClassifier.ts": "F7E7C640CED2384006369E3960BA20D7E8BA7E60C773C08822F67189AF53C158",
+      "backend/src/services/leadIntake.ts": "B447FFC9E53D957D79583DB831F52B880F0F9206C4745E096F86FF9C6A8C4622",
+      "backend/src/services/martSyncService.ts": "CEC7B12EF94BF0D5C941F0787E660B3AC2016ACF0D439A5755690200192C5C98",
+      "backend/src/types/buyer.ts": "49C7D117A22E4DFF4E9CCA41FAC2E1767793B3162279925867A464FF2401835E"
+    }
+  },
+  "prefix": "QA_BBE_20261112T224600Z_cafe_",
+  "cases": [
+    {
+      "name": "historico",
+      "query": "page=1&pageSize=5",
+      "status": 200,
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 2872,
+          "denominator": 9203,
+          "rate": 31.207215038574375,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 9203,
+          "denominator": 10829,
+          "rate": 84.98476313602364,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 2872,
+          "totalDays": null,
+          "explanation": "9 conversiones sin evento BUYER → LEAD o intervalo válido; no se estima el promedio.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 2872,
+        "b1_d": 9203,
+        "b1_faltantes": 0,
+        "b2_n": 9203,
+        "b2_d": 10829,
+        "b3_d": 2872,
+        "b3_faltantes": 9,
+        "suma_dias": "17907.8160645457",
+        "b1_porcentaje": "31.207215038574",
+        "b2_porcentaje": "84.984763136023",
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      },
+      "comparisons": [
+        {
+          "name": "b1_n",
+          "actual": 2872,
+          "expected": 2872,
+          "passed": true
+        },
+        {
+          "name": "b1_d",
+          "actual": 9203,
+          "expected": 9203,
+          "passed": true
+        },
+        {
+          "name": "b1_rate",
+          "actual": 31.207215038574375,
+          "expected": 31.207215038574,
+          "passed": true
+        },
+        {
+          "name": "b2_n",
+          "actual": 9203,
+          "expected": 9203,
+          "passed": true
+        },
+        {
+          "name": "b2_d",
+          "actual": 10829,
+          "expected": 10829,
+          "passed": true
+        },
+        {
+          "name": "b2_rate",
+          "actual": 84.98476313602364,
+          "expected": 84.984763136023,
+          "passed": true
+        },
+        {
+          "name": "b3_d",
+          "actual": 2872,
+          "expected": 2872,
+          "passed": true
+        },
+        {
+          "name": "b3_total",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        },
+        {
+          "name": "b3_avg",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        }
+      ],
+      "result": "APROBADO"
+    },
+    {
+      "name": "hoy",
+      "query": "page=1&pageSize=5&fromDate=2026-11-12&toDate=2026-11-12",
+      "status": 200,
+      "http": {
+        "period": "Filtros: 2026-11-12 a 2026-11-12",
+        "b1": {
+          "numerator": 11,
+          "denominator": 20,
+          "rate": 55.00000000000001,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 20,
+          "denominator": 20,
+          "rate": 100,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 11,
+          "totalDays": null,
+          "explanation": "9 conversiones sin evento BUYER → LEAD o intervalo válido; no se estima el promedio.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 11,
+        "b1_d": 20,
+        "b1_faltantes": 0,
+        "b2_n": 20,
+        "b2_d": 20,
+        "b3_d": 11,
+        "b3_faltantes": 9,
+        "suma_dias": "-1.8749078122",
+        "b1_porcentaje": "55",
+        "b2_porcentaje": "100",
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      },
+      "comparisons": [
+        {
+          "name": "b1_n",
+          "actual": 11,
+          "expected": 11,
+          "passed": true
+        },
+        {
+          "name": "b1_d",
+          "actual": 20,
+          "expected": 20,
+          "passed": true
+        },
+        {
+          "name": "b1_rate",
+          "actual": 55.00000000000001,
+          "expected": 55,
+          "passed": true
+        },
+        {
+          "name": "b2_n",
+          "actual": 20,
+          "expected": 20,
+          "passed": true
+        },
+        {
+          "name": "b2_d",
+          "actual": 20,
+          "expected": 20,
+          "passed": true
+        },
+        {
+          "name": "b2_rate",
+          "actual": 100,
+          "expected": 100,
+          "passed": true
+        },
+        {
+          "name": "b3_d",
+          "actual": 11,
+          "expected": 11,
+          "passed": true
+        },
+        {
+          "name": "b3_total",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        },
+        {
+          "name": "b3_avg",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        }
+      ],
+      "result": "APROBADO"
+    },
+    {
+      "name": "sinteticos_live",
+      "query": "page=1&pageSize=5&search=QA_BBE_20261112T223700Z_a11e",
+      "status": 200,
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 2,
+          "denominator": 3,
+          "rate": 66.66666666666666,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 3,
+          "denominator": 3,
+          "rate": 100,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 2,
+          "totalDays": null,
+          "explanation": "2 conversiones sin evento BUYER → LEAD o intervalo válido; no se estima el promedio.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 2,
+        "b1_d": 3,
+        "b1_faltantes": 0,
+        "b2_n": 3,
+        "b2_d": 3,
+        "b3_d": 2,
+        "b3_faltantes": 2,
+        "suma_dias": "-0.4166029166",
+        "b1_porcentaje": "66.666666666666",
+        "b2_porcentaje": "100",
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      },
+      "comparisons": [
+        {
+          "name": "b1_n",
+          "actual": 2,
+          "expected": 2,
+          "passed": true
+        },
+        {
+          "name": "b1_d",
+          "actual": 3,
+          "expected": 3,
+          "passed": true
+        },
+        {
+          "name": "b1_rate",
+          "actual": 66.66666666666666,
+          "expected": 66.666666666666,
+          "passed": true
+        },
+        {
+          "name": "b2_n",
+          "actual": 3,
+          "expected": 3,
+          "passed": true
+        },
+        {
+          "name": "b2_d",
+          "actual": 3,
+          "expected": 3,
+          "passed": true
+        },
+        {
+          "name": "b2_rate",
+          "actual": 100,
+          "expected": 100,
+          "passed": true
+        },
+        {
+          "name": "b3_d",
+          "actual": 2,
+          "expected": 2,
+          "passed": true
+        },
+        {
+          "name": "b3_total",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        },
+        {
+          "name": "b3_avg",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        }
+      ],
+      "result": "APROBADO"
+    },
+    {
+      "name": "convertidos",
+      "query": "page=1&pageSize=5&states=CONVERTED",
+      "status": 200,
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 2872,
+          "denominator": 2872,
+          "rate": 100,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 2872,
+          "denominator": 2872,
+          "rate": 100,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 2872,
+          "totalDays": null,
+          "explanation": "9 conversiones sin evento BUYER → LEAD o intervalo válido; no se estima el promedio.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 2872,
+        "b1_d": 2872,
+        "b1_faltantes": 0,
+        "b2_n": 2872,
+        "b2_d": 2872,
+        "b3_d": 2872,
+        "b3_faltantes": 9,
+        "suma_dias": "17907.8160645457",
+        "b1_porcentaje": "100",
+        "b2_porcentaje": "100",
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      },
+      "comparisons": [
+        {
+          "name": "b1_n",
+          "actual": 2872,
+          "expected": 2872,
+          "passed": true
+        },
+        {
+          "name": "b1_d",
+          "actual": 2872,
+          "expected": 2872,
+          "passed": true
+        },
+        {
+          "name": "b1_rate",
+          "actual": 100,
+          "expected": 100,
+          "passed": true
+        },
+        {
+          "name": "b2_n",
+          "actual": 2872,
+          "expected": 2872,
+          "passed": true
+        },
+        {
+          "name": "b2_d",
+          "actual": 2872,
+          "expected": 2872,
+          "passed": true
+        },
+        {
+          "name": "b2_rate",
+          "actual": 100,
+          "expected": 100,
+          "passed": true
+        },
+        {
+          "name": "b3_d",
+          "actual": 2872,
+          "expected": 2872,
+          "passed": true
+        },
+        {
+          "name": "b3_total",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        },
+        {
+          "name": "b3_avg",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        }
+      ],
+      "result": "APROBADO"
+    },
+    {
+      "name": "nuevos",
+      "query": "page=1&pageSize=5&states=NEW",
+      "status": 200,
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 0,
+          "denominator": 6331,
+          "rate": 0,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 6331,
+          "denominator": 7920,
+          "rate": 79.93686868686869,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 0,
+          "totalDays": null,
+          "explanation": "Sin conversiones verificables en el período.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 0,
+        "b1_d": 6331,
+        "b1_faltantes": 0,
+        "b2_n": 6331,
+        "b2_d": 7920,
+        "b3_d": 0,
+        "b3_faltantes": 0,
+        "suma_dias": "0",
+        "b1_porcentaje": "0",
+        "b2_porcentaje": "79.936868686868",
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      },
+      "comparisons": [
+        {
+          "name": "b1_n",
+          "actual": 0,
+          "expected": 0,
+          "passed": true
+        },
+        {
+          "name": "b1_d",
+          "actual": 6331,
+          "expected": 6331,
+          "passed": true
+        },
+        {
+          "name": "b1_rate",
+          "actual": 0,
+          "expected": 0,
+          "passed": true
+        },
+        {
+          "name": "b2_n",
+          "actual": 6331,
+          "expected": 6331,
+          "passed": true
+        },
+        {
+          "name": "b2_d",
+          "actual": 7920,
+          "expected": 7920,
+          "passed": true
+        },
+        {
+          "name": "b2_rate",
+          "actual": 79.93686868686869,
+          "expected": 79.936868686868,
+          "passed": true
+        },
+        {
+          "name": "b3_d",
+          "actual": 0,
+          "expected": 0,
+          "passed": true
+        },
+        {
+          "name": "b3_total",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        },
+        {
+          "name": "b3_avg",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        }
+      ],
+      "result": "APROBADO"
+    },
+    {
+      "name": "canal",
+      "query": "page=1&pageSize=5&channels=WhatsApp",
+      "status": 200,
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 1334,
+          "denominator": 3856,
+          "rate": 34.5954356846473,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 3856,
+          "denominator": 4542,
+          "rate": 84.89652135623074,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": 5.726544540429425,
+          "conversions": 1334,
+          "totalDays": 7639.210416932853,
+          "explanation": "Cohorte por fecha de registro; registro → primer evento BUYER → LEAD. El divisor corresponde a esos mismos intervalos.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 1334,
+        "b1_d": 3856,
+        "b1_faltantes": 0,
+        "b2_n": 3856,
+        "b2_d": 4542,
+        "b3_d": 1334,
+        "b3_faltantes": 0,
+        "suma_dias": "7639.2104168709",
+        "b1_porcentaje": "34.595435684647",
+        "b2_porcentaje": "84.89652135623",
+        "b3_total_dias": "7639.2104168709",
+        "b3_promedio_dias": "5.7265445403"
+      },
+      "comparisons": [
+        {
+          "name": "b1_n",
+          "actual": 1334,
+          "expected": 1334,
+          "passed": true
+        },
+        {
+          "name": "b1_d",
+          "actual": 3856,
+          "expected": 3856,
+          "passed": true
+        },
+        {
+          "name": "b1_rate",
+          "actual": 34.5954356846473,
+          "expected": 34.595435684647,
+          "passed": true
+        },
+        {
+          "name": "b2_n",
+          "actual": 3856,
+          "expected": 3856,
+          "passed": true
+        },
+        {
+          "name": "b2_d",
+          "actual": 4542,
+          "expected": 4542,
+          "passed": true
+        },
+        {
+          "name": "b2_rate",
+          "actual": 84.89652135623074,
+          "expected": 84.89652135623,
+          "passed": true
+        },
+        {
+          "name": "b3_d",
+          "actual": 1334,
+          "expected": 1334,
+          "passed": true
+        },
+        {
+          "name": "b3_total",
+          "actual": 7639.210416932853,
+          "expected": 7639.2104168709,
+          "passed": true
+        },
+        {
+          "name": "b3_avg",
+          "actual": 5.726544540429425,
+          "expected": 5.7265445403,
+          "passed": true
+        }
+      ],
+      "result": "APROBADO"
+    },
+    {
+      "name": "vacio",
+      "query": "page=1&pageSize=5&search=QA_NO_EXISTE_22a1e",
+      "status": 200,
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null,
+          "explanation": "Sin contactos utilizables captados en el período.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null,
+          "explanation": "Sin registros en el período.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 0,
+          "totalDays": null,
+          "explanation": "Sin conversiones verificables en el período.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 0,
+        "b1_d": 0,
+        "b1_faltantes": 0,
+        "b2_n": 0,
+        "b2_d": 0,
+        "b3_d": 0,
+        "b3_faltantes": 0,
+        "suma_dias": null,
+        "b1_porcentaje": null,
+        "b2_porcentaje": null,
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      },
+      "comparisons": [
+        {
+          "name": "b1_n",
+          "actual": 0,
+          "expected": 0,
+          "passed": true
+        },
+        {
+          "name": "b1_d",
+          "actual": 0,
+          "expected": 0,
+          "passed": true
+        },
+        {
+          "name": "b1_rate",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        },
+        {
+          "name": "b2_n",
+          "actual": 0,
+          "expected": 0,
+          "passed": true
+        },
+        {
+          "name": "b2_d",
+          "actual": 0,
+          "expected": 0,
+          "passed": true
+        },
+        {
+          "name": "b2_rate",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        },
+        {
+          "name": "b3_d",
+          "actual": 0,
+          "expected": 0,
+          "passed": true
+        },
+        {
+          "name": "b3_total",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        },
+        {
+          "name": "b3_avg",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        }
+      ],
+      "result": "APROBADO"
+    },
+    {
+      "name": "pagina2",
+      "query": "page=2&pageSize=2",
+      "status": 200,
+      "http": {
+        "period": "Histórico completo",
+        "b1": {
+          "numerator": 2872,
+          "denominator": 9203,
+          "rate": 31.207215038574375,
+          "explanation": "Cohorte por fecha de captación; primer evento BUYER → LEAD dentro de 14 días. Utilizabilidad actual.",
+          "source": "CaptacionesBuyer.fecha_captacion / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        },
+        "b2": {
+          "numerator": 9203,
+          "denominator": 10829,
+          "rate": 84.98476313602364,
+          "explanation": "Registros del período con nombres, contacto informado, autorización y calidad Valido, excluyendo duplicados detectados.",
+          "source": "Personas / fecha_registro; datos registrados, no verificación de identidad o contacto"
+        },
+        "b3": {
+          "averageDays": null,
+          "conversions": 2872,
+          "totalDays": null,
+          "explanation": "9 conversiones sin evento BUYER → LEAD o intervalo válido; no se estima el promedio.",
+          "source": "Personas.fecha_registro / EventosEtapa.fecha_hora (BUYER→LEAD)"
+        }
+      },
+      "sql": {
+        "b1_n": 2872,
+        "b1_d": 9203,
+        "b1_faltantes": 0,
+        "b2_n": 9203,
+        "b2_d": 10829,
+        "b3_d": 2872,
+        "b3_faltantes": 9,
+        "suma_dias": "17907.8160645457",
+        "b1_porcentaje": "31.207215038574",
+        "b2_porcentaje": "84.984763136023",
+        "b3_total_dias": null,
+        "b3_promedio_dias": null
+      },
+      "comparisons": [
+        {
+          "name": "b1_n",
+          "actual": 2872,
+          "expected": 2872,
+          "passed": true
+        },
+        {
+          "name": "b1_d",
+          "actual": 9203,
+          "expected": 9203,
+          "passed": true
+        },
+        {
+          "name": "b1_rate",
+          "actual": 31.207215038574375,
+          "expected": 31.207215038574,
+          "passed": true
+        },
+        {
+          "name": "b2_n",
+          "actual": 9203,
+          "expected": 9203,
+          "passed": true
+        },
+        {
+          "name": "b2_d",
+          "actual": 10829,
+          "expected": 10829,
+          "passed": true
+        },
+        {
+          "name": "b2_rate",
+          "actual": 84.98476313602364,
+          "expected": 84.984763136023,
+          "passed": true
+        },
+        {
+          "name": "b3_d",
+          "actual": 2872,
+          "expected": 2872,
+          "passed": true
+        },
+        {
+          "name": "b3_total",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        },
+        {
+          "name": "b3_avg",
+          "actual": null,
+          "expected": null,
+          "passed": true
+        }
+      ],
+      "result": "APROBADO"
+    }
+  ],
+  "startedUtc": "2026-11-12T22:46:23.794Z",
+  "inspection": {
+    "identity": {
+      "servidor": "DANIELPC",
+      "base": "NexoSalud_LeadEnsayoFinal",
+      "utc": "2026-11-12T22:46:23.900Z"
+    },
+    "active": [],
+    "transactions": [],
+    "modules": [
+      {
+        "nombre": "usp_ConvertirBuyerALead",
+        "sha256": "6A42F2ADD1BE9F827074A50A6DCB579C6341F71C35E8F0216E4E04A70DC634A5"
+      },
+      {
+        "nombre": "usp_RegistrarEntradaAgenteLead",
+        "sha256": "280708E81E3BE607A3772F082961EBE6E8371C1698414F3FDAC8B82D8A0C087E"
+      },
+      {
+        "nombre": "v_DatosCaptacionBuyer",
+        "sha256": "BAC8AB4A8AF43E8FB98BFABFE29FA8DC4F4D17F42CB5389EDEF23844EE85665D"
+      }
+    ],
+    "stages": [
+      {
+        "id_etapa": 1,
+        "nombre": "BUYER",
+        "descripcion": "Contacto identificable con autorización de contacto"
+      },
+      {
+        "id_etapa": 2,
+        "nombre": "LEAD",
+        "descripcion": "Persona con intención administrativa concreta"
+      },
+      {
+        "id_etapa": 3,
+        "nombre": "PAYER",
+        "descripcion": "Persona con pago inicial validado"
+      }
+    ],
+    "service": {
+      "id_servicio": 1,
+      "nombre": "Evaluación odontológica",
+      "descripcion": "Evaluación odontológica inicial",
+      "activo": true
+    },
+    "decisionColumns": [
+      {
+        "name": "id_decision",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "id_persona",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "id_usuario",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "agente",
+        "tipo": "varchar",
+        "max_length": 50
+      },
+      {
+        "name": "fecha_hora",
+        "tipo": "datetime2",
+        "max_length": 8
+      },
+      {
+        "name": "entrada",
+        "tipo": "varchar",
+        "max_length": -1
+      },
+      {
+        "name": "regla_aplicada",
+        "tipo": "varchar",
+        "max_length": 300
+      },
+      {
+        "name": "decision",
+        "tipo": "varchar",
+        "max_length": 500
+      },
+      {
+        "name": "accion",
+        "tipo": "varchar",
+        "max_length": 500
+      },
+      {
+        "name": "requiere_revision",
+        "tipo": "bit",
+        "max_length": 1
+      },
+      {
+        "name": "resultado_revision",
+        "tipo": "varchar",
+        "max_length": 300
+      },
+      {
+        "name": "id_captacion",
+        "tipo": "int",
+        "max_length": 4
+      },
+      {
+        "name": "id_interaccion",
+        "tipo": "int",
+        "max_length": 4
+      }
+    ]
+  },
+  "result": "APROBADO",
+  "finishedUtc": "2026-11-12T22:46:37.283Z"
+}
