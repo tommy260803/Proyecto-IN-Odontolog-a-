@@ -19,7 +19,7 @@ import { canTransitionBuyerToLead } from '@/domain/transitions';
 import { BuyerState } from '@/domain/enums';
 import { StatusBadge } from '@/shared/components/feedback/StatusBadge';
 import { JourneyStepper } from '@/shared/components/data-display/JourneyStepper';
-import { UserCheck, ArrowRight, Save, Loader2, Sparkles, ShieldCheck, Stethoscope, MapPin, Clock, Radio, Tag, CheckCircle2, AlertTriangle, HelpCircle, ChevronDown, ChevronUp, RefreshCw, Flame, Zap, History, Bot, RotateCw } from 'lucide-react';
+import { UserCheck, ArrowRight, Save, Loader2, Sparkles, Stethoscope, MapPin, Clock, Radio, CheckCircle2, AlertTriangle, HelpCircle, ChevronDown, ChevronUp, RefreshCw, Flame, Zap, History, Bot, RotateCw } from 'lucide-react';
 import { analyzeBuyerMarketingAgent, type BuyerMarketingAnalysis } from '@/shared/services/groqService';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -322,58 +322,43 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
                   <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-2 border-t border-teal-100/80 dark:border-teal-900/60 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       
-                      {/* Actividad 1: Validación y Calidad de Datos */}
+                      {/* Actividad 1: Perfilamiento inteligente de la necesidad */}
                       <div className="p-3.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800/90 shadow-2xs space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-bold text-teal-700 dark:text-teal-400 flex items-center gap-1.5">
-                            <ShieldCheck className="h-3.5 w-3.5" /> 1. Validación de Registro
+                            <Stethoscope className="h-3.5 w-3.5" /> 1. Perfilamiento de Necesidad Clínica
                           </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase border ${
-                            aiAnalysis?.dataQuality.status === 'Valido' 
-                              ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' 
-                              : aiAnalysis?.dataQuality.status === 'Duplicado'
-                              ? 'bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
-                              : 'bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                          }`}>
-                            {aiAnalysis?.dataQuality.status || 'Válido'}
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                            {aiAnalysis?.preferencesProfile.service || buyer.serviceOfInterest || 'Sin servicio'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                          {aiAnalysis?.dataQuality.explanation || '9 dígitos y consentimiento de Ley N° 29733 validados correctamente.'}
-                        </p>
+                        <dl className="grid grid-cols-1 gap-1 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed sm:grid-cols-2">
+                          <div><dt className="text-slate-400">Servicio:</dt><dd className="font-medium">{aiAnalysis?.preferencesProfile.service || buyer.serviceOfInterest || 'No especificado'}</dd></div>
+                          <div><dt className="text-slate-400">Sede:</dt><dd className="font-medium">{aiAnalysis?.preferencesProfile.branch || buyer.pref_sede_preferida || 'No especificada'}</dd></div>
+                        </dl>
                       </div>
 
-                      {/* Actividad 2: Clasificación de Preferencias */}
-                      <div className="p-3.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800/90 shadow-2xs space-y-1.5">
+                      {/* Actividad 2: Clasificación de intención y preparación para LEAD */}
+                      <div className="p-3.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-sky-200/90 dark:border-sky-800/90 shadow-2xs space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-teal-700 dark:text-teal-400 flex items-center gap-1.5">
-                            <Stethoscope className="h-3.5 w-3.5" /> 2. Perfil de Preferencias
+                          <span className="text-[11px] font-bold text-sky-700 dark:text-sky-400 flex items-center gap-1.5">
+                            <Sparkles className="h-3.5 w-3.5" /> 2. Clasificación de Intención y Preparación para LEAD
                           </span>
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                            {aiAnalysis?.preferencesProfile.category || 'Odontología'}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                          <span className="font-bold text-slate-800 dark:text-slate-100">{buyer.serviceOfInterest || 'Consulta Dental'}</span> · {buyer.pref_sede_preferida || 'Sede Principal'}
-                        </p>
-                      </div>
-
-                      {/* Actividad 3: Identificación del Origen */}
-                      <div className="p-3.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800/90 shadow-2xs space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-teal-700 dark:text-teal-400 flex items-center gap-1.5">
-                            <Tag className="h-3.5 w-3.5" /> 3. Origen de Captación
-                          </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                            {buyer.channel || 'Portal Web'}
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                            {aiAnalysis?.intentEvaluation.intentLevel || 'SIN_EVALUAR'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                          Fuente: <span className="font-bold text-slate-800 dark:text-slate-100">{buyer.attractionSource || 'Meta Ads (Campaña 2026)'}</span>
-                        </p>
+                        <div className="space-y-1 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                          <p><strong>Intención:</strong> {aiAnalysis?.intentEvaluation.intentReason || 'Sin evaluar.'}</p>
+                          <p><strong>Preparación:</strong> {isConverted
+                            ? 'La intención fue validada y el contacto ya fue transferido a LEAD.'
+                            : aiAnalysis?.intentEvaluation.suggestedAction === 'CONVERT_TO_LEAD'
+                            ? 'Está preparado para avanzar a LEAD.'
+                            : 'Debe permanecer en BUYER hasta aclarar la necesidad.'}</p>
+                        </div>
                       </div>
 
-                      {/* Actividad 4: Evaluación de Conversión a LEAD */}
+                      {/* Actividad 3: Recomendación y siguiente acción */}
                       <div className={`p-3.5 rounded-xl border shadow-2xs space-y-1.5 ${
                         aiAnalysis?.intentEvaluation.intentLevel === 'AMBIGUA'
                           ? 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-200/90 dark:border-amber-800/80'
@@ -381,27 +366,17 @@ export function BuyerDetailModal({ buyerId, isOpen, onClose }: BuyerDetailModalP
                       }`}>
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-bold text-teal-700 dark:text-teal-400 flex items-center gap-1.5">
-                            <Sparkles className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" /> 4. Intención Comercial & Conversión
+                          <ArrowRight className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" /> 3. Recomendación del Agente Buyer
                           </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase border ${
-                            aiAnalysis?.intentEvaluation.intentLevel === 'ALTA'
-                              ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
-                              : aiAnalysis?.intentEvaluation.intentLevel === 'MEDIA'
-                              ? 'bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-800'
-                              : 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800'
-                          }`}>
-                            {aiAnalysis?.intentEvaluation.intentLevel ? `Intención ${aiAnalysis.intentEvaluation.intentLevel}` : 'Intención Alta'}
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          {aiAnalysis?.intentEvaluation.suggestedAction || 'SIN_EVALUAR'}
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                          {aiAnalysis?.intentEvaluation.intentReason || 'Solicita información de precios y agendamiento clínico.'}
+                        {isConverted
+                          ? 'Conversión a LEAD ejecutada. El siguiente paso es continuar la negociación y el agendamiento desde la mesa de LEAD.'
+                          : aiAnalysis?.intentEvaluation.marketingRecommendation || 'Recalcula el análisis para obtener una recomendación del siguiente paso.'}
                         </p>
-                        {aiAnalysis?.intentEvaluation.marketingRecommendation && (
-                          <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[10.5px] text-teal-800 dark:text-teal-200 flex items-center gap-1">
-                            <span className="font-semibold text-teal-600 dark:text-teal-400">Acción Sugerida:</span>
-                            <span>{aiAnalysis.intentEvaluation.marketingRecommendation}</span>
-                          </div>
-                        )}
                       </div>
 
                     </div>

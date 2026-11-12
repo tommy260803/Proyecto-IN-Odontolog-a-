@@ -8,6 +8,13 @@ export interface LeadIntake {
   id_persona: number;
 }
 
+export class LeadIntakeUnavailableError extends Error {
+  constructor() {
+    super('La entrega al agente LEAD está pendiente: falta dbo.usp_RegistrarEntradaAgenteLead en la base de datos actual.');
+    this.name = 'LeadIntakeUnavailableError';
+  }
+}
+
 /** Internal BUYER handoff. Call after the conversion has committed. */
 export async function registerLeadIntake(requestId: number, db?: PrismaClient): Promise<LeadIntake> {
   if (!Number.isInteger(requestId) || requestId < 1 || requestId > 2_147_483_647) {
@@ -15,6 +22,16 @@ export async function registerLeadIntake(requestId: number, db?: PrismaClient): 
   }
 
   const client = db || defaultPrisma;
+  const [procedure] = await client.$queryRaw<{ existe: number }[]>`
+    SELECT CASE
+      WHEN OBJECT_ID(N'dbo.usp_RegistrarEntradaAgenteLead', N'P') IS NULL THEN 0
+      ELSE 1
+    END AS existe
+  `;
+  if (!procedure?.existe) {
+    throw new LeadIntakeUnavailableError();
+  }
+
   const [entry] = await client.$queryRaw<LeadIntake[]>`
     EXEC dbo.usp_RegistrarEntradaAgenteLead @id_solicitud = ${requestId}
   `;
