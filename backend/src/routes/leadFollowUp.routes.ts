@@ -46,7 +46,7 @@ leadFollowUpRouter.get('/connector/pending',async (_req,res) => {
 });
 leadFollowUpRouter.post('/connector/result',async(req,res)=>{
   const {clave_envio,estado,id_externo}=req.body;
-  if(typeof clave_envio!=='string'||!/^\w{8}-\w{4}-\w{4}-\w{4}-\w{12}$/.test(clave_envio)||
+  if(typeof clave_envio!=='string'||!/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(clave_envio)||
     !['ENVIADO','FALLIDO'].includes(estado)||typeof id_externo!=='string'||!id_externo.trim()||id_externo.length>200) return res.sendStatus(400);
   try {
     await prisma.$transaction(async tx=>{
@@ -140,8 +140,8 @@ leadFollowUpRouter.post('/:id', async (req,res) => {
       await tx.$executeRaw`
         MERGE dbo.SeguimientoOperativoLead WITH (HOLDLOCK) AS t
         USING (SELECT ${id} AS id_solicitud) s ON t.id_solicitud=s.id_solicitud
-        WHEN MATCHED THEN UPDATE SET estado=${state},motivo=${motivo.trim()},borrador=${draft},clave_envio=${key},revision=${next},actualizado_utc=SYSUTCDATETIME()
-        WHEN NOT MATCHED THEN INSERT(id_solicitud,estado,motivo,borrador,clave_envio,revision) VALUES(${id},${state},${motivo.trim()},${draft},${key},${next});
+        WHEN MATCHED THEN UPDATE SET estado=${state},motivo=${motivo.trim()},borrador=${draft},clave_envio=CONVERT(uniqueidentifier,CONVERT(varchar(36),${key})),revision=${next},actualizado_utc=SYSUTCDATETIME()
+        WHEN NOT MATCHED THEN INSERT(id_solicitud,estado,motivo,borrador,clave_envio,revision) VALUES(${id},${state},${motivo.trim()},${draft},CONVERT(uniqueidentifier,CONVERT(varchar(36),${key})),${next});
       `;
       await tx.$executeRaw`INSERT dbo.HistorialSeguimientoOperativoLead(id_solicitud,estado,motivo,borrador,revision) VALUES(${id},${state},${motivo.trim()},${draft},${next})`;
       return { estado:state };
