@@ -950,6 +950,9 @@ router.get('/', async (req, res) => {
       });
       where.id_canal_origen = { in: channelIds.map((channel) => channel.id_canal) };
     }
+    // Los indicadores reutilizan los filtros de búsqueda, fecha y canal, pero
+    // aplican la deduplicación en memoria para no construir un IN/NOT IN masivo.
+    const indicatorWhere = { ...where };
 
     // Detectar duplicados entre todos los BUYER antes de paginar. Si se hace
     // sobre la página actual, el filtro y el estado mostrado dependen del
@@ -1021,6 +1024,74 @@ router.get('/', async (req, res) => {
       }
       where.AND = [...(where.AND || []), { OR: stateFilters.length > 0 ? stateFilters : [{ id_persona: -1 }] }];
     }
+
+    const indicatorQueryPersons = hasPagination
+      ? await prisma.personas.findMany({
+          where: indicatorWhere,
+          select: {
+            id_persona: true,
+            nombres: true,
+            apellidos: true,
+            numero: true,
+            email: true,
+            dni: true,
+            autoriza_contacto: true,
+            estado_calidad: true,
+            fecha_registro: true,
+            fecha_actualizacion: true,
+            id_campana_origen: true,
+            Etapa: { select: { nombre: true } },
+          },
+        })
+      : [];
+
+    const indicatorPersons = selectedStates.length === 0
+      ? indicatorQueryPersons
+      : indicatorQueryPersons.filter((person) => {
+          const isConverted = ['LEAD', 'PAYER', 'CUSTOMER', 'TURNED'].includes(person.Etapa?.nombre || '');
+          const isDuplicate = duplicateBuyerIds.has(person.id_persona) || person.estado_calidad === 'Duplicado';
+          const matchesState = (state: string) => {
+            if (['NEW', 'CONTACTED'].includes(state)) return person.Etapa?.nombre === 'BUYER' && !isDuplicate;
+            if (state === 'CONVERTED') return isConverted;
+            if (state === 'DISCARDED') return person.estado_calidad === 'Rechazado';
+            if (state === 'DUPLICATED') return isDuplicate;
+            return false;
+          };
+          return selectedStates.some(matchesState);
+        });
+
+    const indicatorRegistered = indicatorPersons.length;
+    const usableIndicatorPersons = indicatorPersons.filter((person) => {
+      const hasName = Boolean(person.nombres?.trim() && person.apellidos?.trim());
+      const hasContact = Boolean(person.numero?.trim() || person.email?.trim());
+      const isDuplicate = duplicateBuyerIds.has(person.id_persona) || person.estado_calidad === 'Duplicado';
+      return hasName && hasContact && person.autoriza_contacto === true &&
+        !isDuplicate && person.estado_calidad !== 'Rechazado';
+    });
+    const convertedWithin14Days = usableIndicatorPersons.filter((person) => {
+      const conversionDate = ['LEAD', 'PAYER', 'CUSTOMER', 'TURNED'].includes(person.Etapa?.nombre || '')
+        ? person.fecha_actualizacion
+        : null;
+      if (!conversionDate) return false;
+      const days = (conversionDate.getTime() - person.fecha_registro.getTime()) / 86400000;
+      return days >= 0 && days <= 14;
+    }).length;
+    const indicatorLeads = indicatorPersons.filter((person) =>
+      ['LEAD', 'PAYER', 'CUSTOMER', 'TURNED'].includes(person.Etapa?.nombre || '')
+    ).length;
+    const conversionDays = indicatorPersons
+      .filter((person) =>
+        ['LEAD', 'PAYER', 'CUSTOMER', 'TURNED'].includes(person.Etapa?.nombre || '') &&
+        person.fecha_actualizacion
+      )
+      .map((person) => (person.fecha_actualizacion!.getTime() - person.fecha_registro.getTime()) / 86400000)
+      .filter((days) => days >= 0);
+    const averageConversionDays = conversionDays.length > 0
+      ? conversionDays.reduce((sum, days) => sum + days, 0) / conversionDays.length
+      : null;
+    const totalConversionDays = conversionDays.length > 0
+      ? conversionDays.reduce((sum, days) => sum + days, 0)
+      : null;
 
     const queryOptions: any = {
       where,
@@ -1330,6 +1401,24 @@ router.get('/', async (req, res) => {
           pageSize,
           total,
           totalPages: Math.max(1, Math.ceil(total / pageSize)),
+        },
+        indicators: {
+          period: 'Histórico completo',
+          b1: {
+            numerator: convertedWithin14Days,
+            denominator: usableIndicatorPersons.length,
+            rate: usableIndicatorPersons.length > 0 ? (convertedWithin14Days / usableIndicatorPersons.length) * 100 : null,
+          },
+          b2: {
+            numerator: usableIndicatorPersons.length,
+            denominator: indicatorRegistered,
+            rate: indicatorRegistered > 0 ? (usableIndicatorPersons.length / indicatorRegistered) * 100 : null,
+          },
+          b3: {
+            averageDays: averageConversionDays,
+            conversions: indicatorLeads,
+            totalDays: totalConversionDays,
+          },
         },
       });
     }

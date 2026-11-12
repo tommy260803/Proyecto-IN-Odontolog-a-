@@ -18,6 +18,12 @@ export interface BuyerPage {
     total: number;
     totalPages: number;
   };
+  indicators?: {
+    period: string;
+    b1: { numerator: number; denominator: number; rate: number | null };
+    b2: { numerator: number; denominator: number; rate: number | null };
+    b3: { averageDays: number | null; conversions: number; totalDays: number | null };
+  };
 }
 
 async function postBuyerWeb(data: object) {

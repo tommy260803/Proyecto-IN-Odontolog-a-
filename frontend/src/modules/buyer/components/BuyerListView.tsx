@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
   Search,
@@ -20,13 +20,11 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
   BarChart3,
   X,
 } from 'lucide-react';
 import { useBuyerPage, useBuyers, useConvertBuyerToLead, useUpdateBuyer } from '../hooks/useBuyerQueries';
 import { BuyerState } from '@/domain/enums';
-import { leadUseCases } from '@/application/use-cases/lead';
 import { QUERY_KEYS } from '@/shared/constants';
 import { useToast } from '@/shared/hooks/use-toast';
 import { LoadingState } from '@/shared/components/feedback/LoadingState';
@@ -123,11 +121,6 @@ export function BuyerListView() {
   const buyers = buyerPage?.items || [];
   const convertBuyer = useConvertBuyerToLead();
   const updateBuyer = useUpdateBuyer();
-  const { data: leads = [] } = useQuery({
-    queryKey: [QUERY_KEYS.LEADS],
-    queryFn: () => leadUseCases.getAllLeads(),
-  });
-
   // Control de Popovers de barra de filtros
   const [openFilterPopover, setOpenFilterPopover] = useState<'state' | 'channel' | 'date' | null>(
     null
@@ -192,47 +185,42 @@ export function BuyerListView() {
     setCurrentPage(1);
   }, [searchTerm, selectedStates, selectedChannels, startDate, endDate]);
 
-  // Cálculo de KPIs Horizontales (sin códigos crudos B1/B2/B3 ni etiqueta BI Metrix)
+  // Los indicadores se calculan en backend sobre todo el período, no sobre la página visible.
   const kpiMetrics = useMemo(() => {
-    const total = filteredBuyers.length;
-    const convertedCount = filteredBuyers.filter(
-      (b: any) => b.state === BuyerState.CONVERTED
-    ).length;
-    const validQualityCount = filteredBuyers.filter(
-      (b: any) => b.state !== BuyerState.DUPLICATED && b.state !== BuyerState.DISCARDED
-    ).length;
-
-    const conversionRate =
-      total > 0 ? ((Math.max(convertedCount, leads.length > 0 ? Math.min(leads.length, total) : convertedCount) / total) * 100).toFixed(1) : '0.0';
-    const qualityRate = total > 0 ? ((validQualityCount / total) * 100).toFixed(1) : '100.0';
-
+    const indicators = buyerPage?.indicators;
+    const percentage = (value: number | null) =>
+      value === null ? 'N/D' : `${value.toFixed(1)}%`;
     return [
       {
-        id: 'kpi-volume',
-        label: 'Prospectos Captados en Embudo',
-        value: totalRecords.toLocaleString('es-PE'),
-        trend: '+12.4%',
-        trendContext: 'vs mes anterior',
-        isPositive: true,
+        id: 'kpi-b1',
+        label: 'B1 · Conversión a LEAD en 14 días',
+        value: percentage(indicators?.b1.rate ?? null),
+        detail: indicators
+          ? `${indicators.b1.numerator.toLocaleString('es-PE')} conversiones / ${indicators.b1.denominator.toLocaleString('es-PE')} Buyers utilizables`
+          : 'Cargando indicadores...',
       },
       {
-        id: 'kpi-conversion',
-        label: 'Tasa de Conversión a LEAD',
-        value: `${conversionRate}%`,
-        trend: '+4.2%',
-        trendContext: `${convertedCount.toLocaleString('es-PE')} transferidos a negociación`,
-        isPositive: true,
+        id: 'kpi-b2',
+        label: 'B2 · Contactos utilizables',
+        value: percentage(indicators?.b2.rate ?? null),
+        detail: indicators
+          ? `${indicators.b2.numerator.toLocaleString('es-PE')} utilizables / ${indicators.b2.denominator.toLocaleString('es-PE')} registrados`
+          : 'Cargando indicadores...',
       },
       {
-        id: 'kpi-quality',
-        label: 'Índice de Calidad y Unicidad',
-        value: `${qualityRate}%`,
-        trend: '+1.8%',
-        trendContext: `${validQualityCount.toLocaleString('es-PE')} prospectos verificados`,
-        isPositive: true,
+        id: 'kpi-b3',
+        label: 'B3 · Tiempo promedio de conversión',
+        value: indicators?.b3.averageDays === null || indicators?.b3.averageDays === undefined
+          ? 'N/D'
+          : `${indicators.b3.averageDays.toFixed(1)} días`,
+        detail: indicators
+          ? indicators.b3.totalDays === null
+            ? 'N/D · no hay conversiones con fechas válidas'
+            : `${indicators.b3.totalDays.toLocaleString('es-PE', { maximumFractionDigits: 1 })} días acumulados / ${indicators.b3.conversions.toLocaleString('es-PE')} conversiones`
+          : 'Cargando indicadores...',
       },
     ];
-  }, [filteredBuyers, leads.length]);
+  }, [buyerPage?.indicators]);
 
   const hasActiveFilters =
     Boolean(searchTerm) ||
@@ -395,10 +383,7 @@ export function BuyerListView() {
               >
                 {kpi.label}
               </p>
-              <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-                <TrendingUp className="h-3 w-3" strokeWidth={2} />
-                {kpi.trend}
-              </span>
+              <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Histórico</span>
             </div>
 
             <div className="flex items-baseline justify-between gap-3 min-w-0">
@@ -407,9 +392,9 @@ export function BuyerListView() {
               </span>
               <span
                 className="text-[11px] font-medium text-slate-400 dark:text-slate-500 truncate text-right min-w-0"
-                title={kpi.trendContext}
+                title={kpi.detail}
               >
-                {kpi.trendContext}
+                {kpi.detail}
               </span>
             </div>
           </div>
