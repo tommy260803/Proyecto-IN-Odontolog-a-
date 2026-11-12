@@ -1,0 +1,748 @@
+{
+  "version": "inventario-fase-1",
+  "alcance": "Metadatos y cantidades agregadas; sin datos personales, credenciales ni definiciones de logins. Capturas separadas, no snapshot transaccional. No constituye un instalador.",
+  "servidor_observado": "ANTHONY",
+  "version_sql": "16.0.1000.6",
+  "bases": [
+    {
+      "base": "NexoSaludDB",
+      "capturado_utc": "2026-11-12T04:17:40.9012585",
+      "cotejamiento": "Modern_Spanish_CI_AS",
+      "tablas_aplicacion": [
+        {
+          "esquema": "dbo",
+          "tabla": "AccesosPreReservaLead",
+          "filas_catalogo": 2
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Atenciones",
+          "filas_catalogo": 219
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "CambiosOpcionLead",
+          "filas_catalogo": 0
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Campanas",
+          "filas_catalogo": 5
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Canales",
+          "filas_catalogo": 9
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "CaptacionesBuyer",
+          "filas_catalogo": 1
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "ConfiguracionLeadRevision",
+          "filas_catalogo": 1
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "DatosAcademicos",
+          "filas_catalogo": 0
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "DatosLaborales",
+          "filas_catalogo": 0
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "DecisionesIA",
+          "filas_catalogo": 0
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Disponibilidad",
+          "filas_catalogo": 82
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Etapas",
+          "filas_catalogo": 5
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "EventosEtapa",
+          "filas_catalogo": 1494
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Fuentes",
+          "filas_catalogo": 3
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "GastosCampana",
+          "filas_catalogo": 0
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "HistorialOpcionesLead",
+          "filas_catalogo": 325
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "HistorialPropuestasLead",
+          "filas_catalogo": 9
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "HistorialSeguimientoOperativoLead",
+          "filas_catalogo": 6
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "HistorialSolicitudesLead",
+          "filas_catalogo": 316
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "HistorialVigenciaPropuestasLead",
+          "filas_catalogo": 9
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Horarios",
+          "filas_catalogo": 6
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Incidencias",
+          "filas_catalogo": 0
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Interacciones",
+          "filas_catalogo": 15
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Modalidades",
+          "filas_catalogo": 2
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "MotivosRechazoLead",
+          "filas_catalogo": 0
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Opciones",
+          "filas_catalogo": 318
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Pagos",
+          "filas_catalogo": 124
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "PersonaPreferencias",
+          "filas_catalogo": 1
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Personas",
+          "filas_catalogo": 806
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "PersonaSaludOdontologica",
+          "filas_catalogo": 805
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Profesionales",
+          "filas_catalogo": 4
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "ProfesionalServicio",
+          "filas_catalogo": 2
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "PromocionesLead",
+          "filas_catalogo": 0
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "PropuestasEconomicasLead",
+          "filas_catalogo": 8
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Reservas",
+          "filas_catalogo": 127
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Roles",
+          "filas_catalogo": 6
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Sedes",
+          "filas_catalogo": 3
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "SeguimientoOperativoLead",
+          "filas_catalogo": 2
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Seguimientos",
+          "filas_catalogo": 80
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Servicios",
+          "filas_catalogo": 12
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Solicitudes",
+          "filas_catalogo": 311
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Tarifas",
+          "filas_catalogo": 6
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "TraspasosPayerLead",
+          "filas_catalogo": 1
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Usuarios",
+          "filas_catalogo": 4
+        }
+      ],
+      "cantidad_columnas_aplicacion": 412,
+      "cantidad_fk": 94,
+      "fk_invalidas": [],
+      "check_invalidos": [],
+      "modulos_aplicacion": [
+        {
+          "esquema": "dbo",
+          "objeto": "fn_Lead_Alternativas_Corte",
+          "tipo": "SQL_INLINE_TABLE_VALUED_FUNCTION",
+          "sha256": "BB57544266889A6B78AAC1C978E2FBFEFC70460D1C6B2DE871B24BE2B2B58BB6",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "fn_Lead_Oportunidades_Corte",
+          "tipo": "SQL_INLINE_TABLE_VALUED_FUNCTION",
+          "sha256": "B4D2A07C106077AAB50EFE1F0AA65201EAC0B16ED488A658264FF77F9AD0D7B5",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "fn_Lead_Propuestas_Corte",
+          "tipo": "SQL_INLINE_TABLE_VALUED_FUNCTION",
+          "sha256": "4FB3501304C03B77117ECFB8F3D9C7F178710F22DFCF6E4A7CD8D38A78845571",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "trg_Lead_Disponibilidad_InmutableOfertada",
+          "tipo": "SQL_TRIGGER",
+          "sha256": "B4ECBA6CF98BC2532C6CE81F73B9FE5E1E05F1E5C4CA31515AF22B1851CA0EBA",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "trg_Lead_Interacciones_Solicitud",
+          "tipo": "SQL_TRIGGER",
+          "sha256": "6E56D8FB798D4B73EA5FA00CE25EE58C84A5027C14CB9F0F491F7D9F855BCEDC",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "trg_Lead_Motivos_ClasificacionInmutable",
+          "tipo": "SQL_TRIGGER",
+          "sha256": "D5522A788A2557D049FA1B73F7F6645CD5208AD6E6A9380033ADDDEA2151A750",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "trg_Lead_Opciones_ValidarAuditar",
+          "tipo": "SQL_TRIGGER",
+          "sha256": "14E6E91BFA19565993F52058AAA0361840EA9AAE1B2BB1A53A5044D79ED681C0",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "trg_Lead_Propuestas_ValidarAuditar",
+          "tipo": "SQL_TRIGGER",
+          "sha256": "B3020E83BB735E766442F51D39D8638164AACD118A48A15F8B23C1B658FF1B25",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "trg_Lead_Solicitudes_Auditar",
+          "tipo": "SQL_TRIGGER",
+          "sha256": "E1AE5DA0507825D7A69929F6A8181AACA1D2435D7BB6B2C972CDAEBA2BED5A9A",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "trg_Lead_VigenciaPropuestas_Auditar",
+          "tipo": "SQL_TRIGGER",
+          "sha256": "065F9EF4E937C1ECB252365C790E5C5F678650BA025D59C7EEA6FC0057741D99",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "usp_ConvertirBuyerALead",
+          "tipo": "SQL_STORED_PROCEDURE",
+          "sha256": "6A42F2ADD1BE9F827074A50A6DCB579C6341F71C35E8F0216E4E04A70DC634A5",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "usp_Lead_PresentarAlternativa",
+          "tipo": "SQL_STORED_PROCEDURE",
+          "sha256": "5242B0D7E202B0A0AE7A1E50BAB56B3E037713264BE4EE31070BAEDC1251D642",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "usp_Lead_ReporteR1",
+          "tipo": "SQL_STORED_PROCEDURE",
+          "sha256": "758991082AC33C31978035BE662D2078E622E1CF083954EE3B8F8F5B2BD36D94",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "usp_Lead_ReporteR2",
+          "tipo": "SQL_STORED_PROCEDURE",
+          "sha256": "999E1AB3833FFAE0389994A42F502017E0366F03B89ED17496B97E64B7EDC241",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "usp_Lead_ReporteR3",
+          "tipo": "SQL_STORED_PROCEDURE",
+          "sha256": "7F68A555643264AC1206D5B73AA17DFD2CC71FDB90935F7A2E0EC0FA902B39EB",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "v_DatosCaptacionBuyer",
+          "tipo": "VIEW",
+          "sha256": "BAC8AB4A8AF43E8FB98BFABFE29FA8DC4F4D17F42CB5389EDEF23844EE85665D",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "v_DatosDimTiempo",
+          "tipo": "VIEW",
+          "sha256": "87B0AF5E9332A42F37E345F6999F64598E9C74AC1EB9B9E9DAA0DD0D428AA2D9",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "v_OrigenMedidasAlternativaLead",
+          "tipo": "VIEW",
+          "sha256": "6E25A7F77302B1A75841B40A654B9BEC04EC46C6885759B4D13370794B79780C",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "v_OrigenMedidasOportunidadLead",
+          "tipo": "VIEW",
+          "sha256": "CCCAB86E4A3255F306302B9313CC7B3943D605BB934EC00B4688343DA7ED4EE8",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        },
+        {
+          "esquema": "dbo",
+          "objeto": "v_OrigenMedidasPropuestaLead",
+          "tipo": "VIEW",
+          "sha256": "6A9FA4166233AF83959A5C579ABA1D3F6EEFDBB672BA1CDB8DD90E50CD6FECDD",
+          "uses_ansi_nulls": true,
+          "uses_quoted_identifier": true
+        }
+      ]
+    },
+    {
+      "base": "NexoSalud_Mart",
+      "capturado_utc": "2026-11-12T04:18:16.5760052",
+      "cotejamiento": "Modern_Spanish_CI_AS",
+      "tablas_aplicacion": [
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_Canal",
+          "filas_catalogo": 9
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_Cobro",
+          "filas_catalogo": 3
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_EstadoAtencion",
+          "filas_catalogo": 2
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_EstadoRegistro",
+          "filas_catalogo": 4
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_Fuente",
+          "filas_catalogo": 5
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_Hora",
+          "filas_catalogo": 125
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_Horario",
+          "filas_catalogo": 10
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_MotivoRechazo",
+          "filas_catalogo": 3
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_Negociador",
+          "filas_catalogo": 5
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_Pagador",
+          "filas_catalogo": 124
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_Pasarela",
+          "filas_catalogo": 4
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_Profesional",
+          "filas_catalogo": 5
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_Promocion",
+          "filas_catalogo": 4
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_Sede",
+          "filas_catalogo": 4
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_Servicio",
+          "filas_catalogo": 13
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_Tiempo",
+          "filas_catalogo": 47
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "Dim_TipoPersona",
+          "filas_catalogo": 805
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "fact_alternativas_aceptadas_lead",
+          "filas_catalogo": 0
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "fact_alternativas_rechazadas_lead",
+          "filas_catalogo": 0
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "fact_atencion_customer",
+          "filas_catalogo": 140
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "fact_captacion_buyer",
+          "filas_catalogo": 449
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "fact_gestion_payer",
+          "filas_catalogo": 103
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "fact_negociacion_lead",
+          "filas_catalogo": 58
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "fact_oportunidades_lead",
+          "filas_catalogo": 0
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "fact_propuestas_aceptadas_lead",
+          "filas_catalogo": 0
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "fact_propuestas_rechazadas_lead",
+          "filas_catalogo": 0
+        },
+        {
+          "esquema": "dbo",
+          "tabla": "fact_seguimiento_turned",
+          "filas_catalogo": 29
+        }
+      ],
+      "cantidad_columnas_aplicacion": 176,
+      "cantidad_fk": 56,
+      "fk_invalidas": [],
+      "check_invalidos": [],
+      "modulos_aplicacion": []
+    }
+  ],
+  "solo_qa": [
+    "AccesosChatLead",
+    "AuditoriaTrabajosAgenteLead",
+    "AutorizacionesReservaLead",
+    "EntradasAgenteLead",
+    "MensajesChatLead",
+    "PriorizacionesAgenteLead",
+    "PropuestasChatLead",
+    "RevisionesChatLead",
+    "TrabajosAgenteLead"
+  ],
+  "fuentes": [
+    {
+      "ruta": "database/buyer_revision/semana9/init_oltp.sql",
+      "sha256": "4A8566B23A5E631D37EDCFBEE170B3C247A196B5E09C88D3E73C59B6B565C74D"
+    },
+    {
+      "ruta": "database/buyer_revision/semana9/init_mart.sql",
+      "sha256": "6541948FEDC624C2955EEFD52C41AA25129F37BCAD7F2872B670C6C63AD4D622"
+    },
+    {
+      "ruta": "database/buyer_revision/semana9/poblamiento_merge_mart.sql",
+      "sha256": "056DE752054CFDA2E04AF0110FDEFBE630398C027FB233F74F4B12C4B6C3579E"
+    },
+    {
+      "ruta": "database/buyer_revision/semana9/06_segunda_tabla_hecho_inversion_buyer.sql",
+      "sha256": "95E3C1F6A46A50E1A01B73E6EB7B84CB5BB996CDE5DE56E57916168EF3787F38"
+    },
+    {
+      "ruta": "database/lead_revision/01_BUYER_OLTP.sql",
+      "sha256": "E2662D9DE27357268E722EE5EBDE9D9CB56B0039586E06DA958E99F9FEF82074"
+    },
+    {
+      "ruta": "database/lead_revision/INSTALAR_LEAD_COMPLETO.sql",
+      "sha256": "B841A4E40E40E9A3D3B6D548E895485F5BE09F16CD651018FFF6D646A9416678"
+    },
+    {
+      "ruta": "database/lead_revision/09_VIGENCIA_PROPUESTAS_LEAD.sql",
+      "sha256": "2C1233BACE3CBB908EDFC8D571FDBF1640289D5607C66CFEEE2AF6DB32D182B1"
+    },
+    {
+      "ruta": "database/lead_revision/10_SEGUIMIENTO_OPERATIVO_LEAD.sql",
+      "sha256": "FD301A149F6A1E34EADFAB4C08A00A5390A5ADE3C9B89E0CA8ACB18DEA4B721F"
+    },
+    {
+      "ruta": "database/lead_revision/11_TRASPASO_PAYER_LEAD.sql",
+      "sha256": "EE32E607B8C8FF7BC90C91ECCC8CC28B303C476A5392B53FC1A0228C1808E5EF"
+    },
+    {
+      "ruta": "database/lead_revision/mart_dimensiones/01_MIGRAR_DIMENSIONES.sql",
+      "sha256": "507280CE3B3435877FFB8F4BF85279460ADE4B0634A016E0A11B9D9F85DA48B6"
+    },
+    {
+      "ruta": "database/lead_revision/mart_dimensiones/02_FUENTES.sql",
+      "sha256": "09F53F99CE7C1227D6BC46C4B9BD4B915BBBF085A3B58E3C93D4D65565FE77BE"
+    },
+    {
+      "ruta": "database/lead_revision/mart_dimensiones/03_CARGAR_DIMENSIONES.sql",
+      "sha256": "05D8433C82DA36A545136CCB24D7BF208081AC28888D5BE007A850F5AD300077"
+    },
+    {
+      "ruta": "database/lead_revision/mart_hechos/01_CREAR_HECHOS.sql",
+      "sha256": "A2A2CF8880574FC3FC6FD6CB07724A57EC392C934A6BD9909D7FADE38C61742D"
+    },
+    {
+      "ruta": "database/lead_revision/mart_hechos/02_POBLAR_HECHOS.sql",
+      "sha256": "9066A1933EC7E0E1C3907895F8705ED09611FFD8DACD53EF4D42B82FD1A6D753"
+    },
+    {
+      "ruta": "backend/prisma/schema.prisma",
+      "sha256": "36D55B975741C13D790B07EFD42D0325F1598608D6F2CF67B83F0E40D5259FBB"
+    },
+    {
+      "ruta": "backend/src/services/MartSyncService.ts",
+      "sha256": "AFC1BC614D30E3BA55CEDF4121B9DEE28B07F7B05407FF5A39A6DABD3C73DBF5"
+    },
+    {
+      "ruta": "database/buyer_revision/semana9/01_catalogos.sql",
+      "sha256": "856063C48C8C43C6E9880E99C8B750301A571B83AE3776FC2B0B48D5B6B8E5CE"
+    },
+    {
+      "ruta": "database/lead_revision/instalacion_actualizada/00_INVENTARIAR.sql",
+      "sha256": "1662297B97FA19E0126100C7BEC9F723B876C67468BD7C7A6DCCF8B3EFD94D0C"
+    },
+    {
+      "ruta": "database/lead_revision/mart_dimensiones/00_CONTEXTO.sql",
+      "sha256": "03FEEF47E28CF4742BD382FB3177A15C16E10FB4486C09F09CCB2D5F408DFDDB"
+    },
+    {
+      "ruta": "database/lead_revision/mart_hechos/00_CONTEXTO_HECHOS.sql",
+      "sha256": "944BA1C67EEE5874CB4BE15A50595C4BEA954C95FA8747B342617CF640684CF9"
+    },
+    {
+      "ruta": "backend/src/routes/lead.routes.ts",
+      "sha256": "21AC531BCCDB637F2415C118DCD92E3A0473D7CBE9F0E0A318858DC4B3E00B49"
+    },
+    {
+      "ruta": "backend/src/routes/leadCommercial.routes.ts",
+      "sha256": "476944309BF78D461428C68FFAA1FA48CDE1DED232D4AC58A63C15B181BA5ED1"
+    },
+    {
+      "ruta": "backend/src/routes/leadFollowUp.routes.ts",
+      "sha256": "D445CB1D72B0E8B8A81E266D27EFEA507D2FBD1EBC39267CC5EF0C41E7A4D8D8"
+    },
+    {
+      "ruta": "backend/src/routes/leadTransfer.routes.ts",
+      "sha256": "6DB8D02131B409D6A944B7DDC6E7C5CFEAD258A80CD604205EBF37D7EE75A1DA"
+    },
+    {
+      "ruta": "backend/src/services/leadPayerTransfer.ts",
+      "sha256": "54C8F60837AB084E3B067AE00CC9F9520F28E1020E0AE63D842DC924C84D6DA3"
+    },
+    {
+      "ruta": "backend/src/services/leadIntake.ts",
+      "sha256": "48C6A5327A1A9887A225AC153657730A18F58DB80A7B6BC9032811CB49C291A3"
+    }
+  ],
+  "prisma": {
+    "comparacion": "Nombres de columnas escalares, nulabilidad y tipos nativos explicitos con longitudes y precision/escala decimal. No valida relaciones, precision temporal implicita ni equivalencia de comportamiento. Hay SQL directo fuera de Prisma.",
+    "columnas_modeladas_ausentes_en_sql": {},
+    "columnas_sql_no_modeladas": {
+      "Solicitudes": [
+        "clave_registro_web_lead",
+        "hash_registro_web_lead"
+      ],
+      "Opciones": [
+        "motivo_rechazo",
+        "tipo_motivo_rechazo"
+      ],
+      "EventosEtapa": [
+        "clave_operacion_buyer",
+        "id_captacion"
+      ],
+      "DecisionesIA": [
+        "id_captacion",
+        "id_interaccion"
+      ],
+      "PropuestasEconomicasLead": [
+        "motivo_rechazo",
+        "tipo_motivo_rechazo"
+      ]
+    },
+    "tablas_sql_no_modeladas": [
+      "AccesosPreReservaLead",
+      "CaptacionesBuyer",
+      "ConfiguracionLeadRevision",
+      "HistorialOpcionesLead",
+      "HistorialPropuestasLead",
+      "HistorialSeguimientoOperativoLead",
+      "HistorialSolicitudesLead",
+      "HistorialVigenciaPropuestasLead",
+      "SeguimientoOperativoLead",
+      "TraspasosPayerLead"
+    ],
+    "diferencias_nulabilidad_y_tipos_explicitos": []
+  },
+  "medidas_oltp_observadas": {
+    "corte_utc": "2026-11-12T04:20:25.1193382Z",
+    "M1": 0,
+    "M2": 0,
+    "M3": 1,
+    "M4": 0,
+    "M5": 0,
+    "M6": 3,
+    "M7": 0,
+    "M8": 0
+  },
+  "exclusiones_instalacion": [
+    "sysdiagrams",
+    "fn_diagramobjects",
+    "procedimientos sp_*diagram* de SSMS",
+    "usuarios, logins, contraseñas y tokens de la instancia de origen"
+  ],
+  "reconciliacion_modulos": {
+    "coinciden_con_fuentes_normalizando_create_or_alter_y_espacios": 18,
+    "misma_logica_con_diferencias_de_codificacion": [
+      "trg_Lead_VigenciaPropuestas_Auditar"
+    ],
+    "heredados_sin_fuente_localizada": [
+      "v_DatosDimTiempo"
+    ]
+  },
+  "dependencias_pendientes": {
+    "buyer_rutinas_ausentes": [
+      "NexoSaludDB.dbo.usp_SincronizarCaptacionBuyer",
+      "NexoSalud_Mart.dbo.usp_SincronizarInversionCampanaBuyer"
+    ],
+    "buyer_hecho_ausente": "fact_inversion_campana_buyer",
+    "buyer_grano_instalado": [
+      "KeyTiempo",
+      "KeySede",
+      "KeyCanal",
+      "KeyFuente",
+      "KeyEstadoRegistro"
+    ],
+    "buyer_grano_en_init_mart": [
+      "id_persona"
+    ],
+    "entrada_agente_ausente": "NexoSaludDB.dbo.usp_RegistrarEntradaAgenteLead"
+  }
+}

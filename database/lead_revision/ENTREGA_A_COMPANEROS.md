@@ -6,6 +6,8 @@ La recepción del futuro agente se documenta en el [contrato BUYER → LEAD](CON
 
 El [plan del agente LEAD](PLAN_AGENTE_LEAD.md) registra el avance, las políticas pendientes y el contrato de salida a PAYER.
 
+**Paquete de instalación actualizado en preparación.** La sección 8 registra el inventario y el avance del paquete reproducible. Los scripts de despliegue anteriores son evidencia de instalaciones realizadas; todavía no constituyen un instalador universal para una laptop nueva.
+
 La rama `lead` incluye el paquete SQL, el esquema Prisma, las rutas de BUYER y LEAD y el panel de reportes R1–R3. Para usar la aplicación, configuren el backend para una OLTP con las migraciones de la sección 6 ya aplicadas. Ejecuten `npm run prisma:generate` y `npm run build` en `backend`. En `frontend`, `npm test` ejecuta las pruebas de componentes y rutas simuladas, y `npm run build` compila la interfaz. Las pruebas que escriben en SQL requieren una copia de QA.
 
 El nuevo espacio de trabajo LEAD está disponible para revisión en QA. Con el backend apuntando a `NexoSalud_LeadPruebas`, activen `VITE_LEAD_WORKSPACE=true` al iniciar Vite. La bandeja en `/lead` lista solicitudes con ingreso documentado y cada detalle se abre por `id_solicitud`. Los enlaces anteriores por paciente abren un selector. Esta entrega es de consulta. La edición comercial y el traspaso a PAYER se habilitarán conforme se validen sus contratos. El flujo anterior sigue disponible con la configuración predeterminada.
@@ -162,3 +164,50 @@ El futuro conector usa `GET /api/lead/operational/connector/pending` para consul
 1. OLTP con [`APLICAR_BUYER_LEAD.sql`](APLICAR_BUYER_LEAD.sql) y su [procedimiento](PROCEDIMIENTO_INSTALACION_OLTP.md).
 2. Dimensiones con [`09_APLICAR_DIMENSIONES.sql`](mart_dimensiones/09_APLICAR_DIMENSIONES.sql), según el [procedimiento dimensional](mart_dimensiones/PRE_DESPLIEGUE_MART_LEAD.md).
 3. Hechos con [`08_APLICAR_HECHOS.sql`](mart_hechos/08_APLICAR_HECHOS.sql) y su [procedimiento de ventana](mart_hechos/PRE_DESPLIEGUE_HECHOS_LEAD.md). La conciliación posterior se puede reproducir con [`04_VALIDAR_HECHOS.sql`](mart_hechos/04_VALIDAR_HECHOS.sql), usando los parámetros del entorno.
+
+## 8. Paquete reproducible de instalación y datos de presentación
+
+### Avance por fases
+
+| Fase | Estado | Entrega |
+| --- | --- | --- |
+| 1. Inventario | Completado el 11/11/2026, Lima | Catálogo observado, correspondencia con fuentes, dependencias y diferencias enumeradas abajo. |
+| 2. OLTP completa | Pendiente | Consolidar la base de BUYER y las ampliaciones de LEAD, incluidos los incrementos 09, 10 y 11. |
+| 3. Estructura del Mart | Pendiente | Resolver la diferencia de versión BUYER antes de consolidar la estructura compartida y los cinco hechos LEAD. |
+| 4. Cargas del Mart | Pendiente | Dimensiones y hechos por separado, SQL sencillo y conciliación independiente. |
+| 5. Datos ficticios OLTP | Pendiente | Cohorte identificable, historial coherente y resultados esperados definidos antes de insertar. |
+| 6. Validación integral | Pendiente | Instalación desde vacío, reejecución, OLTP/reportes/Mart y recorridos de interfaz. |
+| 7. Entrega portátil | Pendiente | Requisitos, comandos ordenados, conexiones locales y pasos de presentación. |
+
+El orden final de ejecución será **estructura OLTP → estructura Mart → datos ficticios OLTP → dimensiones → hechos → validación → aplicación**. Las cargas analíticas no crearán decisiones comerciales ficticias. El nuevo paquete se alojará en `instalacion_actualizada/`; por ahora contiene exclusivamente el inventario, no scripts de instalación o poblamiento listos para ejecutar.
+
+### Resultado del inventario de lectura
+
+Fuentes: instancia `ANTHONY`, SQL Server `16.0.1000.6`, bases `NexoSaludDB`, `NexoSalud_Mart` y catálogo de la copia ya existente `NexoSalud_LeadPruebas`. Las tres estaban ONLINE y de lectura/escritura. Esta fase solo ejecutó SELECT sobre catálogos y agregados; no creó bases ni modificó esquema o registros.
+
+[Consulta reutilizable de inventario](instalacion_actualizada/00_INVENTARIAR.sql) · [Manifiesto de metadatos y huellas de fuentes](instalacion_actualizada/MANIFIESTO_ORIGEN.json).
+
+| Base principal | Tablas de aplicación | Columnas | FK | Módulos de aplicación |
+| --- | ---: | ---: | ---: | ---: |
+| `NexoSaludDB` | 44 | 412 | 94 | 20 |
+| `NexoSalud_Mart` | 27 | 176 | 56 | 0 |
+
+Se excluyen de esos totales `sysdiagrams` y ocho funciones/procedimientos auxiliares de diagramas SSMS en cada base. No son dependencias del sistema y no se exportarán al instalador. No hay FK ni CHECK deshabilitados o no confiables en las capturas. Los 20 módulos OLTP son tres funciones de corte, siete disparadores, cinco procedimientos y cinco vistas. El Mart contiene 17 dimensiones y diez hechos: cinco heredados y cinco LEAD. Las 25 FK de los hechos nuevos existen.
+
+**Prisma.** La comparación de nombres de columnas escalares no encontró columnas modeladas ausentes en SQL. La revisión de nulabilidad, tipos nativos explícitos, longitudes y precisión/escala decimal tampoco detectó diferencias. No sustituye una validación de relaciones o de comportamiento de las rutas. Hay diez tablas de aplicación manejadas mediante SQL directo y diez columnas adicionales no modeladas por Prisma; están enumeradas en el manifiesto y no deben desaparecer de la consolidación. Entre ellas se encuentran la captación, las claves de registro web y el vínculo de la conversión. No se ejecutó `db push` ni se regeneró el esquema.
+
+**Correspondencia de código SQL.** Los 18 módulos base de BUYER/LEAD coinciden con sus fuentes al normalizar espacios y la cabecera `CREATE OR ALTER` que SQL Server guarda como `CREATE`. El disparador de vigencia coincide en sus condiciones, pero la definición instalada contiene texto de comentario/error con codificación alterada respecto a UTF-8 del repositorio. La fase 2 conservará su lógica y normalizará la codificación del nuevo script. La vista heredada `v_DatosDimTiempo` está instalada sin definición localizada en los SQL actuales del repositorio: se conservará desde la definición inventariada y se documentará como heredada. Ninguna de estas observaciones motivó cambios en la principal.
+
+### Diferencias que condicionan la consolidación
+
+1. **BUYER instalado y BUYER publicado no son la misma versión dimensional.** En la principal, `fact_captacion_buyer` tiene PK compuesta por `KeyTiempo`, `KeySede`, `KeyCanal`, `KeyFuente` y `KeyEstadoRegistro`. El `init_mart.sql` de BUYER declara el hecho revisado con PK `id_persona`. La principal no tiene `fact_inversion_campana_buyer`, `usp_SincronizarCaptacionBuyer` ni `usp_SincronizarInversionCampanaBuyer`, aunque `MartSyncService` llama a esos procedimientos. No se puede certificar ese botón de sincronización con el catálogo instalado ni ejecutar el inicializador de BUYER sobre la principal como parche. Antes de cerrar la fase 3 se contrastará la entrega aprobada de BUYER y se declarará la versión objetivo y sus diferencias. No se cambiará el grano de BUYER por decisión implícita del paquete LEAD.
+2. **QA contiene nueve tablas que la principal no tiene:** `EntradasAgenteLead`, `TrabajosAgenteLead`, `AuditoriaTrabajosAgenteLead`, `PriorizacionesAgenteLead`, `AccesosChatLead`, `MensajesChatLead`, `PropuestasChatLead`, `RevisionesChatLead` y `AutorizacionesReservaLead`. El chat experimental requiere modo de personal QA y banderas QA. CAP-05 de la Mesa usa `AccesosPreReservaLead` y `TraspasosPayerLead`, que sí están instaladas. La consolidación no convertirá el piloto de chat en una función operativa solo por incluir sus tablas. El aviso `registerLeadIntake` depende de `usp_RegistrarEntradaAgenteLead`, ausente en la principal; deberá seguir identificado como integración pendiente hasta su instalación y conexión expresas.
+3. **Los scripts actuales tienen guardas de entorno.** El Mart valida pares de bases específicos y el nombre `ANTHONY` para el principal. El incremento 10 exige `NexoSaludDB`. La fase de instalación portátil sustituirá esa dependencia del equipo de origen por parámetros y verificaciones explícitas del destino; no eliminará las guardas a ciegas.
+4. **La semilla antigua mezcla catálogos y operaciones.** `buyer_revision/semana9/01_catalogos.sql` no es un archivo de solo catálogos. Se separarán los valores estructurales necesarios de la nueva cohorte ficticia. No se reutilizará su poblamiento antiguo como si acreditara el flujo LEAD actualizado.
+5. **La principal ya tiene actividad posterior a los informes anteriores.** El catálogo observado registra 127 reservas y un recibo CAP-05, frente a 126 y cero al instalar el incremento. Es una lectura posterior, no una alteración realizada en este inventario. Al corte `2026-11-12T04:20:25.1193382Z` (11/11, 23:20 Lima), las funciones OLTP devolvieron M1–M8 = `0,0,1,0,0,3,0,0`, mientras los cinco hechos nuevos seguían sin filas. Por tanto, no se repetirán como actuales los ceros del despliegue inicial ni se forzará que oportunidades, propuestas y alternativas tengan los mismos conteos: son unidades diferentes. Se conciliará la evidencia durante el diseño de la cohorte y la carga.
+
+### Metodología y condiciones de cierre
+
+Se mantienen las nueve dimensiones, los cinco hechos agregados, las 25 FK y las fórmulas aprobadas. El ETL y el nuevo poblamiento priorizarán `SELECT`, `JOIN`, `GROUP BY`, `COUNT`, `SUM`, `CASE`, `INSERT` y `MERGE`. No se añadirán funciones personalizadas, cursores o SQL dinámico para generar datos o cambiar el diseño. Las tres funciones de corte y los disparadores OLTP existentes conservan su función de trazabilidad; su exportación no introduce nuevas reglas dimensionales.
+
+La fase 1 verifica inventario y diferencias; no demuestra una instalación limpia, una carga idempotente ni un recorrido visual. Esas comprobaciones se ejecutarán en sus fases y se registrarán por separado. La versión de la principal queda preservada. Los futuros datos ficticios no se insertaron y no se alteraron los históricos existentes. Los cambios de esta fase se registran en un commit local de `lead`, sin push ni merge.
