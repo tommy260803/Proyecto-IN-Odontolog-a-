@@ -172,16 +172,16 @@ El futuro conector usa `GET /api/lead/operational/connector/pending` para consul
 | Fase | Estado | Entrega |
 | --- | --- | --- |
 | 1. Inventario | Completado el 11/11/2026, Lima | Catálogo observado, correspondencia con fuentes, dependencias y diferencias enumeradas abajo. |
-| 2. OLTP completa | Creación desde vacío y prueba SQL aprobadas | Archivo autónomo con la estructura instalada de BUYER/LEAD y tablas compartidas; conserva los incrementos 09, 10 y 11. No incluye las rutinas analíticas BUYER pendientes descritas abajo. |
+| 2. OLTP completa | Creación desde vacío y prueba SQL aprobadas | Archivo autónomo con la estructura instalada de BUYER/LEAD y tablas compartidas; conserva los incrementos 09, 10 y 11. Las rutinas analíticas BUYER se instalan por separado con el archivo 03. |
 | 3. Estructura del Mart | Creación desde vacío y pruebas de estructura aprobadas | Tablas BUYER de su versión publicada, dimensiones compartidas y hechos LEAD aprobados. Las bases principales conservan su versión anterior. |
-| 4. Cargas del Mart | Pendiente | Dimensiones y hechos por separado, SQL sencillo y conciliación independiente. |
+| 4. Cargas del Mart | Carga vacía, con datos, reejecución y reclasificación aprobadas en el par aislado | Instalador de las rutinas BUYER publicadas, carga transaccional BUYER → dimensiones LEAD → cinco hechos LEAD y conciliación independiente. |
 | 5. Datos ficticios OLTP | Pendiente | Cohorte identificable, historial coherente y resultados esperados definidos antes de insertar. |
 | 6. Validación integral | Pendiente | Instalación desde vacío, reejecución, OLTP/reportes/Mart y recorridos de interfaz. |
 | 7. Entrega portátil | Pendiente | Requisitos, comandos ordenados, conexiones locales y pasos de presentación. |
 
-**Versión objetivo del Mart para instalación NUEVA (fase 3).** El nuevo paquete utilizará el hecho de captación por persona y el hecho de inversión por gasto ya definidos por el equipo BUYER en `buyer_revision/semana9/init_mart.sql` y `06_segunda_tabla_hecho_inversion_buyer.sql`. Es la versión publicada que espera `MartSyncService`; no es un cambio de grano diseñado por LEAD. Frente al Mart principal inventariado, esta instalación nueva tendrá una definición distinta de `fact_captacion_buyer` y añadirá `fact_inversion_campana_buyer`. Las dimensiones y los otros nueve hechos conservarán sus estructuras observadas, incluidos los cinco LEAD agregados. Esta decisión solo afecta al script para una base nueva: no autoriza convertir, borrar o recargar el BUYER histórico de `NexoSalud_Mart`. Sus datos requerirían una migración acordada por separado. Los procedimientos de sincronización se incorporarán con la fase 4 de cargas; disponer de sus tablas no instala todavía el ETL.
+**Versión objetivo del Mart para instalación NUEVA (fase 3).** El nuevo paquete utilizará el hecho de captación por persona y el hecho de inversión por gasto ya definidos por el equipo BUYER en `buyer_revision/semana9/init_mart.sql` y `06_segunda_tabla_hecho_inversion_buyer.sql`. Es la versión publicada que espera `MartSyncService`; no es un cambio de grano diseñado por LEAD. Frente al Mart principal inventariado, esta instalación nueva tendrá una definición distinta de `fact_captacion_buyer` y añadirá `fact_inversion_campana_buyer`. Las dimensiones y los otros nueve hechos conservarán sus estructuras observadas, incluidos los cinco LEAD agregados. Esta decisión solo afecta al script para una base nueva: no autoriza convertir, borrar o recargar el BUYER histórico de `NexoSalud_Mart`. Sus datos requerirían una migración acordada por separado. Los procedimientos de sincronización se incorporan con el archivo 03 de la fase 4; disponer de sus tablas no instala por sí solo el ETL.
 
-El orden final de ejecución será **estructura OLTP → estructura Mart → datos ficticios OLTP → dimensiones → hechos → validación → aplicación**. Las cargas analíticas no crearán decisiones comerciales ficticias. El paquete se aloja en `instalacion_actualizada/`. Sus archivos OLTP y de estructura Mart ya están disponibles para instalación nueva; las cargas y el poblamiento siguen pendientes.
+El orden final de ejecución será **01 estructura OLTP → 02 estructura Mart → 03 instalar rutinas BUYER → datos ficticios OLTP (fase 5 pendiente) → 04 cargar BUYER, dimensiones y hechos LEAD → verificar → aplicación**. Las cargas analíticas no crearán decisiones comerciales ficticias. El paquete se aloja en `instalacion_actualizada/`. Las estructuras y cargas ya están disponibles para instalación nueva; el poblamiento transaccional de presentación sigue pendiente. No ejecutar esta secuencia sobre bases existentes: los instaladores 01/02 rechazan ese caso y las cargas 03/04 exigen los marcadores de este paquete.
 
 ### Fase 2: instalar la OLTP completa desde cero
 
@@ -229,7 +229,63 @@ Este archivo ya contiene la estructura base: no ejecutar antes `buyer_revision/s
 
 [PRUEBA_ESTRUCTURA_MART.sql](instalacion_actualizada/PRUEBA_ESTRUCTURA_MART.sql) exige un destino aislado marcado y vacío. Comprobó las cinco PK dimensionales, ambos roles de horario apuntando a `Dim_Horario`, las columnas calculadas en UTF-8 y una fila agregada que conserva cinco oportunidades aceptadas. Rechazó PK duplicada, clave dimensional inexistente, medidas negativas, M5 mayor que M4 y M8 mayor que M7. Los miembros y hechos temporales se insertaron dentro de una transacción y se revirtieron; todas las tablas quedaron vacías. Pasaron `DBCC CHECKDB` y `DBCC CHECKCONSTRAINTS`. La reejecución del instalador fue rechazada con 55102; un destino no confirmado fue rechazado con 55101 sin crear esa base.
 
-Los valores temporales de medidas de esa prueba solo ejercitan la estructura: no son una carga desde OLTP ni una conciliación de negocio. La fase 4 preparará las cargas de dimensiones/hechos y las rutinas publicadas de sincronización BUYER; la fase 5 aportará la cohorte transaccional y la fase 6 conciliará M1–M8 y L1–L3. Los hechos de las otras fases conservan su estructura; no se ejecutaron sus ETL. El paquete todavía no tiene datos de presentación ni acredita una prueba visual del frontend.
+Los valores temporales de medidas de esa prueba solo ejercitan la estructura: no son una carga desde OLTP ni una conciliación de negocio. La fase 4, descrita a continuación, preparó las cargas de dimensiones/hechos y las rutinas publicadas de sincronización BUYER; la fase 5 aportará la cohorte transaccional y la fase 6 conciliará esa cohorte completa con reportes e interfaz. Los hechos de las otras fases conservan su estructura; no se ejecutaron sus ETL. El paquete todavía no tiene datos de presentación ni acredita una prueba visual del frontend.
+
+### Fase 4: cargas y conciliación del Mart
+
+| Archivo | Uso |
+| --- | --- |
+| [03_INSTALAR_ETL_BUYER.sql](instalacion_actualizada/03_INSTALAR_ETL_BUYER.sql) | Instala `usp_SincronizarCaptacionBuyer` en la OLTP y `usp_SincronizarInversionCampanaBuyer` en el Mart; no ejecuta sus cargas. Conserva los cuerpos publicados por BUYER, parametrizando las referencias a bases y quitando espacios finales. |
+| [04_POBLAR_MART_ACTUALIZADO.sql](instalacion_actualizada/04_POBLAR_MART_ACTUALIZADO.sql) | Carga BUYER, las nueve dimensiones usadas por LEAD y sus cinco hechos agregados, en ese orden y dentro de una transacción. Es reejecutable; elimina grupos LEAD obsoletos sin duplicar operaciones. |
+| [VERIFICAR_CARGA_MART.sql](instalacion_actualizada/VERIFICAR_CARGA_MART.sql) | Compara identidades y medidas BUYER, gastos/inversión, M1–M8 y L1–L3 entre OLTP y Mart. Solo lee las tablas de aplicación; usa temporales para comparar. |
+| [PRUEBA_CARGA_MART.sql](instalacion_actualizada/PRUEBA_CARGA_MART.sql) | Ensayo temporal con rollback, restringido al par `NexoSalud_InstalacionValidacion` / `NexoSalud_Mart_InstalacionValidacion`. No es el poblamiento para presentar. |
+
+Los tres primeros son autónomos, sin inclusiones `:r`. El ensayo reutiliza la carga y la conciliación mediante `:r` desde la raíz del repositorio. Las fuentes LEAD son [02_FUENTES.sql](mart_dimensiones/02_FUENTES.sql), [03_CARGAR_DIMENSIONES.sql](mart_dimensiones/03_CARGAR_DIMENSIONES.sql), [02_POBLAR_HECHOS.sql](mart_hechos/02_POBLAR_HECHOS.sql) y [03_COMPARAR_MEDIDAS.sql](mart_hechos/03_COMPARAR_MEDIDAS.sql). Se sustituyeron las guardas del entorno anterior y la envoltura transaccional para el nuevo par; se conserva su lógica de negocio. BUYER procede del procedimiento del bloque 1 de [poblamiento_merge_mart.sql](../buyer_revision/semana9/poblamiento_merge_mart.sql) y del procedimiento de [06_segunda_tabla_hecho_inversion_buyer.sql](../buyer_revision/semana9/06_segunda_tabla_hecho_inversion_buyer.sql). No se incluyen los bloques de carga de otras etapas ni la migración del Mart anterior.
+
+**Efectos y límites.** BUYER puede incorporar en `CaptacionesBuyer` identidades antiguas que aún carezcan de captación, con origen `HISTORICO_OBSERVADO`, tal como hace su rutina publicada. Eso no inventa consentimiento, servicio, fecha de conversión ni acuerdo. LEAD lee la OLTP y agrega únicamente evidencia documentada. La carga actualiza los dos hechos BUYER; preserva `fact_negociacion_lead`, `fact_gestion_payer`, `fact_atencion_customer` y `fact_seguimiento_turned`, sin ejecutar sus ETL. No se introducen funciones, disparadores, cursores ni SQL dinámico nuevos. Se mantienen las tres funciones de corte existentes, el grano agregado, las PK compuestas y las 25 FK LEAD.
+
+Los marcadores requeridos son `LEAD-OLTP-2026-11` y `LEAD-MART-2026-11-BUYER-REVISADO`, en la propiedad de base `NexoSaludPaquete`. Por tanto, estos archivos no son una actualización del par principal anterior. La carga usa aislamiento SERIALIZABLE y el bloqueo transaccional `ETL_BUYER_SEMANA9` en la OLTP, compartido con las rutinas BUYER. Un error revierte toda su transacción, incluida una transacción externa si existe; el ensayo usa precisamente esa transacción externa para revertir sus casos. No hay restauración, borrado ni recuperación automática de bases.
+
+**Comandos para una instalación NUEVA**, después de completar 01/02 y antes de conectar la aplicación. Ejecutar cada comando y detenerse ante código distinto de cero. La carga 04 debe repetirse después del futuro poblamiento OLTP de la fase 5; también admite una fuente vacía.
+
+```powershell
+sqlcmd -S "SU_INSTANCIA" -E -C -I -b -t 120 -f 65001 -d master -v Origen=NexoSaludDB Mart=NexoSalud_Mart -i database/lead_revision/instalacion_actualizada/03_INSTALAR_ETL_BUYER.sql
+if ($LASTEXITCODE -ne 0) { throw 'Fallo al instalar rutinas BUYER; detener.' }
+sqlcmd -S "SU_INSTANCIA" -E -C -I -b -t 120 -f 65001 -d master -v Origen=NexoSaludDB Mart=NexoSalud_Mart -i database/lead_revision/instalacion_actualizada/04_POBLAR_MART_ACTUALIZADO.sql
+if ($LASTEXITCODE -ne 0) { throw 'Fallo de carga; revisar el error antes de continuar.' }
+sqlcmd -S "SU_INSTANCIA" -E -C -I -b -t 120 -f 65001 -d master -v Origen=NexoSaludDB Mart=NexoSalud_Mart -i database/lead_revision/instalacion_actualizada/VERIFICAR_CARGA_MART.sql
+if ($LASTEXITCODE -ne 0) { throw 'Fallo de conciliacion; detener.' }
+```
+
+Los nombres alternativos sirven para validar los SQL en el par aislado. El backend actual `MartSyncService` conserva referencias literales a `NexoSaludDB` y `NexoSalud_Mart`: cambiar solo `.env` no parametriza esas llamadas BUYER. Para la futura laptop, usar los nombres estándar en una instancia donde no existan; cualquier soporte del backend para otros nombres requiere un trabajo separado. Se conserva la convención existente: fechas de negocio y corte BUYER en hora local de SQL Server (Lima, exigida por 01), y observación/corte LEAD en UTC. El día dimensional usa la fecha de negocio, sin convertirla accidentalmente al día UTC.
+
+**Resultados reales del 12/11/2026.** Se reutilizó exclusivamente el par aislado de las fases 2/3. La instalación 03 y la carga vacía terminaron con código 0. La fuente vacía concilió M1–M8 = cero, L1–L3 = NULL («No calculable»), sin fabricar operaciones. El ensayo completo terminó con código 0 y comprobó:
+
+- Primera carga y reejecución: M1–M8 = **1, 1, 2, 2, 1, 1, 2, 1** tanto en OLTP como Mart; L1 = **50%**, L2 = **25%**, L3 = **33,3333%**.
+- Reclasificación de las mismas identidades: M1–M8 = **1, 1, 3, 1, 0, 2, 1, 0**; L1 = **50%**, L2/L3 = **0%** con denominadores positivos. Desaparecieron los grupos obsoletos, sin duplicar raíces ni alternativas.
+- BUYER: tres contactos, dos utilizables y una conversión acreditada. Estar ya en LEAD sin evento no contó como conversión. Dos gastos sumaron **S/ 130**: **S/ 100** atribuibles a la campaña con captaciones y **S/ 30** de una campaña sin contactos, conservados en inversión. Las identidades y las medidas conciliaron independientemente.
+- Se conservaron exactamente las filas de los cuatro hechos heredados citados, con filas temporales no vacías para detectar cambios. Las nueve dimensiones conservaron claves y atributos entre cargas sin cambios de fuente. BUYER conservó sus columnas de negocio; `fecha_corte_etl` se excluyó de esa igualdad porque registra cada ejecución.
+- Pasaron los controles de versiones, promoción de catálogo/texto/no especificada, horarios preferido/ofrecido, motivo económico/incompatibilidad, pendientes fuera del denominador y fechas de negocio a ambos lados de medianoche. Las restricciones permanecieron habilitadas y confiables.
+- Tras rollback no quedaron personas, servicios, captaciones, solicitudes, eventos, gastos ni hechos del ensayo; las nueve dimensiones volvieron exactamente a su contenido anterior. Los miembros de control creados por la carga vacía sí permanecen. Una conciliación posterior volvió a mostrar fuente/Mart vacíos y porcentajes NULL.
+- Instalador 03 y carga 04 rechazaron con **55201** un par ajeno al paquete antes de escribir. Las 26 huellas de las fuentes originales siguen intactas y ambos procedimientos BUYER coinciden con su entrega publicada tras parametrizar nombres y normalizar espacios finales.
+
+Para reproducir el ensayo, antes de introducir datos operativos persistentes y tras 03/04:
+
+```powershell
+sqlcmd -S "SU_INSTANCIA" -E -C -I -b -t 120 -f 65001 -d master -v Origen=NexoSalud_InstalacionValidacion Mart=NexoSalud_Mart_InstalacionValidacion -i database/lead_revision/instalacion_actualizada/PRUEBA_CARGA_MART.sql
+if ($LASTEXITCODE -ne 0) { throw 'El ensayo no aprobo; revisar su salida.' }
+```
+
+Se observaron avisos SQL de omisión de NULL al agregar; se conservaron visibles y los totales se conciliaron. Estas pruebas no acreditan aún la cohorte persistente de presentación, un recorrido del navegador, concurrencia de varios ETL ni un fallo inyectado a mitad de la carga; siguen para fases 5/6. El rollback probado fue el del ensayo completo. No se modificaron las bases principales, el backend, el frontend ni archivos de otros equipos. No hubo push ni merge.
+
+SHA-256 de los archivos ensayados:
+
+| Archivo | SHA-256 |
+| --- | --- |
+| `03_INSTALAR_ETL_BUYER.sql` | `A1C007B7257AEA320602CE8C21008D1FDD11EF5B584568ECFA7091ED4775DFDA` |
+| `04_POBLAR_MART_ACTUALIZADO.sql` | `C6F78E075E10B519A3D44911C4B32F81483507795A5C45F33D3EB8270E1FA6CC` |
+| `VERIFICAR_CARGA_MART.sql` | `03C36108F3CD33C8CDF94CFCCC09D4875F955E541910180F18453F2082A47368` |
+| `PRUEBA_CARGA_MART.sql` | `B88337D0582B305CBBF3246E461C505ACCE019C4B7A211764762DC5BE591BD22` |
 
 ### Resultado del inventario de lectura
 
