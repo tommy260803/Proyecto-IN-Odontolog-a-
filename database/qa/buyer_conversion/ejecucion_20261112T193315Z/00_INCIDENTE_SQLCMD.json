@@ -1,0 +1,7 @@
+{
+  "fase": "Validacion de sintaxis antes de cualquier prueba",
+  "error": "SQLCMD: -E y -U/-P se excluyen mutuamente",
+  "SQLCMDUSER_definida": false,
+  "SQLCMDPASSWORD_definida": false,
+  "escriturasDePruebaEjecutadas": false
+}

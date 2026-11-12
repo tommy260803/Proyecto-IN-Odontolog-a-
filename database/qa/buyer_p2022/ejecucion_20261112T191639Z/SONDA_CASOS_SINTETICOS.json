@@ -1,0 +1,18 @@
+[
+  {
+    "caso": "sin_persona_con_listado_simulado_200",
+    "complete": false,
+    "exitCode": 1,
+    "fichaEjecutada": false,
+    "resultado": "APROBADO",
+    "tipo": "simulado_sin_SQL_ni_HTTP_real"
+  },
+  {
+    "caso": "persona_existente_con_GET_simulados_200",
+    "complete": true,
+    "exitCode": 0,
+    "fichaEjecutada": true,
+    "resultado": "APROBADO",
+    "tipo": "simulado_sin_SQL_ni_HTTP_real"
+  }
+]

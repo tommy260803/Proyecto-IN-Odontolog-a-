@@ -1,0 +1,112 @@
+{
+  "rama": "feature/buyer-orientacion-interactiva",
+  "HEAD": "19613358530e899bfc68d5e6b3c33b6336ab9ce4",
+  "destino": "DANIELPC/NexoSalud_LeadEnsayoFinal",
+  "prefijo": "QA_BCV_20261112T193315Z_",
+  "casos": {
+    "A": "APROBADO",
+    "B": "APROBADO",
+    "C": "APROBADO",
+    "D": "APROBADO_SQL_ENTREGA_POSPUESTA"
+  },
+  "AB": {
+    "A": "APROBADO",
+    "B": "APROBADO",
+    "solicitud": 2915,
+    "evento": 4087,
+    "ya_convertido": [
+      0,
+      1
+    ],
+    "rollbackFixture": "COMPLETO",
+    "conteosYHuellasFueraPrefijoSinCambios": true,
+    "nota": "No se ensaya fallo dentro del procedimiento; rollback externo exitoso del fixture."
+  },
+  "AB_ids_revertidos": {
+    "id_persona": 10982,
+    "id_captacion": 10980,
+    "id_solicitud": 2915,
+    "id_evento": 4087
+  },
+  "sujetosConservados": [
+    {
+      "caso": "C",
+      "nombre": "QA_BCV_20261112T193315Z_C",
+      "id_persona": 10983,
+      "id_captacion": 10981,
+      "id_solicitud": 2916,
+      "id_evento": 4088,
+      "clave": "BUYER_LEAD:10981",
+      "etapa": "LEAD",
+      "entradas": 1,
+      "fecha_recepcion_utc": "2026-11-12 19:38:41.9503710"
+    },
+    {
+      "caso": "D",
+      "nombre": "QA_BCV_20261112T193315Z_D",
+      "id_persona": 10984,
+      "id_captacion": 10982,
+      "id_solicitud": 2917,
+      "id_evento": 4089,
+      "clave": "BUYER_LEAD:10982",
+      "etapa": "LEAD",
+      "entradas": 1,
+      "fecha_recepcion_utc": "2026-11-12 19:39:06.8630428"
+    }
+  ],
+  "comparacion": [
+    {
+      "tabla": "Personas",
+      "antes": 10809,
+      "despues": 10811,
+      "delta": 2,
+      "registrosSinteticos": 2,
+      "huellaFueraPrefijoConservada": true
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "antes": 10809,
+      "despues": 10811,
+      "delta": 2,
+      "registrosSinteticos": 2,
+      "huellaFueraPrefijoConservada": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "antes": 2861,
+      "despues": 2863,
+      "delta": 2,
+      "registrosSinteticos": 2,
+      "huellaFueraPrefijoConservada": true
+    },
+    {
+      "tabla": "EventosEtapa",
+      "antes": 4041,
+      "despues": 4043,
+      "delta": 2,
+      "registrosSinteticos": 2,
+      "huellaFueraPrefijoConservada": true
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "antes": 0,
+      "despues": 2,
+      "delta": 2,
+      "registrosSinteticos": 2,
+      "huellaFueraPrefijoConservada": true
+    }
+  ],
+  "otrosConteosYHuellasModulosSinCambios": true,
+  "objetosDeCatalogo": 256,
+  "noValidados": [
+    "concurrencia HTTP",
+    "recuperacion de proceso o backend",
+    "clasificacion Gemini",
+    "recorrido de interfaz",
+    "rollback ante fallo interno de procedimientos"
+  ],
+  "notaRollback": "Solo se verifico rollback externo de un fixture convertido correctamente.",
+  "erroresProcedimientos": [],
+  "incidenteHerramienta": "SQLCMD rechazo inicialmente una ruta absoluta C:/...; ruta nativa Windows C:\\... funciono. Sin ejecucion de pruebas en ese intento.",
+  "fecha_final_utc": "2026-11-12T19:39:06.9486407Z"
+}

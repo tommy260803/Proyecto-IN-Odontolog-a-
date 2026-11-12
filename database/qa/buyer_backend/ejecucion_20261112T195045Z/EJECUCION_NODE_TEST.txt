@@ -1,0 +1,17 @@
+▶ Buyer QA: HTTP y evaluador reales con SQL real y respuesta Gemini controlada
+  ✔ A SOLO_CONSULTA: registro publico evalua automaticamente y persiste en SQL (189.643ms)
+  ✔ B AMBIGUA: registro administrativo y evaluacion explicita sin conversion (86.1063ms)
+  ✔ C SOLICITA_RESERVA: conversion y recepcion SQL reales correctamente vinculadas (76.8103ms)
+  ✔ D Reintento de la misma interaccion conserva decision y conversion sin duplicados (22.5342ms)
+  ✔ E Consulta nueva de contacto sintetico PAYER no se apropia de conversion anterior (112.2687ms)
+QA_EVIDENCIA=database/qa/buyer_backend/ejecucion_20261112T195045Z
+QA_RESULTADO=APROBADO
+✔ Buyer QA: HTTP y evaluador reales con SQL real y respuesta Gemini controlada (2745.7227ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2853.0736

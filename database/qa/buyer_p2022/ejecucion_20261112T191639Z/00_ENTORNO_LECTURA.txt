@@ -1,0 +1,15 @@
+﻿servidor|base_efectiva|fecha_utc|edicion|directorio_respaldo
+--------|-------------|---------|-------|-------------------
+DANIELPC|NexoSalud_LeadEnsayoFinal|2026-11-12 19:17:08.3878425|Standard Edition (64-bit)|C:\Program Files\Microsoft SQL Server\MSSQL15.MSSQLSERVER\MSSQL\Backup
+session_id|host_name|program_name|host_process_id|status|open_transaction_count
+----------|---------|------------|---------------|------|----------------------
+54|DANIELPC|Microsoft SQL Server Management Studio - Consulta|7776|sleeping|0
+otras_transacciones_en_QA
+-------------------------
+0
+backup_finish_date|type|is_copy_only|has_backup_checksums|is_damaged|backup_size|physical_device_name|backup_set_uuid|first_lsn|last_lsn
+------------------|----|------------|--------------------|----------|-----------|--------------------|---------------|---------|--------
+name|type_desc|tamano_MB
+----|---------|---------
+NexoSaludDB|ROWS|72.000000
+NexoSaludDB_log|LOG|72.000000

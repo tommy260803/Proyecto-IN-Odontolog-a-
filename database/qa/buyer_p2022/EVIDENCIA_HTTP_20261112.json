@@ -1,0 +1,124 @@
+{
+  "source": "SQLSERVER_URL",
+  "identity": {
+    "servidor": "DANIELPC",
+    "base": "NexoSalud_LeadEnsayoFinal",
+    "fecha_utc": "2026-11-12T19:04:08.070Z"
+  },
+  "endpoints": [
+    {
+      "route": "/api/buyer?page=1&pageSize=25",
+      "status": 500,
+      "responseError": "Error al obtener buyers",
+      "captured": [
+        {
+          "invalidColumn": "id_negociador"
+        },
+        {
+          "invalidColumn": "id_canal_origen"
+        },
+        {
+          "invalidColumn": "id_sede_interes_lead"
+        },
+        {
+          "invalidColumn": "fecha_ingreso_lead"
+        },
+        {
+          "invalidColumn": "archivada_lead_en"
+        },
+        {
+          "invalidColumn": "resultado_comercial_lead"
+        },
+        {
+          "invalidColumn": "fecha_decision_comercial_lead"
+        },
+        {
+          "invalidColumn": "valor_acordado_lead"
+        },
+        {
+          "invalidColumn": "id_propuesta_aceptada_lead"
+        },
+        {
+          "invalidColumn": "motivo_cierre_lead"
+        },
+        {
+          "invalidColumn": "fecha_proximo_seguimiento"
+        },
+        {
+          "code": "P2022",
+          "model": "Personas"
+        }
+      ]
+    },
+    {
+      "route": "/api/buyer/:id_existente",
+      "status": 500,
+      "responseError": "Error al obtener ficha de buyer",
+      "captured": [
+        {
+          "invalidColumn": "id_negociador"
+        },
+        {
+          "invalidColumn": "id_canal_origen"
+        },
+        {
+          "invalidColumn": "id_sede_interes_lead"
+        },
+        {
+          "invalidColumn": "fecha_ingreso_lead"
+        },
+        {
+          "invalidColumn": "archivada_lead_en"
+        },
+        {
+          "invalidColumn": "resultado_comercial_lead"
+        },
+        {
+          "invalidColumn": "fecha_decision_comercial_lead"
+        },
+        {
+          "invalidColumn": "valor_acordado_lead"
+        },
+        {
+          "invalidColumn": "id_propuesta_aceptada_lead"
+        },
+        {
+          "invalidColumn": "motivo_cierre_lead"
+        },
+        {
+          "invalidColumn": "fecha_proximo_seguimiento"
+        },
+        {
+          "code": "P2022",
+          "model": "Personas"
+        }
+      ]
+    }
+  ],
+  "models": [
+    {
+      "model": "solicitudes",
+      "result": "P2022"
+    },
+    {
+      "model": "opciones",
+      "result": "P2022"
+    },
+    {
+      "model": "promocionesLead",
+      "result": "P2021"
+    },
+    {
+      "model": "motivosRechazoLead",
+      "result": "P2021"
+    },
+    {
+      "model": "propuestasEconomicasLead",
+      "result": "P2021"
+    },
+    {
+      "model": "cambiosOpcionLead",
+      "result": "P2021"
+    }
+  ]
+}

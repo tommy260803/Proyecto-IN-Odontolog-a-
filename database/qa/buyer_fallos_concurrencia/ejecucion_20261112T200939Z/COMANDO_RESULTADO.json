@@ -1,0 +1,5 @@
+{
+  "runId": "20261112T200939Z",
+  "exitCode": 1,
+  "command": "node --test --test-concurrency=1 database/qa/buyer_fallos_concurrencia/pruebas_fallos_concurrencia.test.cjs"
+}

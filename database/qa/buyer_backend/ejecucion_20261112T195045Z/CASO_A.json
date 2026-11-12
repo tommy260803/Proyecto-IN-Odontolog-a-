@@ -1,0 +1,119 @@
+{
+  "code": "A",
+  "startedUtc": "2026-11-12T19:57:54.609Z",
+  "response": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "isDuplicate": false,
+      "isRecurring": false,
+      "consultationCount": 1,
+      "message": "Consulta informativa registrada. El paciente permanece en etapa BUYER.",
+      "data": {
+        "id_persona": 10985,
+        "id_captacion": 10983,
+        "id_interaccion": 20186,
+        "id_decision": 160,
+        "etapa": "BUYER",
+        "intencion": "SOLO_CONSULTA",
+        "id_servicio": null,
+        "accion": "SOLO_CONSULTA",
+        "estado_evaluacion": "COMPLETADA",
+        "aclaracion": null,
+        "id_solicitud": null,
+        "oportunidad": {
+          "id_oportunidad": 10983,
+          "id_persona": 10985
+        },
+        "totalConsultas": 1,
+        "isDuplicate": false,
+        "isRecurring": false,
+        "entregaLeadEstado": "NO_APLICA",
+        "intentosRealizados": 1,
+        "duracionTotalMs": 0
+      }
+    }
+  },
+  "publicAutoEvaluation": true,
+  "result": "APROBADO",
+  "finishedUtc": "2026-11-12T19:57:54.791Z",
+  "persisted": {
+    "person": {
+      "id_persona": 10985,
+      "nombres": "QA_BBE_20261112T195045Z_A",
+      "apellidos": "QA SINTETICO",
+      "dni": null,
+      "email": "qa_bbe_20261112t195045z_a@example.invalid",
+      "numero": null,
+      "fecha_nacimiento": null,
+      "zona": null,
+      "tipo_persona": "Adulto General",
+      "autoriza_contacto": true,
+      "fecha_autorizacion": "2026-11-12T19:57:54.706Z",
+      "estado_calidad": "Valido",
+      "id_campana_origen": null,
+      "id_canal_origen": 4,
+      "id_etapa_actual": 1,
+      "fecha_registro": "2026-11-12T19:57:54.707Z",
+      "fecha_actualizacion": null,
+      "Etapa": {
+        "id_etapa": 1,
+        "nombre": "BUYER",
+        "descripcion": "Contacto identificable con autorización de contacto"
+      }
+    },
+    "captures": [
+      {
+        "id_captacion": 10983,
+        "id_persona": 10985,
+        "fecha_captacion": "2026-11-12T14:57:54.724Z",
+        "id_canal": 4,
+        "id_fuente": 3,
+        "id_campana": null,
+        "id_sede": null,
+        "id_servicio": null,
+        "motivo_consulta": "QA_BBE_20261112T195045Z_A ¿Cuál es el precio de la evaluación odontológica? Solo deseo información.",
+        "estado_calidad": "Valido",
+        "autoriza_contacto": true,
+        "fecha_autorizacion": "2026-11-12T19:57:54.706Z",
+        "origen_datos": "REGISTRO_DIRECTO",
+        "fecha_observacion": "2026-11-12T14:57:54.724Z"
+      }
+    ],
+    "interactions": [
+      {
+        "id_solicitud": null,
+        "id_interaccion": 20186,
+        "id_persona": 10985,
+        "id_canal": 4,
+        "id_fuente": 3,
+        "id_usuario": null,
+        "fecha_hora": "2026-11-12T19:57:54.727Z",
+        "tipo": "Registro y Consulta Inicial (#1)",
+        "mensaje": "QA_BBE_20261112T195045Z_A ¿Cuál es el precio de la evaluación odontológica? Solo deseo información.",
+        "es_respuesta_util": false,
+        "resultado": "Consulta Informativa"
+      }
+    ],
+    "decisions": [
+      {
+        "id_decision": 160,
+        "id_persona": 10985,
+        "id_usuario": null,
+        "id_captacion": 10983,
+        "id_interaccion": 20186,
+        "agente": "BUYER",
+        "fecha_hora": "2026-11-12T19:57:54.732Z",
+        "entrada": "{\"idempotencyKey\":null,\"contentHash\":\"14eea0b8ca452123733d8a713eb7c908171e052882f18bcccfbd676b84c54e3c\",\"mensaje\":\"QA_BBE_20261112T195045Z_A ¿Cuál es el precio de la evaluación odontológica? Solo deseo información.\",\"id_persona\":10985,\"id_captacion\":10983,\"id_interaccion\":20186,\"motivo_consulta\":\"QA_BBE_20261112T195045Z_A ¿Cuál es el precio de la evaluación odontológica? Solo deseo información.\",\"sede_preferida\":null,\"id_servicio_declarado\":null,\"contextoConversacional\":null,\"fecha_registro\":\"2026-11-12T19:57:54.732Z\"}",
+        "regla_aplicada": "gemini-3.5-flash-lite",
+        "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"SOLO_CONSULTA\",\"id_servicio\":null,\"intentosRealizados\":1,\"intentos_realizados\":1,\"duracionTotalMs\":0,\"duracion_total_ms\":0,\"contextFingerprint\":\"a8a53ea1624d0eea1484596e37dadb90\"}",
+        "accion": "SOLO_CONSULTA",
+        "requiere_revision": false,
+        "resultado_revision": "Consulta informativa registrada; el contacto permanece en etapa BUYER."
+      }
+    ],
+    "requests": [],
+    "events": [],
+    "intake": []
+  }
+}

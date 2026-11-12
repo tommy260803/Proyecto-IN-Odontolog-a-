@@ -1,0 +1,33 @@
+﻿servidor|base_efectiva|utc|prefijo
+--------|-------------|---|-------
+DANIELPC|NexoSalud_LeadEnsayoFinal|2026-11-12 19:38:56.8188491|QA_BCV_20261112T193315Z_
+seccion|tabla|total|sinteticos|sha256_fuera_prefijo
+-------|-----|-----|----------|--------------------
+PATRIMONIO|Personas|10811|2|B5F39A954E3CFF0FAFD028B4FCBE27BD654E0C1C55E4B00B1ADA06F1A004122D
+seccion|tabla|total|sinteticos|sha256_fuera_prefijo
+-------|-----|-----|----------|--------------------
+PATRIMONIO|CaptacionesBuyer|10811|2|A9C572460A77143B9EED0F3FA3A3D5B1B8D30AE0DED61ACFEB92FCA494838C1B
+seccion|tabla|total|sinteticos|sha256_fuera_prefijo
+-------|-----|-----|----------|--------------------
+PATRIMONIO|Solicitudes|2863|2|74178E36A1AB16C9B7BE4A759190EDCA59BE2A2684172EE6C0E3C846029BF01A
+seccion|tabla|total|sinteticos|sha256_fuera_prefijo
+-------|-----|-----|----------|--------------------
+PATRIMONIO|EventosEtapa|4043|2|D0C0946DD060AF9FB5C13662F36455528973268A4C2E72103A523B2B14A4028E
+seccion|tabla|total|sinteticos|sha256_fuera_prefijo
+-------|-----|-----|----------|--------------------
+PATRIMONIO|EntradasAgenteLead|1|1|NULL
+seccion|opciones|reservas|propuestas|interacciones|decisiones
+-------|--------|--------|----------|-------------|----------
+OTROS_CONTEOS|310|124|0|20004|1
+seccion|nombres|id_persona|id_captacion|id_solicitud|id_evento_etapa|clave_operacion_buyer|etapa|entrada|fecha_registro_utc
+-------|-------|----------|------------|------------|---------------|---------------------|-----|-------|------------------
+SUJETOS|QA_BCV_20261112T193315Z_C|10983|10981|2916|4088|BUYER_LEAD:10981|LEAD|1|2026-11-12 19:38:41.9503710
+SUJETOS|QA_BCV_20261112T193315Z_D|10984|10982|2917|4089|BUYER_LEAD:10982|LEAD|0|NULL
+seccion|nombre|sha256
+-------|------|------
+MODULO|usp_ConvertirBuyerALead|6A42F2ADD1BE9F827074A50A6DCB579C6341F71C35E8F0216E4E04A70DC634A5
+MODULO|usp_RegistrarEntradaAgenteLead|280708E81E3BE607A3772F082961EBE6E8371C1698414F3FDAC8B82D8A0C087E
+MODULO|v_DatosCaptacionBuyer|BAC8AB4A8AF43E8FB98BFABFE29FA8DC4F4D17F42CB5389EDEF23844EE85665D
+seccion|objetos
+-------|-------
+CATALOGO|256

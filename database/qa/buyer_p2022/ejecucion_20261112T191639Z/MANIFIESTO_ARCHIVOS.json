@@ -1,0 +1,179 @@
+{
+  "paquete": "revision_qa_buyer_daniel_aplicacion_20261112.zip",
+  "rama": "feature/buyer-orientacion-interactiva",
+  "HEAD": "19613358530e899bfc68d5e6b3c33b6336ab9ce4",
+  "destino": "DANIELPC/NexoSalud_LeadEnsayoFinal",
+  "incluyeRespaldoBinario": false,
+  "evidenciasPreviasIncluidasComoReferencia": [
+    "EVIDENCIA_HTTP_20261112.json",
+    "EVIDENCIA_PREVIA_20261112.txt"
+  ],
+  "archivos": [
+    {
+      "ruta": "database/qa/buyer_p2022/00_COMPROBACION_PREVIA.sql",
+      "bytes": 35063,
+      "SHA256": "96E809EC18AC8EAEF91CB64826BFA2E60BF23D3C9AB49B14BB32A4E705A016D7"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/01_PROPUESTA_ALINEAR_BUYER_QA.sql",
+      "bytes": 53248,
+      "SHA256": "EB38A85DC76AE96002ECDA7D046663B9BFB68A0CD9A4F1E95931E794117BCFF8"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/02_COMPROBACION_POSTERIOR.sql",
+      "bytes": 31809,
+      "SHA256": "D09E43BAB017104E1E352B8C8FC4354FC6F3D666DD64608EAC93F96CD31C5E9E"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/CAPTURAR_ESTADO_SOLO_LECTURA.cjs",
+      "bytes": 7472,
+      "SHA256": "20A732C789564FD1199B0B2948DC34373AC788F119ED746A83588B7715BE0B9B"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/COMPROBAR_BUYER_SOLO_LECTURA.cjs",
+      "bytes": 5252,
+      "SHA256": "F001F02EE789145411975364FB7812A405D70636ACEE2BE33DA0CD174B3E681B"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/EVIDENCIA_HTTP_20261112.json",
+      "bytes": 2805,
+      "SHA256": "3DF993BDE2FA4BA36742F4A6DE4DC1209374CC03817964FD8359ABC30AE45808"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/EVIDENCIA_PREVIA_20261112.txt",
+      "bytes": 11952,
+      "SHA256": "B9034734B87C7E619FDAE04610F8DF064F310B11363F81ACBFC5155A90997CDF"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/00_ENTORNO_LECTURA.sql",
+      "bytes": 1494,
+      "SHA256": "02530D4A0533D8EAA53B1C06A43080CB8A4FC0D54367304FA93E263ED3CA76E1"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/00_ENTORNO_LECTURA.txt",
+      "bytes": 973,
+      "SHA256": "08E4CBF7BC18A1FCF722A2316F5AD5D9F6D8EC2E3721B4B07C5F33826EB25623"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/01_RESPALDAR_QA.sql",
+      "bytes": 1817,
+      "SHA256": "FA2582BD99889BF50B69297670C7F54E3F165AD15B4D13FCC810EE6A1191E6C5"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/01_RESPALDO_RESULTADO.txt",
+      "bytes": 1630,
+      "SHA256": "82419238C29AB74A5403C8263930E6BA59F64DBDE361B34DCA7F8A71FC62CBBD"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/01_RESPALDO_SHA256.json",
+      "bytes": 268,
+      "SHA256": "C48D31D076822CC6113523CD482C2C0968D593D492F7F1E1CE1453850E825E3E"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/02_COMPARACION_DIAGNOSTICO.json",
+      "bytes": 120,
+      "SHA256": "A70A3B076232C8DCCC1EFB7C5434FB73D4D044D96BA248EDEADDCC334DEE0B73"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/02_COMPROBACION_PREVIA.txt",
+      "bytes": 11952,
+      "SHA256": "A149D2F0C3ED7338AFB51064CEB1574F318F410F5E1A5C499A754BD501FD9791"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/03_ESTADO_ANTES.json",
+      "bytes": 244169,
+      "SHA256": "93BB0444E1DD936872F47262C3F91792746C4B42250B4227E8A9B879B568BD32"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/04_GUARDA_ESCRITORES_ANTES.txt",
+      "bytes": 123,
+      "SHA256": "9B13496A4554C409499A25996CCD0A78D5A4F4349E259FBC7A50BF7C08D1AB11"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/04_PROCESOS_ANTES.json",
+      "bytes": 617,
+      "SHA256": "64FEDC7327EE4461FFDCF8183846FA63674E70DB552286F3A366E3919C8FB51D"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/05_APLICACION_PRIMERA.txt",
+      "bytes": 119,
+      "SHA256": "8ADA7A6E0F223AFC063BF04A6FE3875DFE95B9A1A074CCA277DB3CB60B9E86DA"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/06_COMPROBACION_POSTERIOR.txt",
+      "bytes": 10344,
+      "SHA256": "B4D0E2C6AFC56CEEE0AED57BD7B38D176BF905E308BD79C03D1B8C5493CFC6EC"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/07_HTTP_PRISMA_POSTERIOR.json",
+      "bytes": 1060,
+      "SHA256": "2826F36D163BB42FEDB7F99E9268F8BEDA6C5AA460E9ADF38568D444B644916D"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/07b_HTTP_PRISMA_VALIDADO.json",
+      "bytes": 992,
+      "SHA256": "316F30192853755EA84A53D48E6C99A30854B198D990E07546D1327A20529AB9"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/08_ESTADO_TRAS_PRIMERA.json",
+      "bytes": 301987,
+      "SHA256": "ED59F776304ABE6A0A499F86EFC0A7EA6F39457A1BDD01FFD9E4A95B915FDFE0"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/09_ESTADO_ANTES_REPETICION.json",
+      "bytes": 301987,
+      "SHA256": "7BC99A58C1B6579A82742D49A0AF7BB9269FDAD9A1DC75EEB0AD7A7DCAF5C166"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/10_APLICACION_SEGUNDA.txt",
+      "bytes": 119,
+      "SHA256": "8ADA7A6E0F223AFC063BF04A6FE3875DFE95B9A1A074CCA277DB3CB60B9E86DA"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/11_ESTADO_TRAS_SEGUNDA.json",
+      "bytes": 301987,
+      "SHA256": "071511C948BBF3994BA4A96DC8ADC9FF6C495B4934FCCD086B7FF73C2AC7C92C"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/12_COMPARACION_Y_RESULTADOS.json",
+      "bytes": 11444,
+      "SHA256": "FF3790EEFF9E2725C6E7C26CBAAEB734B9A858597FBDD808CE76A9E1F82AD77E"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/13_COMPROBACION_TRAS_SEGUNDA.txt",
+      "bytes": 10344,
+      "SHA256": "B0BCB4C49C1A458A7EDD9B0FA48A9BDF6F87D1E4FC3C2BBCA60D0C3F896FC8DA"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/14_HTTP_PRISMA_FINAL.json",
+      "bytes": 992,
+      "SHA256": "16AAB66D1BBC41C7F5AE428DF4781659B181AB63F8C87FF07252B44E0133313C"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/15_PROCESOS_DESPUES.json",
+      "bytes": 617,
+      "SHA256": "1CF6776C76C4F4C74A9C853B828A04674B76FF0AD3C0B1230B9F56D5A1E43885"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/16_RESUMEN_VERSION_Y_COMPROBACIONES.json",
+      "bytes": 1592,
+      "SHA256": "5CA019C4ACE228FD2F9B698867AA7CA536956EE550710B17F2479BC1CE962319"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/SONDA_CASOS_SINTETICOS.json",
+      "bytes": 413,
+      "SHA256": "00DB21A3B453AD2284C87E769AEA536D5D2BCF8CCD634DCC2E689C2885880F49"
+    },
+    {
+      "ruta": "database/qa/buyer_p2022/ejecucion_20261112T191639Z/SONDA_CASOS_SINTETICOS_FINAL.json",
+      "bytes": 548,
+      "SHA256": "C50832470315EAFEA3B1997B162D70F860F34E99E747FB2BC880C88098CFAB52"
+    },
+    {
+      "ruta": "docs/agentes/REVISION_QA_BUYER_DANIEL.md",
+      "bytes": 31324,
+      "SHA256": "A0DBAEA81816CE544F1A347EE7CBF2CB70B4A47EE8B38D59202DF27C44A8E361"
+    }
+  ],
+  "nota": "Este manifiesto se incluye en el ZIP, pero su propia huella no se incluye para evitar una referencia circular."
+}

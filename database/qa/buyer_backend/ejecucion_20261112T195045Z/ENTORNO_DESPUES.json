@@ -1,0 +1,65 @@
+{
+  "utc": "2026-11-12T20:01:02.0830775Z",
+  "branch": "feature/buyer-orientacion-interactiva",
+  "HEAD": "19613358530e899bfc68d5e6b3c33b6336ab9ce4",
+  "gitStatus": [
+    "?? RESULTADOS_REVISION_BUYER.md",
+    "?? RESULTADOS_REVISION_BUYER_V2.md",
+    "?? RESULTADOS_REVISION_BUYER_V3.md",
+    "?? RESULTADOS_REVISION_BUYER_V4.md",
+    "?? RESULTADOS_REVISION_BUYER_V5.md",
+    "?? RESULTADOS_REVISION_BUYER_V6.md",
+    "?? database/qa/",
+    "?? docs/agentes/PRUEBAS_BACKEND_BUYER_QA_DANIEL.md",
+    "?? docs/agentes/PRUEBAS_CONVERSION_BUYER_QA_DANIEL.md",
+    "?? docs/agentes/REVISION_QA_BUYER_DANIEL.md"
+  ],
+  "trackedDiff": [],
+  "stagedDiff": [],
+  "newBlockFiles": [
+    "database/qa/buyer_backend/03_REVISAR_SINTETICOS_SOLO_LECTURA.sql",
+    "database/qa/buyer_backend/README.md",
+    "database/qa/buyer_backend/consultas_qa.cjs",
+    "database/qa/buyer_backend/ejecucion_20261112T195045Z/CASO_A.json",
+    "database/qa/buyer_backend/ejecucion_20261112T195045Z/CASO_B.json",
+    "database/qa/buyer_backend/ejecucion_20261112T195045Z/CASO_C.json",
+    "database/qa/buyer_backend/ejecucion_20261112T195045Z/CASO_D.json",
+    "database/qa/buyer_backend/ejecucion_20261112T195045Z/CASO_E.json",
+    "database/qa/buyer_backend/ejecucion_20261112T195045Z/EJECUCION_NODE_TEST.txt",
+    "database/qa/buyer_backend/ejecucion_20261112T195045Z/ENTORNO_ANTES.json",
+    "database/qa/buyer_backend/ejecucion_20261112T195045Z/ESTADO_ANTES.json",
+    "database/qa/buyer_backend/ejecucion_20261112T195045Z/RESULTADOS.json",
+    "database/qa/buyer_backend/ejecucion_20261112T195045Z/REVISION_SQL_RESULTADO.json",
+    "database/qa/buyer_backend/ejecucion_20261112T195045Z/REVISION_SQL_SOLO_LECTURA.txt",
+    "database/qa/buyer_backend/entorno_qa.cjs",
+    "database/qa/buyer_backend/gemini_controlado.cjs",
+    "database/qa/buyer_backend/pruebas_backend_real.test.cjs",
+    "docs/agentes/PRUEBAS_BACKEND_BUYER_QA_DANIEL.md"
+  ],
+  "processes": [
+    {
+      "ProcessId": 24748,
+      "Name": "node.exe",
+      "ExecutablePath": "C:\\Program Files\\WindowsApps\\OpenAI.CodexPrimaryRuntime.v26-1111-570-0_26.1111.570.0_x64__3k8sg7r9htsxt\\dependencies\\node\\bin\\node.exe"
+    },
+    {
+      "ProcessId": 4692,
+      "Name": "node_repl.exe",
+      "ExecutablePath": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1106.6628.0_x64__2p2nqsd0c76g0\\app\\resources\\cua_node\\bin\\node_repl.exe"
+    },
+    {
+      "ProcessId": 2412,
+      "Name": "node.exe",
+      "ExecutablePath": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1106.6628.0_x64__2p2nqsd0c76g0\\app\\resources\\cua_node\\bin\\node.exe"
+    },
+    {
+      "ProcessId": 26360,
+      "Name": "node_repl.exe",
+      "ExecutablePath": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1106.6628.0_x64__2p2nqsd0c76g0\\app\\resources\\cua_node\\bin\\node_repl.exe"
+    }
+  ],
+  "projectPorts": [],
+  "sqlAgent": "Stopped",
+  "runtimeExitCode": 0,
+  "sqlReadOnlyExitCode": 0
+}

@@ -1,0 +1,32 @@
+{
+  "UTC": "2026-11-12T19:20:33.5141140Z",
+  "Procesos": [
+    {
+      "PID": 24748,
+      "Nombre": "node.exe",
+      "ProcesoProyecto": false
+    },
+    {
+      "PID": 20244,
+      "Nombre": "python.exe",
+      "ProcesoProyecto": false
+    },
+    {
+      "PID": 31440,
+      "Nombre": "node.exe",
+      "ProcesoProyecto": false
+    },
+    {
+      "PID": 9032,
+      "Nombre": "node_repl.exe",
+      "ProcesoProyecto": false
+    },
+    {
+      "PID": 17468,
+      "Nombre": "node_repl.exe",
+      "ProcesoProyecto": false
+    }
+  ],
+  "PuertosProyecto": [],
+  "SQLAgent": "Stopped"
+}

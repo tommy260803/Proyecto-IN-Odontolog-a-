@@ -1,0 +1,38 @@
+{
+  "rama": "feature/buyer-orientacion-interactiva",
+  "HEAD": "19613358530e899bfc68d5e6b3c33b6336ab9ce4",
+  "sqlSHA256": {
+    "00_COMPROBACION_PREVIA.sql": "96E809EC18AC8EAEF91CB64826BFA2E60BF23D3C9AB49B14BB32A4E705A016D7",
+    "01_PROPUESTA_ALINEAR_BUYER_QA.sql": "EB38A85DC76AE96002ECDA7D046663B9BFB68A0CD9A4F1E95931E794117BCFF8",
+    "02_COMPROBACION_POSTERIOR.sql": "D09E43BAB017104E1E352B8C8FC4354FC6F3D666DD64608EAC93F96CD31C5E9E"
+  },
+  "destino": "DANIELPC/NexoSalud_LeadEnsayoFinal",
+  "autorizacion": "Actualizacion estructural QA, respaldo nuevo y repeticion autorizados expresamente por el usuario",
+  "resultados": {
+    "DBCC_CHECKDB": 0,
+    "BACKUP_COPY_ONLY_CHECKSUM": 0,
+    "RESTORE_VERIFYONLY_CHECKSUM": 0,
+    "SQLCMD_PREVIA": 0,
+    "SQLCMD_PRIMERA_APLICACION": 0,
+    "SQLCMD_POSTERIOR": 0,
+    "HTTP_PRISMA_CORREGIDO": 0,
+    "SQLCMD_SEGUNDA_APLICACION": 0,
+    "SQLCMD_POSTERIOR_SEGUNDA": 0,
+    "HTTP_PRISMA_FINAL": 0,
+    "NODE_CHECK_AMBOS_CJS": 0
+  },
+  "errores": [
+    {
+      "evidencia": "07_HTTP_PRISMA_POSTERIOR.json",
+      "error": "QA_WRITE_BLOCKED por formato SELECT parametrizado; HTTP 200 y salida 0 inicial no aceptados como validacion limpia",
+      "correccion": "Reconocimiento de fragmentos de template y salida no exitosa ante cualquier bloqueo; evidencias 07b y 14 sin errores"
+    }
+  ],
+  "rollbackAnteFalloEnsayado": false,
+  "restauracionEnsayada": false,
+  "SQLAplicado": true,
+  "agentePrismaProcedimientosModificados": false,
+  "GeminiORecuperadoresEjecutados": false,
+  "commitOPush": false,
+  "creadoUTC": "2026-11-12T19:26:07.865Z"
+}

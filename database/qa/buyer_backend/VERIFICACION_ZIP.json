@@ -1,0 +1,138 @@
+{
+  "checkedUtc": "2026-11-12T20:01:51.7051801Z",
+  "zip": "pruebas_backend_buyer_qa_daniel_20261112.zip",
+  "sha256": "E22EA98B65E26746006ACE74E40014C6F9A00C7031A889023F8984150E2ED600",
+  "opened": true,
+  "allEntriesRead": true,
+  "entryCount": 21,
+  "entries": [
+    {
+      "path": "database/qa/buyer_backend/03_REVISAR_SINTETICOS_SOLO_LECTURA.sql",
+      "bytes": 1609,
+      "sha256": "5C162E0263760DA89B5B7037094BD53AD123A0C649BB98591F2E7CF5F204E187",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/consultas_qa.cjs",
+      "bytes": 4589,
+      "sha256": "244088FE1D205B38469CA7BF4EB05FCCE0B721347E8BCA318AEB61C3F5BB938E",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/EMPAQUETAR_REVISION.ps1",
+      "bytes": 4051,
+      "sha256": "31AF89027BA4F6E874821B9751D53C0920E3D89B38EF360449AF10DC1B949120",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/entorno_qa.cjs",
+      "bytes": 3640,
+      "sha256": "7B248ECAA0C7E895D86425F216E5F71B13B95E503AAF0D7658F259403914696C",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/gemini_controlado.cjs",
+      "bytes": 1477,
+      "sha256": "B002C2DA67051B9AD0A71626B6D89DC7D6E06EC972543511314866645813A2F0",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/pruebas_backend_real.test.cjs",
+      "bytes": 18593,
+      "sha256": "A91172E1F9039C5C75C4F722C1520953C62221AD2BECB802D593D8B4739A5C87",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/README.md",
+      "bytes": 3955,
+      "sha256": "5D21543754B1FD5937765087CC9BB70352C5D6EDC8895EAFDCE8E145E6414ADD",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/ejecucion_20261112T195045Z/CASO_A.json",
+      "bytes": 4454,
+      "sha256": "B7D8FBD67B4DB814DB292E250787F398C014E865DD5095892A46FC4D73DE2400",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/ejecucion_20261112T195045Z/CASO_B.json",
+      "bytes": 6444,
+      "sha256": "CCFFE7D6342DBA29C0DEB927AB4FA1D008F85D36380FC3799D96430715482D66",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/ejecucion_20261112T195045Z/CASO_C.json",
+      "bytes": 7891,
+      "sha256": "EBFE067DB20578A8673E5B78BCC137FF4F0A78B5266F9B0AA631E39A90127BCD",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/ejecucion_20261112T195045Z/CASO_D.json",
+      "bytes": 6424,
+      "sha256": "6E125E39B96DD1B5885B84C3748EC76EF3545D9D0B8CC1CE3A1938854D221DF0",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/ejecucion_20261112T195045Z/CASO_E.json",
+      "bytes": 18077,
+      "sha256": "BA3D6A5764CBC3EBD5035DDD1EA41EE7446A84928892A950F1567835CF437572",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/ejecucion_20261112T195045Z/EJECUCION_NODE_TEST.txt",
+      "bytes": 877,
+      "sha256": "E011AE8D2E3DADC228E8AAC6BE0BF89BDA520E60C15B2A351AA1955B677D48B7",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/ejecucion_20261112T195045Z/ENTORNO_ANTES.json",
+      "bytes": 1571,
+      "sha256": "067DCC3968E3D6E1BFE91841D0A9DB70207931E63AD7D096FD5932F6DA5E1369",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/ejecucion_20261112T195045Z/ENTORNO_DESPUES.json",
+      "bytes": 2990,
+      "sha256": "553E0A0A04B1FE4871552805E109F414340C2D7B753FB65AAF4E902785BDA79A",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/ejecucion_20261112T195045Z/ESTADO_ANTES.json",
+      "bytes": 5431,
+      "sha256": "6B157EFBE8F770FE393CB10CC914528EBC83B3C747886462EE98418B34EB8566",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/ejecucion_20261112T195045Z/RESULTADOS.json",
+      "bytes": 101840,
+      "sha256": "2153A9AFBA563F3A97342EA4B89B21B99FC2BC8CCA47DDD3FA9C55EF879D5BB4",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/ejecucion_20261112T195045Z/REVISION_SQL_RESULTADO.json",
+      "bytes": 242,
+      "sha256": "27367E1C258694870AB66EA5C3D2215DEC0170BDD3DC97DC1A69EEC25522B4CD",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/ejecucion_20261112T195045Z/REVISION_SQL_SOLO_LECTURA.txt",
+      "bytes": 9495,
+      "sha256": "A69E00FC6BE265E02278375AABB7077516073A36449C20BC7B25A312CF3ED28F",
+      "matchesSource": true
+    },
+    {
+      "path": "docs/agentes/PRUEBAS_BACKEND_BUYER_QA_DANIEL.md",
+      "bytes": 16031,
+      "sha256": "9EB843C8F370595349E82B2D9A151DDA5DD1686B7A82B78D7B76BE2FDCF51574",
+      "matchesSource": true
+    },
+    {
+      "path": "database/qa/buyer_backend/MANIFIESTO_ENTREGA.json",
+      "bytes": 4496,
+      "sha256": "73D7708B8FDCF5B1DA417B1BCF8EFA003ED79CC2D27F3E92E7F3C50B972B983F",
+      "matchesSource": true
+    }
+  ],
+  "excluded": "Secretos, .env, dependencias, dist, .git, respaldos y entregas previas",
+  "result": "APROBADO"
+}

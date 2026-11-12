@@ -1,0 +1,79 @@
+▶ Buyer QA fallos y concurrencia: SQL real y solo Gemini controlado
+  ✔ A: fallo transitorio Gemini agotado, mensaje durable y evaluacion pendiente sin conversion (1702.7397ms)
+  ✔ B: retry explicito de la misma interaccion conserva identidad y acumula intentos e historial (29.0683ms)
+  ✖ C: dos registros publicos simultaneos con misma Idempotency-Key y conversion real (704.6427ms)
+QA_EVIDENCIA=C:\Users\Daniel\Downloads\Proyecto-IN-Odontolog-a-\database\qa\buyer_fallos_concurrencia\ejecucion_20261112T200939Z
+QA_RESULTADO=FALLO
+✖ Buyer QA fallos y concurrencia: SQL real y solo Gemini controlado (4473.5555ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 2
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4565.1793
+
+✖ failing tests:
+
+test at database\qa\buyer_fallos_concurrencia\pruebas_fallos_concurrencia.test.cjs:157:13
+✖ C: dos registros publicos simultaneos con misma Idempotency-Key y conversion real (704.6427ms)
+  AssertionError [ERR_ASSERTION]: Incumplimientos del contrato; conservar evidencia
+  + actual - expected
+  
+  + [
+  +   {
+  +     actual: 2,
+  +     expected: 1,
+  +     name: 'Interaccion unica por clave',
+  +     passed: false
+  +   },
+  +   {
+  +     actual: 2,
+  +     expected: 1,
+  +     name: 'Decision unica por clave',
+  +     passed: false
+  +   },
+  +   {
+  +     actual: 2,
+  +     expected: 1,
+  +     name: 'Identidad de interaccion devuelta igual',
+  +     passed: false
+  +   },
+  +   {
+  +     actual: [
+  +       2920,
+  +       2920
+  +     ],
+  +     expected: [
+  +       2920
+  +     ],
+  +     name: 'Interaccion persistida enlazada',
+  +     passed: false
+  +   },
+  +   {
+  +     actual: [
+  +       'CONFIRMADA',
+  +       'CONFIRMADA'
+  +     ],
+  +     expected: [
+  +       'CONFIRMADA'
+  +     ],
+  +     name: 'Entrega confirmada en decision',
+  +     passed: false
+  +   }
+  + ]
+  - []
+  
+      at runCase (C:\Users\Daniel\Downloads\Proyecto-IN-Odontolog-a-\database\qa\buyer_fallos_concurrencia\pruebas_fallos_concurrencia.test.cjs:53:34)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async TestContext.<anonymous> (C:\Users\Daniel\Downloads\Proyecto-IN-Odontolog-a-\database\qa\buyer_fallos_concurrencia\pruebas_fallos_concurrencia.test.cjs:157:5)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ { name: 'Interaccion unica por clave', actual: 2, expected: 1, passed: false }, { name: 'Decision unica por clave', actual: 2, expected: 1, passed: false }, { name: 'Identidad de interaccion devuelta igual', actual: 2, expected: 1, passed: false }, { name: 'Interaccion persistida enlazada', actual: [Array], expected: [Array], passed: false }, { name: 'Entrega confirmada en decision', actual: [Array], expected: [Array], passed: false } ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

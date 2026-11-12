@@ -1,0 +1,13 @@
+{
+  "A": "APROBADO",
+  "B": "APROBADO",
+  "solicitud": 2915,
+  "evento": 4087,
+  "ya_convertido": [
+    0,
+    1
+  ],
+  "rollbackFixture": "COMPLETO",
+  "conteosYHuellasFueraPrefijoSinCambios": true,
+  "nota": "No se ensaya fallo dentro del procedimiento; rollback externo exitoso del fixture."
+}

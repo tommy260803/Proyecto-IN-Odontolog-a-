@@ -1,0 +1,3 @@
+﻿actualizacion|resultado
+-------------|---------
+QA-BUYER-P2022-PARCIAL|DDL confirmado; validacion HTTP pendiente

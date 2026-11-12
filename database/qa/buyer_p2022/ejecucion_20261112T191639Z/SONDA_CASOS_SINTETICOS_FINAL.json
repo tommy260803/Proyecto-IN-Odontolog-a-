@@ -1,0 +1,20 @@
+[
+  {
+    "caso": "sin_persona_con_listado_simulado_200",
+    "complete": false,
+    "exitCode": 1,
+    "resultado": "APROBADO",
+    "SELECT_parametrizado": "PERMITIDO",
+    "escrituras_modelo_raw_y_SQL_mixto": "BLOQUEADAS",
+    "tipo": "simulado_sin_SQL_ni_HTTP_real"
+  },
+  {
+    "caso": "persona_existente_con_GET_simulados_200",
+    "complete": true,
+    "exitCode": 0,
+    "resultado": "APROBADO",
+    "SELECT_parametrizado": "PERMITIDO",
+    "escrituras_modelo_raw_y_SQL_mixto": "BLOQUEADAS",
+    "tipo": "simulado_sin_SQL_ni_HTTP_real"
+  }
+]

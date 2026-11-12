@@ -1,0 +1,8 @@
+{
+  "errorOriginal": "-E y -U/-P se excluyen mutuamente",
+  "SQLCMDUSER_definida": false,
+  "SQLCMDPASSWORD_definida": false,
+  "correccion": "Ruta absoluta nativa Windows entre comillas para -i; se mantuvieron autenticacion Windows, servidor y base.",
+  "parseonlyPosterior": 0,
+  "pruebasEjecutadasEnIntentoFallido": false
+}

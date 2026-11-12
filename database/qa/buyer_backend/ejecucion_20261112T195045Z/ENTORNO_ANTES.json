@@ -1,0 +1,41 @@
+{
+  "utc": "2026-11-12T19:57:52.3276580Z",
+  "branch": "feature/buyer-orientacion-interactiva",
+  "HEAD": "19613358530e899bfc68d5e6b3c33b6336ab9ce4",
+  "gitStatus": [
+    "?? RESULTADOS_REVISION_BUYER.md",
+    "?? RESULTADOS_REVISION_BUYER_V2.md",
+    "?? RESULTADOS_REVISION_BUYER_V3.md",
+    "?? RESULTADOS_REVISION_BUYER_V4.md",
+    "?? RESULTADOS_REVISION_BUYER_V5.md",
+    "?? RESULTADOS_REVISION_BUYER_V6.md",
+    "?? database/qa/",
+    "?? docs/agentes/PRUEBAS_CONVERSION_BUYER_QA_DANIEL.md",
+    "?? docs/agentes/REVISION_QA_BUYER_DANIEL.md"
+  ],
+  "processes": [
+    {
+      "ProcessId": 24748,
+      "Name": "node.exe",
+      "ExecutablePath": "C:\\Program Files\\WindowsApps\\OpenAI.CodexPrimaryRuntime.v26-1111-570-0_26.1111.570.0_x64__3k8sg7r9htsxt\\dependencies\\node\\bin\\node.exe"
+    },
+    {
+      "ProcessId": 4692,
+      "Name": "node_repl.exe",
+      "ExecutablePath": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1106.6628.0_x64__2p2nqsd0c76g0\\app\\resources\\cua_node\\bin\\node_repl.exe"
+    },
+    {
+      "ProcessId": 2412,
+      "Name": "node.exe",
+      "ExecutablePath": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1106.6628.0_x64__2p2nqsd0c76g0\\app\\resources\\cua_node\\bin\\node.exe"
+    },
+    {
+      "ProcessId": 26360,
+      "Name": "node_repl.exe",
+      "ExecutablePath": "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1106.6628.0_x64__2p2nqsd0c76g0\\app\\resources\\cua_node\\bin\\node_repl.exe"
+    }
+  ],
+  "projectPorts": [],
+  "sqlAgent": "Stopped",
+  "node": "v24.15.0"
+}

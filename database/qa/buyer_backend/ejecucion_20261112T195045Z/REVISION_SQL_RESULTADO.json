@@ -1,0 +1,8 @@
+{
+  "utc": "2026-11-12T19:59:05.8371488Z",
+  "exitCode": 0,
+  "server": "DANIELPC",
+  "database": "NexoSalud_LeadEnsayoFinal",
+  "script": "database/qa/buyer_backend/03_REVISAR_SINTETICOS_SOLO_LECTURA.sql",
+  "mode": "SOLO_LECTURA"
+}

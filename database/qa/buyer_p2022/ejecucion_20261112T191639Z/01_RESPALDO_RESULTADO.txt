@@ -1,0 +1,20 @@
+﻿13por ciento procesado.
+20por ciento procesado.
+34por ciento procesado.
+41por ciento procesado.
+54por ciento procesado.
+61por ciento procesado.
+75por ciento procesado.
+82por ciento procesado.
+92por ciento procesado.
+100por ciento procesado.
+Se han procesado 1880 páginas para la base de datos 'NexoSalud_LeadEnsayoFinal', archivo 'NexoSaludDB' en el archivo 1.
+Se han procesado 2 páginas para la base de datos 'NexoSalud_LeadEnsayoFinal', archivo 'NexoSaludDB_log' en el archivo 1.
+BACKUP DATABASE procesó correctamente 1882 páginas en 0.052 segundos (282.677 MB/s).
+El conjunto de copia de seguridad del archivo 1 es válido.
+respaldo_nuevo|verificado_utc
+--------------|--------------
+C:\Program Files\Microsoft SQL Server\MSSQL15.MSSQLSERVER\MSSQL\Backup\NexoSalud_LeadEnsayoFinal_QA_BUYER_20261112T191639Z_E57F5A45-B726-45DC-A997-AD46CE185F13.bak|2026-11-12 19:17:43.2347671
+backup_set_uuid|backup_start_date|backup_finish_date|type|is_copy_only|has_backup_checksums|is_damaged|backup_size|compressed_backup_size|first_lsn|last_lsn|database_backup_lsn|physical_device_name
+---------------|-----------------|------------------|----|------------|--------------------|----------|-----------|----------------------|---------|--------|-------------------|--------------------
+3CEE13F0-6F83-487A-BA9E-9070CEB82529|2026-11-12 14:17:43.000|2026-11-12 14:17:43.000|D|1|1|0|16871424|2100744|48000000044000001|48000000046400001|45000002464000001|C:\Program Files\Microsoft SQL Server\MSSQL15.MSSQLSERVER\MSSQL\Backup\NexoSalud_LeadEnsayoFinal_QA_BUYER_20261112T191639Z_E57F5A45-B726-45DC-A997-AD46CE185F13.bak

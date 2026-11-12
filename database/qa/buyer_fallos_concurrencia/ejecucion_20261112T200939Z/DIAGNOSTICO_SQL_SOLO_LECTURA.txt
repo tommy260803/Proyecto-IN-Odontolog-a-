@@ -1,0 +1,46 @@
+﻿DANIELPC NexoSalud_LeadEnsayoFinal 2026-11-12 20:10:57.1038045
+10989 QA_BFC_20261112T200939Z_AB qa_bfc_20261112t200939z_ab@example.invalid BUYER
+10990 QA_BFC_20261112T200939Z_C qa_bfc_20261112t200939z_c@example.invalid LEAD
+10987 10989 2026-11-12 15:09:42.7170367 4 3 NULL NULL NULL QA_BFC_20261112T200939Z_AB Solo deseo información sobre el precio de la evaluación odontológica. Valido 1 2026-11-12 20:09:42.7040000 REGISTRO_DIRECTO 2026-11-12 15:09:42.7170367
+10988 10990 2026-11-12 15:09:44.3959737 4 3 NULL NULL 1 QA_BFC_20261112T200939Z_C Quiero reservar una cita para Evaluación odontológica. Valido 1 2026-11-12 20:09:44.3880000 REGISTRO_DIRECTO 2026-11-12 15:09:44.3959737
+20191 10989 4 3 NULL 2026-11-12 20:09:42.7190000 Registro y Consulta Inicial (#1) QA_BFC_20261112T200939Z_AB Solo deseo información sobre el precio de la evaluación odontológica. 0 Consulta Informativa NULL
+20192 10990 4 3 NULL 2026-11-12 20:09:44.3970000 Registro y Consulta Inicial (#1) QA_BFC_20261112T200939Z_C Quiero reservar una cita para Evaluación odontológica. 0 Convertido a LEAD 2920
+20193 10990 4 3 NULL 2026-11-12 20:09:44.4250000 Consulta Web Recurrente (#2) QA_BFC_20261112T200939Z_C Quiero reservar una cita para Evaluación odontológica. 0 Convertido a LEAD 2920
+165 10989 NULL BUYER 2026-11-12 20:09:42.7230000 {"idempotencyKey":"qa_bfc_20261112t200939z_ab","contentHash":"4a71d883265e3d9ace1d3ca7708574884dd3fc9d1390d40dae935e89088e1411","mensaje":"QA_BFC_20261112T200939Z_AB Solo deseo información sobre el precio de la evaluación odontológica.","id_persona":10989,"id_captacion":10987,"id_interaccion":20191,"motivo_consulta":"QA_BFC_20261112T200939Z_AB Solo deseo información sobre el precio de la evaluación odontológica.","sede_preferida":null,"id_servicio_declarado":null,"contextoConversacional":null,"fecha_registro":"2026-11-12T20:09:42.723Z"} gemini-3.5-flash-lite {"estado":"COMPLETADA","intencion":"SOLO_CONSULTA","id_servicio":null,"historial_errores":["Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503"],"intentosRealizados":4,"intentos_realizados":4,"duracionTotalMs":1,"duracion_total_ms":1,"contextFingerprint":"5d71dc0f835fb4c31942d0fcbd0c1159"} SOLO_CONSULTA 0 Consulta informativa registrada; el contacto permanece en etapa BUYER. 10987 20191 qa_bfc_20261112t200939z_ab 4a71d883265e3d9ace1d3ca7708574884dd3fc9d1390d40dae935e89088e1411
+166 10990 NULL BUYER 2026-11-12 20:09:44.3980000 {"idempotencyKey":"qa_bfc_20261112t200939z_c","contentHash":"5294f5c1a1600515bb2786749b46a53430780a9881b662d9cc6bb3a1d372eb1f","mensaje":"QA_BFC_20261112T200939Z_C Quiero reservar una cita para Evaluación odontológica.","id_persona":10990,"id_captacion":10988,"id_interaccion":20192,"motivo_consulta":"QA_BFC_20261112T200939Z_C Quiero reservar una cita para Evaluación odontológica.","sede_preferida":null,"id_servicio_declarado":1,"contextoConversacional":null,"fecha_registro":"2026-11-12T20:09:44.398Z"} gemini-3.5-flash-lite {"estado":"COMPLETADA","intencion":"SOLICITA_RESERVA","id_servicio":1,"intentosRealizados":1,"intentos_realizados":1,"duracionTotalMs":610,"duracion_total_ms":610,"id_solicitud":2920,"id_evento_etapa":4092,"entregaLeadEstado":"CONFIRMADA","contextFingerprint":"ca55b66b3ebe18615d87a6036202572f"} CONVERSION_LEAD 0 Conversión confirmada y entregada al Agente LEAD (Solicitud #2920, Entrada #2920). 10988 20192 qa_bfc_20261112t200939z_c 5294f5c1a1600515bb2786749b46a53430780a9881b662d9cc6bb3a1d372eb1f
+167 10990 NULL BUYER 2026-11-12 20:09:44.4260000 {"idempotencyKey":"qa_bfc_20261112t200939z_c","contentHash":"5294f5c1a1600515bb2786749b46a53430780a9881b662d9cc6bb3a1d372eb1f","mensaje":"QA_BFC_20261112T200939Z_C Quiero reservar una cita para Evaluación odontológica.","id_persona":10990,"id_captacion":10988,"id_interaccion":20193,"motivo_consulta":"QA_BFC_20261112T200939Z_C Quiero reservar una cita para Evaluación odontológica.","sede_preferida":null,"id_servicio_declarado":1,"contextoConversacional":null,"fecha_registro":"2026-11-12T20:09:44.426Z"} gemini-3.5-flash-lite {"estado":"COMPLETADA","intencion":"SOLICITA_RESERVA","id_servicio":1,"intentosRealizados":1,"intentos_realizados":1,"duracionTotalMs":605,"duracion_total_ms":605,"id_solicitud":2920,"id_evento_etapa":4092,"entregaLeadEstado":"CONFIRMADA","contextFingerprint":"ca55b66b3ebe18615d87a6036202572f"} CONVERSION_LEAD 0 Conversión confirmada y entregada al Agente LEAD (Solicitud #2920, Entrada #2920). 10988 20193 qa_bfc_20261112t200939z_c 5294f5c1a1600515bb2786749b46a53430780a9881b662d9cc6bb3a1d372eb1f
+2920 10990 1 2026-11-12 15:09:45.0416276 QA_BFC_20261112T200939Z_C Quiero reservar una cita para Evaluación odontológica. NULL NULL Abierta NULL NULL NULL NULL NULL NULL NULL NULL NULL NULL NULL NULL NULL NULL NULL
+4092 10990 1 2 2026-11-12 15:09:45.0416276 NULL QA_BFC_20261112T200939Z_C Quiero reservar una cita para Evaluación odontológica. Conversion validada desde captacion inicial 10988 2920 BUYER_LEAD:10988
+2920 4092 10988 10990 2026-11-12 20:09:45.0531352
+DecisionesIA id_decision int 4 0
+DecisionesIA id_persona int 4 0
+DecisionesIA id_usuario int 4 0
+DecisionesIA agente varchar 50 0
+DecisionesIA fecha_hora datetime2 8 0
+DecisionesIA entrada varchar -1 0
+DecisionesIA regla_aplicada varchar 300 0
+DecisionesIA decision varchar 500 0
+DecisionesIA accion varchar 500 0
+DecisionesIA requiere_revision bit 1 0
+DecisionesIA resultado_revision varchar 300 0
+DecisionesIA id_captacion int 4 0
+DecisionesIA id_interaccion int 4 0
+Interacciones id_interaccion int 4 0
+Interacciones id_persona int 4 0
+Interacciones id_canal int 4 0
+Interacciones id_fuente int 4 0
+Interacciones id_usuario int 4 0
+Interacciones fecha_hora datetime2 8 0
+Interacciones tipo varchar 50 0
+Interacciones mensaje varchar -1 0
+Interacciones es_respuesta_util bit 1 0
+Interacciones resultado varchar 200 0
+Interacciones id_solicitud int 4 0
+DecisionesIA PK__Decision__47709B065587C9DD 1 1 0 NULL [id_decision]
+EntradasAgenteLead PK__Entradas__5C0C31F387BBE3C8 1 1 0 NULL [id_solicitud]
+EntradasAgenteLead UQ__Entradas__D60E7018E1EA9C53 1 0 0 NULL [id_evento_etapa]
+EventosEtapa IX_EventosEtapa_Persona_Fecha 0 0 0 NULL [id_persona],[fecha_hora]
+EventosEtapa PK__EventosE__D60E7019490502B3 1 1 0 NULL [id_evento_etapa]
+EventosEtapa UQ_EventosEtapa_OperacionBuyer 1 0 1 ([clave_operacion_buyer] IS NOT NULL) [clave_operacion_buyer]
+Interacciones IX_Interacciones_Persona_Fecha 0 0 0 NULL [id_persona],[fecha_hora]
+Interacciones PK__Interacc__0152426CEBC9892A 1 1 0 NULL [id_interaccion]

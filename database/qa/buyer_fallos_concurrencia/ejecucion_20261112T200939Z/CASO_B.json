@@ -1,0 +1,323 @@
+{
+  "code": "B",
+  "startedUtc": "2026-11-12T20:09:44.345Z",
+  "checks": [
+    {
+      "name": "HTTP retry",
+      "actual": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "name": "Misma interaccion y mismo mensaje",
+      "actual": [
+        [
+          20191,
+          "QA_BFC_20261112T200939Z_AB Solo deseo información sobre el precio de la evaluación odontológica."
+        ]
+      ],
+      "expected": [
+        [
+          20191,
+          "QA_BFC_20261112T200939Z_AB Solo deseo información sobre el precio de la evaluación odontológica."
+        ]
+      ],
+      "passed": true
+    },
+    {
+      "name": "Misma decision reutilizada",
+      "actual": [
+        165
+      ],
+      "expected": [
+        165
+      ],
+      "passed": true
+    },
+    {
+      "name": "Mismo fingerprint",
+      "actual": "5d71dc0f835fb4c31942d0fcbd0c1159",
+      "expected": "5d71dc0f835fb4c31942d0fcbd0c1159",
+      "passed": true
+    },
+    {
+      "name": "Evaluacion completada SQL y HTTP",
+      "actual": [
+        "COMPLETADA",
+        "COMPLETADA"
+      ],
+      "expected": [
+        "COMPLETADA",
+        "COMPLETADA"
+      ],
+      "passed": true
+    },
+    {
+      "name": "Accion persistida",
+      "actual": "SOLO_CONSULTA",
+      "expected": "SOLO_CONSULTA",
+      "passed": true
+    },
+    {
+      "name": "Acumulacion tres fallos mas un exito",
+      "actual": [
+        4,
+        4,
+        4
+      ],
+      "expected": [
+        4,
+        4,
+        4
+      ],
+      "passed": true
+    },
+    {
+      "name": "Historial previo conservado",
+      "actual": [
+        "Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503"
+      ],
+      "expected": [
+        "Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503"
+      ],
+      "passed": true
+    },
+    {
+      "name": "Historial visible HTTP",
+      "actual": [
+        "Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503"
+      ],
+      "expected": [
+        "Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503"
+      ],
+      "passed": true
+    },
+    {
+      "name": "SDK solo una llamada nueva",
+      "actual": 1,
+      "expected": 1,
+      "passed": true
+    },
+    {
+      "name": "Sin conversion y permanece BUYER",
+      "actual": [
+        0,
+        0,
+        0,
+        "BUYER"
+      ],
+      "expected": [
+        0,
+        0,
+        0,
+        "BUYER"
+      ],
+      "passed": true
+    },
+    {
+      "name": "Identidad HTTP",
+      "actual": [
+        20191,
+        165
+      ],
+      "expected": [
+        20191,
+        165
+      ],
+      "passed": true
+    }
+  ],
+  "response": {
+    "label": "B",
+    "route": "/api/buyer/evaluations/20191/retry",
+    "requestBody": {},
+    "startedMs": 3493.4576,
+    "startedUtc": "2026-11-12T20:09:44.345Z",
+    "status": 200,
+    "responseBody": {
+      "success": true,
+      "data": {
+        "id_persona": 10989,
+        "id_captacion": 10987,
+        "id_interaccion": 20191,
+        "id_decision": 165,
+        "estado": "COMPLETADA",
+        "intencion": "SOLO_CONSULTA",
+        "id_servicio": null,
+        "accion": "SOLO_CONSULTA",
+        "etapa_final": "BUYER",
+        "historial_errores": [
+          "Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503"
+        ],
+        "intentosRealizados": 4,
+        "intentos_realizados": 4,
+        "duracionTotalMs": 1,
+        "duracion_total_ms": 1,
+        "entregaLeadEstado": "NO_APLICA",
+        "contextFingerprint": "5d71dc0f835fb4c31942d0fcbd0c1159"
+      }
+    },
+    "finishedMs": 3505.9398,
+    "finishedUtc": "2026-11-12T20:09:44.358Z"
+  },
+  "stateBeforeRetry": {
+    "person": {
+      "id_persona": 10989,
+      "nombres": "QA_BFC_20261112T200939Z_AB",
+      "apellidos": "QA SINTETICO",
+      "dni": null,
+      "email": "qa_bfc_20261112t200939z_ab@example.invalid",
+      "numero": null,
+      "fecha_nacimiento": null,
+      "zona": null,
+      "tipo_persona": "Adulto General",
+      "autoriza_contacto": true,
+      "fecha_autorizacion": "2026-11-12T20:09:42.704Z",
+      "estado_calidad": "Valido",
+      "id_campana_origen": null,
+      "id_canal_origen": 4,
+      "id_etapa_actual": 1,
+      "fecha_registro": "2026-11-12T20:09:42.705Z",
+      "fecha_actualizacion": null,
+      "Etapa": {
+        "id_etapa": 1,
+        "nombre": "BUYER",
+        "descripcion": "Contacto identificable con autorización de contacto"
+      }
+    },
+    "captures": [
+      {
+        "id_captacion": 10987,
+        "id_persona": 10989,
+        "fecha_captacion": "2026-11-12T15:09:42.717Z",
+        "id_canal": 4,
+        "id_fuente": 3,
+        "id_campana": null,
+        "id_sede": null,
+        "id_servicio": null,
+        "motivo_consulta": "QA_BFC_20261112T200939Z_AB Solo deseo información sobre el precio de la evaluación odontológica.",
+        "estado_calidad": "Valido",
+        "autoriza_contacto": true,
+        "fecha_autorizacion": "2026-11-12T20:09:42.704Z",
+        "origen_datos": "REGISTRO_DIRECTO",
+        "fecha_observacion": "2026-11-12T15:09:42.717Z"
+      }
+    ],
+    "interactions": [
+      {
+        "id_solicitud": null,
+        "id_interaccion": 20191,
+        "id_persona": 10989,
+        "id_canal": 4,
+        "id_fuente": 3,
+        "id_usuario": null,
+        "fecha_hora": "2026-11-12T20:09:42.719Z",
+        "tipo": "Registro y Consulta Inicial (#1)",
+        "mensaje": "QA_BFC_20261112T200939Z_AB Solo deseo información sobre el precio de la evaluación odontológica.",
+        "es_respuesta_util": false,
+        "resultado": "Registrado - Pendiente de Evaluación"
+      }
+    ],
+    "decisions": [
+      {
+        "id_decision": 165,
+        "id_persona": 10989,
+        "id_usuario": null,
+        "id_captacion": 10987,
+        "id_interaccion": 20191,
+        "agente": "BUYER",
+        "fecha_hora": "2026-11-12T20:09:42.723Z",
+        "entrada": "{\"idempotencyKey\":\"qa_bfc_20261112t200939z_ab\",\"contentHash\":\"4a71d883265e3d9ace1d3ca7708574884dd3fc9d1390d40dae935e89088e1411\",\"mensaje\":\"QA_BFC_20261112T200939Z_AB Solo deseo información sobre el precio de la evaluación odontológica.\",\"id_persona\":10989,\"id_captacion\":10987,\"id_interaccion\":20191,\"motivo_consulta\":\"QA_BFC_20261112T200939Z_AB Solo deseo información sobre el precio de la evaluación odontológica.\",\"sede_preferida\":null,\"id_servicio_declarado\":null,\"contextoConversacional\":null,\"fecha_registro\":\"2026-11-12T20:09:42.723Z\"}",
+        "regla_aplicada": "gemini-3.5-flash-lite",
+        "decision": "{\"estado\":\"PENDIENTE\",\"intencion\":null,\"id_servicio\":null,\"error\":\"Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503\",\"historial_errores\":[\"Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503\"],\"intentosRealizados\":3,\"intentos_realizados\":3,\"duracionTotalMs\":1552,\"duracion_total_ms\":1552,\"contextFingerprint\":\"5d71dc0f835fb4c31942d0fcbd0c1159\"}",
+        "accion": "REINTENTO_PENDIENTE",
+        "requiere_revision": true,
+        "resultado_revision": "Fallo clasificador (intento 3): Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503"
+      }
+    ],
+    "requests": [],
+    "events": [],
+    "intake": []
+  },
+  "result": "APROBADO",
+  "persisted": {
+    "person": {
+      "id_persona": 10989,
+      "nombres": "QA_BFC_20261112T200939Z_AB",
+      "apellidos": "QA SINTETICO",
+      "dni": null,
+      "email": "qa_bfc_20261112t200939z_ab@example.invalid",
+      "numero": null,
+      "fecha_nacimiento": null,
+      "zona": null,
+      "tipo_persona": "Adulto General",
+      "autoriza_contacto": true,
+      "fecha_autorizacion": "2026-11-12T20:09:42.704Z",
+      "estado_calidad": "Valido",
+      "id_campana_origen": null,
+      "id_canal_origen": 4,
+      "id_etapa_actual": 1,
+      "fecha_registro": "2026-11-12T20:09:42.705Z",
+      "fecha_actualizacion": null,
+      "Etapa": {
+        "id_etapa": 1,
+        "nombre": "BUYER",
+        "descripcion": "Contacto identificable con autorización de contacto"
+      }
+    },
+    "captures": [
+      {
+        "id_captacion": 10987,
+        "id_persona": 10989,
+        "fecha_captacion": "2026-11-12T15:09:42.717Z",
+        "id_canal": 4,
+        "id_fuente": 3,
+        "id_campana": null,
+        "id_sede": null,
+        "id_servicio": null,
+        "motivo_consulta": "QA_BFC_20261112T200939Z_AB Solo deseo información sobre el precio de la evaluación odontológica.",
+        "estado_calidad": "Valido",
+        "autoriza_contacto": true,
+        "fecha_autorizacion": "2026-11-12T20:09:42.704Z",
+        "origen_datos": "REGISTRO_DIRECTO",
+        "fecha_observacion": "2026-11-12T15:09:42.717Z"
+      }
+    ],
+    "interactions": [
+      {
+        "id_solicitud": null,
+        "id_interaccion": 20191,
+        "id_persona": 10989,
+        "id_canal": 4,
+        "id_fuente": 3,
+        "id_usuario": null,
+        "fecha_hora": "2026-11-12T20:09:42.719Z",
+        "tipo": "Registro y Consulta Inicial (#1)",
+        "mensaje": "QA_BFC_20261112T200939Z_AB Solo deseo información sobre el precio de la evaluación odontológica.",
+        "es_respuesta_util": false,
+        "resultado": "Consulta Informativa"
+      }
+    ],
+    "decisions": [
+      {
+        "id_decision": 165,
+        "id_persona": 10989,
+        "id_usuario": null,
+        "id_captacion": 10987,
+        "id_interaccion": 20191,
+        "agente": "BUYER",
+        "fecha_hora": "2026-11-12T20:09:42.723Z",
+        "entrada": "{\"idempotencyKey\":\"qa_bfc_20261112t200939z_ab\",\"contentHash\":\"4a71d883265e3d9ace1d3ca7708574884dd3fc9d1390d40dae935e89088e1411\",\"mensaje\":\"QA_BFC_20261112T200939Z_AB Solo deseo información sobre el precio de la evaluación odontológica.\",\"id_persona\":10989,\"id_captacion\":10987,\"id_interaccion\":20191,\"motivo_consulta\":\"QA_BFC_20261112T200939Z_AB Solo deseo información sobre el precio de la evaluación odontológica.\",\"sede_preferida\":null,\"id_servicio_declarado\":null,\"contextoConversacional\":null,\"fecha_registro\":\"2026-11-12T20:09:42.723Z\"}",
+        "regla_aplicada": "gemini-3.5-flash-lite",
+        "decision": "{\"estado\":\"COMPLETADA\",\"intencion\":\"SOLO_CONSULTA\",\"id_servicio\":null,\"historial_errores\":[\"Fallo al clasificar mensaje Buyer tras 3 intento(s): QA_GEMINI_503\"],\"intentosRealizados\":4,\"intentos_realizados\":4,\"duracionTotalMs\":1,\"duracion_total_ms\":1,\"contextFingerprint\":\"5d71dc0f835fb4c31942d0fcbd0c1159\"}",
+        "accion": "SOLO_CONSULTA",
+        "requiere_revision": false,
+        "resultado_revision": "Consulta informativa registrada; el contacto permanece en etapa BUYER."
+      }
+    ],
+    "requests": [],
+    "events": [],
+    "intake": []
+  },
+  "finishedUtc": "2026-11-12T20:09:44.373Z"
+}

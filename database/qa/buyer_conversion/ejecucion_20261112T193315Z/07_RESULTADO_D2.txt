@@ -1,0 +1,9 @@
+﻿bloque|id_persona|id_captacion|id_solicitud|id_evento_etapa|entradas|trancount
+------|----------|------------|------------|---------------|--------|---------
+D2_ANTES_RECEPCION|10984|10982|2917|4089|0|0
+id_solicitud|id_evento_etapa|id_captacion|id_persona
+------------|---------------|------------|----------
+2917|4089|10982|10984
+bloque|nombre_sintetico|id_persona|id_captacion|id_solicitud|id_evento_etapa|entradas|trancount|utc
+------|----------------|----------|------------|------------|---------------|--------|---------|---
+D2_OK_ENTREGA_SQL|QA_BCV_20261112T193315Z_D|10984|10982|2917|4089|1|0|2026-11-12 19:39:06.8640419

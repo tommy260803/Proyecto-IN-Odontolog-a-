@@ -1,0 +1,9 @@
+﻿bloque|nombre_sintetico|id_persona|id_captacion|id_servicio|trancount
+------|----------------|----------|------------|-----------|---------
+FIXTURE_D|QA_BCV_20261112T193315Z_D|10984|10982|1|1
+id_evento_etapa|id_solicitud|ya_convertido
+---------------|------------|-------------
+4089|2917|0
+bloque|nombre_sintetico|id_persona|id_captacion|id_solicitud|id_evento_etapa|entradas|trancount|utc
+------|----------------|----------|------------|------------|---------------|--------|---------|---
+D1_COMMIT_SIN_AVISO|QA_BCV_20261112T193315Z_D|10984|10982|2917|4089|0|0|2026-11-12 19:38:56.6997204

@@ -1,0 +1,1450 @@
+{
+  "identity": [
+    {
+      "servidor": "DANIELPC",
+      "base": "NexoSalud_LeadEnsayoFinal",
+      "utc": "2026-11-12T19:33:57.044Z"
+    }
+  ],
+  "definitions": [
+    {
+      "object_id": 1570104634,
+      "name": "usp_ConvertirBuyerALead",
+      "type_desc": "SQL_STORED_PROCEDURE",
+      "modify_date": "2026-11-01T23:02:53.193Z",
+      "definition": "CREATE   PROCEDURE dbo.usp_ConvertirBuyerALead\r\n    @id_captacion INT,\r\n    @id_servicio INT,\r\n    @motivo NVARCHAR(200),\r\n    @id_usuario INT=NULL\r\nAS\r\nBEGIN\r\n    SET NOCOUNT ON;\r\n    SET XACT_ABORT ON;\r\n    BEGIN TRY\r\n        BEGIN TRANSACTION;\r\n        DECLARE @persona INT,@buyer INT,@lead INT,@actual INT,@solicitud INT,\r\n                @evento INT,@fecha DATETIME2=SYSDATETIME(),@captacion DATETIME2;\r\n        SELECT @persona=c.id_persona,@captacion=c.fecha_captacion\r\n        FROM dbo.CaptacionesBuyer c WITH (UPDLOCK,HOLDLOCK)\r\n        WHERE c.id_captacion=@id_captacion;\r\n        IF @persona IS NULL THROW 51001,'Captacion inexistente.',1;\r\n        IF @captacion>@fecha THROW 51008,'La captacion tiene fecha futura.',1;\r\n        SELECT @buyer=id_etapa FROM dbo.Etapas WHERE nombre='BUYER';\r\n        SELECT @lead=id_etapa FROM dbo.Etapas WHERE nombre='LEAD';\r\n        IF @buyer IS NULL OR @lead IS NULL THROW 51002,'Faltan etapas BUYER/LEAD.',1;\r\n        SELECT TOP (1) @evento=id_evento_etapa,@solicitud=id_solicitud\r\n        FROM dbo.EventosEtapa WHERE id_persona=@persona\r\n          AND etapa_origen=@buyer AND etapa_destino=@lead\r\n          AND fecha_hora>=@captacion AND fecha_hora<=@fecha\r\n          AND (id_captacion=@id_captacion OR id_captacion IS NULL)\r\n        ORDER BY fecha_hora,id_evento_etapa;\r\n        IF @evento IS NOT NULL\r\n        BEGIN\r\n            COMMIT;\r\n            SELECT @evento AS id_evento_etapa,@solicitud AS id_solicitud,1 AS ya_convertido;\r\n            RETURN;\r\n        END;\r\n        SELECT @actual=id_etapa_actual FROM dbo.Personas WITH (UPDLOCK,HOLDLOCK)\r\n        WHERE id_persona=@persona;\r\n        IF @actual<>@buyer THROW 51003,'La persona no esta en BUYER; no retroceder fases.',1;\r\n        IF NOT EXISTS (SELECT 1 FROM dbo.v_DatosCaptacionBuyer\r\n                       WHERE id_captacion=@id_captacion AND contacto_utilizable=1)\r\n            THROW 51004,'Captacion sin datos minimos o autorizacion verificable.',1;\r\n        IF NOT EXISTS (SELECT 1 FROM dbo.Personas WHERE id_persona=@persona\r\n                       AND autoriza_contacto=1 AND estado_calidad='Valido')\r\n            THROW 51005,'Autorizacion revocada o calidad actual no valida.',1;\r\n        IF NULLIF(LTRIM(RTRIM(@motivo)),'') IS NULL\r\n            THROW 51006,'Se requiere motivo de intencion concreta.',1;\r\n        IF NOT EXISTS (SELECT 1 FROM dbo.Servicios WHERE id_servicio=@id_servicio AND activo=1)\r\n            THROW 51007,'Servicio no valido.',1;\r\n        INSERT dbo.Solicitudes (id_persona,id_servicio,motivo,estado,fecha_solicitud)\r\n        VALUES (@persona,@id_servicio,@motivo,'Abierta',@fecha);\r\n        SET @solicitud=SCOPE_IDENTITY();\r\n        INSERT dbo.EventosEtapa\r\n            (id_persona,etapa_origen,etapa_destino,fecha_hora,id_usuario,motivo,evidencia,\r\n             id_captacion,id_solicitud,clave_operacion_buyer)\r\n        VALUES (@persona,@buyer,@lead,@fecha,@id_usuario,@motivo,\r\n                'Conversion validada desde captacion inicial',@id_captacion,@solicitud,\r\n                'BUYER_LEAD:'+CAST(@id_captacion AS VARCHAR(20)));\r\n        SET @evento=SCOPE_IDENTITY();\r\n        UPDATE dbo.Personas SET id_etapa_actual=@lead,fecha_actualizacion=@fecha\r\n        WHERE id_persona=@persona;\r\n        COMMIT;\r\n        SELECT @evento AS id_evento_etapa,@solicitud AS id_solicitud,0 AS ya_convertido;\r\n    END TRY\r\n    BEGIN CATCH\r\n        IF @@TRANCOUNT>0 ROLLBACK;\r\n        THROW;\r\n    END CATCH;\r\nEND;\r\n",
+      "sha256": "6A42F2ADD1BE9F827074A50A6DCB579C6341F71C35E8F0216E4E04A70DC634A5"
+    },
+    {
+      "object_id": 238623893,
+      "name": "usp_RegistrarEntradaAgenteLead",
+      "type_desc": "SQL_STORED_PROCEDURE",
+      "modify_date": "2026-11-10T23:13:06.676Z",
+      "definition": "\n-- 4. Procedimiento almacenado dbo.usp_RegistrarEntradaAgenteLead\nCREATE   PROCEDURE dbo.usp_RegistrarEntradaAgenteLead\n    @id_solicitud INT\nAS\nBEGIN\n    SET NOCOUNT ON;\n    IF @@TRANCOUNT <> 0 OR (@@OPTIONS & 2) = 2\n        THROW 54702, 'La entrada requiere una sesion sin transaccion de conversion abierta.', 1;\n    SET XACT_ABORT ON;\n    SET TRANSACTION ISOLATION LEVEL READ COMMITTED;\n\n    BEGIN TRY\n        BEGIN TRANSACTION;\n\n        -- Bloqueo con UPDLOCK, HOLDLOCK para serializar concurrencia de entregas\n        IF NOT EXISTS (\n            SELECT 1 FROM dbo.EntradasAgenteLead WITH (UPDLOCK, HOLDLOCK)\n            WHERE id_solicitud = @id_solicitud\n        )\n        BEGIN\n            INSERT dbo.EntradasAgenteLead (id_solicitud, id_evento_etapa, id_captacion, id_persona)\n            SELECT s.id_solicitud, e.id_evento_etapa, c.id_captacion, s.id_persona\n            FROM dbo.Solicitudes s\n            JOIN dbo.EventosEtapa e ON e.id_solicitud = s.id_solicitud AND e.id_persona = s.id_persona\n            JOIN dbo.CaptacionesBuyer c ON c.id_captacion = e.id_captacion AND c.id_persona = s.id_persona\n            JOIN dbo.Etapas origen ON origen.id_etapa = e.etapa_origen AND origen.nombre = 'BUYER'\n            JOIN dbo.Etapas destino ON destino.id_etapa = e.etapa_destino AND destino.nombre = 'LEAD'\n            WHERE s.id_solicitud = @id_solicitud\n              AND e.clave_operacion_buyer = CONCAT('BUYER_LEAD:', c.id_captacion);\n\n            IF @@ROWCOUNT = 0\n                THROW 54703, 'La solicitud no tiene una conversion BUYER a LEAD vinculada.', 1;\n        END;\n\n        COMMIT;\n        SELECT id_solicitud, id_evento_etapa, id_captacion, id_persona\n        FROM dbo.EntradasAgenteLead\n        WHERE id_solicitud = @id_solicitud;\n    END TRY\n    BEGIN CATCH\n        IF XACT_STATE() <> 0 ROLLBACK;\n        THROW;\n    END CATCH;\nEND;\n",
+      "sha256": "280708E81E3BE607A3772F082961EBE6E8371C1698414F3FDAC8B82D8A0C087E"
+    },
+    {
+      "object_id": 1554104577,
+      "name": "v_DatosCaptacionBuyer",
+      "type_desc": "VIEW",
+      "modify_date": "2026-11-01T23:02:53.190Z",
+      "definition": "-- Consulta de preparacion: no usa Solicitudes ni etapa actual para convertir.\r\nCREATE   VIEW dbo.v_DatosCaptacionBuyer AS\r\nSELECT c.id_captacion,c.id_persona,c.fecha_captacion,c.id_canal,COALESCE(c.id_fuente,ca.id_fuente) AS id_fuente,\r\n       c.id_campana,c.id_sede,c.id_servicio,c.estado_calidad,c.autoriza_contacto,\r\n       c.origen_datos,ev.id_evento_etapa AS id_evento_conversion,\r\n       ev.fecha_hora AS fecha_conversion,\r\n       contacto_registrado=1,\r\n       contacto_utilizable=CASE WHEN c.estado_calidad='Valido' AND c.autoriza_contacto=1\r\n           AND NULLIF(LTRIM(RTRIM(p.nombres)),'') IS NOT NULL\r\n           AND NULLIF(LTRIM(RTRIM(p.apellidos)),'') IS NOT NULL\r\n           AND (NULLIF(LTRIM(RTRIM(p.numero)),'') IS NOT NULL\r\n                OR NULLIF(LTRIM(RTRIM(p.email)),'') IS NOT NULL)\r\n           THEN 1 ELSE 0 END\r\nFROM dbo.CaptacionesBuyer c\r\nJOIN dbo.Personas p ON p.id_persona=c.id_persona\r\nLEFT JOIN dbo.Campanas ca ON ca.id_campana=c.id_campana\r\nOUTER APPLY (\r\n    SELECT TOP (1) e.id_evento_etapa,e.fecha_hora\r\n    FROM dbo.EventosEtapa e\r\n    JOIN dbo.Etapas eo ON eo.id_etapa=e.etapa_origen AND eo.nombre='BUYER'\r\n    JOIN dbo.Etapas ed ON ed.id_etapa=e.etapa_destino AND ed.nombre='LEAD'\r\n    WHERE e.id_persona=c.id_persona AND e.fecha_hora>=c.fecha_captacion\r\n      AND (e.id_captacion=c.id_captacion OR e.id_captacion IS NULL)\r\n    ORDER BY e.fecha_hora,e.id_evento_etapa\r\n) ev;\r\n",
+      "sha256": "BAC8AB4A8AF43E8FB98BFABFE29FA8DC4F4D17F42CB5389EDEF23844EE85665D"
+    }
+  ],
+  "columns": [
+    {
+      "tabla": "CaptacionesBuyer",
+      "column_id": 1,
+      "columna": "id_captacion",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false,
+      "is_identity": true,
+      "defecto": null
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "column_id": 2,
+      "columna": "id_persona",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "column_id": 3,
+      "columna": "fecha_captacion",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "column_id": 4,
+      "columna": "id_canal",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "column_id": 5,
+      "columna": "id_fuente",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "column_id": 6,
+      "columna": "id_campana",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "column_id": 7,
+      "columna": "id_sede",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "column_id": 8,
+      "columna": "id_servicio",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "column_id": 9,
+      "columna": "motivo_consulta",
+      "tipo": "nvarchar",
+      "max_length": 1000,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "column_id": 10,
+      "columna": "estado_calidad",
+      "tipo": "varchar",
+      "max_length": 20,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "column_id": 11,
+      "columna": "autoriza_contacto",
+      "tipo": "bit",
+      "max_length": 1,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": "((0))"
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "column_id": 12,
+      "columna": "fecha_autorizacion",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "column_id": 13,
+      "columna": "origen_datos",
+      "tipo": "varchar",
+      "max_length": 30,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "column_id": 14,
+      "columna": "fecha_observacion",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": "(sysdatetime())"
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "column_id": 1,
+      "columna": "id_solicitud",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "column_id": 2,
+      "columna": "id_evento_etapa",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "column_id": 3,
+      "columna": "id_captacion",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "column_id": 4,
+      "columna": "id_persona",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "column_id": 5,
+      "columna": "fecha_registro_utc",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": "(sysutcdatetime())"
+    },
+    {
+      "tabla": "EventosEtapa",
+      "column_id": 1,
+      "columna": "id_evento_etapa",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false,
+      "is_identity": true,
+      "defecto": null
+    },
+    {
+      "tabla": "EventosEtapa",
+      "column_id": 2,
+      "columna": "id_persona",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "EventosEtapa",
+      "column_id": 3,
+      "columna": "etapa_origen",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "EventosEtapa",
+      "column_id": 4,
+      "columna": "etapa_destino",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "EventosEtapa",
+      "column_id": 5,
+      "columna": "fecha_hora",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": "(sysdatetime())"
+    },
+    {
+      "tabla": "EventosEtapa",
+      "column_id": 6,
+      "columna": "id_usuario",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "EventosEtapa",
+      "column_id": 7,
+      "columna": "motivo",
+      "tipo": "varchar",
+      "max_length": 300,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "EventosEtapa",
+      "column_id": 8,
+      "columna": "evidencia",
+      "tipo": "varchar",
+      "max_length": 500,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "EventosEtapa",
+      "column_id": 9,
+      "columna": "id_captacion",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "EventosEtapa",
+      "column_id": 10,
+      "columna": "id_solicitud",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "EventosEtapa",
+      "column_id": 11,
+      "columna": "clave_operacion_buyer",
+      "tipo": "varchar",
+      "max_length": 80,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 1,
+      "columna": "id_persona",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false,
+      "is_identity": true,
+      "defecto": null
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 2,
+      "columna": "nombres",
+      "tipo": "varchar",
+      "max_length": 50,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 3,
+      "columna": "apellidos",
+      "tipo": "varchar",
+      "max_length": 50,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 4,
+      "columna": "dni",
+      "tipo": "char",
+      "max_length": 8,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 5,
+      "columna": "email",
+      "tipo": "varchar",
+      "max_length": 100,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 6,
+      "columna": "numero",
+      "tipo": "varchar",
+      "max_length": 20,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 7,
+      "columna": "fecha_nacimiento",
+      "tipo": "date",
+      "max_length": 3,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 8,
+      "columna": "zona",
+      "tipo": "varchar",
+      "max_length": 100,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 9,
+      "columna": "tipo_persona",
+      "tipo": "varchar",
+      "max_length": 30,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": "('Adulto General')"
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 10,
+      "columna": "autoriza_contacto",
+      "tipo": "bit",
+      "max_length": 1,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": "((0))"
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 11,
+      "columna": "fecha_autorizacion",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 12,
+      "columna": "estado_calidad",
+      "tipo": "varchar",
+      "max_length": 20,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": "('Valido')"
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 13,
+      "columna": "id_campana_origen",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 14,
+      "columna": "id_canal_origen",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 15,
+      "columna": "id_etapa_actual",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 16,
+      "columna": "fecha_registro",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": "(sysdatetime())"
+    },
+    {
+      "tabla": "Personas",
+      "column_id": 17,
+      "columna": "fecha_actualizacion",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 1,
+      "columna": "id_solicitud",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false,
+      "is_identity": true,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 2,
+      "columna": "id_persona",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 3,
+      "columna": "id_servicio",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 4,
+      "columna": "fecha_solicitud",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": "(sysdatetime())"
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 5,
+      "columna": "motivo",
+      "tipo": "varchar",
+      "max_length": 200,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 6,
+      "columna": "tipo_consulta",
+      "tipo": "varchar",
+      "max_length": 50,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 7,
+      "columna": "prioridad",
+      "tipo": "varchar",
+      "max_length": 20,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 8,
+      "columna": "estado",
+      "tipo": "varchar",
+      "max_length": 30,
+      "is_nullable": false,
+      "is_identity": false,
+      "defecto": "('Abierta')"
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 9,
+      "columna": "fecha_primera_respuesta",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 10,
+      "columna": "fecha_cierre",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 11,
+      "columna": "fecha_ingreso_lead",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 12,
+      "columna": "archivada_lead_en",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 13,
+      "columna": "clave_registro_web_lead",
+      "tipo": "varchar",
+      "max_length": 36,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 14,
+      "columna": "hash_registro_web_lead",
+      "tipo": "char",
+      "max_length": 64,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 15,
+      "columna": "id_negociador",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 16,
+      "columna": "id_canal_origen",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 17,
+      "columna": "id_sede_interes_lead",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 18,
+      "columna": "resultado_comercial_lead",
+      "tipo": "varchar",
+      "max_length": 25,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 19,
+      "columna": "fecha_decision_comercial_lead",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 20,
+      "columna": "valor_acordado_lead",
+      "tipo": "decimal",
+      "max_length": 9,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 21,
+      "columna": "id_propuesta_aceptada_lead",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 22,
+      "columna": "motivo_cierre_lead",
+      "tipo": "varchar",
+      "max_length": 400,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    },
+    {
+      "tabla": "Solicitudes",
+      "column_id": 23,
+      "columna": "fecha_proximo_seguimiento",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true,
+      "is_identity": false,
+      "defecto": null
+    }
+  ],
+  "constraints": [
+    {
+      "tabla": "CaptacionesBuyer",
+      "name": "CK_CaptacionesBuyer_Calidad",
+      "definition": "([estado_calidad]='Rechazado' OR [estado_calidad]='Duplicado' OR [estado_calidad]='Incompleto' OR [estado_calidad]='Valido')",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "name": "CK_CaptacionesBuyer_Origen",
+      "definition": "([origen_datos]='HISTORICO_OBSERVADO' OR [origen_datos]='REGISTRO_DIRECTO')",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Personas",
+      "name": "CK_Personas_Calidad",
+      "definition": "([estado_calidad]='Rechazado' OR [estado_calidad]='Duplicado' OR [estado_calidad]='Incompleto' OR [estado_calidad]='Valido')",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Solicitudes",
+      "name": "CK_Solicitudes_Estado",
+      "definition": "([estado]='Abandonada' OR [estado]='Cerrada' OR [estado]='Convertida' OR [estado]='En negociación' OR [estado]='Abierta')",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Solicitudes",
+      "name": "CK_Solicitudes_ResultadoComercialLead",
+      "definition": "([resultado_comercial_lead] IS NULL AND [fecha_decision_comercial_lead] IS NULL AND [valor_acordado_lead] IS NULL AND [id_propuesta_aceptada_lead] IS NULL OR [resultado_comercial_lead]='PENDIENTE' AND [fecha_decision_comercial_lead] IS NULL AND [valor_acordado_lead] IS NULL AND [id_propuesta_aceptada_lead] IS NULL OR [resultado_comercial_lead]='ACEPTADA' AND [fecha_decision_comercial_lead] IS NOT NULL AND [valor_acordado_lead] IS NOT NULL AND [id_propuesta_aceptada_lead] IS NOT NULL AND [motivo_cierre_lead] IS NULL OR [resultado_comercial_lead]='CERRADA_SIN_ACUERDO' AND [fecha_decision_comercial_lead] IS NOT NULL AND [valor_acordado_lead] IS NULL AND [id_propuesta_aceptada_lead] IS NULL AND nullif(ltrim(rtrim([motivo_cierre_lead])),'') IS NOT NULL)",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Solicitudes",
+      "name": "CK_Solicitudes_ValorYFechaLead",
+      "definition": "(([valor_acordado_lead] IS NULL OR [valor_acordado_lead]>=(0)) AND ([fecha_decision_comercial_lead] IS NULL OR [fecha_decision_comercial_lead]>=[fecha_solicitud]))",
+      "is_disabled": false,
+      "is_not_trusted": false
+    }
+  ],
+  "fk": [
+    {
+      "tabla": "Atenciones",
+      "name": "FK_Atenciones_Persona",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "name": "FK__Captacion__id_ca__4F47C5E3",
+      "columna": "id_canal",
+      "referencia": "Canales",
+      "columna_ref": "id_canal",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "name": "FK__Captacion__id_ca__51300E55",
+      "columna": "id_campana",
+      "referencia": "Campanas",
+      "columna_ref": "id_campana",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "name": "FK__Captacion__id_fu__503BEA1C",
+      "columna": "id_fuente",
+      "referencia": "Fuentes",
+      "columna_ref": "id_fuente",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "name": "FK__Captacion__id_se__5224328E",
+      "columna": "id_sede",
+      "referencia": "Sedes",
+      "columna_ref": "id_sede",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "name": "FK__Captacion__id_se__531856C7",
+      "columna": "id_servicio",
+      "referencia": "Servicios",
+      "columna_ref": "id_servicio",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "name": "FK_CaptacionesBuyer_Persona",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "DatosAcademicos",
+      "name": "FK_DatosAcademicos_Persona",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "DatosLaborales",
+      "name": "FK_DatosLaborales_Persona",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "DecisionesIA",
+      "name": "FK_DecisionesIA_CaptacionBuyer",
+      "columna": "id_captacion",
+      "referencia": "CaptacionesBuyer",
+      "columna_ref": "id_captacion",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "DecisionesIA",
+      "name": "FK_DecisionesIA_Persona",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "name": "FK__EntradasA__id_ca__0B5CAFEA",
+      "columna": "id_captacion",
+      "referencia": "CaptacionesBuyer",
+      "columna_ref": "id_captacion",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "name": "FK__EntradasA__id_ev__0A688BB1",
+      "columna": "id_evento_etapa",
+      "referencia": "EventosEtapa",
+      "columna_ref": "id_evento_etapa",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "name": "FK__EntradasA__id_pe__0C50D423",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "name": "FK__EntradasA__id_so__09746778",
+      "columna": "id_solicitud",
+      "referencia": "Solicitudes",
+      "columna_ref": "id_solicitud",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "EventosEtapa",
+      "name": "FK_EventosEtapa_CaptacionBuyer",
+      "columna": "id_captacion",
+      "referencia": "CaptacionesBuyer",
+      "columna_ref": "id_captacion",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "EventosEtapa",
+      "name": "FK_EventosEtapa_Destino",
+      "columna": "etapa_destino",
+      "referencia": "Etapas",
+      "columna_ref": "id_etapa",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "EventosEtapa",
+      "name": "FK_EventosEtapa_Origen",
+      "columna": "etapa_origen",
+      "referencia": "Etapas",
+      "columna_ref": "id_etapa",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "EventosEtapa",
+      "name": "FK_EventosEtapa_Persona",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "EventosEtapa",
+      "name": "FK_EventosEtapa_SolicitudBuyer",
+      "columna": "id_solicitud",
+      "referencia": "Solicitudes",
+      "columna_ref": "id_solicitud",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "EventosEtapa",
+      "name": "FK_EventosEtapa_Usuario",
+      "columna": "id_usuario",
+      "referencia": "Usuarios",
+      "columna_ref": "id_usuario",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Incidencias",
+      "name": "FK_Incidencias_Persona",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Interacciones",
+      "name": "FK_Interacciones_Persona",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Interacciones",
+      "name": "FK_Interacciones_SolicitudLead",
+      "columna": "id_solicitud",
+      "referencia": "Solicitudes",
+      "columna_ref": "id_solicitud",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Opciones",
+      "name": "FK_Opciones_Solicitud",
+      "columna": "id_solicitud",
+      "referencia": "Solicitudes",
+      "columna_ref": "id_solicitud",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Pagos",
+      "name": "FK_Pagos_Persona",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "PersonaPreferencias",
+      "name": "FK_Preferencias_Persona",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Personas",
+      "name": "FK_Personas_Campana",
+      "columna": "id_campana_origen",
+      "referencia": "Campanas",
+      "columna_ref": "id_campana",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Personas",
+      "name": "FK_Personas_Canal",
+      "columna": "id_canal_origen",
+      "referencia": "Canales",
+      "columna_ref": "id_canal",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Personas",
+      "name": "FK_Personas_Etapa",
+      "columna": "id_etapa_actual",
+      "referencia": "Etapas",
+      "columna_ref": "id_etapa",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "PersonaSaludOdontologica",
+      "name": "FK_PersonaSaludOdonto_Persona",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "PropuestasEconomicasLead",
+      "name": "FK_PropuestasLead_Solicitud",
+      "columna": "id_solicitud",
+      "referencia": "Solicitudes",
+      "columna_ref": "id_solicitud",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Reservas",
+      "name": "FK_Reservas_Persona",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Reservas",
+      "name": "FK_Reservas_Solicitud",
+      "columna": "id_solicitud",
+      "referencia": "Solicitudes",
+      "columna_ref": "id_solicitud",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Seguimientos",
+      "name": "FK_Seguimientos_Persona",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Solicitudes",
+      "name": "FK_Solicitudes_CanalOrigen",
+      "columna": "id_canal_origen",
+      "referencia": "Canales",
+      "columna_ref": "id_canal",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Solicitudes",
+      "name": "FK_Solicitudes_Negociador",
+      "columna": "id_negociador",
+      "referencia": "Usuarios",
+      "columna_ref": "id_usuario",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Solicitudes",
+      "name": "FK_Solicitudes_Persona",
+      "columna": "id_persona",
+      "referencia": "Personas",
+      "columna_ref": "id_persona",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Solicitudes",
+      "name": "FK_Solicitudes_PropuestaAceptadaLead",
+      "columna": "id_propuesta_aceptada_lead",
+      "referencia": "PropuestasEconomicasLead",
+      "columna_ref": "id_propuesta",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Solicitudes",
+      "name": "FK_Solicitudes_SedeInteresLead",
+      "columna": "id_sede_interes_lead",
+      "referencia": "Sedes",
+      "columna_ref": "id_sede",
+      "is_disabled": false,
+      "is_not_trusted": false
+    },
+    {
+      "tabla": "Solicitudes",
+      "name": "FK_Solicitudes_Servicio",
+      "columna": "id_servicio",
+      "referencia": "Servicios",
+      "columna_ref": "id_servicio",
+      "is_disabled": false,
+      "is_not_trusted": false
+    }
+  ],
+  "indexes": [
+    {
+      "tabla": "CaptacionesBuyer",
+      "name": "PK_CaptacionesBuyer",
+      "is_unique": true,
+      "is_primary_key": true,
+      "is_disabled": false,
+      "filter_definition": null,
+      "columna": "id_captacion",
+      "key_ordinal": 1
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "name": "UQ_CaptacionesBuyer_Persona",
+      "is_unique": true,
+      "is_primary_key": false,
+      "is_disabled": false,
+      "filter_definition": null,
+      "columna": "id_persona",
+      "key_ordinal": 1
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "name": "PK__Entradas__5C0C31F387BBE3C8",
+      "is_unique": true,
+      "is_primary_key": true,
+      "is_disabled": false,
+      "filter_definition": null,
+      "columna": "id_solicitud",
+      "key_ordinal": 1
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "name": "UQ__Entradas__D60E7018E1EA9C53",
+      "is_unique": true,
+      "is_primary_key": false,
+      "is_disabled": false,
+      "filter_definition": null,
+      "columna": "id_evento_etapa",
+      "key_ordinal": 1
+    },
+    {
+      "tabla": "EventosEtapa",
+      "name": "PK__EventosE__D60E7019490502B3",
+      "is_unique": true,
+      "is_primary_key": true,
+      "is_disabled": false,
+      "filter_definition": null,
+      "columna": "id_evento_etapa",
+      "key_ordinal": 1
+    },
+    {
+      "tabla": "EventosEtapa",
+      "name": "IX_EventosEtapa_Persona_Fecha",
+      "is_unique": false,
+      "is_primary_key": false,
+      "is_disabled": false,
+      "filter_definition": null,
+      "columna": "id_persona",
+      "key_ordinal": 1
+    },
+    {
+      "tabla": "EventosEtapa",
+      "name": "IX_EventosEtapa_Persona_Fecha",
+      "is_unique": false,
+      "is_primary_key": false,
+      "is_disabled": false,
+      "filter_definition": null,
+      "columna": "fecha_hora",
+      "key_ordinal": 2
+    },
+    {
+      "tabla": "EventosEtapa",
+      "name": "UQ_EventosEtapa_OperacionBuyer",
+      "is_unique": true,
+      "is_primary_key": false,
+      "is_disabled": false,
+      "filter_definition": "([clave_operacion_buyer] IS NOT NULL)",
+      "columna": "clave_operacion_buyer",
+      "key_ordinal": 1
+    },
+    {
+      "tabla": "Personas",
+      "name": "PK__Personas__228148B05ECBE142",
+      "is_unique": true,
+      "is_primary_key": true,
+      "is_disabled": false,
+      "filter_definition": null,
+      "columna": "id_persona",
+      "key_ordinal": 1
+    },
+    {
+      "tabla": "Personas",
+      "name": "UQ_Personas_DNI_NotNull",
+      "is_unique": true,
+      "is_primary_key": false,
+      "is_disabled": false,
+      "filter_definition": "([dni] IS NOT NULL)",
+      "columna": "dni",
+      "key_ordinal": 1
+    },
+    {
+      "tabla": "Solicitudes",
+      "name": "PK__Solicitu__5C0C31F3EEC3D2D6",
+      "is_unique": true,
+      "is_primary_key": true,
+      "is_disabled": false,
+      "filter_definition": null,
+      "columna": "id_solicitud",
+      "key_ordinal": 1
+    },
+    {
+      "tabla": "Solicitudes",
+      "name": "IX_Solicitudes_Persona_Fecha",
+      "is_unique": false,
+      "is_primary_key": false,
+      "is_disabled": false,
+      "filter_definition": null,
+      "columna": "id_persona",
+      "key_ordinal": 1
+    },
+    {
+      "tabla": "Solicitudes",
+      "name": "IX_Solicitudes_Persona_Fecha",
+      "is_unique": false,
+      "is_primary_key": false,
+      "is_disabled": false,
+      "filter_definition": null,
+      "columna": "fecha_solicitud",
+      "key_ordinal": 2
+    },
+    {
+      "tabla": "Solicitudes",
+      "name": "UX_Solicitudes_RegistroWebLead",
+      "is_unique": true,
+      "is_primary_key": false,
+      "is_disabled": false,
+      "filter_definition": "([clave_registro_web_lead] IS NOT NULL)",
+      "columna": "clave_registro_web_lead",
+      "key_ordinal": 1
+    }
+  ],
+  "dependencies": [
+    {
+      "objeto": "usp_ConvertirBuyerALead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "CaptacionesBuyer"
+    },
+    {
+      "objeto": "usp_ConvertirBuyerALead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Etapas"
+    },
+    {
+      "objeto": "usp_ConvertirBuyerALead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "EventosEtapa"
+    },
+    {
+      "objeto": "usp_ConvertirBuyerALead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Personas"
+    },
+    {
+      "objeto": "usp_ConvertirBuyerALead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Servicios"
+    },
+    {
+      "objeto": "usp_ConvertirBuyerALead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Solicitudes"
+    },
+    {
+      "objeto": "usp_ConvertirBuyerALead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "v_DatosCaptacionBuyer"
+    },
+    {
+      "objeto": "usp_RegistrarEntradaAgenteLead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "CaptacionesBuyer"
+    },
+    {
+      "objeto": "usp_RegistrarEntradaAgenteLead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "EntradasAgenteLead"
+    },
+    {
+      "objeto": "usp_RegistrarEntradaAgenteLead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Etapas"
+    },
+    {
+      "objeto": "usp_RegistrarEntradaAgenteLead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "EventosEtapa"
+    },
+    {
+      "objeto": "usp_RegistrarEntradaAgenteLead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Solicitudes"
+    },
+    {
+      "objeto": "v_DatosCaptacionBuyer",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Campanas"
+    },
+    {
+      "objeto": "v_DatosCaptacionBuyer",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "CaptacionesBuyer"
+    },
+    {
+      "objeto": "v_DatosCaptacionBuyer",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Etapas"
+    },
+    {
+      "objeto": "v_DatosCaptacionBuyer",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "EventosEtapa"
+    },
+    {
+      "objeto": "v_DatosCaptacionBuyer",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Personas"
+    }
+  ],
+  "parameters": [
+    {
+      "procedimiento": "usp_RegistrarEntradaAgenteLead",
+      "name": "@id_solicitud",
+      "parameter_id": 1,
+      "tipo": "int",
+      "max_length": 4,
+      "is_output": false
+    },
+    {
+      "procedimiento": "usp_ConvertirBuyerALead",
+      "name": "@id_captacion",
+      "parameter_id": 1,
+      "tipo": "int",
+      "max_length": 4,
+      "is_output": false
+    },
+    {
+      "procedimiento": "usp_ConvertirBuyerALead",
+      "name": "@id_servicio",
+      "parameter_id": 2,
+      "tipo": "int",
+      "max_length": 4,
+      "is_output": false
+    },
+    {
+      "procedimiento": "usp_ConvertirBuyerALead",
+      "name": "@motivo",
+      "parameter_id": 3,
+      "tipo": "nvarchar",
+      "max_length": 400,
+      "is_output": false
+    },
+    {
+      "procedimiento": "usp_ConvertirBuyerALead",
+      "name": "@id_usuario",
+      "parameter_id": 4,
+      "tipo": "int",
+      "max_length": 4,
+      "is_output": false
+    }
+  ],
+  "sessions": [
+    {
+      "session_id": 54,
+      "host_name": "DANIELPC",
+      "program_name": "Microsoft SQL Server Management Studio - Consulta",
+      "status": "sleeping",
+      "open_transaction_count": 0
+    }
+  ],
+  "active": [],
+  "catalog": [
+    {
+      "id_servicio": 1,
+      "nombre": "Evaluación odontológica",
+      "activo": true
+    }
+  ],
+  "stages": [
+    {
+      "id_etapa": 1,
+      "nombre": "BUYER"
+    },
+    {
+      "id_etapa": 2,
+      "nombre": "LEAD"
+    }
+  ]
+}

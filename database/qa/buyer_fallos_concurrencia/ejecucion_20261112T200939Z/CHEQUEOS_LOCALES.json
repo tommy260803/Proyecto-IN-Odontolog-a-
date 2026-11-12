@@ -1,0 +1,30 @@
+{
+  "checkedUtc": "2026-11-12T20:14:10.970Z",
+  "syntax": [
+    {
+      "file": "database/qa/buyer_fallos_concurrencia/entorno_fallos.cjs",
+      "exitCode": 0
+    },
+    {
+      "file": "database/qa/buyer_fallos_concurrencia/gemini_fallos_controlados.cjs",
+      "exitCode": 0
+    },
+    {
+      "file": "database/qa/buyer_fallos_concurrencia/pruebas_fallos_concurrencia.test.cjs",
+      "exitCode": 0
+    }
+  ],
+  "productionSourcesUnchanged": true,
+  "reusedHelpers": [
+    {
+      "file": "database/qa/buyer_backend/entorno_qa.cjs",
+      "sha256": "7B248ECAA0C7E895D86425F216E5F71B13B95E503AAF0D7658F259403914696C",
+      "unchanged": true
+    },
+    {
+      "file": "database/qa/buyer_backend/consultas_qa.cjs",
+      "sha256": "244088FE1D205B38469CA7BF4EB05FCCE0B721347E8BCA318AEB61C3F5BB938E",
+      "unchanged": true
+    }
+  ]
+}

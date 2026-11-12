@@ -1,0 +1,142 @@
+{
+  "paquete": "pruebas_conversion_buyer_qa_daniel_20261112.zip",
+  "rama": "feature/buyer-orientacion-interactiva",
+  "HEAD": "19613358530e899bfc68d5e6b3c33b6336ab9ce4",
+  "destino": "DANIELPC/NexoSalud_LeadEnsayoFinal",
+  "prefijo": "QA_BCV_20261112T193315Z_",
+  "casos": {
+    "A": "APROBADO",
+    "B": "APROBADO",
+    "C": "APROBADO",
+    "D": "APROBADO_ENTREGA_SQL_POSPUESTA"
+  },
+  "codigosSalida": {
+    "PARSEONLY": 0,
+    "AB": 0,
+    "C": 0,
+    "D1": 0,
+    "D2": 0,
+    "capturas": 0
+  },
+  "noIncluye": [
+    "secretos",
+    ".env",
+    "node_modules",
+    "dist",
+    ".git",
+    "respaldos"
+  ],
+  "archivos": [
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/00_CONTROL_PROCESOS_ANTES.json",
+      "bytes": 582,
+      "SHA256": "EBB56EE754641EABE34D0EE06B084E4ACB3F6AC797C4A1EADFCFA13E0895BD41"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/00_INCIDENTE_SQLCMD.json",
+      "bytes": 229,
+      "SHA256": "161CEDC60D3434887006B2F52831AE0FAA5AA31532B82CBE15091EC0791F2A84"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/00_INCIDENTE_SQLCMD_RESUELTO.json",
+      "bytes": 326,
+      "SHA256": "BF36E585E80AC6B50558D9E5D28A62909E2612AC9F18F545C21F6D670AB125C5"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/00_INSPECCION_INSTALADA.json",
+      "bytes": 44165,
+      "SHA256": "EA9A191930FC382921E6E5B95983649F6AB9A4B47FA1043E92FB632C20199149"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/00_PARSEONLY.txt",
+      "bytes": 0,
+      "SHA256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/01_CAPTURA_SOLO_LECTURA.sql",
+      "bytes": 7489,
+      "SHA256": "2D3C86E2A55C172ED842C1E3DFC105B9DEB5051602988C916ECC835B8B968F54"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/01_ESTADO_ANTES.txt",
+      "bytes": 1922,
+      "SHA256": "04F9D1C34F875E4F21FF2BC7D90DD63B1059297EDEFBDB3F790BBAF9D51B5A45"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/02_CASOS_AB_ROLLBACK.sql",
+      "bytes": 8980,
+      "SHA256": "5E09F02E234C9B0702240F466B558C53B1FCD4A7235E567A0DD6A349D14E354C"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/02_RESULTADO_AB.txt",
+      "bytes": 1082,
+      "SHA256": "5A643B210257B528AA359998F72B8F530F9EF9C3322DDAD430EE21A09C6F217C"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/02_VALIDACION_AB.json",
+      "bytes": 296,
+      "SHA256": "3D1DBD4DE3BD20B5DEB090B9ECB0FD44341B6D11CE5E7B670A33089A29F7BD65"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/03_CASO_C_RECEPCION_REPETIDA.sql",
+      "bytes": 8018,
+      "SHA256": "2B0F0CC368F58430A12B4EDA0BDBD63C49A6634B41CA6CC3FAB33F8CA561324D"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/03_ESTADO_TRAS_AB.txt",
+      "bytes": 1922,
+      "SHA256": "10F9D52722E5098265F9E13ABDF8F46EA63D67EC07E60BB260901D9B235A6FF4"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/04_CASO_D1_CONVERSION_SIN_AVISO.sql",
+      "bytes": 6542,
+      "SHA256": "CA765CFD023D43A1CBFFB3DC9CE275D1B46DF4BADB40A478DB16ED8606F9AFAF"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/04_RESULTADO_C.txt",
+      "bytes": 898,
+      "SHA256": "FF3A39E075F2E6C14DF48A39C03C3B78CBA1D98ACC043E58F9987E9F2BF4F495"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/05_CASO_D2_RECEPCION_POSTERIOR.sql",
+      "bytes": 7791,
+      "SHA256": "2D0A4D0D8EB43984D2272ECDA4AD7126C86045D751C2039E46E2A88F6F833018"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/05_RESULTADO_D1.txt",
+      "bytes": 602,
+      "SHA256": "B2D6210FFFA070A6D96D259D666438944982EE6274CCD821EE7A1B56556F0474"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/06_ESTADO_D1_CONFIRMADO_SIN_AVISO.txt",
+      "bytes": 2117,
+      "SHA256": "A2959A298F7FBF5537F9849D90685F152F102747820C5FE277B32111C01A69A6"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/07_RESULTADO_D2.txt",
+      "bytes": 641,
+      "SHA256": "0250B457E8974734848DDC9E84F35EF65549FC8EB2811B3EA43B121C519BCBF0"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/08_ESTADO_FINAL.txt",
+      "bytes": 2140,
+      "SHA256": "D9E7CAF11A3289E258B4CB93CDC1291A1ED92B251142CC7DFBF602F1CF08217E"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/09_RESULTADOS_COMPARADOS.json",
+      "bytes": 3008,
+      "SHA256": "2E865C4353C0759A9AF5FE609CBD0F9A6C6A428B8A595F31E053AD9C5FAD2F09"
+    },
+    {
+      "ruta": "database/qa/buyer_conversion/ejecucion_20261112T193315Z/10_CONTROL_PROCESOS_DESPUES.json",
+      "bytes": 582,
+      "SHA256": "5E35D848B208FBBBA36B8D4F26A84F2542B28A27384C630C56D2CD3311F3484F"
+    },
+    {
+      "ruta": "docs/agentes/PRUEBAS_CONVERSION_BUYER_QA_DANIEL.md",
+      "bytes": 16250,
+      "SHA256": "6D3F0E120C9CD911E9B12278E9E54B1B2AB62D69313DD3DC65D9C95F92A38B29"
+    }
+  ],
+  "nota": "Incluye este manifiesto; su propia huella no se lista para evitar referencia circular."
+}

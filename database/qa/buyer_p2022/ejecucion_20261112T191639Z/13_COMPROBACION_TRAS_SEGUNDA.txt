@@ -1,0 +1,106 @@
+﻿servidor|base_efectiva|fecha_utc
+--------|-------------|---------
+DANIELPC|NexoSalud_LeadEnsayoFinal|2026-11-12 19:22:43.0727755
+tabla|columna|tipo|longitud|precision_esperada|escala|nullable|identidad|rol|columna_actual|tipo_actual|longitud_actual|precision_actual|escala_actual|nullable_actual|identidad_actual|estado
+-----|-------|----|--------|------------------|------|--------|---------|---|--------------|-----------|---------------|----------------|-------------|---------------|----------------|------
+tabla|nombre|columna|referencia|columna_ref|is_disabled|is_not_trusted|tabla_real|referencia_real
+-----|------|-------|----------|-----------|-----------|--------------|----------|---------------
+CambiosOpcionLead|FK_CambiosOpcionLead_Opcion|id_opcion|Opciones|id_opcion|0|0|CambiosOpcionLead|Opciones
+Interacciones|FK_Interacciones_SolicitudLead|id_solicitud|Solicitudes|id_solicitud|0|0|Interacciones|Solicitudes
+Opciones|FK_Opciones_MotivoLead|id_motivo_rechazo_lead|MotivosRechazoLead|id_motivo_rechazo|0|0|Opciones|MotivosRechazoLead
+Opciones|FK_Opciones_PreferenciaLead|id_preferencia_lead|PersonaPreferencias|id_preferencia|0|0|Opciones|PersonaPreferencias
+Opciones|FK_Opciones_PropuestaLead|id_propuesta_lead|PropuestasEconomicasLead|id_propuesta|0|0|Opciones|PropuestasEconomicasLead
+PromocionesLead|FK_PromocionesLead_Servicio|id_servicio|Servicios|id_servicio|0|0|PromocionesLead|Servicios
+PropuestasEconomicasLead|FK_PropuestasLead_MotivoLead|id_motivo_rechazo_lead|MotivosRechazoLead|id_motivo_rechazo|0|0|PropuestasEconomicasLead|MotivosRechazoLead
+PropuestasEconomicasLead|FK_PropuestasLead_PromocionLead|id_promocion_lead|PromocionesLead|id_promocion|0|0|PropuestasEconomicasLead|PromocionesLead
+PropuestasEconomicasLead|FK_PropuestasLead_Raiz|id_propuesta_raiz|PropuestasEconomicasLead|id_propuesta|0|0|PropuestasEconomicasLead|PropuestasEconomicasLead
+PropuestasEconomicasLead|FK_PropuestasLead_SedeLead|id_sede_lead|Sedes|id_sede|0|0|PropuestasEconomicasLead|Sedes
+PropuestasEconomicasLead|FK_PropuestasLead_Servicio|id_servicio|Servicios|id_servicio|0|0|PropuestasEconomicasLead|Servicios
+PropuestasEconomicasLead|FK_PropuestasLead_Solicitud|id_solicitud|Solicitudes|id_solicitud|0|0|PropuestasEconomicasLead|Solicitudes
+Solicitudes|FK_Solicitudes_CanalOrigen|id_canal_origen|Canales|id_canal|0|0|Solicitudes|Canales
+Solicitudes|FK_Solicitudes_Negociador|id_negociador|Usuarios|id_usuario|0|0|Solicitudes|Usuarios
+Solicitudes|FK_Solicitudes_PropuestaAceptadaLead|id_propuesta_aceptada_lead|PropuestasEconomicasLead|id_propuesta|0|0|Solicitudes|PropuestasEconomicasLead
+Solicitudes|FK_Solicitudes_SedeInteresLead|id_sede_interes_lead|Sedes|id_sede|0|0|Solicitudes|Sedes
+tabla|nombre|definition|is_disabled|is_not_trusted
+-----|------|----------|-----------|--------------
+CambiosOpcionLead|CK_CambiosOpcionLead_Tipo|([tipo_motivo]='Otro' OR [tipo_motivo]='Preferencia' OR [tipo_motivo]='Incompatibilidad')|0|0
+MotivosRechazoLead|CK_MotivosRechazoLead_Ambito|([ambito]='ALTERNATIVA' OR [ambito]='PROPUESTA')|0|0
+MotivosRechazoLead|CK_MotivosRechazoLead_Categoria|([categoria]='OTROS' OR [categoria]='INCOMPATIBILIDAD' OR [categoria]='ECONOMICO')|0|0
+MotivosRechazoLead|CK_MotivosRechazoLead_Cruce|([ambito]='PROPUESTA' AND ([categoria]='OTROS' OR [categoria]='ECONOMICO') OR [ambito]='ALTERNATIVA' AND ([categoria]='OTROS' OR [categoria]='INCOMPATIBILIDAD'))|0|0
+MotivosRechazoLead|CK_MotivosRechazoLead_Nombre|(len(ltrim(rtrim([motivo])))>(0))|0|0
+Opciones|CK_Opciones_FechaRespuestaLead|([fecha_respuesta] IS NULL OR [fecha_respuesta]>=[fecha_ofrecida])|0|0
+Opciones|CK_Opciones_PreferenciaHorarioLead|(([pref_dia_semana_lead] IS NULL OR [pref_dia_semana_lead]>=(1) AND [pref_dia_semana_lead]<=(7)) AND ([pref_hora_inicio_lead] IS NULL AND [pref_hora_fin_lead] IS NULL OR [pref_hora_inicio_lead] IS NOT NULL AND [pref_hora_fin_lead] IS NOT NULL AND [pref_hor|0|0
+Opciones|CK_Opciones_SeleccionLead|(NOT ([seleccionada]=(1) AND [estado_respuesta]='Rechazada'))|0|0
+PromocionesLead|CK_PromocionesLead_Nombre|(len(ltrim(rtrim([nombre])))>(0))|0|0
+PromocionesLead|CK_PromocionesLead_Tipo|(len(ltrim(rtrim([tipo_promocion])))>(0))|0|0
+PropuestasEconomicasLead|CK_PropuestasLead_ArbolVersion|([id_propuesta_raiz] IS NULL AND [numero_version]=(1) OR [id_propuesta_raiz] IS NOT NULL AND [numero_version]>(1))|0|0
+PropuestasEconomicasLead|CK_PropuestasLead_Estado|([estado]='Rechazada' OR [estado]='Aceptada' OR [estado]='Pendiente')|0|0
+PropuestasEconomicasLead|CK_PropuestasLead_Precio|([precio_cotizado]>=(0))|0|0
+PropuestasEconomicasLead|CK_PropuestasLead_Version|([numero_version]>=(1))|0|0
+Solicitudes|CK_Solicitudes_ResultadoComercialLead|([resultado_comercial_lead] IS NULL AND [fecha_decision_comercial_lead] IS NULL AND [valor_acordado_lead] IS NULL AND [id_propuesta_aceptada_lead] IS NULL OR [resultado_comercial_lead]='PENDIENTE' AND [fecha_decision_comercial_lead] IS NULL AND [valor_acor|0|0
+Solicitudes|CK_Solicitudes_ValorYFechaLead|(([valor_acordado_lead] IS NULL OR [valor_acordado_lead]>=(0)) AND ([fecha_decision_comercial_lead] IS NULL OR [fecha_decision_comercial_lead]>=[fecha_solicitud]))|0|0
+tabla|columna|name|definition
+-----|-------|----|----------
+CambiosOpcionLead|fecha_cambio|DF_CambiosOpcionLead_Fecha|(sysdatetime())
+CambiosOpcionLead|fecha_registro_utc_lead|DF_CambiosOpcionLead_RegistroUTC|(sysutcdatetime())
+CambiosOpcionLead|tipo_motivo|DF_CambiosOpcionLead_Tipo|('Otro')
+MotivosRechazoLead|activo|DF__MotivosRe__activ__22401542|((1))
+PromocionesLead|activo|DF__Promocion__activ__1C873BEC|((1))
+PropuestasEconomicasLead|estado|DF_PropuestasLead_Estado|('Pendiente')
+PropuestasEconomicasLead|fecha_presentacion|DF_PropuestasLead_Presentacion|(sysdatetime())
+PropuestasEconomicasLead|numero_version|DF_PropuestasLead_Version|((1))
+tabla|name|is_primary_key|is_unique|is_disabled|filter_definition|columna|key_ordinal
+-----|----|--------------|---------|-----------|-----------------|-------|-----------
+CambiosOpcionLead|PK_CambiosOpcionLead|1|1|0|NULL|id_cambio|1
+MotivosRechazoLead|PK_MotivosRechazoLead|1|1|0|NULL|id_motivo_rechazo|1
+MotivosRechazoLead|UQ_MotivosRechazoLead_Codigo|0|1|0|NULL|codigo|1
+Opciones|PK__Opciones__EFAF4258852504CF|1|1|0|NULL|id_opcion|1
+PromocionesLead|PK_PromocionesLead|1|1|0|NULL|id_promocion|1
+PropuestasEconomicasLead|PK_PropuestasEconomicasLead|1|1|0|NULL|id_propuesta|1
+PropuestasEconomicasLead|UX_PropuestasLead_RaizVersion|0|1|0|([id_propuesta_raiz] IS NOT NULL)|id_propuesta_raiz|1
+PropuestasEconomicasLead|UX_PropuestasLead_RaizVersion|0|1|0|([id_propuesta_raiz] IS NOT NULL)|numero_version|2
+Solicitudes|IX_Solicitudes_Persona_Fecha|0|0|0|NULL|id_persona|1
+Solicitudes|IX_Solicitudes_Persona_Fecha|0|0|0|NULL|fecha_solicitud|2
+Solicitudes|PK__Solicitu__5C0C31F3EEC3D2D6|1|1|0|NULL|id_solicitud|1
+Solicitudes|UX_Solicitudes_RegistroWebLead|0|1|0|([clave_registro_web_lead] IS NOT NULL)|clave_registro_web_lead|1
+Personas|Solicitudes|Opciones|Interacciones
+--------|-----------|--------|-------------
+10809|2861|310|20004
+nombre|type_desc|estado
+------|---------|------
+ConfiguracionLeadRevision|NULL|FALTA
+HistorialSolicitudesLead|NULL|FALTA
+HistorialPropuestasLead|NULL|FALTA
+HistorialOpcionesLead|NULL|FALTA
+EntradasAgenteLead|USER_TABLE|EXISTE
+usp_ConvertirBuyerALead|SQL_STORED_PROCEDURE|EXISTE
+usp_RegistrarEntradaAgenteLead|SQL_STORED_PROCEDURE|EXISTE
+usp_Lead_PresentarAlternativa|NULL|FALTA
+usp_Lead_ReporteR1|NULL|FALTA
+usp_Lead_ReporteR2|NULL|FALTA
+usp_Lead_ReporteR3|NULL|FALTA
+interacciones_con_solicitud|referencias_huerfanas|persona_distinta
+---------------------------|---------------------|----------------
+0|0|0
+procedimiento|parameter_id|parametro|tipo|max_length|is_output
+-------------|------------|---------|----|----------|---------
+usp_ConvertirBuyerALead|1|@id_captacion|int|4|0
+usp_ConvertirBuyerALead|2|@id_servicio|int|4|0
+usp_ConvertirBuyerALead|3|@motivo|nvarchar|400|0
+usp_ConvertirBuyerALead|4|@id_usuario|int|4|0
+usp_RegistrarEntradaAgenteLead|1|@id_solicitud|int|4|0
+id_negociador|id_canal_origen|id_sede_interes_lead|fecha_ingreso_lead|archivada_lead_en|resultado_comercial_lead|fecha_decision_comercial_lead|valor_acordado_lead|id_propuesta_aceptada_lead|motivo_cierre_lead|fecha_proximo_seguimiento
+-------------|---------------|--------------------|------------------|-----------------|------------------------|-----------------------------|-------------------|--------------------------|------------------|-------------------------
+id_opcion|id_solicitud|id_disponibilidad|precio_ofrecido|fecha_ofrecida|seleccionada|archivada_lead_en|estado_respuesta|fecha_respuesta|motivo_rechazo|tipo_motivo_rechazo|id_propuesta_lead|id_preferencia_lead|id_motivo_rechazo_lead|pref_fecha_lead|pref_dia_semana_lead|pref_turno_lead|pref_hora_inicio_lead|pref_hora_fin_lead|ofr_turno_lead
+---------|------------|-----------------|---------------|--------------|------------|-----------------|----------------|---------------|--------------|-------------------|-----------------|-------------------|----------------------|---------------|--------------------|---------------|---------------------|------------------|--------------
+id_promocion|nombre|tipo_promocion|id_servicio|activo
+------------|------|--------------|-----------|------
+id_motivo_rechazo|codigo|ambito|categoria|motivo|activo
+-----------------|------|------|---------|------|------
+id_propuesta|id_solicitud|id_servicio|id_propuesta_raiz|numero_version|precio_cotizado|promocion_aplicada|fecha_presentacion|estado|fecha_decision|motivo_rechazo|tipo_motivo_rechazo|id_sede_lead|id_promocion_lead|id_motivo_rechazo_lead
+------------|------------|-----------|-----------------|--------------|---------------|------------------|------------------|------|--------------|--------------|-------------------|------------|-----------------|----------------------
+id_cambio|id_opcion|fecha_cambio|campo_modificado|motivo_cambio|tipo_motivo|valor_anterior|valor_nuevo|es_pre_reserva_lead|fecha_registro_utc_lead
+---------|---------|------------|----------------|-------------|-----------|--------------|-----------|-------------------|-----------------------
+resultado
+---------
+CATALOGO PARCIAL VERIFICADO; FALTAN GET LISTADO/FICHA Y VALIDACION DE DATOS

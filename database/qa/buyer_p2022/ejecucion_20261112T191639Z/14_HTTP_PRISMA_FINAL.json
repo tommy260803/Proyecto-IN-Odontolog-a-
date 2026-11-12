@@ -1,0 +1,49 @@
+{
+  "source": "SQLSERVER_URL",
+  "identity": {
+    "servidor": "DANIELPC",
+    "base": "NexoSalud_LeadEnsayoFinal",
+    "fecha_utc": "2026-11-12T19:22:43.293Z"
+  },
+  "complete": true,
+  "endpoints": [
+    {
+      "route": "/api/buyer?page=1&pageSize=25",
+      "status": 200,
+      "responseError": null,
+      "captured": []
+    },
+    {
+      "route": "/api/buyer/:id_existente",
+      "status": 200,
+      "responseError": null,
+      "captured": []
+    }
+  ],
+  "models": [
+    {
+      "model": "solicitudes",
+      "result": "LECTURA_OK"
+    },
+    {
+      "model": "opciones",
+      "result": "LECTURA_OK"
+    },
+    {
+      "model": "promocionesLead",
+      "result": "LECTURA_OK"
+    },
+    {
+      "model": "motivosRechazoLead",
+      "result": "LECTURA_OK"
+    },
+    {
+      "model": "propuestasEconomicasLead",
+      "result": "LECTURA_OK"
+    },
+    {
+      "model": "cambiosOpcionLead",
+      "result": "LECTURA_OK"
+    }
+  ]
+}

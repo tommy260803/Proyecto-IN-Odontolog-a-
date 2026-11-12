@@ -1,0 +1,454 @@
+{
+  "destino": "DANIELPC/NexoSalud_LeadEnsayoFinal",
+  "previaUTC": "2026-11-12T19:19:39.615Z",
+  "trasPrimeraUTC": "2026-11-12T19:20:50.291Z",
+  "trasSegundaUTC": "2026-11-12T19:22:01.256Z",
+  "escritoresObservadosEnCapturas": 0,
+  "tablasOriginales": 32,
+  "tablasFinales": 36,
+  "objetosAntes": 207,
+  "objetosTrasPrimera": 256,
+  "objetosTrasSegunda": 256,
+  "objetosAgregadosPorTipo": {
+    "U": 4,
+    "PK": 4,
+    "F": 16,
+    "D": 8,
+    "C": 16,
+    "UQ": 1
+  },
+  "tablasNuevas": [
+    {
+      "tabla": "dbo.CambiosOpcionLead",
+      "conteo": "0"
+    },
+    {
+      "tabla": "dbo.MotivosRechazoLead",
+      "conteo": "0"
+    },
+    {
+      "tabla": "dbo.PromocionesLead",
+      "conteo": "0"
+    },
+    {
+      "tabla": "dbo.PropuestasEconomicasLead",
+      "conteo": "0"
+    }
+  ],
+  "columnasAgregadasEnTablasOriginales": 27,
+  "modulosSQLOriginalesSinCambios": true,
+  "comparacionConteosYColumnasOriginales": [
+    {
+      "tabla": "dbo.Atenciones",
+      "antes": "219",
+      "despues": "219",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Campanas",
+      "antes": "10",
+      "despues": "10",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Canales",
+      "antes": "8",
+      "despues": "8",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.CaptacionesBuyer",
+      "antes": "10809",
+      "despues": "10809",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.DatosAcademicos",
+      "antes": "0",
+      "despues": "0",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.DatosLaborales",
+      "antes": "0",
+      "despues": "0",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.DecisionesIA",
+      "antes": "1",
+      "despues": "1",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Disponibilidad",
+      "antes": "2",
+      "despues": "2",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.EntradasAgenteLead",
+      "antes": "0",
+      "despues": "0",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Etapas",
+      "antes": "5",
+      "despues": "5",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.EventosEtapa",
+      "antes": "4041",
+      "despues": "4041",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Fuentes",
+      "antes": "3",
+      "despues": "3",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.GastosCampana",
+      "antes": "62",
+      "despues": "62",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Horarios",
+      "antes": "6",
+      "despues": "6",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Incidencias",
+      "antes": "0",
+      "despues": "0",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Interacciones",
+      "antes": "20004",
+      "despues": "20004",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Modalidades",
+      "antes": "2",
+      "despues": "2",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Opciones",
+      "antes": "310",
+      "despues": "310",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Pagos",
+      "antes": "124",
+      "despues": "124",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.PersonaPreferencias",
+      "antes": "1",
+      "despues": "1",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Personas",
+      "antes": "10809",
+      "despues": "10809",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.PersonaSaludOdontologica",
+      "antes": "805",
+      "despues": "805",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Profesionales",
+      "antes": "4",
+      "despues": "4",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.ProfesionalServicio",
+      "antes": "0",
+      "despues": "0",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Reservas",
+      "antes": "124",
+      "despues": "124",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Roles",
+      "antes": "6",
+      "despues": "6",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Sedes",
+      "antes": "3",
+      "despues": "3",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Seguimientos",
+      "antes": "80",
+      "despues": "80",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Servicios",
+      "antes": "12",
+      "despues": "12",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Solicitudes",
+      "antes": "2861",
+      "despues": "2861",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Tarifas",
+      "antes": "6",
+      "despues": "6",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    },
+    {
+      "tabla": "dbo.Usuarios",
+      "antes": "4",
+      "despues": "4",
+      "conteoConservado": true,
+      "contenidoOriginalSHA256Conservado": true
+    }
+  ],
+  "idempotencia": {
+    "catalogoExactamenteIgual": true,
+    "objetosAdicionales": 0,
+    "datos": [
+      {
+        "tabla": "dbo.Atenciones",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.CambiosOpcionLead",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Campanas",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Canales",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.CaptacionesBuyer",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.DatosAcademicos",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.DatosLaborales",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.DecisionesIA",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Disponibilidad",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.EntradasAgenteLead",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Etapas",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.EventosEtapa",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Fuentes",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.GastosCampana",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Horarios",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Incidencias",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Interacciones",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Modalidades",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.MotivosRechazoLead",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Opciones",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Pagos",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.PersonaPreferencias",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Personas",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.PersonaSaludOdontologica",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Profesionales",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.ProfesionalServicio",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.PromocionesLead",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.PropuestasEconomicasLead",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Reservas",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Roles",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Sedes",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Seguimientos",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Servicios",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Solicitudes",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Tarifas",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      },
+      {
+        "tabla": "dbo.Usuarios",
+        "conteoIgual": true,
+        "contenidoCompletoSHA256Igual": true
+      }
+    ]
+  },
+  "alcanceComparacionContenido": "SHA-256 del JSON de todas las filas ordenadas por PK, INCLUDE_NULL_VALUES; mismas columnas originales en antes/despues de primera aplicacion, todas las columnas para segunda; no sustituye prueba de restauracion ni comparacion binaria de paginas.",
+  "rollbackAnteFalloEnsayado": false
+}

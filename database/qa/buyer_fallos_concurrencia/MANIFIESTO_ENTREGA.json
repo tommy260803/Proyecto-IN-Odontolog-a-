@@ -1,0 +1,118 @@
+{
+  "generatedUtc": "2026-11-12T20:14:36.1562160Z",
+  "scope": "Bloque fallos y concurrencia Buyer, informe y dos auxiliares QA previos sin cambios; rutas relativas preservadas",
+  "files": [
+    {
+      "path": "database/qa/buyer_backend/consultas_qa.cjs",
+      "bytes": 4589,
+      "sha256": "244088FE1D205B38469CA7BF4EB05FCCE0B721347E8BCA318AEB61C3F5BB938E"
+    },
+    {
+      "path": "database/qa/buyer_backend/entorno_qa.cjs",
+      "bytes": 3640,
+      "sha256": "7B248ECAA0C7E895D86425F216E5F71B13B95E503AAF0D7658F259403914696C"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/02_DIAGNOSTICO_SOLO_LECTURA.sql",
+      "bytes": 2699,
+      "sha256": "0F1F56211E4D6293432229BB7A636CF8A2F846B2EF7629DD396D0A97C69C5599"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T200939Z/CASO_A.json",
+      "bytes": 10942,
+      "sha256": "D6169CD463105656DEB92B94F87C5E56CFC7B1261D08657D85B48B92FE825DDE"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T200939Z/CASO_B.json",
+      "bytes": 10767,
+      "sha256": "799C43224AC1916DC40D56060934224B4034C4024CEAB7E70A17461372A61352"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T200939Z/CASO_C.json",
+      "bytes": 21951,
+      "sha256": "C3A8FC9C75E8D6C7348BE2D004B2788FA8E15D3FC6D5368045D90C64416E9B1B"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T200939Z/CHEQUEOS_LOCALES.json",
+      "bytes": 837,
+      "sha256": "EFEF7C12E5EEF9C5D7A5D812E735E89C89194AD8EFAA774B9281B130E01B662D"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T200939Z/COMANDO_RESULTADO.json",
+      "bytes": 180,
+      "sha256": "F1721765D900E030E463F6312FE05F8206FC6B2503E8D6681C2CDEE30A379858"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T200939Z/CONTROL_SECRETOS.json",
+      "bytes": 216,
+      "sha256": "770A66A60014702E546D119E41CB2BE4952352BFADB3D9197C4F57830D72DA77"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T200939Z/DIAGNOSTICO_SQL_RESULTADO.json",
+      "bytes": 247,
+      "sha256": "7927775FE200A1D5E6BC0926C5E28CE3DF5CC550A1B37EEED30D683377A1EF21"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T200939Z/DIAGNOSTICO_SQL_SOLO_LECTURA.txt",
+      "bytes": 6573,
+      "sha256": "DBCB98ED6B5BE975749C438D755AA84CD48A759BF5E3CCE5E6037E039046C1EA"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T200939Z/EJECUCION_NODE_TEST.txt",
+      "bytes": 3074,
+      "sha256": "E9C4339B5841CDD9777CEF76C506D8F089769B030ACDDF501F72B30DCCEA4658"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T200939Z/ENTORNO_ANTES.json",
+      "bytes": 1631,
+      "sha256": "8FB39EA24EA4A611F641102DDA4E4E86D2C43D01228C4151C90DB072EDA3F37B"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T200939Z/ENTORNO_DESPUES.json",
+      "bytes": 3229,
+      "sha256": "12BD7E9CF1734F43222951BEFD621A0EE67BBBC36C72DC17FC6A00024D09C152"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T200939Z/ESTADO_ANTES.json",
+      "bytes": 5704,
+      "sha256": "1845558268F475B6DCE69F9EBE7681C6015D615639DBBCD492F3B3CD3658E7AB"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/ejecucion_20261112T200939Z/RESULTADOS.json",
+      "bytes": 86565,
+      "sha256": "CE7D02ECEC26900B58B41CA1D5E980D058981C8650DB834513936A88A65BFC64"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/EMPAQUETAR_REVISION.ps1",
+      "bytes": 4308,
+      "sha256": "2F6D5D3A70E3A4DD04F30C2082B6A4DE2EC26A25C382AD0F8B65896A4052CEDE"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/entorno_fallos.cjs",
+      "bytes": 3151,
+      "sha256": "B8C9B252D1EF074FE8BB5374C0AF48F99408E65678E62173E2755569B82727D7"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/gemini_fallos_controlados.cjs",
+      "bytes": 2301,
+      "sha256": "17D7F42FA37B36D8ED1DAA3D066FC5A1F8E381C6D532FE71807CD843F11C5B06"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/pruebas_fallos_concurrencia.test.cjs",
+      "bytes": 18433,
+      "sha256": "0DC42F8CD1F5C8291A1F29A948297F4E9E9345F69BFF53C90A952AC3F4153A0C"
+    },
+    {
+      "path": "database/qa/buyer_fallos_concurrencia/README.md",
+      "bytes": 4479,
+      "sha256": "E75CAB9DFE44F0D3B8E9BF1EB08976D6A95ADF7EAB682537C8A10DBFEDC024AA"
+    },
+    {
+      "path": "docs/agentes/PRUEBAS_FALLOS_CONCURRENCIA_BUYER_QA_DANIEL.md",
+      "bytes": 21695,
+      "sha256": "ED867753B49D2710FE0C82DEBBCB65C076891D848DAB79D6FA4A944AE294408E"
+    }
+  ],
+  "manifestNote": "El ZIP incluye este manifiesto. Su propia huella se comprueba al leer el ZIP contra el origen, fuera de este manifiesto.",
+  "verificationNote": "VERIFICACION_ZIP.json se genera externamente despues de cerrar y leer todas las entradas; no se incluye en el ZIP para evitar autorreferencia."
+}
