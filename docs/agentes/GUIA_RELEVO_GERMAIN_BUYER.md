@@ -12,7 +12,7 @@
 > **ESTADO: IMPLEMENTADO PARCIALMENTE — PENDIENTE DE VALIDACIÓN QA.**
 > El desarrollo y verificación de Buyer se realizan de forma **independiente**. La integración final de agentes con LEAD está formalmente aplazada hasta consolidar las pruebas locales de Buyer.
 
-### 1.2 Funcionalidades Implementadas y Verificadas (v1 a v7)
+### 1.2 Funcionalidades implementadas y comprobadas con simulaciones (v1 a v7)
 1. **Evaluación Unificada Backend:** La ficha de detalle Buyer (`BuyerDetailView.tsx`) y los endpoints HTTP (`/buyer/:id/evaluate`) consumen la misma fuente de verdad: el clasificador estructurado de Gemini respaldado por `BuyerEvaluationService`. Se eliminaron las discrepancias entre heurísticas frontend y el modelo backend.
 2. **Ciclo de Vida de Mensajes y Solicitudes:** Los registros informativos (`SOLO_CONSULTA` o `AMBIGUA`) se persisten exclusivamente en `dbo.Interacciones`, evitando la creación prematura de filas en `dbo.Solicitudes`. La creación de solicitudes comerciales queda reservada a la conversión formal atómica vía `dbo.usp_ConvertirBuyerALead`.
 3. **Resolución Determinista del Servicio Declarado:** Se prioriza la preferencia vigente en `dbo.PersonaPreferencias` (con `fecha_fin` activa o nula), seguida de la captación inicial en `dbo.CaptacionesBuyer`, y únicamente como compatibilidad histórica la solicitud. Un servicio declarado no sustituye la intención del paciente.
@@ -22,11 +22,13 @@
 7. **Recuperación Post-Commit sin Heurísticas de Texto:** Se eliminó `isReservationOriented`. La recuperación tras caídas post-commit SQL se apoya estrictamente en evidencia persistida de pertenencia de la operación (`hasPersistedOperationEvidence`).
 
 ### 1.3 Diferencia entre Niveles de Prueba
-- **Pruebas Simuladas (Vitest en memoria):** 122 pruebas aprobadas en el test runner oficial (`npm --prefix frontend test`). Utilizan dobles de prueba (`createMockDb`) que emulan transacciones SQL, llamadas a stored procedures y respuestas sintéticas del clasificador (`classifierOverride`).
+- **Pruebas Simuladas (Vitest en memoria):** 122 pruebas aprobadas reportadas por Antigravity en el test runner oficial (`npm --prefix frontend test`). Utilizan dobles de prueba (`createMockDb`) que emulan transacciones SQL, llamadas a stored procedures y respuestas sintéticas del clasificador (`classifierOverride`).
 - **Pruebas SQL Real (Pendiente):** Validación de consultas, bloqueos de concurrencia y ejecución real de `dbo.usp_ConvertirBuyerALead` y `dbo.usp_RegistrarEntradaAgenteLead` contra una instancia viva de Microsoft SQL Server (`NexoSalud_LeadEnsayoFinal`).
 - **Pruebas Gemini Real (Pendiente):** Invocación en vivo mediante `@google/genai` con modelo `gemini-3.5-flash-lite`, evaluando latencia, cuota y respuestas del LLM con una `GEMINI_API_KEY` válida.
 
 ### 1.4 Commit Base y Trazabilidad de esta Entrega
+El código y la guía de entrega se publicaron en **`8fa947d8d6cfda140d77df5f1c9e2ff6b83f5f47`**. Las aclaraciones posteriores de este documento no cambian ese código base. Registra por separado `git rev-parse HEAD` (revisión que pruebas) y el commit del último cambio de código.
+
 El trabajo previo de Germain tuvo como último commit `3e4cd2d` (*"feat: Agregar servicio de evaluación dental y casos de prueba relacionados"*), precedido por `9956065` y `2fff156`.
 
 Para identificar con precisión el hash exacto del commit que contiene esta entrega sin inventarlo antes de su publicación, ejecuta desde la raíz:
@@ -45,7 +47,7 @@ Sigue estrictamente estos pasos numerados para sincronizar el repositorio sin so
    ```powershell
    git status --short
    ```
-   Si tienes cambios no confirmados, resguárdalos con `git stash push -m "wip-germain"` antes de continuar.
+   Si tienes cambios no confirmados, guárdalos primero en un commit propio o con `git stash push -u -m "wip-germain"` (incluye archivos nuevos no ignorados). Anota qué guardaste; no restaures automáticamente ese trabajo sobre los cambios recibidos.
 2. **Descargar los últimos cambios remotos:**
    ```powershell
    git fetch origin
@@ -80,8 +82,8 @@ Según las declaraciones en [frontend/package.json](../../frontend/package.json)
 Ejecuta desde la raíz del proyecto:
 
 ```powershell
-npm --prefix backend install
-npm --prefix frontend install
+npm --prefix backend ci
+npm --prefix frontend ci
 ```
 
 ### 3.3 Generación del Cliente Prisma y Compilación
@@ -113,7 +115,7 @@ DISABLE_MART_SYNC=true
 DUNNING_ENABLED=false
 
 # Clave de Gemini para pruebas reales (mantener privada)
-GEMINI_API_KEY="AIzaSy..."
+GEMINI_API_KEY="<CLAVE_LOCAL_NO_PUBLICAR>"
 ```
 
 Verifica que Git ignore el archivo de entorno:
@@ -150,13 +152,13 @@ git check-ignore backend/.env
 Si no dispones de la base `NexoSalud_LeadEnsayoFinal`, sigue este procedimiento en SQL Server Management Studio:
 
 1. **Crear respaldo de solo copia (COPY_ONLY):**
-   - En SSMS, clic derecho sobre la base origen (ej. `NexoSaludDB`) $\rightarrow$ *Tasks* $\rightarrow$ *Back Up...*
+   - En SSMS, clic derecho sobre la base origen (ej. `NexoSaludDB`) → *Tasks* → *Back Up...*
    - Backup type: **Full**.
    - Marcar la casilla **Copy-only backup** (evita alterar la secuencia de backups LSN de la base principal).
    - Destino: Seleccionar un único archivo `.bak` (ej. `C:\Backups\NexoSaludDB_Base.bak`).
    - Clic en *OK*.
 2. **Restaurar con nuevo nombre:**
-   - Clic derecho en *Databases* $\rightarrow$ *Restore Database...*
+   - Clic derecho en *Databases* → *Restore Database...*
    - Seleccionar *Device* y ubicar `C:\Backups\NexoSaludDB_Base.bak`.
    - En *Destination Database*, escribir explícitamente: `NexoSalud_LeadEnsayoFinal`.
 3. **Reubicar archivos físicos (MOVE):**
@@ -174,22 +176,21 @@ Si no dispones de la base `NexoSalud_LeadEnsayoFinal`, sigue este procedimiento 
    - En *Recovery state*, asegurar que esté seleccionado **RESTORE WITH RECOVERY** (deja la base lista para su uso operativo).
    - Clic en *OK*.
 
-*Equivalente en script T-SQL:*
-```sql
-BACKUP DATABASE [NexoSaludDB]
-TO DISK = 'C:\Backups\NexoSaludDB_Base.bak'
-WITH COPY_ONLY, FORMAT, INIT;
-GO
+**Antes de restaurar:** comprueba que la carpeta de respaldo exista y que la cuenta del servicio SQL Server tenga permiso de escritura. En el cuadro de destino del respaldo, elimina destinos adicionales y elige un nombre de archivo nuevo. No reutilices ni sobrescribas respaldos anteriores.
 
-RESTORE DATABASE [NexoSalud_LeadEnsayoFinal]
-FROM DISK = 'C:\Backups\NexoSaludDB_Base.bak'
-WITH
-    MOVE 'NexoSaludDB' TO 'C:\SQLData\NexoSalud_LeadEnsayoFinal.mdf',
-    MOVE 'NexoSaludDB_log' TO 'C:\SQLData\NexoSalud_LeadEnsayoFinal_log.ldf',
-    RECOVERY,
-    REPLACE;
+No se proporciona un `RESTORE ... WITH REPLACE`: esta operación es para crear una copia nueva. Si `NexoSalud_LeadEnsayoFinal` ya existe, verifica su compatibilidad y úsala; no la sobrescribas.
+
+Para conocer los nombres lógicos reales de los archivos del respaldo, ejecuta esta consulta informativa, sustituyendo la ruta por el archivo que acabas de crear:
+
+```sql
+RESTORE FILELISTONLY
+FROM DISK = N'C:\\Backups\\NexoSaludDB_Base.bak';
 GO
 ```
+
+Los valores `LogicalName` del resultado no se adivinan a partir del nombre de la base. Si generas el script desde el botón **Script** del asistente de SSMS, revisa que el destino sea la copia QA y que cada archivo físico tenga una ruta distinta de la base origen; incluye todos los archivos de datos y registro que aparezcan. No ejecutes un script que sobrescriba la base original o una copia QA existente.
+
+La opción de tail-log no es necesaria para crear esta copia independiente; desactivarla evita que el asistente intente respaldar el log de un destino que no corresponde al ejercicio. No es una instrucción general para restaurar una base productiva.
 
 ### 4.2 Comprobaciones SELECT de Solo Lectura
 
@@ -233,20 +234,34 @@ SELECT id_horario, dia_semana, hora_inicio, hora_fin
 FROM dbo.Horarios;
 ```
 
-### 4.3 Scripts Faltantes y Orden Comprobado
-> [!NOTE]
-> Restaurar un respaldo no incorpora automáticamente cambios de esquema posteriores del repositorio. Si falta algún objeto, aplica los scripts comprobados en este orden estricto:
+### 4.3 Esquema incompleto: decidir antes de ejecutar scripts
 
-1. **Paquete OLTP Base:** Si la base carece del esquema Buyer/LEAD, revisar y aplicar [database/lead_revision/APLICAR_BUYER_LEAD.sql](../../database/lead_revision/APLICAR_BUYER_LEAD.sql).
-2. **Esquema Compartido y Entrada LEAD:** Para asegurar las columnas `id_solicitud` en `Interacciones`, `id_captacion`/`id_interaccion` en `DecisionesIA` y el procedimiento `dbo.usp_RegistrarEntradaAgenteLead`, aplicar [database/buyer_revision/PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql](../../database/buyer_revision/PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql).
-3. **Verificación:** Ejecutar [database/lead_revision/VERIFICAR_OLTP_INSTALADO.sql](../../database/lead_revision/VERIFICAR_OLTP_INSTALADO.sql).
+Restaurar un respaldo no incorpora automáticamente cambios de esquema posteriores del repositorio. Primero registra los objetos que faltan con 4.2. Si el esquema ya es compatible, **no reinstales** ni repuebles.
+
+- Lee [PROCEDIMIENTO_INSTALACION_OLTP.md](../../database/lead_revision/PROCEDIMIENTO_INSTALACION_OLTP.md) como referencia del paquete. Sus comandos sobre `NexoSaludDB` describen otra ventana; **no los copies para esta QA**.
+- [APLICAR_BUYER_LEAD.sql](../../database/lead_revision/APLICAR_BUYER_LEAD.sql) exige un esquema base compatible y usa directivas SQLCMD (`:r`, `$(BaseEsperada)`). No es un inicializador para una base vacía ni se ejecuta como SQL normal pegado en SSMS.
+- Solo si diagnosticaste la necesidad del paquete completo, detén backend y otros escritores de la copia QA. Desde la raíz, con `sqlcmd` instalado y ajustando servidor/autenticación a tu equipo, el destino debe ser explícitamente QA:
+
+```powershell
+sqlcmd -S localhost -E -C -I -b -d NexoSalud_LeadEnsayoFinal -f 65001 -v BaseEsperada=NexoSalud_LeadEnsayoFinal -i database/lead_revision/APLICAR_BUYER_LEAD.sql
+```
+
+- Si únicamente faltan enlaces o recepción de LEAD, revisa [PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql](../../database/buyer_revision/PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql) antes de aplicarlo a QA. No instala todos los requisitos del modelo Prisma.
+- La recepción existente sigue utilizándose por el backend al convertir, aunque el desarrollo del agente LEAD esté aplazado. Comprueba `EntradasAgenteLead` y `usp_RegistrarEntradaAgenteLead`.
+- Tras el paquete completo, el control de lectura es:
+
+```powershell
+sqlcmd -S localhost -E -C -I -b -d NexoSalud_LeadEnsayoFinal -f 65001 -v BaseEsperada=NexoSalud_LeadEnsayoFinal -i database/lead_revision/VERIFICAR_OLTP_INSTALADO.sql
+```
+
+Anota archivos, commit y salidas. Si un preflight rechaza el esquema, investiga la diferencia: no elimines la guarda ni ejecutes inicializadores destructivos para continuar.
 
 ---
 
 ## 5. Pendientes de Desarrollo: Ubicación, Diagnóstico y Criterios de Aceptación
 
 ### 5.1 Recuperación Automática: Inclusión de `CONVERSION_EN_CURSO`
-- **Ubicación:** [backend/src/services/buyerEvaluationService.ts](../../backend/src/services/buyerEvaluationService.ts#L1675-L1686), método `recoverPendingEvaluations`.
+- **Ubicación:** [backend/src/services/buyerEvaluationService.ts](../../backend/src/services/buyerEvaluationService.ts), método `recoverPendingEvaluations`.
 - **Diagnóstico del fallo:** Actualmente el método solo busca decisiones con `decision: { contains: '"estado":"PENDIENTE"' }` o `accion: 'REINTENTO_PENDIENTE'`. Si el servidor backend cae o se reinicia justo cuando una decisión fue marcada como `CONVERSION_EN_CURSO` (antes o después del commit de `usp_ConvertirBuyerALead`), el recuperador automático al arranque (`src/index.ts`) la omite por completo.
 - **Corrección requerida:**
   Agregar al filtro `OR` de `pendingDecisions`:
@@ -258,14 +273,19 @@ FROM dbo.Horarios;
   2. Ejecutar `BuyerEvaluationService.recoverPendingEvaluations()` antes del commit SQL: debe evaluar y completar la conversión.
   3. Ejecutarlo después del commit SQL pero con interacción pendiente: debe recuperar `id_solicitud` y `id_evento_etapa` sin duplicar filas.
 
-### 5.2 Recuperación Post-Commit y Clave de Operación en SQL Real
-- **Ubicación:** [backend/src/services/buyerEvaluationService.ts](../../backend/src/services/buyerEvaluationService.ts#L684-L770) y [database/buyer_revision/PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql](../../database/buyer_revision/PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql#L78-L79).
-- **Diagnóstico:** `Paso B` en el servicio utiliza `clave_operacion_buyer = BUYER_LEAD:${id_captacion}:${id_interaccion}` (o `BUYER_LEAD:${id_captacion}`). En `usp_RegistrarEntradaAgenteLead`, la consulta SQL busca `e.clave_operacion_buyer = CONCAT('BUYER_LEAD:', c.id_captacion)`. Debe verificarse en la base real que ambas claves coincidan o que el SP soporte la clave con sufijo de interacción.
-- **Criterio de Aceptación:** Una consulta nueva de un contacto no debe apropiarse de conversiones históricas bajo ninguna circunstancia.
+### 5.2 Recuperación post-commit e identidad de operación
+
+- **Código:** [buyerEvaluationService.ts](../../backend/src/services/buyerEvaluationService.ts), pasos de recuperación y conversión.
+- **SQL publicado:** [init_oltp.sql](../../database/buyer_revision/semana9/init_oltp.sql) registra la clave `BUYER_LEAD:<id_captacion>`. El receptor en [PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql](../../database/buyer_revision/PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql) busca ese mismo formato.
+- **Identidad en Buyer:** `operacion_id = BUYER_LEAD:<id_captacion>:<id_interaccion>` se guarda en el JSON de la decisión. Guardarla allí no cambia la clave del evento generada por el procedimiento.
+- Verifica las definiciones realmente instaladas mediante `OBJECT_DEFINITION(OBJECT_ID(N'dbo.usp_ConvertirBuyerALead'))` y `OBJECT_DEFINITION(OBJECT_ID(N'dbo.usp_RegistrarEntradaAgenteLead'))`, siempre en QA.
+- La prueba simulada con evento de tres componentes no acredita que SQL lo genere así. Añade la prueba con la clave de dos componentes que genera el SQL actual y con identidad persistida de la interacción.
+- Revisa `hasConversionInProgress`: el código permite estado `CONVERSION_EN_CURSO` **o** acción `CONVERSION_LEAD` con identidad/intención. No exige en todos esos caminos que `operacion_id` coincida. No describir esas condiciones como una comprobación inequívoca ya validada.
+- **Aceptación:** la misma operación interrumpida recupera solicitud/evento, sin nueva conversión; una interacción distinta conserva su etapa y no se adjudica la conversión histórica. Comprueba contacto en LEAD y en PAYER. Si decides cambiar el formato del evento, actualiza de manera compatible todos sus productores, receptores y pruebas; no lo cambies solo para hacer coincidir un mock.
 
 ### 5.3 Concurrencia HTTP e Idempotencia Real
-- **Ubicación:** [backend/src/routes/buyer.routes.ts](../../backend/src/routes/buyer.routes.ts#L120-L165).
-- **Diagnóstico:** La verificación de `Idempotency-Key` realiza una consulta previa `findFirst` antes de la transacción de inserción. Si dos peticiones HTTP con idéntica clave llegan en paralelo en el mismo milisegundo, ambas superan la verificación previa antes de que la primera haga commit, creando dos interacciones duplicadas.
+- **Ubicación:** [backend/src/routes/buyer.routes.ts](../../backend/src/routes/buyer.routes.ts).
+- **Diagnóstico:** La verificación de `Idempotency-Key` realiza una consulta previa `findFirst` antes de la transacción de inserción. Si dos peticiones HTTP con idéntica clave llegan en paralelo durante la ventana entre lectura e inserción, ambas superan la verificación previa antes de que la primera haga commit, creando dos interacciones duplicadas.
 - **Criterio de Aceptación:**
   - Dos envíos simultáneos con la misma `Idempotency-Key` y mismo cuerpo deben reutilizar la interacción y la misma evaluación.
   - La misma clave con cuerpo distinto debe responder HTTP `409 Conflict`.
@@ -275,7 +295,7 @@ FROM dbo.Horarios;
 ### 5.4 Diagnóstico de Regresión General al Ejecutar la Suite
 - **Ubicación:** Raíz del proyecto al ejecutar test runners.
 - **Diagnóstico:** Si se ejecuta bare `npx vitest run` desde la raíz, fallan 5 suites de frontend con `ReferenceError: document is not defined` y `Cannot find package '@/domain/enums'`. Esto ocurre porque Vitest por defecto corre en entorno `node` y no lee la configuración de Vite del frontend.
-- **Estado Real:** La suite se encuentra **100% aprobada** (122 pruebas pasando) cuando se ejecuta mediante el comando oficial del proyecto:
+- **Estado Real:** Antigravity reportó **122 pruebas aprobadas** con el comando oficial; este conteo no acredita pruebas SQL/Gemini omitidas. Reproduce el resultado y registra también omisiones. El comando utilizado fue:
   ```powershell
   npm --prefix frontend test
   ```
@@ -283,84 +303,106 @@ FROM dbo.Horarios;
 
 ### 5.5 Otros Problemas Conocidos Consolidados
 - **Ejecución Periódica de Reintentos:** `recoverPendingEvaluations` corre una única vez al iniciar el backend (`src/index.ts`). No existe actualmente un temporizador recurrente (cron job o agenda periódica) para reintentar evaluaciones que sigan en `PENDIENTE` por caídas posteriores.
-- **Referencias Dudosas a Solicitudes:** Cuando un contacto en etapas avanzadas (`PAYER`, `CUSTOMER`, `TURNED`) envía una consulta sobre una solicitud pero no se puede comprobar fehacientemente su pertenencia, el sistema lo etiqueta como `SOLICITUD_PENDIENTE_APERTURA`. Queda pendiente definir con el equipo de LEAD el flujo administrativo para la apertura manual o asignación de solicitudes en este estado.
+- **Referencias Dudosas a Solicitudes:** Cuando un contacto en etapas avanzadas (`PAYER`, `CUSTOMER`, `TURNED`) envía una consulta sobre una solicitud pero no se puede comprobar fehacientemente su pertenencia, el sistema lo etiqueta como `SOLICITUD_PENDIENTE_APERTURA`. Para la entrega independiente de Buyer, conserva el mensaje, la etapa y el estado pendiente, y permite aclaración automática. No implementes apertura de nuevas oportunidades históricas sin definir antes su identidad y sus efectos; no es un requisito esperar al agente LEAD para probar los demás casos de Buyer.
 
 ---
 
-## 6. Pruebas en Orden de Ejecución
+## 6. Pruebas en orden y evidencias
 
-> **Regla de Ejecución:** Comprobar primero conexión y esquema $\rightarrow$ luego pruebas simuladas $\rightarrow$ luego SQL real $\rightarrow$ finalmente Gemini real.
+### 6.1 Reglas de ejecución
 
-### Caso 1: Consulta Informativa sin Solicitud Comercial (Existente Reproducible)
-- **Preparación:** Persona en `BUYER` sin citas previas.
-- **Acción:** `POST /buyer` con mensaje: *"¿Cuánto cuesta la limpieza dental y qué horarios tienen?"*.
-- **Resultado Esperado:** Estado `COMPLETADA`, acción `SOLO_CONSULTA`, etapa final `BUYER`. `id_solicitud` es null.
-- **Consulta SQL:**
-  ```sql
-  SELECT COUNT(*) FROM dbo.Solicitudes WHERE id_persona = @id_persona; -- Esperado: 0
-  SELECT resultado FROM dbo.Interacciones WHERE id_persona = @id_persona; -- Esperado: 'Consulta Informativa'
-  ```
-- **Evidencia:** Registro en `dbo.DecisionesIA` con `accion = 'SOLO_CONSULTA'`.
-- **Limpieza:** `DELETE FROM dbo.Interacciones WHERE id_persona = @id_persona; DELETE FROM dbo.Personas WHERE id_persona = @id_persona;`
+1. Comprueba conexión y esquema con 4.2; configura las variables según 3.4.
+2. Ejecuta pruebas simuladas desde la raíz:
+   ```powershell
+   npm --prefix frontend test
+   ```
+   Para un diagnóstico focalizado:
+   ```powershell
+   npm --prefix frontend test backend/tests/buyerMessageJourney.test.ts backend/tests/buyerUnifiedEvaluation.test.ts
+   ```
+3. Para las pruebas existentes de integración SQL, confirma primero que la conexión efectiva apunta a QA. `TEST_SQLSERVER_URL` tiene prioridad; no basta con cambiar `SQLSERVER_URL` si el otro sigue definido. Ejecuta únicamente la suite correspondiente:
+   ```powershell
+   try {
+     $env:RUN_SQL_TESTS = "true"
+     npm --prefix frontend test backend/tests/buyerIntegrationFlow.test.ts
+   } finally {
+     Remove-Item Env:RUN_SQL_TESTS -ErrorAction SilentlyContinue
+   }
+   ```
+   Revisa antes la preparación y limpieza de ese archivo; usa una copia QA recuperable. No habilites toda la batería SQL del repositorio a ciegas: algunas pruebas de LEAD requieren otro nombre de base.
+4. Inicia backend/frontend según 3.5 y realiza los recorridos manuales. Usar el sistema con su clave configurada ya puede consumir Gemini; no depende de `RUN_LIVE_GEMINI_TESTS`, que controla las pruebas automatizadas.
+5. Para la suite de clasificador con red, con la clave local ya configurada:
+   ```powershell
+   try {
+     $env:RUN_LIVE_GEMINI_TESTS = "true"
+     npm --prefix frontend test backend/tests/buyerMessageClassifier.test.ts
+   } finally {
+     Remove-Item Env:RUN_LIVE_GEMINI_TESTS -ErrorAction SilentlyContinue
+   }
+   ```
+   No copies claves a comandos compartidos ni capturas.
 
-### Caso 2: Reserva Explícita con Servicio Activo (Existente Reproducible)
-- **Preparación:** Persona en `BUYER` con datos completos y consentimiento (`autoriza_contacto = 1`).
-- **Acción:** Mensaje: *"Quiero reservar una cita para ortodoncia invisible mañana"*.
-- **Resultado Esperado:** Acción `CONVERSION_LEAD`, etapa final `LEAD`, crea fila en `dbo.Solicitudes` y evento en `dbo.EventosEtapa`. Entrega a LEAD confirmada.
-- **Consulta SQL:**
-  ```sql
-  SELECT s.id_solicitud, e.id_evento_etapa, el.id_solicitud AS lead_entry
-  FROM dbo.Solicitudes s
-  JOIN dbo.EventosEtapa e ON e.id_solicitud = s.id_solicitud
-  LEFT JOIN dbo.EntradasAgenteLead el ON el.id_solicitud = s.id_solicitud
-  WHERE s.id_persona = @id_persona;
-  ```
-- **Evidencia:** Fila en `dbo.EntradasAgenteLead`.
+Si las variables de prueba ya tenían un valor útil en tu sesión, guárdalo antes y restáuralo al terminar. Confirma los códigos de salida; una prueba omitida no está aprobada.
 
-### Caso 3: Ambigüedad y Aclaración (Existente Reproducible)
-- **Preparación:** Contacto nuevo. Mensaje vago: *"Hola, buenas tardes"*.
-- **Acción:** `POST /buyer/:id/evaluate`.
-- **Resultado Esperado:** Acción `ACLARACION`, intención `AMBIGUA`, aclaración generada educadamente solicitando más información.
+### 6.2 Recorridos funcionales de Buyer
 
-### Caso 4: Preferencias Editadas y Evaluación Desactualizada (Existente Reproducible)
-- **Preparación:** Contacto con preferencia horaria inicial en turno Mañana. Mensaje pide turno tarde.
-- **Acción:** Evaluar interacción.
-- **Resultado Esperado:** Detecta discrepancia de horarios (`scheduleDiscrepancy.detectada = true`), genera aclaración de horarios y no modifica la preferencia de forma silenciosa.
+Usa un nombre sintético único por prueba, teléfono/correo no utilizados e IDs reales de los catálogos. Anota persona, captación, interacción y decisión de cada caso.
 
-### Caso 5: Mensaje Completo e Historial en Contexto Conversacional (Existente Reproducible)
-- **Preparación:** Contacto con mensaje previo de aclaración.
-- **Acción:** Paciente responde: *"En el turno tarde por favor"*.
-- **Resultado Esperado:** Prompt enriquecido con mensaje anterior, pregunta del agente y respuesta actual. Clasificación exitosa.
+| Caso | Acción | Resultado esperado |
+| --- | --- | --- |
+| Registro administrativo informativo | Crear mediante formulario administrativo o `POST /api/buyer`; abrir ficha y pulsar **Actualizar** | El registro guarda mensaje/captación. La evaluación posterior produce `SOLO_CONSULTA`; ninguna solicitud comercial. Registrar por sí solo no garantiza una decisión de Gemini. |
+| Formulario público informativo | Enviar por el formulario que usa `POST /api/buyer/register` | Guarda y evalúa el mensaje; consulta de precio permanece en BUYER. |
+| Reserva explícita | Seleccionar servicio activo, consentimiento y contacto válidos; evaluar solicitud de reserva | Una solicitud y un evento BUYER → LEAD; verificar entrega separadamente en `EntradasAgenteLead`. No prometer disponibilidad de una cita. |
+| Ambigüedad | Registrar y evaluar “Hola, buenas tardes” | `AMBIGUA` con aclaración; sin solicitud nueva. |
+| Horario y contexto | Mensaje pide tarde con formulario mañana; evaluar, editar solo horario a tarde y recargar | Primero aclaración; luego evaluación anterior desactualizada. **Actualizar** resuelve el nuevo contexto, conserva la interacción y añade la versión pertinente de decisión. |
+| Mensaje extenso | Mensaje mayor de 500 caracteres con una frase distintiva al final; registrar y consultar | `Interacciones.mensaje` conserva el final. El límite del resumen de captación no limita el mensaje completo. |
+| Aclaración en dos turnos | Usar el formulario público y su contexto/identificador previo; responder a la pregunta del agente | Conserva el mensaje anterior, la pregunta y la respuesta actual, sin asociar contexto de otra persona. No basta con editar libremente una ficha para demostrar ese recorrido. |
+| Fallo-fallo-éxito | Prueba simulada del evaluador con errores controlados | Mismo `id_decision`, historial conservado e intentos acumulados. Es simulada hasta crear y ejecutar el ensayo equivalente contra QA. |
+| Recarga | Recargar ficha evaluada | Lee decisión persistida; no genera otra llamada al clasificador por la recarga. |
+| Contacto en PAYER | Registrar mensaje nuevo con `POST /api/buyer`, abrir su ficha y evaluar | Una interacción nueva para la misma persona; etapa PAYER intacta, sin recuperar la conversión anterior. Registrar y evaluar son pasos distintos en esta ruta. |
+| Repetición | Evaluar de nuevo el mismo mensaje/contexto ya convertido | Misma decisión, solicitud y evento; no duplica oportunidades. |
+| Caída y reinicio | Tras corregir 5.1, ejecutar fallo controlado antes del SP y después de su commit | Recupera la operación correcta; no repite solicitud/evento. Inyecta el fallo solo en QA y retira el mecanismo al finalizar. |
+| Entrega pendiente | Simular fallo del receptor tras conversión confirmada y reintentar | Misma solicitud, una entrada de recepción; confirmar entrega no recrea la conversión. |
+| Concurrencia HTTP | Crear prueba que lance dos `POST /api/buyer/register` realmente en paralelo con misma clave y cuerpo | Misma interacción/operación. Misma clave con cuerpo distinto: 409. Distintas claves: mensajes distintos permitidos. La ruta administrativa `POST /api/buyer` no es la que implementa actualmente `Idempotency-Key`. |
 
-### Caso 6: Reintento Fallo-Fallo-Éxito sobre la Misma Interacción (Existente Reproducible)
-- **Preparación:** Simulación de dos errores 503 consecutivos de Gemini seguidos de una respuesta exitosa.
-- **Acción:** Invocar `evaluateBuyerInteraction` 3 veces con el mismo `id_interaccion`.
-- **Resultado Esperado:** Misma fila de decisión (`id_decision`), `intentosRealizados = 3`, `historial_errores` contiene los 2 mensajes de error previos, estado final `COMPLETADA`.
+La caída y la concurrencia requieren ensayos nuevos o ampliados: no están acreditadas por los tests secuenciales ni por evaluar dos veces una interacción que ya existe. La creación de la reserva no demuestra que el agente LEAD negocie; su integración final sigue aplazada.
 
-### Caso 7: Recarga de Ficha sin Llamada Automática a Gemini (Existente Reproducible)
-- **Preparación:** Interacción evaluada previamente (`COMPLETADA`).
-- **Acción:** Recargar la ficha (`GET /buyer/:id`).
-- **Resultado Esperado:** Retorna la decisión persistida; cero llamadas a Gemini (idempotencia pura).
+### 6.3 Consultas de comprobación por caso
 
-### Caso 8: Contacto en PAYER con Consulta Nueva (Existente Reproducible)
-- **Preparación:** Persona en etapa `PAYER` con conversión previa en `dbo.EventosEtapa`. Mensaje: *"¿Qué costo tiene el control mensual?"*.
-- **Acción:** `POST /buyer/:id/evaluate`.
-- **Resultado Esperado:** Acción `SOLO_CONSULTA`, etapa final `PAYER`, no se apropia de la conversión antigua ni cambia a `LEAD`.
+Ejecuta solo en QA. Reemplaza el valor de `@id_persona` por el ID sintético que devolvió la API; no ejecutes con un ID de paciente real.
 
-### Caso 9: Conversión Repetida sin Duplicados (Existente Reproducible)
-- **Preparación:** Conversión previa confirmada (`id_solicitud = 501`).
-- **Acción:** Reenviar evaluación idéntica.
-- **Resultado Esperado:** Devuelve `id_solicitud = 501` y mismo `id_evento_etapa`. No inserta nuevas filas en `dbo.Solicitudes`.
+```sql
+USE NexoSalud_LeadEnsayoFinal;
+GO
+DECLARE @id_persona INT = NULL; -- Sustituir NULL por el ID sintético del caso.
+IF @id_persona IS NULL
+    THROW 51901, 'Indica el id_persona sintético del caso antes de consultar.', 1;
 
-### Caso 10: Caída Post-Commit y Recuperación tras Reinicio (Por Probar en SQL Real)
-- **Preparación:** Simular caída del proceso Node.js matando el proceso tras el commit de `usp_ConvertirBuyerALead` (decisión queda en `CONVERSION_EN_CURSO`).
-- **Acción:** Iniciar el backend. El recuperador automático (tras implementar 5.1) o un reintento manual debe procesar la interacción.
-- **Resultado Esperado:** Recupera `id_solicitud` y `id_evento_etapa` existentes, actualiza `Interacciones` y finaliza entrega en `EntradasAgenteLead`. Cero filas duplicadas en `Solicitudes`.
+SELECT p.id_persona, et.nombre AS etapa, p.autoriza_contacto
+FROM dbo.Personas p
+LEFT JOIN dbo.Etapas et ON et.id_etapa = p.id_etapa_actual
+WHERE p.id_persona = @id_persona;
 
-### Caso 11: Envíos HTTP Simultáneos con Misma Idempotency-Key (Por Crear / Probar)
-- **Preparación:** Script en PowerShell con dos llamadas asíncronas simultáneas (`Invoke-RestMethod` en paralelo) con cabecera `Idempotency-Key: test-uuid-1234`.
-- **Acción:** Enviar concurrentemente hacia `POST /buyer`.
-- **Resultado Esperado:** Ambas peticiones completan con código 200/201 devolviendo el mismo `id_persona`, `id_captacion` e `id_interaccion`.
+SELECT * FROM dbo.CaptacionesBuyer WHERE id_persona = @id_persona;
+SELECT * FROM dbo.PersonaPreferencias WHERE id_persona = @id_persona
+ORDER BY id_preferencia DESC;
+SELECT id_interaccion, id_solicitud, tipo, mensaje, resultado, fecha_hora
+FROM dbo.Interacciones WHERE id_persona = @id_persona
+ORDER BY fecha_hora DESC, id_interaccion DESC;
+SELECT id_decision, id_interaccion, entrada, decision, accion
+FROM dbo.DecisionesIA WHERE agente = 'BUYER' AND id_persona = @id_persona
+ORDER BY id_decision DESC;
+SELECT id_solicitud, id_persona FROM dbo.Solicitudes
+WHERE id_persona = @id_persona;
+SELECT id_evento_etapa, id_captacion, id_solicitud, clave_operacion_buyer
+FROM dbo.EventosEtapa WHERE id_persona = @id_persona;
+SELECT id_solicitud, id_evento_etapa, id_captacion, id_persona
+FROM dbo.EntradasAgenteLead WHERE id_persona = @id_persona;
+```
+
+Para cada caso guarda: commit, nombre de base, hora, petición sin secretos, respuesta, IDs y consultas antes/después. En concurrencia comprueba filas reales, no solo respuestas HTTP. En recarga comprueba el contador/espía o logs de llamadas al clasificador; una tarjeta idéntica no demuestra ausencia de llamadas.
+
+**Limpieza:** conserva los datos sintéticos identificados durante la revisión. No borres personas e interacciones con un par de `DELETE`: hay decisiones, captaciones, preferencias, solicitudes y eventos con relaciones. Si necesitas eliminar un caso, prepara una limpieza transaccional limitada a sus IDs y revisa sus dependencias; o utiliza otra copia QA nueva sin sobrescribir la actual. No elimines registros originales del respaldo.
 
 ---
 
@@ -372,3 +414,4 @@ Al finalizar tus pruebas y correcciones:
 3. **Publicar:** Ejecuta `git push origin feature/buyer-agent-gemini` (sin `--force`).
 4. **Documentar:** Actualiza [ENTREGA_AGENTE_BUYER.md](ENTREGA_AGENTE_BUYER.md) resumiendo los avances logrados y los pendientes restantes.
 5. **No modificar el informe académico** en este encargo.
+
