@@ -1,0 +1,5 @@
+{
+  "utc": "2026-11-12T22:17:52.4530781Z",
+  "command": "npm --prefix backend run build",
+  "exitCode": 0
+}

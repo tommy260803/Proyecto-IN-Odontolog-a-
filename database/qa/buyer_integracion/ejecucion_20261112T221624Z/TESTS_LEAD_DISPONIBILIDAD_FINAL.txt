@@ -1,0 +1,13 @@
+
+> in-odontologia@0.0.0 test
+> vitest run --root .. --config frontend/vite.config.ts backend/tests/leadIntakeAvailability.test.ts
+
+
+ RUN  v5.0.1 C:/Users/Daniel/Downloads/Proyecto-IN-Odontolog-a-
+
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  17:20:45
+   Duration  524ms (setup 69%, transform 17%, worker 10%, import 2%, tests 1%)
+

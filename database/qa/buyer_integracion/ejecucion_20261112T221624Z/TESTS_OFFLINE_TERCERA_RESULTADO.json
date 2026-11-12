@@ -1,0 +1,7 @@
+{
+  "utc": "2026-11-12T22:19:41.8249702Z",
+  "runner": "npm --prefix frontend test -- siete suites Buyer/matrices; excluye buyerIntegrationFlow.test.ts",
+  "exitCode": 0,
+  "preload": "database/qa/buyer_integracion/bloquear_servicios_reales.cjs",
+  "sqlAndLiveTestsEnabled": false
+}

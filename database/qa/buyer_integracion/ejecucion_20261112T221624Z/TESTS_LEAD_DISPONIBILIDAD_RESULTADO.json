@@ -1,0 +1,7 @@
+{
+  "utc": "2026-11-12T22:20:31.4736221Z",
+  "command": "npm --prefix frontend test -- backend/tests/leadIntakeAvailability.test.ts",
+  "exitCode": 1,
+  "preload": "database/qa/buyer_integracion/bloquear_servicios_reales.cjs",
+  "mode": "unitario con receptor y metadatos simulados; no SQL real"
+}

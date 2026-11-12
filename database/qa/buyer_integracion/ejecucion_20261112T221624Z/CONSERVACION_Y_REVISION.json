@@ -1,0 +1,30 @@
+{
+  "utc": "2026-11-12T22:22:00.131Z",
+  "branch": "feature/buyer-orientacion-interactiva",
+  "headBefore": "83f2d2098ca77ea8ff40cc1fa648969c508ea95b",
+  "mergeHead": "48677ec1da31c592f4effe1b0fd67dafeb28e42a",
+  "source": "48677ec1da31c592f4effe1b0fd67dafeb28e42a",
+  "commonAncestor": "19613358530e899bfc68d5e6b3c33b6336ab9ce4",
+  "sourceCommits": [
+    "48677ec1da31c592f4effe1b0fd67dafeb28e42a feat: indicadores de conversión y calidad en la vista de compradores y actualizar la documentación correspondiente",
+    "1badedac1a5210e627eb863f42a4db9c3647f864 feat: agregar manejo de error para la entrega al agente LEAD y documentar actividades del agente Buyer"
+  ],
+  "backupBranch": "backup/buyer-orientacion-interactiva-pre-germain-20261112T221624Z",
+  "backupHead": "83f2d2098ca77ea8ff40cc1fa648969c508ea95b",
+  "preservedFiles": 110,
+  "preservationFailures": [],
+  "incomingFiles": [
+    "backend/src/routes/buyer.routes.ts",
+    "backend/src/services/leadIntake.ts",
+    "docs/agentes/Indicadores de Buyer en NexoSalud.md",
+    "docs/agentes/PRUEBAS_3_ACTIVIDADES_AGENTE_BUYER.md",
+    "frontend/src/modules/buyer/components/BuyerDetailModal.tsx",
+    "frontend/src/modules/buyer/components/BuyerDetailView.tsx",
+    "frontend/src/modules/buyer/components/BuyerListView.tsx",
+    "frontend/src/modules/buyer/services/buyer.service.ts"
+  ],
+  "incomingFilesDifferentFromSource": [],
+  "mergeConflicts": "",
+  "dependenciesPrismaSqlChanges": "",
+  "node": "v24.15.0"
+}

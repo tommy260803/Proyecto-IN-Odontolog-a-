@@ -1,0 +1,7 @@
+{
+  "utc": "2026-11-12T22:18:49.3310972Z",
+  "runner": "Vitest focalizado, siete suites, sin buyerIntegrationFlow.test.ts",
+  "exitCode": 1,
+  "preload": "database/qa/buyer_integracion/bloquear_servicios_reales.cjs",
+  "sqlAndLiveTestsEnabled": false
+}

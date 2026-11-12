@@ -1,0 +1,12 @@
+{
+  "utc": "2026-11-12T22:26:54.968Z",
+  "command": "git diff --cached --check",
+  "exitCode": 2,
+  "diagnostics": [
+    "database/qa/buyer_integracion/ejecucion_20261112T221624Z/BUILD_BACKEND.txt:4: new blank line at EOF.",
+    "database/qa/buyer_integracion/ejecucion_20261112T221624Z/TESTS_LEAD_DISPONIBILIDAD.txt:33: new blank line at EOF.",
+    "database/qa/buyer_integracion/ejecucion_20261112T221624Z/TESTS_LEAD_DISPONIBILIDAD_FINAL.txt:13: new blank line at EOF.",
+    "database/qa/buyer_integracion/ejecucion_20261112T221624Z/TESTS_OFFLINE_TERCERA.txt:13: new blank line at EOF."
+  ],
+  "waiver": "Solo lineas vacias finales de salidas originales TXT, conservadas sin editar; ningun aviso en codigo o documentacion"
+}

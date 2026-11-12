@@ -1089,50 +1089,48 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
               )}
             </div>
 
-            {/* Las 4 Actividades Clave (Claramente diferenciando datos registrados de inferencias del agente) */}
+            <div className="flex items-center gap-2 border-t border-slate-200/80 dark:border-slate-800 pt-3">
+              <Bot className="h-3.5 w-3.5 text-[#0f766e]" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Actividades del Agente Buyer
+              </span>
+            </div>
+
             <div className="space-y-2.5">
-              {/* Actividad 1: Validación y Calidad de Datos (Control Determinista Registrado) */}
+              {/* Actividad 1: Perfilamiento inteligente de la necesidad */}
               <div className="border-l-2 border-[#0f766e] bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    1. Calidad de Datos (Control Determinista)
+                    1. Perfilamiento de Necesidad Clínica
                   </span>
-                  <span
-                    className={`font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                      cleanPhone.length >= 9 && buyer.contactAuthorization
-                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
-                        : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
-                    }`}
-                  >
-                    {cleanPhone.length >= 9 && buyer.contactAuthorization ? 'Conforme' : 'Observado'}
+                  <span className="font-mono text-[10px] font-semibold text-teal-700 dark:text-teal-300">
+                    {evaluacion?.servicio_nombre ||
+                      (evaluacion?.id_servicio ? `Servicio #${evaluacion.id_servicio}` : 'Sin servicio')}
                   </span>
                 </div>
                 <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {cleanPhone.length >= 9
-                    ? 'Formato de teléfono válido (+51)'
-                    : 'Teléfono no cumple formato móvil de 9 dígitos'}
-                  {' · '}
-                  {buyer.contactAuthorization
-                    ? 'Consentimiento registrado (Ley N° 29733)'
-                    : 'Sin consentimiento registrado'}
+                  El agente interpreta el mensaje vigente y lo contrasta con el perfil registrado.
                 </p>
-              </div>
-
-              {/* Actividad 2: Perfil y Clasificación de Preferencias Clínicas */}
-              <div className="border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    2. Preferencias Clínicas Registradas
-                  </span>
-                  <span className="font-mono text-[10px] text-teal-700 dark:text-teal-300 font-medium truncate max-w-[140px]">
-                    {buyer.serviceOfInterest || 'No especificado'}
-                  </span>
-                </div>
-                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Tratamiento: {buyer.serviceOfInterest || 'No especificado'} · Sede: {buyer.pref_sede_preferida || 'No especificado'} · Horario: {HORARIO_LABELS[String(buyer.pref_id_horario)] || buyer.pref_id_horario || 'No especificado'}
-                </p>
-
-                {/* Alerta de discrepancia explícita entre mensaje y preferencias */}
+                <dl className="mt-2 grid grid-cols-1 gap-1.5 text-[11px] sm:grid-cols-3">
+                  <div className="rounded-md bg-slate-50 dark:bg-slate-950/50 px-2 py-1.5">
+                    <dt className="text-slate-400">Servicio:</dt>
+                    <dd className="font-medium text-slate-700 dark:text-slate-200">
+                      {buyer.serviceOfInterest || 'No especificado'}
+                    </dd>
+                  </div>
+                  <div className="rounded-md bg-slate-50 dark:bg-slate-950/50 px-2 py-1.5">
+                    <dt className="text-slate-400">Sede:</dt>
+                    <dd className="font-medium text-slate-700 dark:text-slate-200">
+                      {buyer.pref_sede_preferida || 'No especificada'}
+                    </dd>
+                  </div>
+                  <div className="rounded-md bg-slate-50 dark:bg-slate-950/50 px-2 py-1.5">
+                    <dt className="text-slate-400">Horario:</dt>
+                    <dd className="font-medium text-slate-700 dark:text-slate-200">
+                      {HORARIO_LABELS[String(buyer.pref_id_horario)] || buyer.pref_id_horario || 'No especificado'}
+                    </dd>
+                  </div>
+                </dl>
                 {evaluacion?.discrepancia_horario?.detectada && (
                   <div className="mt-2.5 rounded-md border border-amber-300 dark:border-amber-800 bg-amber-50/90 dark:bg-amber-950/40 p-2.5 text-[11px] text-amber-900 dark:text-amber-200">
                     <div className="flex items-center gap-1.5 font-semibold">
@@ -1146,51 +1144,64 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
                 )}
               </div>
 
-              {/* Actividad 3: Origen y Atribución Registrados */}
-              <div className="border-l-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
+              {/* Actividad 2: Clasificación de intención y preparación para LEAD */}
+              <div className="border-l-2 border-sky-500 bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    3. Origen y Atribución Registrados
+                    2. Clasificación de Intención y Preparación para LEAD
                   </span>
-                  <span className="font-mono text-[10px] text-slate-500">
-                    {buyer.channel || 'No especificado'}
+                  <span className="font-mono text-[10px] font-semibold text-sky-700 dark:text-sky-300">
+                    {evaluacion?.intencion || 'SIN_EVALUAR'}
                   </span>
                 </div>
-                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                  Fuente: {buyer.attractionSource || 'No especificado'} · Campaña: {buyer.campaignName || 'No especificado'}
-                  {buyer.campaignName || buyer.campaignId
-                    ? ' (Trazabilidad atribuida a campaña)'
-                    : ' (Captación directa o portal web)'}
-                </p>
+                <div className="mt-1 space-y-1 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {evaluacion?.intencion === 'SOLICITA_RESERVA'
+                    ? <p><strong>Intención:</strong> Comercial concreta. Solicita avanzar hacia una reserva o atención.</p>
+                    : evaluacion?.intencion === 'SOLO_CONSULTA'
+                    ? <p><strong>Intención:</strong> Consulta informativa. Todavía no expresa una solicitud concreta de adquisición.</p>
+                    : evaluacion?.intencion === 'AMBIGUA'
+                    ? <p><strong>Intención:</strong> Ambigua. No permite confirmar qué servicio o acción desea el paciente.</p>
+                    : <p><strong>Intención:</strong> Sin evaluar.</p>}
+                  {evaluacion?.accion === 'CONVERSION_LEAD'
+                    ? isConverted
+                      ? <p><strong>Preparación:</strong> Intención validada. Ya fue transferido a LEAD.</p>
+                      : <p><strong>Preparación:</strong> Está preparado para iniciar la transferencia a LEAD.</p>
+                    : <p><strong>Preparación:</strong> Debe permanecer en BUYER hasta aclarar o completar la necesidad.</p>}
+                </div>
               </div>
 
-              {/* Actividad 4: Recomendación Comercial del Agente Buyer */}
-              <div className="border-l-2 border-[#0f766e] bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
+              {/* Actividad 3: Recomendación y siguiente acción */}
+              <div className="border-l-2 border-emerald-500 bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    4. Recomendación del Agente Buyer
+                    3. Recomendación del Agente Buyer
                   </span>
-                  <span className="font-mono text-[10px] text-slate-500">
+                  <span className="font-mono text-[10px] text-emerald-700 dark:text-emerald-300">
                     Acción: {evaluacion?.accion || 'SIN_EVALUAR'}
                   </span>
                 </div>
-                <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                <div className="mt-1 space-y-1 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
                   {evaluacion?.accion === 'CONVERSION_LEAD'
-                    ? 'Intención de reserva explícita y datos conformes. Recomienda proceder con la conversión a etapa LEAD para asignar asesor de agenda.'
+                    ? isConverted
+                      ? <p><strong>Resultado:</strong> Conversión a LEAD ejecutada.</p>
+                      : <p><strong>Recomendación:</strong> Proceder con la conversión a LEAD para asignar un asesor de agenda.</p>
                     : evaluacion?.accion === 'SOLO_CONSULTA'
-                    ? 'Consulta puramente informativa o de precios/aranceles. Brindar información y costos de tratamiento. No califica para conversión comercial inmediata.'
+                    ? <p><strong>Recomendación:</strong> Brindar información y costos. No convertir de inmediato.</p>
                     : evaluacion?.accion === 'ACLARACION'
-                    ? (evaluacion.explicacion || 'Mensaje ambiguo o servicio no especificado. Enviar orientación cordial solicitando confirmar servicio o turno antes de transferir.')
+                    ? <p><strong>Recomendación:</strong> {evaluacion.explicacion || 'Solicitar que confirme el servicio o turno antes de transferir.'}</p>
                     : evaluacion?.accion === 'CONSERVA_ETAPA_POSTERIOR'
-                    ? 'El contacto ya se encuentra en etapa avanzada. Mensaje vinculado a su expediente conservando su etapa actual.'
+                    ? <p><strong>Resultado:</strong> El contacto ya está en una etapa avanzada; se conservó su etapa actual.</p>
                     : evaluacion?.accion === 'SOLICITUD_PENDIENTE_APERTURA'
-                    ? 'Contacto en etapa avanzada sin código de solicitud explícito comprobable. Conserva su etapa y mantiene solicitud pendiente de apertura.'
+                    ? <p><strong>Resultado:</strong> La etapa se conservó y la solicitud quedó pendiente de apertura.</p>
                     : evaluacion?.accion === 'REQUISITOS_INCOMPLETOS'
-                    ? 'Intención de reserva detectada, pero requiere confirmar consentimiento o método de contacto válido antes de convertir.'
+                    ? <p><strong>Recomendación:</strong> Completar los requisitos del expediente antes de convertir.</p>
                     : evaluacion?.accion === 'REINTENTO_PENDIENTE' || evaluacion?.estado === 'PENDIENTE'
-                    ? 'Evaluación pendiente de procesamiento o reintento por fallo de conectividad.'
-                    : 'Sin evaluación activa. Pulsa Actualizar para evaluar el mensaje del prospecto con Gemini en el backend.'}
-                </p>
+                    ? <p><strong>Estado:</strong> Evaluación pendiente de procesamiento o reintento.</p>
+                    : <p><strong>Recomendación:</strong> Pulsa Actualizar para evaluar el mensaje con Gemini.</p>}
+                  {evaluacion?.accion === 'CONVERSION_LEAD' && isConverted && (
+                    <p><strong>Siguiente paso:</strong> Continuar la negociación y el agendamiento desde LEAD.</p>
+                  )}
+                </div>
               </div>
             </div>
 

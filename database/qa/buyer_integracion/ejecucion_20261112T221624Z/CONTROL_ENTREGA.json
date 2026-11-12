@@ -1,0 +1,16 @@
+{
+  "checkedUtc": "2026-11-12T22:24:55.988Z",
+  "newFilesChecked": 18,
+  "secretFindings": [],
+  "documentLinks": 24,
+  "brokenLinks": [],
+  "guardSyntaxExitCode": 0,
+  "finalTests": {
+    "existingSuitesPassed": 7,
+    "existingTestsPassed": 80,
+    "liveTestsSkipped": 4,
+    "newSuitePassed": 1,
+    "newTestsPassed": 7
+  },
+  "noSqlOrLiveExecution": true
+}

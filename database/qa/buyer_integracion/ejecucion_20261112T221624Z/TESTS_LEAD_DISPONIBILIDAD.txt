@@ -1,0 +1,33 @@
+
+> in-odontologia@0.0.0 test
+> vitest run --root .. --config frontend/vite.config.ts backend/tests/leadIntakeAvailability.test.ts
+
+
+ RUN  v5.0.1 C:/Users/Daniel/Downloads/Proyecto-IN-Odontolog-a-
+
+ ❯ backend/tests/leadIntakeAvailability.test.ts (7 tests | 2 failed) 9ms
+   ❯ Entrega Buyer: disponibilidad del receptor LEAD sin SQL real (7)
+     × expone entrega no disponible sin ejecutar el receptor: undefined 4ms
+     × expone entrega no disponible sin ejecutar el receptor: {"existe":0} 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  backend/tests/leadIntakeAvailability.test.ts > Entrega Buyer: disponibilidad del receptor LEAD sin SQL real > expone entrega no disponible sin ejecutar el receptor: undefined
+ FAIL  backend/tests/leadIntakeAvailability.test.ts > Entrega Buyer: disponibilidad del receptor LEAD sin SQL real > expone entrega no disponible sin ejecutar el receptor: {"existe":0}
+AssertionError: expected TypeError: (intermediate value) is not it… to be an instance of LeadIntakeUnavailableError
+ ❯ backend/tests/leadIntakeAvailability.test.ts:16:71
+     14|   it.each([[], [{ existe: 0 }]])('expone entrega no disponible sin eje…
+     15|     const query = vi.fn().mockResolvedValueOnce(metadata);
+     16|     await expect(registerLeadIntake(123, { $queryRaw: query } as any))…
+       |                                                                       ^
+     17|     expect(query).toHaveBeenCalledTimes(1);
+     18|     expect(query.mock.calls[0][0].join('')).toContain('OBJECT_ID');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 5 passed (7)
+   Start at  17:20:30
+   Duration  439ms (setup 72%, transform 19%, worker 3%, tests 3%, import 3%)
+

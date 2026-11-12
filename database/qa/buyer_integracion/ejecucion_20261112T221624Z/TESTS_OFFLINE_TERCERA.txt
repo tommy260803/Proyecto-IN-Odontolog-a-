@@ -1,0 +1,13 @@
+
+> in-odontologia@0.0.0 test
+> vitest run --root .. --config frontend/vite.config.ts backend/tests/buyerCampaignMatrix.test.ts backend/tests/buyerDurationMatrix.test.ts backend/tests/buyerDurationRoute.test.ts backend/tests/buyerMessageClassifier.test.ts backend/tests/buyerMessageJourney.test.ts backend/tests/buyerUnifiedEvaluation.test.ts backend/tests/matrixUnknowns.test.ts
+
+
+ RUN  v5.0.1 C:/Users/Daniel/Downloads/Proyecto-IN-Odontolog-a-
+
+
+ Test Files  7 passed (7)
+      Tests  80 passed | 4 skipped (84)
+   Start at  17:19:37
+   Duration  4.68s (environment 76%, setup 14%, import 4%, transform 3%, tests 2%, worker 1%)
+
