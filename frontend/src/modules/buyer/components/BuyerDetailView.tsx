@@ -28,7 +28,7 @@ import {
   Zap,
   AlertTriangle,
 } from 'lucide-react';
-import { useBuyer, useUpdateBuyer, useConvertBuyerToLead } from '../hooks/useBuyerQueries';
+import { useBuyer, useUpdateBuyer, useConvertBuyerToLead, useEvaluateBuyer } from '../hooks/useBuyerQueries';
 import { buyerService } from '../services/buyer.service';
 import { BuyerState } from '@/domain/enums';
 import { QUERY_KEYS } from '@/shared/constants';
@@ -36,10 +36,6 @@ import { useToast } from '@/shared/hooks/use-toast';
 import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { ErrorState } from '@/shared/components/feedback/ErrorState';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
-import {
-  analyzeBuyerMarketingAgent,
-  type BuyerMarketingAnalysis,
-} from '@/shared/services/groqService';
 import { renderBuyerStatusBadge } from './BuyerListView';
 
 interface BuyerDetailViewProps {
@@ -61,9 +57,11 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
   const { data: buyer, isLoading, isError } = useBuyer(buyerId);
   const updateBuyer = useUpdateBuyer();
   const convertBuyer = useConvertBuyerToLead();
+  const evaluateBuyer = useEvaluateBuyer();
 
   const [isEditing, setIsEditing] = useState(() => searchParams.get('mode') === 'edit');
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   // Catálogos para edición
   const [catalogs, setCatalogs] = useState<{
@@ -89,40 +87,28 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
     contactAuthorization: true,
   });
 
-  // Diagnóstico Comercial / BI
-  const [aiAnalysis, setAiAnalysis] = useState<BuyerMarketingAnalysis | null>(null);
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiUpdatedAt, setAiUpdatedAt] = useState<Date | null>(null);
-
-  const runAiAnalysis = async (b = buyer): Promise<boolean> => {
-    if (!b || isAiLoading) return false;
-    setIsAiLoading(true);
-    try {
-      const result = await analyzeBuyerMarketingAgent({
-        fullName: `${b.person?.firstName || ''} ${b.person?.lastName || ''}`.trim(),
-        phone: b.person?.phone,
-        email: b.person?.email,
-        serviceOfInterest: b.serviceOfInterest,
-        preferredBranch: b.pref_sede_preferida,
-        preferredTimeSlot: b.pref_id_horario,
-        channel: b.channel,
-        attractionSource: b.attractionSource,
-        concreteRequest: b.concreteRequest,
-        contactAuthorization: b.contactAuthorization,
-        qualityStatus: b.state === BuyerState.CONVERTED ? 'Valido' : undefined,
-        state: b.state,
-        isConverted: b.state === BuyerState.CONVERTED,
-      });
-      setAiAnalysis(result);
-      setAiUpdatedAt(new Date());
-      return true;
-    } catch (err) {
-      console.warn('Error en diagnóstico BI:', err);
-      return false;
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
+  // La evaluación se recupera directamente de la entidad persistida cargada desde el backend
+  const evaluacion = (buyer as any)?.latestEvaluation;
+  const isEvaluationCurrent = Boolean(
+    evaluacion &&
+      evaluacion.es_mensaje_vigente !== false &&
+      evaluacion.es_contexto_vigente !== false &&
+      evaluacion.estado !== 'DESACTUALIZADA' &&
+      (!evaluacion.mensaje_evaluado ||
+        !buyer?.concreteRequest ||
+        evaluacion.mensaje_evaluado.trim() === buyer.concreteRequest.trim())
+  );
+  const isEvaluationOutdated = Boolean(
+    evaluacion &&
+      (evaluacion.es_contexto_vigente === false || evaluacion.estado === 'DESACTUALIZADA')
+  );
+  const hasUnevaluatedNewMessage = Boolean(
+    evaluacion &&
+      (evaluacion.es_mensaje_vigente === false ||
+        (evaluacion.mensaje_evaluado &&
+          buyer?.concreteRequest &&
+          evaluacion.mensaje_evaluado.trim() !== buyer.concreteRequest.trim()))
+  );
 
   useEffect(() => {
     buyerService
@@ -156,42 +142,52 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
     }
   }, [buyer]);
 
-  useEffect(() => {
-    if (buyer) {
-      runAiAnalysis(buyer);
-    }
-  }, [buyer?.id]);
-
-  const handleRefreshAI = async () => {
-    const updated = await runAiAnalysis(buyer);
-    if (updated) {
-      toast({
-        title: 'Análisis actualizado',
-        description: 'El agente revisó nuevamente los datos del prospecto.',
-      });
-    } else if (buyer) {
-      toast({
-        title: 'No se pudo actualizar',
-        description: 'Verifica la conexión e inténtalo nuevamente.',
-        variant: 'destructive',
-      });
-    }
+  // Actualizar: evalúa el mensaje vigente con Gemini en el backend y persiste el resultado
+  const handleRefreshAI = () => {
+    if (!buyer || evaluateBuyer.isPending || isRetrying) return;
+    evaluateBuyer.mutate(
+      { id: buyerId, message: buyer.concreteRequest },
+      {
+        onSuccess: (data: any) => {
+          toast({
+            title: 'Evaluación Gemini actualizada',
+            description: `Intención: ${data?.latestEvaluation?.intencion || 'Evaluada'} · Persistida en base de datos.`,
+          });
+        },
+        onError: (err: any) => {
+          toast({
+            title: 'Error al evaluar',
+            description: err?.message || 'Error al conectar con el evaluador Gemini',
+            variant: 'destructive',
+          });
+        },
+      }
+    );
   };
 
-  // Cálculo de Lead Scoring Comercial (0 - 100)
-  const commercialScore = useMemo(() => {
-    if (!buyer) return 78;
-    let score = 55;
-    if (buyer.person?.phone && String(buyer.person.phone).length >= 9) score += 15;
-    if (buyer.person?.email) score += 8;
-    if (buyer.serviceOfInterest || buyer.serviceOfInterestId) score += 10;
-    if (buyer.pref_sede_preferida) score += 5;
-    if (buyer.contactAuthorization) score += 5;
-    if (aiAnalysis?.intentEvaluation?.intentLevel === 'ALTA') score = Math.max(score, 92);
-    else if (aiAnalysis?.intentEvaluation?.intentLevel === 'AMBIGUA') score = Math.min(score, 58);
-    if (buyer.state === BuyerState.DUPLICATED) score = Math.min(score, 45);
-    return Math.min(99, score);
-  }, [buyer, aiAnalysis]);
+  // Reintentar evaluación fallida reutilizando el mismo id_interaccion
+  const handleRetryEvaluation = (interactionId?: number) => {
+    if (!interactionId || isRetrying) return;
+    setIsRetrying(true);
+    buyerService
+      .retryEvaluation(interactionId)
+      .then(() => {
+        toast({
+          title: 'Reintento completado',
+          description: 'La evaluación pendiente fue procesada nuevamente con el mismo ID.',
+        });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUYERS, buyerId] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUYERS] });
+      })
+      .catch((err) => {
+        toast({
+          title: 'Fallo al reintentar',
+          description: err?.message || 'No se pudo completar el reintento',
+          variant: 'destructive',
+        });
+      })
+      .finally(() => setIsRetrying(false));
+  };
 
   // Construcción del Activity Timeline (Historial de Interacciones)
   const timelineEvents = useMemo(() => {
@@ -565,8 +561,13 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
                     </div>
 
                     <div className="sm:col-span-3">
-                      <dt className="font-medium text-slate-500 dark:text-slate-400">
-                        Motivo Concreto de Consulta
+                      <dt className="font-medium text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                        <span>Motivo Concreto de Consulta (Mensaje Vigente)</span>
+                        {buyer.interaccionesHistory && buyer.interaccionesHistory.length > 1 && (
+                          <span className="text-[10px] text-slate-400 font-normal">
+                            Historial: {buyer.interaccionesHistory.length} interacciones
+                          </span>
+                        )}
                       </dt>
                       <dd className="mt-1.5 border-l-2 border-[#0f766e] bg-slate-50/70 dark:bg-slate-800/50 pl-3 py-2 text-xs text-slate-800 dark:text-slate-200 leading-relaxed">
                         {buyer.concreteRequest ||
@@ -867,10 +868,10 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
           </div>
         </div>
 
-        {/* COLUMNA DERECHA (35%): Tarjeta del Agente Inteligente de Marketing & BI */}
+        {/* COLUMNA DERECHA (35%): Tarjeta del Agente Inteligente de Admisión (Gemini) */}
         <div className="lg:col-span-4 space-y-5">
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 p-5 shadow-2xs space-y-5">
-            {/* Cabecera del Agente de Marketing */}
+            {/* Cabecera del Agente de Admisión Gemini */}
             <div className="flex items-start justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950/60 text-[#0f766e] dark:text-teal-400 border border-teal-200/60 dark:border-teal-800/60 shadow-2xs">
@@ -879,10 +880,10 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-[#0f766e] dark:text-teal-400">
-                      Agente de Marketing (IA)
+                      Agente Buyer (Gemini)
                     </span>
                     <span className="rounded bg-teal-50 dark:bg-teal-950/60 px-1.5 py-0.2 font-mono text-[9px] font-semibold text-teal-700 dark:text-teal-300 border border-teal-200/50">
-                      BUYER · BI
+                      FUENTE ÚNICA IA
                     </span>
                   </div>
                   <h2 className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
@@ -895,99 +896,225 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
               <button
                 type="button"
                 onClick={handleRefreshAI}
-                disabled={isAiLoading}
-                aria-busy={isAiLoading}
+                disabled={evaluateBuyer.isPending || isRetrying}
+                aria-busy={evaluateBuyer.isPending}
                 className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 text-[11px] font-medium text-slate-600 dark:text-slate-300 transition-[transform,background-color,color] duration-200 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.97] disabled:cursor-wait disabled:opacity-70 cursor-pointer"
-                title="Recalcular análisis con IA"
+                title="Evaluar mensaje actual con Gemini en el backend y persistir resultado"
               >
-                <RefreshCw className={`h-3 w-3 ${isAiLoading ? 'animate-spin' : ''}`} aria-hidden />
-                <span>{isAiLoading ? 'Analizando…' : 'Actualizar'}</span>
+                <RefreshCw className={`h-3 w-3 ${evaluateBuyer.isPending ? 'animate-spin' : ''}`} aria-hidden />
+                <span>{evaluateBuyer.isPending ? 'Evaluando…' : 'Actualizar'}</span>
               </button>
             </div>
+
             <div className="flex min-h-4 items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400" aria-live="polite">
-              <span className={`h-1.5 w-1.5 rounded-full ${isAiLoading ? 'animate-pulse bg-amber-500' : aiUpdatedAt ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} aria-hidden />
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  evaluateBuyer.isPending
+                    ? 'animate-pulse bg-amber-500'
+                    : isEvaluationOutdated
+                    ? 'bg-amber-400'
+                    : hasUnevaluatedNewMessage
+                    ? 'bg-amber-400'
+                    : evaluacion?.estado === 'COMPLETADA'
+                    ? 'bg-emerald-500'
+                    : evaluacion?.estado === 'PENDIENTE'
+                    ? 'bg-amber-400'
+                    : 'bg-slate-300 dark:bg-slate-600'
+                }`}
+                aria-hidden
+              />
               <span>
-                {isAiLoading
-                  ? 'Procesando la evaluación del prospecto…'
-                  : aiUpdatedAt
-                    ? `Análisis actualizado a las ${format(aiUpdatedAt, 'HH:mm:ss')}`
-                    : 'Análisis pendiente'}
+                {evaluateBuyer.isPending
+                  ? 'Evaluando mensaje con Gemini en backend…'
+                  : isEvaluationOutdated
+                  ? 'Preferencias modificadas · Evaluación desactualizada · Pulsa Actualizar'
+                  : hasUnevaluatedNewMessage
+                  ? 'Mensaje vigente pendiente de evaluación · Pulsa Actualizar'
+                  : evaluacion?.fecha_hora
+                  ? `Evaluación persistida · ${format(new Date(evaluacion.fecha_hora), 'dd/MM/yyyy HH:mm')}`
+                  : evaluacion?.estado === 'PENDIENTE'
+                  ? 'Evaluación pendiente de procesamiento · Reintento disponible'
+                  : 'Sin evaluación registrada · Pulsa Actualizar'}
               </span>
             </div>
 
-            {/* Scoring del Prospecto */}
-            <div className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-2.5">
-              <div className="flex items-baseline justify-between">
+            {/* Bloque de Diagnóstico Semántico (Sustituye la puntuación fija 92/100 por Intención, Estado y Motivo) */}
+            <div className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3">
+              <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Scoring Comercial del Prospecto
+                  Intención Detectada:
                 </span>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-mono text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
-                    {commercialScore}
-                  </span>
-                  <span className="font-mono text-xs text-slate-400">/ 100</span>
-                </div>
-              </div>
-
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                <div
-                  className="h-full rounded-full bg-[#0f766e] transition-all duration-300"
-                  style={{ width: `${commercialScore}%` }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between pt-1 text-[11px]">
-                <span className="text-slate-500 dark:text-slate-400">Evaluación de Intención:</span>
                 <span
-                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-semibold text-[11px] border ${
-                    aiAnalysis?.intentEvaluation?.intentLevel === 'ALTA'
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold text-[11px] border ${
+                    isEvaluationOutdated
+                      ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-800/60'
+                      : hasUnevaluatedNewMessage
+                      ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-800/60'
+                      : isEvaluationCurrent && evaluacion?.intencion === 'SOLICITA_RESERVA'
                       ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-800/60'
-                      : aiAnalysis?.intentEvaluation?.intentLevel === 'MEDIA'
+                      : isEvaluationCurrent && evaluacion?.intencion === 'SOLO_CONSULTA'
                       ? 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200/60 dark:border-sky-800/60'
-                      : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-800/60'
+                      : isEvaluationCurrent && evaluacion?.intencion === 'AMBIGUA'
+                      ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-800/60'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                   }`}
                 >
-                  {aiAnalysis?.intentEvaluation?.intentLevel === 'ALTA' ? (
+                  {isEvaluationOutdated ? (
+                    <>
+                      <AlertTriangle className="h-3 w-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>EVALUACIÓN DESACTUALIZADA · PREFERENCIAS MODIFICADAS</span>
+                    </>
+                  ) : hasUnevaluatedNewMessage ? (
+                    <>
+                      <AlertTriangle className="h-3 w-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>MENSAJE VIGENTE PENDIENTE DE EVALUAR</span>
+                    </>
+                  ) : isEvaluationCurrent && evaluacion?.intencion === 'SOLICITA_RESERVA' ? (
                     <>
                       <Flame className="h-3 w-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span>Intención Alta · Calificado</span>
+                      <span>SOLICITA_RESERVA · Concreta</span>
                     </>
-                  ) : aiAnalysis?.intentEvaluation?.intentLevel === 'MEDIA' ? (
+                  ) : isEvaluationCurrent && evaluacion?.intencion === 'SOLO_CONSULTA' ? (
                     <>
-                      <Zap className="h-3 w-3 text-sky-600 dark:text-sky-400 shrink-0" />
-                      <span>Intención Media · En Maduración</span>
+                      <MessageSquare className="h-3 w-3 text-sky-600 dark:text-sky-400 shrink-0" />
+                      <span>SOLO_CONSULTA · Informativa</span>
+                    </>
+                  ) : isEvaluationCurrent && evaluacion?.intencion === 'AMBIGUA' ? (
+                    <>
+                      <AlertTriangle className="h-3 w-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>AMBIGUA · Requiere Aclaración</span>
                     </>
                   ) : (
                     <>
-                      <AlertTriangle className="h-3 w-3 text-amber-600 dark:text-amber-400 shrink-0" />
-                      <span>Intención Ambigua · Requiere Filtro</span>
+                      <Clock className="h-3 w-3 text-slate-400 shrink-0" />
+                      <span>{evaluacion?.estado === 'PENDIENTE' ? 'PENDIENTE DE EVALUACIÓN' : 'SIN EVALUACIÓN'}</span>
                     </>
                   )}
                 </span>
               </div>
+
+              {isEvaluationOutdated && (
+                <div className="rounded-md border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/70 dark:bg-amber-950/30 p-2.5 text-[11px] text-amber-800 dark:text-amber-200 space-y-1">
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>Evaluación desactualizada por cambio de preferencias</span>
+                  </div>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
+                    El horario de preferencia o el servicio declarado fueron modificados después de la última evaluación. Pulsa <strong>Actualizar</strong> para reevaluar con el contexto vigente.
+                  </p>
+                </div>
+              )}
+
+              {hasUnevaluatedNewMessage && !isEvaluationOutdated && (
+                <div className="rounded-md border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/70 dark:bg-amber-950/30 p-2.5 text-[11px] text-amber-800 dark:text-amber-200 space-y-1">
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>Nuevo mensaje vigente sin evaluar</span>
+                  </div>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
+                    El contacto cuenta con un mensaje vigente que aún no ha sido clasificado por el agente. Pulsa <strong>Actualizar</strong> para evaluarlo con Gemini en el backend.
+                  </p>
+                  {evaluacion?.mensaje_evaluado && (
+                    <div className="pt-1.5 mt-1 border-t border-amber-200/60 dark:border-amber-800/40 text-[10px] text-slate-500 dark:text-slate-400">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">Evaluación anterior persistida:</span>{' '}
+                      Intención: <strong>{evaluacion.intencion || 'N/A'}</strong> · Acción: <strong>{evaluacion.accion}</strong>
+                      <div className="italic mt-0.5 text-slate-500">Fundamentada en mensaje previo: "{evaluacion.mensaje_evaluado}"</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isEvaluationCurrent && evaluacion?.mensaje_evaluado && (
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 px-1 flex items-start gap-1">
+                  <span className="font-medium text-slate-600 dark:text-slate-300 shrink-0">Mensaje evaluado:</span>
+                  <span className="italic truncate">"{evaluacion.mensaje_evaluado}"</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+                <div>
+                  <span className="text-slate-400">Estado del Agente:</span>
+                  <div className="font-medium text-slate-800 dark:text-slate-200 mt-0.5">
+                    {isEvaluationOutdated
+                      ? 'Desactualizada (preferencias modificadas)'
+                      : hasUnevaluatedNewMessage
+                      ? 'Mensaje nuevo pendiente'
+                      : evaluacion?.estado === 'COMPLETADA'
+                      ? 'Completada (Gemini)'
+                      : evaluacion?.estado === 'PENDIENTE'
+                      ? 'Pendiente / Fallo'
+                      : 'No evaluada'}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-400">Servicio Identificado:</span>
+                  <div className="font-medium text-slate-800 dark:text-slate-200 mt-0.5 truncate">
+                    {evaluacion?.servicio_nombre ||
+                      (evaluacion?.id_servicio ? `Servicio #${evaluacion.id_servicio}` : 'Ninguno')}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <span className="text-[11px] text-slate-400 block mb-1">Motivo / Explicación de la Evaluación:</span>
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-950/50 p-2.5 rounded-md border border-slate-200/60 dark:border-slate-800/60">
+                  {isEvaluationOutdated
+                    ? 'Las preferencias del contacto cambiaron tras la última evaluación. Pulsa Actualizar para evaluar con el horario y servicio vigente.'
+                    : hasUnevaluatedNewMessage
+                    ? 'El mensaje vigente difiere del mensaje evaluado anteriormente. Pulsa Actualizar para clasificar la intención del nuevo mensaje con Gemini.'
+                    : evaluacion?.explicacion ||
+                      evaluacion?.error ||
+                      (evaluacion
+                        ? 'Evaluación persistida en el expediente comercial.'
+                        : 'Pulsa Actualizar para clasificar la intención del mensaje mediante Gemini en backend.')}
+                </p>
+              </div>
+
+              {(evaluacion?.estado === 'PENDIENTE' || evaluacion?.accion === 'REINTENTO_PENDIENTE') && evaluacion?.id_interaccion && (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleRetryEvaluation(evaluacion.id_interaccion)}
+                    disabled={isRetrying}
+                    className="w-full inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-2xs transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    {isRetrying ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    )}
+                    <span>Reintentar evaluación fallida (#{evaluacion.id_interaccion})</span>
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Las 4 Actividades Clave de Business Intelligence */}
+            {/* Las 4 Actividades Clave (Claramente diferenciando datos registrados de inferencias del agente) */}
             <div className="space-y-2.5">
-              {/* Actividad 1: Validación y Calidad de Datos */}
+              {/* Actividad 1: Validación y Calidad de Datos (Control Determinista Registrado) */}
               <div className="border-l-2 border-[#0f766e] bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    1. Validación y Calidad de Datos
+                    1. Calidad de Datos (Control Determinista)
                   </span>
                   <span
                     className={`font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                      aiAnalysis?.dataQuality.status === 'Valido'
+                      cleanPhone.length >= 9 && buyer.contactAuthorization
                         ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
                         : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
                     }`}
                   >
-                    {aiAnalysis?.dataQuality.status || 'Válido'}
+                    {cleanPhone.length >= 9 && buyer.contactAuthorization ? 'Conforme' : 'Observado'}
                   </span>
                 </div>
                 <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {aiAnalysis?.dataQuality.explanation ||
-                    'Teléfono móvil de 9 dígitos y consentimiento de Ley N° 29733 verificados.'}
+                  {cleanPhone.length >= 9
+                    ? 'Formato de teléfono válido (+51)'
+                    : 'Teléfono no cumple formato móvil de 9 dígitos'}
+                  {' · '}
+                  {buyer.contactAuthorization
+                    ? 'Consentimiento registrado (Ley N° 29733)'
+                    : 'Sin consentimiento registrado'}
                 </p>
               </div>
 
@@ -995,42 +1122,74 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
               <div className="border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    2. Clasificación de Preferencias
+                    2. Preferencias Clínicas Registradas
                   </span>
                   <span className="font-mono text-[10px] text-teal-700 dark:text-teal-300 font-medium truncate max-w-[140px]">
-                    {aiAnalysis?.preferencesProfile.category || 'Odontología General'}
+                    {buyer.serviceOfInterest || 'No especificado'}
                   </span>
                 </div>
                 <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {buyer.serviceOfInterest || 'Evaluación Odontológica'} · {buyer.pref_sede_preferida || 'Sede San Isidro'} · {HORARIO_LABELS[buyer.pref_id_horario || ''] || 'Horario Flexible'}
+                  Tratamiento: {buyer.serviceOfInterest || 'No especificado'} · Sede: {buyer.pref_sede_preferida || 'No especificado'} · Horario: {HORARIO_LABELS[String(buyer.pref_id_horario)] || buyer.pref_id_horario || 'No especificado'}
                 </p>
+
+                {/* Alerta de discrepancia explícita entre mensaje y preferencias */}
+                {evaluacion?.discrepancia_horario?.detectada && (
+                  <div className="mt-2.5 rounded-md border border-amber-300 dark:border-amber-800 bg-amber-50/90 dark:bg-amber-950/40 p-2.5 text-[11px] text-amber-900 dark:text-amber-200">
+                    <div className="flex items-center gap-1.5 font-semibold">
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>Discrepancia detectada entre mensaje y preferencias</span>
+                    </div>
+                    <p className="mt-1 leading-relaxed">
+                      El mensaje solicita turno <strong>{evaluacion.discrepancia_horario.mensajeIndica}</strong>, pero el registro tiene asignado <strong>{evaluacion.discrepancia_horario.preferenciaRegistrada}</strong>. Se conservan ambos datos registrados y se solicita confirmación al paciente sin modificar sus preferencias.
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Actividad 3: Origen y Atribución de Captación */}
+              {/* Actividad 3: Origen y Atribución Registrados */}
               <div className="border-l-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    3. Origen y Atribución
+                    3. Origen y Atribución Registrados
                   </span>
                   <span className="font-mono text-[10px] text-slate-500">
-                    {buyer.channel || 'Portal Web'}
+                    {buyer.channel || 'No especificado'}
                   </span>
                 </div>
                 <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                  Fuente: {buyer.attractionSource || 'Meta Ads'} · Trazabilidad de captación confirmada.
+                  Fuente: {buyer.attractionSource || 'No especificado'} · Campaña: {buyer.campaignName || 'No especificado'}
+                  {buyer.campaignName || buyer.campaignId
+                    ? ' (Trazabilidad atribuida a campaña)'
+                    : ' (Captación directa o portal web)'}
                 </p>
               </div>
 
-              {/* Actividad 4: Evaluación de Intención & Recomendación Comercial */}
+              {/* Actividad 4: Recomendación Comercial del Agente Buyer */}
               <div className="border-l-2 border-[#0f766e] bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    4. Recomendación de Abordaje
+                    4. Recomendación del Agente Buyer
+                  </span>
+                  <span className="font-mono text-[10px] text-slate-500">
+                    Acción: {evaluacion?.accion || 'SIN_EVALUAR'}
                   </span>
                 </div>
                 <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                  {aiAnalysis?.intentEvaluation?.marketingRecommendation ||
-                    'Contactar de inmediato ofreciendo opciones de horario para consulta de evaluación diagnóstica.'}
+                  {evaluacion?.accion === 'CONVERSION_LEAD'
+                    ? 'Intención de reserva explícita y datos conformes. Recomienda proceder con la conversión a etapa LEAD para asignar asesor de agenda.'
+                    : evaluacion?.accion === 'SOLO_CONSULTA'
+                    ? 'Consulta puramente informativa o de precios/aranceles. Brindar información y costos de tratamiento. No califica para conversión comercial inmediata.'
+                    : evaluacion?.accion === 'ACLARACION'
+                    ? (evaluacion.explicacion || 'Mensaje ambiguo o servicio no especificado. Enviar orientación cordial solicitando confirmar servicio o turno antes de transferir.')
+                    : evaluacion?.accion === 'CONSERVA_ETAPA_POSTERIOR'
+                    ? 'El contacto ya se encuentra en etapa avanzada. Mensaje vinculado a su expediente conservando su etapa actual.'
+                    : evaluacion?.accion === 'SOLICITUD_PENDIENTE_APERTURA'
+                    ? 'Contacto en etapa avanzada sin código de solicitud explícito comprobable. Conserva su etapa y mantiene solicitud pendiente de apertura.'
+                    : evaluacion?.accion === 'REQUISITOS_INCOMPLETOS'
+                    ? 'Intención de reserva detectada, pero requiere confirmar consentimiento o método de contacto válido antes de convertir.'
+                    : evaluacion?.accion === 'REINTENTO_PENDIENTE' || evaluacion?.estado === 'PENDIENTE'
+                    ? 'Evaluación pendiente de procesamiento o reintento por fallo de conectividad.'
+                    : 'Sin evaluación activa. Pulsa Actualizar para evaluar el mensaje del prospecto con Gemini en el backend.'}
                 </p>
               </div>
             </div>

@@ -31,8 +31,20 @@ export function useBuyerPage(params: {
 export function useBuyer(id: string) {
   return useQuery({
     queryKey: [QUERY_KEYS.BUYERS, id],
-    queryFn: () => buyerService.getAllBuyers().then((buyers: any) => buyers.find((b: any) => b.id === id) || null),
+    queryFn: () => buyerService.getBuyerById(id),
     enabled: !!id,
+  });
+}
+
+export function useEvaluateBuyer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, message }: { id: string; message?: string }) =>
+      buyerService.evaluateBuyer(id, { message }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUYERS, variables.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUYERS] });
+    },
   });
 }
 

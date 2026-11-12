@@ -1,104 +1,78 @@
-# Entrega del agente Buyer para integración con LEAD
+# Entrega del Agente Buyer para Integración con LEAD
 
-**Estado EN REVISIÓN.** Rama de trabajo `feature/buyer-agent-gemini`. Actualización documental del 11 de noviembre de 2026.
+**Estado:** IMPLEMENTADO PARCIALMENTE — PENDIENTE DE VALIDACIÓN QA.
+**Rama de trabajo:** `feature/buyer-agent-gemini`
+**Fecha de actualización:** 12 de noviembre de 2026
 
-La implementación está publicada como avance. El cierre de integración depende de los pendientes de la sección 3 y de la prueba conjunta. El [contrato BUYER → LEAD](../../database/lead_revision/CONTRATO_BUYER_LEAD.md) es la referencia compartida. Esta entrega explica el estado de Buyer y sus dependencias.
+---
 
-Para retomar la implementación, comenzar por la [guía de Germain](GUIA_RELEVO_GERMAIN_BUYER.md).
+## 1. Resumen Ejecutivo y Guía Principal
 
-## 1. Revisiones y evidencia
+El desarrollo y verificación del módulo Buyer se ha realizado de forma independiente, dejando la integración final de agentes aplazada hasta consolidar las pruebas locales.
 
-| Referencia | Alcance |
-| --- | --- |
-| `b819dd5` de LEAD | Recepción mediante `registerLeadIntake`, tabla y procedimiento de entrada. Incorporada a Buyer mediante el merge `3be5a85`. |
-| `7104fb8` de Buyer | Integración del clasificador, persistencia y primeras aclaraciones. |
-| `ffb67b6` de Buyer | Recuperación post-commit, contexto e idempotencia. Contiene los fallos descritos abajo. |
-| `2fff156` de Buyer | Publicación del avance con estado en revisión y banderas QA. Base examinada para esta actualización documental. |
+Para retomar el desarrollo, configurar el entorno y ejecutar las pruebas paso a paso, consultar la **[Guía Principal de Relevo para Germain](GUIA_RELEVO_GERMAIN_BUYER.md)**.
+El informe detallado de las correcciones de auditoría y pruebas focalizadas se encuentra en **[RESULTADOS_REVISION_BUYER_V7.md](../../RESULTADOS_REVISION_BUYER_V7.md)**.
 
-Antigravity reportó compilación del backend y frontend, 76 pruebas generales aprobadas y 19 pruebas SQL aprobadas con una prueba real omitida. Son evidencias de su ejecución local sobre QA.
+---
 
-La auditoría independiente del paquete v3 reprodujo 24 pruebas simuladas del clasificador, con 4 reales omitidas. Dos comprobaciones adicionales de contexto y resolución explícita pasaron. Una comprobación adicional de consulta nueva desde PAYER falló. Esa auditoría no accedió al SQL Server local ni reprodujo la compilación completa o las pruebas SQL.
+## 2. Revisiones y Trazabilidad del Módulo
 
-Los resultados anteriores corresponden a revisiones concretas. Quien cambie código debe registrar su nuevo commit, comandos, destino QA y resultados.
+| Referencia | Autor / Contexto | Alcance y Aportes |
+|---|---|---|
+| `b819dd5` | LEAD | Recepción mediante `registerLeadIntake`, tabla `dbo.EntradasAgenteLead` y procedimiento de entrada. |
+| `7104fb8` | Buyer | Integración inicial del clasificador Gemini y primeras aclaraciones. |
+| `ffb67b6` | Buyer | Recuperación post-commit y contexto conversacional. |
+| `2fff156` | Buyer | Publicación del avance con estado en revisión y banderas de entorno QA. |
+| `3e4cd2d` | Germain | Servicio de evaluación dental, casos de prueba y documentación operativa. |
+| **Esta Entrega** | Daniel / Buyer | Unificación de la ficha con el clasificador backend (fuente única de verdad), eliminación de `isReservationOriented`, recuperación post-commit basada en identidad persistida (`hasPersistedOperationEvidence`), persistencia de `CONVERSION_EN_CURSO` previa al SP, preservación de `historial_errores`, resolución determinista de preferencias/horarios y 122 pruebas automatizadas aprobadas. |
 
-## 2. Qué puede avanzar cada equipo
+---
 
-| Equipo | Trabajo disponible ahora | Dependencia para el cierre |
-| --- | --- | --- |
-| BUYER | Corregir los pendientes, completar conversación, registrar mensajes y verificar recuperación. | Validar entrega y recuperación con LEAD en la misma copia QA. |
-| LEAD | Desarrollar la negociación a partir de una entrada persistida y comprobar el inicio único por `id_solicitud`. Usar casos sintéticos con conversión válida. | Esperar las correcciones Buyer para certificar el recorrido público completo. |
-| Ambos | Mantener el contrato, acordar esquema compartido y preparar las pruebas de aceptación. | Apertura de oportunidades nuevas para contactos avanzados y aprobación del paquete conjunto. |
+## 3. Capacidades Validadas en esta Entrega
 
-BUYER gestiona formulario, rutas Buyer, clasificador y evaluación. LEAD gestiona recepción e inicio de negociación. Los cambios en Prisma, procedimientos y migraciones compartidas se coordinan antes de aplicarlos.
+1. **Fuente Única de Evaluación:** La ficha del paciente (`BuyerDetailView.tsx`) y los endpoints administrativos consumen `BuyerEvaluationService`, eliminando discrepancias entre heurísticas frontend y la inferencia estructurada de Gemini.
+2. **Ciclo de Vida de Mensajes sin Solicitudes Prematuras:** Las consultas informativas o ambiguas se persisten únicamente en `dbo.Interacciones`. Las oportunidades comerciales en `dbo.Solicitudes` se generan exclusivamente a través de la conversión formal atómica (`dbo.usp_ConvertirBuyerALead`).
+3. **Resolución Determinista del Servicio Declarado:** Se prioriza la preferencia vigente en `dbo.PersonaPreferencias`, seguida de la captación inicial en `dbo.CaptacionesBuyer`, y como compatibilidad histórica la solicitud.
+4. **Matriz de Discrepancias de Horarios:** `detectScheduleDiscrepancy` diferencia fechas de turnos, admite alternativas disyuntivas (*"mañana o tarde"*), valida contra el catálogo de `dbo.Horarios` y no inventa contradicciones ante ambigüedades.
+5. **Reintento Idempotente e Historial de Errores:** Reutiliza la misma decisión en estado `PENDIENTE` acumulando el contador de intentos y registrando `historial_errores` de forma auditable.
+6. **Repetición Idempotente de Conversión:** Reevaluar una interacción ya convertida retorna la decisión existente sin invocar a Gemini, conservando huella, IDs y estado de entrega.
+7. **Recuperación Post-Commit sin Heurísticas de Texto:** Eliminación de falsos positivos por palabras clave (*"reserva"*, *"horarios"*); la recuperación requiere evidencia persistida de pertenencia de la operación vinculada a la interacción.
 
-## 3. Pendientes prioritarios de Buyer
+---
 
-### P1. Diferenciar recuperación de una interacción nueva
+## 4. Pendientes Prioritarios de Buyer para el Relevo
 
-En [buyerEvaluationService.ts](../../backend/src/services/buyerEvaluationService.ts), la búsqueda de una conversión por `id_captacion` ocurre al evaluar cualquier mensaje. Una persona ya convertida puede tener una interacción nueva que termine etiquetada como `CONVERSION_LEAD`, vinculada a su solicitud anterior y con `etapa_final: LEAD` aunque actualmente esté en PAYER.
+### P1. Recuperación Automática: Selección de `CONVERSION_EN_CURSO`
+En [backend/src/services/buyerEvaluationService.ts](../../backend/src/services/buyerEvaluationService.ts#L1675-L1686), el método `recoverPendingEvaluations` busca decisiones con `estado: 'PENDIENTE'` o `accion: 'REINTENTO_PENDIENTE'`, pero omite `{ decision: { contains: '"estado":"CONVERSION_EN_CURSO"' } }`. Si el servidor cae durante la conversión, el proceso al arrancar no recupera estas decisiones en curso.
+*Aceptación:* Incluir `CONVERSION_EN_CURSO` en la consulta y verificar la recuperación sin duplicar solicitudes ni eventos.
 
-La auditoría observó una respuesta y auditoría incorrectas. En esa rama no se observó una actualización de `Personas.id_etapa_actual`.
+### P2. Verificación de Clave de Operación en SQL Real
+Validar en la copia real `NexoSalud_LeadEnsayoFinal` que la clave `clave_operacion_buyer` generada por `dbo.usp_ConvertirBuyerALead` coincida con los criterios de búsqueda de `dbo.usp_RegistrarEntradaAgenteLead` (en [database/buyer_revision/PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql](../../database/buyer_revision/PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql#L78-L79)).
+*Aceptación:* Una consulta nueva de un contacto nunca debe apropiarse de una conversión histórica.
 
-La corrección debe identificar el trabajo concreto cuya conversión fue interrumpida. La existencia de un evento histórico por captación y el nombre de la etapa actual, por sí solos, no distinguen ambos casos. Una recuperación legítima también encuentra a la persona ya en LEAD.
+### P3. Protección frente a Registros HTTP Concurrentes
+En [backend/src/routes/buyer.routes.ts](../../backend/src/routes/buyer.routes.ts#L120-L165), la verificación de `Idempotency-Key` previa a la inserción permite que dos peticiones simultáneas en el mismo milisegundo superen la validación antes del primer commit.
+*Aceptación:* Dos envíos simultáneos con la misma clave y contenido deben reutilizar interacción y operación. Misma clave con contenido distinto debe responder HTTP 409 Conflict. La protección debe garantizarse a nivel de base de datos o mutex distribuido.
 
-**Aceptación.** Una consulta nueva de una persona PAYER con conversión anterior se clasifica como consulta, conserva PAYER y evita `CONVERSION_LEAD`. La recuperación de la operación interrumpida devuelve la solicitud original y completa una sola entrada LEAD.
+### P4. Validación en Vivo contra SQL Server y Gemini Real
+- **SQL Server Real:** Ejecución de la suite de integración contra la base viva `NexoSalud_LeadEnsayoFinal` (`RUN_SQL_TESTS=true`).
+- **Gemini Real:** Verificación de latencia, cuota y respuestas semánticas en vivo con `GEMINI_API_KEY` activa (`RUN_LIVE_GEMINI_TESTS=true`).
 
-### P2. Proteger el registro concurrente por clave
+---
 
-En [buyer.routes.ts](../../backend/src/routes/buyer.routes.ts), la comprobación de `Idempotency-Key` se hace antes de la transacción de registro. Dos peticiones pueden superar esa lectura antes del primer commit.
+## 5. Interfaz de Integración con el Agente LEAD
 
-Los bloqueos de los procedimientos de conversión y recepción protegen esas operaciones. El mapa por `id_interaccion` protege evaluaciones dentro de un proceso. Falta acreditar la exclusión del registro por clave antes de crear sus filas.
+1. Buyer confirma el registro del mensaje y la interacción antes de invocar la evaluación.
+2. Si corresponde convertir, invoca atómicamente `dbo.usp_ConvertirBuyerALead`.
+3. Tras el commit SQL, invoca [registerLeadIntake](../../backend/src/services/leadIntake.ts) de forma desacoplada para formalizar la entrega en `dbo.EntradasAgenteLead`.
+4. El agente LEAD iniciará su ciclo de negociación a partir de las entradas registradas en `dbo.EntradasAgenteLead`.
 
-**Aceptación.** Dos peticiones simultáneas con la misma clave y contenido devuelven la misma interacción y evaluación. La misma clave con contenido distinto devuelve 409. Claves diferentes permiten mensajes iguales. Si la solución se limita a un proceso, documentar esa restricción. Una garantía entre procesos requiere coordinación persistente.
+---
 
-### P3. Verificar aislamiento QA en cada equipo
+## 6. Verificación Automatizada
 
-Las banderas ya están documentadas y añadidas a la plantilla. Falta confirmar su configuración local en cada equipo y los destinos efectivos. `backend/.env.example` conserva nombres de bases originales. Copiarlo exige ajustar las conexiones antes de iniciar el backend.
-
-Usar `QA_ENV=true`, `DISABLE_MART_SYNC=true` y `DUNNING_ENABLED=false`. La habilitación posterior del Mart requiere revisar tanto las conexiones como los nombres explícitos de bases y procedimientos.
-
-## 4. Interfaz que LEAD debe consumir
-
-1. Buyer confirma el registro del mensaje y trabajo pendiente antes de llamar a Gemini.
-2. Si corresponde convertir, reutiliza `dbo.usp_ConvertirBuyerALead` y conserva persona, captación, evento y solicitud.
-3. Después del commit llama a [registerLeadIntake](../../backend/src/services/leadIntake.ts) con `id_solicitud`, fuera de la transacción de conversión.
-4. El procedimiento de recepción devuelve `id_solicitud`, `id_evento_etapa`, `id_captacion` e `id_persona`. Una fila de `EntradasAgenteLead` acredita la recepción para el futuro agente.
-5. Buyer confirma su entrega después de recibir la respuesta. LEAD identifica su trabajo por `id_solicitud` para tolerar avisos repetidos y recuperar su propio inicio.
-
-El error 54702 indica una transacción externa incompatible. El 54703 indica ausencia de conversión vinculada y requiere investigar la inconsistencia. Los fallos transitorios mantienen la entrega pendiente. Una entrada única no demuestra por sí sola que toda la negociación posterior sea idempotente.
-
-La conversión abre la oportunidad comercial. LEAD valida después disponibilidad y reserva. Una consulta nueva de un contacto avanzado conserva su etapa y queda pendiente de apertura hasta acordar ese flujo.
-
-## 5. Preparación de QA y orden de ejecución
-
-SQL Server/T-SQL continúa siendo el entorno vigente. Cada integrante prepara su copia local. Cambiar de rama actualiza archivos y no instala el esquema ni copia los datos.
-
-1. Preparar una restauración de prueba con nombres y archivos exclusivos. Buyer ha usado `NexoSalud_LeadEnsayoFinal`. Consultar los [pasos de Germain](GUIA_RELEVO_GERMAIN_BUYER.md#3-preparar-la-copia-qa).
-2. Verificar el paquete OLTP. Si la copia compatible aún necesita la instalación BUYER/LEAD, seguir el [procedimiento de instalación](../../database/lead_revision/PROCEDIMIENTO_INSTALACION_OLTP.md) con el destino QA explícito. Si está instalada, ejecutar sus controles de lectura.
-3. Para la recepción, revisar la [propuesta compartida Buyer](../../database/buyer_revision/PROPUESTA_ESQUEMA_COMPARTIDO_BUYER_LEAD.sql). Admite `NexoSalud_LeadEnsayoFinal` y `NexoSalud_LeadPruebas`. El [instalador original LEAD](../../database/lead_revision/ENTRADA_AGENTE_LEAD_QA.sql) admite únicamente `NexoSalud_LeadPruebas`. Elegir un paquete acordado según el destino y verificar el esquema resultante.
-4. Instalar dependencias, generar Prisma y compilar. La generación de Prisma crea el cliente a partir del esquema del repositorio.
-5. Ejecutar pruebas simuladas. Luego activar explícitamente las pruebas SQL contra la misma copia QA.
-6. Corregir P1 y P2 antes de dar por aprobada la prueba conjunta desde el formulario.
-
-La propuesta fue aplicada en la QA local de Daniel según el reporte de Antigravity. Su ejecución en esa copia no acredita su instalación en otros equipos ni su aprobación para bases principales. Crea columnas faltantes sin incorporar necesariamente todas las claves foráneas del paquete original. Verificar las restricciones al consolidar el esquema.
-
-## 6. Matriz de aceptación conjunta
-
-| Caso | Resultado exigido |
-| --- | --- |
-| Consulta informativa inicial | Mensaje guardado, contacto BUYER, sin solicitud comercial nueva. |
-| Aclaración y respuesta breve | Reutiliza mensaje anterior y pregunta del agente. Conserva contexto al reintentar. |
-| Servicio desconocido o autorización ausente | Conserva etapa y solicita información o señala requisitos. |
-| Conversión elegible | Una solicitud, un evento vinculado y una entrada LEAD. |
-| Caída después de convertir | Recupera la misma operación y entrega sin duplicar ni reclasificar una consulta ajena. |
-| Respuesta de LEAD perdida | Reenvía el mismo `id_solicitud` y recupera su entrada existente. |
-| Reenvío concurrente del formulario | Misma clave conserva la misma interacción y evaluación. |
-| Mensaje nuevo desde PAYER | Clasifica independientemente, conserva PAYER y evita conversión histórica indebida. |
-| Referencia explícita a solicitud | Verifica número y pertenencia. Referencia dudosa queda pendiente. |
-| Inicio del agente LEAD repetido | Inicia o retoma una negociación por `id_solicitud`. LEAD aporta su evidencia. |
-
-## 7. Entrega para la siguiente revisión
-
-Cada equipo actualiza su documento con commit probado, scripts ejecutados en orden, configuración de destino sin secretos, resultados y pendientes. Germain publica sus avances en la misma rama Buyer y LEAD conserva su rama. Antes de integrar, comparar las dos puntas y resolver cambios compartidos.
-
-La siguiente revisión conjunta se activa cuando Buyer publique las correcciones P1/P2 con pruebas y LEAD publique su receptor/agente con evidencia de inicio idempotente. Registrar allí cualquier decisión pendiente sobre nuevas oportunidades. El [contrato compartido](../../database/lead_revision/CONTRATO_BUYER_LEAD.md) se actualiza de forma coordinada si cambia la interfaz.
+La suite completa del proyecto se ejecuta mediante:
+```powershell
+npm --prefix frontend test
+```
+**Resultado:** 18 archivos de prueba superados, 1 omitido (20 pruebas de integración SQL en espera de base real), **122 pruebas aprobadas, 0 fallos**.

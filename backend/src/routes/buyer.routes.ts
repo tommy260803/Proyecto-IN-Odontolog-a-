@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { Prisma, type Personas } from '@prisma/client';
 import { prisma } from '../db';
 import { MartSyncService } from '../services/martSyncService';
-import { BuyerEvaluationService } from '../services/buyerEvaluationService';
+import { BuyerEvaluationService, computeEvaluationContextFingerprint } from '../services/buyerEvaluationService';
 
 const router = Router();
 
@@ -87,7 +87,7 @@ async function getValidServicioId(tx: any, id: any): Promise<number | null> {
   if (!id || isNaN(Number(id))) return null;
   try {
     const item = await tx.servicios.findUnique({ where: { id_servicio: Number(id) } });
-    return item ? item.id_servicio : null;
+    return item && item.activo !== false ? item.id_servicio : null;
   } catch {
     return null;
   }
@@ -123,6 +123,145 @@ async function getValidModalidadId(tx: any, id: any): Promise<number | null> {
   } catch {
     return null;
   }
+}
+
+export interface DeclaredServiceResolution {
+  serviceId: string | undefined;
+  serviceName: string | undefined;
+  evaluatorServiceId: number | null;
+  isUnavailable: boolean;
+  source: 'PREFERENCIA' | 'CAPTACION' | 'SOLICITUD' | 'NINGUNO';
+}
+
+/**
+ * Criterio compartido y determinista para resolver el servicio de interés declarado entre:
+ * GET /buyer, GET /buyer/:id y POST /buyer/:id/evaluate.
+ *
+ * Jerarquía:
+ * 1. Preferencia vigente, ordenada por id_preferencia desc y respetando fecha_fin.
+ *    Si tiene id_servicio_interes y está inactivo, se señala como NO DISPONIBLE sin reemplazarla silenciosamente.
+ * 2. Si no hay preferencia declarada, captación inicial (cb.id_servicio) validando que esté activo.
+ * 3. Finalmente solicitud histórica (sol.id_servicio) únicamente como compatibilidad, validando que esté activo.
+ */
+export function resolveDeclaredService(params: {
+  preferencias?: Array<{
+    id_preferencia?: number;
+    id_servicio_interes?: number | null;
+    fecha_fin?: Date | string | null;
+    ServicioInteres?: {
+      id_servicio: number;
+      nombre: string;
+      activo?: boolean;
+    } | null;
+  }> | null;
+  captacionInicial?: {
+    id_servicio?: number | null;
+    nombre_servicio?: string | null;
+    activo?: boolean | null;
+  } | null;
+  solicitudes?: Array<{
+    id_solicitud?: number;
+    id_servicio?: number | null;
+    Servicio?: {
+      id_servicio: number;
+      nombre: string;
+      activo?: boolean;
+    } | null;
+  }> | null;
+  activeCatalog?: Array<{ id_servicio: number; nombre: string; activo?: boolean }>;
+}): DeclaredServiceResolution {
+  const now = new Date();
+
+  // 1. Preferencia vigente seleccionada de forma determinista (id_preferencia desc)
+  const sortedPrefs = [...(params.preferencias || [])].sort((a, b) => {
+    return (b.id_preferencia || 0) - (a.id_preferencia || 0);
+  });
+
+  const vigentePref = sortedPrefs.find(pref => {
+    if (!pref) return false;
+    if (pref.fecha_fin) {
+      const fin = new Date(pref.fecha_fin);
+      if (!isNaN(fin.getTime()) && fin <= now) {
+        return false; // Cerrada por fecha_fin
+      }
+    }
+    return true; // Vigente
+  });
+
+  if (vigentePref && vigentePref.id_servicio_interes != null) {
+    const sId = vigentePref.id_servicio_interes;
+    const svc = vigentePref.ServicioInteres || params.activeCatalog?.find(s => s.id_servicio === sId);
+    const isActive = svc ? svc.activo !== false : false;
+
+    if (isActive && svc) {
+      return {
+        serviceId: String(svc.id_servicio),
+        serviceName: svc.nombre,
+        evaluatorServiceId: svc.id_servicio,
+        isUnavailable: false,
+        source: 'PREFERENCIA',
+      };
+    } else {
+      // Preferencia explícita pero servicio inactivo o inexistente:
+      // Señalar como no disponible, SIN reemplazarla silenciosamente por un servicio histórico.
+      const rawName = svc?.nombre || 'Servicio';
+      return {
+        serviceId: undefined,
+        serviceName: `${rawName} (No disponible)`,
+        evaluatorServiceId: null,
+        isUnavailable: true,
+        source: 'PREFERENCIA',
+      };
+    }
+  }
+
+  // 2. Si no hay servicio declarado en preferencias, captación inicial
+  if (params.captacionInicial && params.captacionInicial.id_servicio != null) {
+    const cap = params.captacionInicial;
+    const sId = cap.id_servicio;
+    const catalogSvc = params.activeCatalog?.find(s => s.id_servicio === sId);
+    const isActive = catalogSvc ? catalogSvc.activo !== false : cap.activo !== false;
+
+    if (isActive) {
+      return {
+        serviceId: String(sId),
+        serviceName: catalogSvc?.nombre || cap.nombre_servicio || 'Consulta General',
+        evaluatorServiceId: sId ?? null,
+        isUnavailable: false,
+        source: 'CAPTACION',
+      };
+    }
+  }
+
+  // 3. Finalmente solicitud histórica, únicamente como compatibilidad
+  if (params.solicitudes && params.solicitudes.length > 0) {
+    const sortedSols = [...params.solicitudes].sort((a, b) => (b.id_solicitud || 0) - (a.id_solicitud || 0));
+    for (const sol of sortedSols) {
+      if (sol.id_servicio != null) {
+        const sId = sol.id_servicio;
+        const catalogSvc = params.activeCatalog?.find(s => s.id_servicio === sId);
+        const isActive = sol.Servicio ? sol.Servicio.activo !== false : (catalogSvc ? catalogSvc.activo !== false : true);
+
+        if (isActive) {
+          return {
+            serviceId: String(sId),
+            serviceName: sol.Servicio?.nombre || catalogSvc?.nombre || 'Consulta General',
+            evaluatorServiceId: sId ?? null,
+            isUnavailable: false,
+            source: 'SOLICITUD',
+          };
+        }
+      }
+    }
+  }
+
+  return {
+    serviceId: undefined,
+    serviceName: undefined,
+    evaluatorServiceId: null,
+    isUnavailable: false,
+    source: 'NINGUNO',
+  };
 }
 
 // Obtener catálogos para el formulario
@@ -887,10 +1026,11 @@ router.get('/', async (req, res) => {
         EventosEtapa: { include: { EtapaDestino: true }, orderBy: { fecha_hora: 'asc' }, ...(hasPagination ? { take: 20 } : {}) },
         Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'desc' }, ...(hasPagination ? { take: 20 } : {}) },
         Solicitudes: { include: { Servicio: true }, orderBy: { id_solicitud: 'desc' }, ...(hasPagination ? { take: 20 } : {}) },
-        Preferencias: { include: { Canal: true }, ...(hasPagination ? { take: 1 } : {}) },
+        Preferencias: { include: { Canal: true, ServicioInteres: true }, orderBy: { id_preferencia: 'desc' } },
         DatosAcademicos: hasPagination ? { take: 1 } : true,
         DatosLaborales: hasPagination ? { take: 1 } : true,
         SaludOdontologica: hasPagination ? { take: 1 } : true,
+        DecisionesIA: { where: { agente: 'BUYER' }, orderBy: { id_decision: 'desc' }, take: 1 },
       },
     };
 
@@ -906,6 +1046,37 @@ router.get('/', async (req, res) => {
         ])
       : [await prisma.personas.findMany(queryOptions), 0];
     const buyerPersons: any[] = personas;
+
+    // Cargar captaciones iniciales en lote para evitar N+1 queries en el listado
+    const personIds = buyerPersons.map(p => p.id_persona);
+    const captacionesByPerson = new Map<number, { id_servicio: number | null; nombre_servicio?: string; activo?: boolean }>();
+    if (personIds.length > 0) {
+      try {
+        const captacionesRows = await (prisma as any).$queryRaw<{
+          id_persona: number;
+          id_servicio: number | null;
+          nombre_servicio?: string;
+          activo?: boolean;
+        }[]>`
+          SELECT cb.id_persona, cb.id_servicio, s.nombre AS nombre_servicio, s.activo
+          FROM dbo.CaptacionesBuyer cb
+          LEFT JOIN dbo.Servicios s ON s.id_servicio = cb.id_servicio
+          WHERE cb.id_persona IN (${Prisma.join(personIds)})
+          ORDER BY cb.id_captacion ASC
+        `;
+        for (const row of captacionesRows) {
+          if (!captacionesByPerson.has(row.id_persona)) {
+            captacionesByPerson.set(row.id_persona, {
+              id_servicio: row.id_servicio,
+              nombre_servicio: row.nombre_servicio,
+              activo: row.activo,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[buyer.routes] Error al cargar captaciones en lote para listado:', err);
+      }
+    }
 
     // Un contacto que ya avanzó a otra etapa no es un duplicado de BUYER:
     // representa la misma ficha dentro del ciclo comercial.
@@ -969,14 +1140,33 @@ router.get('/', async (req, res) => {
       const fuenteId = (p.Interacciones.length > 0 && p.Interacciones[0].id_fuente?.toString()) || 
         '';
 
-      const servicioName = p.Solicitudes.length > 0 && p.Solicitudes[0].Servicio
-        ? p.Solicitudes[0].Servicio.nombre : undefined;
-      const servicioId = p.Solicitudes.length > 0 && p.Solicitudes[0].id_servicio
-        ? p.Solicitudes[0].id_servicio.toString() : undefined;
+      const lastInteraction = p.Interacciones.length > 0 ? p.Interacciones[0] : null;
+      const motivo =
+        lastInteraction?.mensaje?.trim() ||
+        (p.Solicitudes.length > 0 ? p.Solicitudes[0].motivo?.trim() : undefined) ||
+        undefined;
 
-      const motivo = p.Solicitudes.length > 0 ? p.Solicitudes[0].motivo : undefined;
+      // Preferencia vigente determinista (id_preferencia desc, respetando fecha_fin)
+      const sortedPrefs = [...(p.Preferencias || [])].sort((a: any, b: any) => (b.id_preferencia || 0) - (a.id_preferencia || 0));
+      const now = new Date();
+      const vigentePref = sortedPrefs.find((pref: any) => {
+        if (!pref) return false;
+        if (pref.fecha_fin) {
+          const fin = new Date(pref.fecha_fin);
+          if (!isNaN(fin.getTime()) && fin <= now) return false;
+        }
+        return true;
+      }) || null;
+      const prefs = vigentePref;
 
-      const prefs = p.Preferencias.length > 0 ? p.Preferencias[0] : null;
+      // Resolución compartida y determinista del servicio declarado
+      const declaredResolution = resolveDeclaredService({
+        preferencias: p.Preferencias,
+        captacionInicial: captacionesByPerson.get(p.id_persona) || null,
+        solicitudes: p.Solicitudes,
+      });
+      const servicioId = declaredResolution.serviceId;
+      const servicioName = declaredResolution.serviceName;
       const aca = p.DatosAcademicos.length > 0 ? p.DatosAcademicos[0] : null;
       const lab = p.DatosLaborales.length > 0 ? p.DatosLaborales[0] : null;
       const sal = p.SaludOdontologica.length > 0 ? p.SaludOdontologica[0] : null;
@@ -985,7 +1175,7 @@ router.get('/', async (req, res) => {
       const campaignName = p.CampanaOrigen?.nombre;
       const campaignCost = p.CampanaOrigen?.GastosCampana?.reduce((sum: number, g: any) => sum + Number(g.importe), 0);
 
-      const consultasCount = p.Solicitudes.length || 1;
+      const consultasCount = p.Interacciones.length || p.Solicitudes.length || 1;
       const solicitudesHistory = p.Solicitudes.map((s: any) => ({
         id: s.id_solicitud.toString(),
         servicio: s.Servicio?.nombre || 'Consulta General',
@@ -1004,6 +1194,7 @@ router.get('/', async (req, res) => {
       return {
         id: p.id_persona.toString(),
         personId: p.id_persona.toString(),
+        activeInteractionId: lastInteraction?.id_interaccion || null,
         person: {
           firstName: p.nombres,
           lastName: p.apellidos,
@@ -1055,6 +1246,73 @@ router.get('/', async (req, res) => {
         sangrado_o_inflamacion: sal?.sangrado_o_inflamacion || '',
         usa_aparato_o_protesis: sal?.usa_aparato_o_protesis || '',
         condicion_atencion_especial: sal?.condicion_atencion_especial || '',
+
+        latestEvaluation: (() => {
+          const latestDec = p.DecisionesIA && p.DecisionesIA.length > 0 ? p.DecisionesIA[0] : null;
+          if (!latestDec) return null;
+          let parsedDec: any = {};
+          try {
+            parsedDec = JSON.parse(latestDec.decision || '{}');
+          } catch {}
+          const activeInteractionId = lastInteraction?.id_interaccion || null;
+          const esMensajeVigente = Boolean(
+            activeInteractionId && latestDec.id_interaccion === activeInteractionId
+          );
+          const evaluatedInteraction = p.Interacciones.find((i: any) => i.id_interaccion === latestDec.id_interaccion);
+          const mensajeEvaluado = evaluatedInteraction?.mensaje || parsedDec.mensaje_evaluado || null;
+
+          const currentContextFingerprint = computeEvaluationContextFingerprint({
+            mensaje: motivo || '',
+            id_servicio_declarado: declaredResolution.evaluatorServiceId,
+            pref_id_horario: vigentePref?.id_horario ?? null,
+            sede_preferida: vigentePref?.sede_preferida ?? null,
+          });
+
+          let evalFingerprint = parsedDec.contextFingerprint;
+          if (!evalFingerprint && latestDec.entrada) {
+            try {
+              const parsedEntrada = JSON.parse(latestDec.entrada);
+              evalFingerprint = parsedEntrada.contextFingerprint || computeEvaluationContextFingerprint({
+                mensaje: parsedEntrada.mensaje || mensajeEvaluado || '',
+                id_servicio_declarado: parsedEntrada.id_servicio_declarado,
+                pref_id_horario: parsedEntrada.pref_id_horario,
+                sede_preferida: parsedEntrada.sede_preferida,
+              });
+            } catch {}
+          }
+
+          const esContextoVigente = esMensajeVigente && Boolean(
+            evalFingerprint && evalFingerprint === currentContextFingerprint
+          );
+
+          return {
+            id_decision: latestDec.id_decision,
+            id_interaccion: latestDec.id_interaccion,
+            id_interaccion_vigente: activeInteractionId,
+            es_mensaje_vigente: esMensajeVigente,
+            es_contexto_vigente: esContextoVigente,
+            context_fingerprint: evalFingerprint || null,
+            current_context_fingerprint: currentContextFingerprint,
+            estado: !esContextoVigente && esMensajeVigente
+              ? 'DESACTUALIZADA'
+              : (parsedDec.estado || (latestDec.accion === 'REINTENTO_PENDIENTE' ? 'PENDIENTE' : 'COMPLETADA')),
+            intencion: parsedDec.intencion || null,
+            id_servicio: parsedDec.id_servicio || null,
+            servicio_nombre:
+              (parsedDec.id_servicio &&
+                p.Solicitudes?.find((s: any) => s.id_servicio === parsedDec.id_servicio)?.Servicio?.nombre) ||
+              null,
+            accion: latestDec.accion,
+            explicacion: latestDec.resultado_revision || parsedDec.explicacion || parsedDec.motivo || '',
+            fecha_hora: latestDec.fecha_hora.toISOString(),
+            mensaje_evaluado: mensajeEvaluado,
+            mensaje_vigente: motivo || null,
+            discrepancia_horario: parsedDec.discrepancia_horario || null,
+            intentosRealizados: parsedDec.intentosRealizados || parsedDec.intentos_realizados || 1,
+            duracionTotalMs: parsedDec.duracionTotalMs || parsedDec.duracion_total_ms || 0,
+            error: parsedDec.error || null,
+          };
+        })(),
       };
     });
 
@@ -1074,6 +1332,409 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener buyers' });
+  }
+});
+
+// Obtener el expediente completo de un BUYER por ID con su última evaluación persistida
+router.get('/:id', async (req, res) => {
+  const { id } = req.params;
+  const numId = Number(id);
+  if (isNaN(numId)) {
+    return res.status(400).json({ error: 'ID de prospecto inválido' });
+  }
+
+  try {
+    const p = await prisma.personas.findUnique({
+      where: { id_persona: numId },
+      include: {
+        Etapa: true,
+        CanalOrigen: true,
+        CampanaOrigen: { include: { GastosCampana: { select: { importe: true } } } },
+        EventosEtapa: { include: { EtapaDestino: true }, orderBy: { fecha_hora: 'asc' } },
+        Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'desc' } },
+        Solicitudes: { include: { Servicio: true }, orderBy: { id_solicitud: 'desc' } },
+        Preferencias: { include: { Canal: true, ServicioInteres: true }, orderBy: { id_preferencia: 'desc' } },
+        DatosAcademicos: true,
+        DatosLaborales: true,
+        SaludOdontologica: true,
+        DecisionesIA: { where: { agente: 'BUYER' }, orderBy: { id_decision: 'desc' }, take: 10 },
+      },
+    });
+
+    if (!p) {
+      return res.status(404).json({ error: 'No se encontró la ficha del prospecto solicitado.' });
+    }
+
+    const canalName =
+      p.CanalOrigen?.nombre ||
+      (p.Interacciones.length > 0 && p.Interacciones[0].Canal?.nombre) ||
+      (p.Preferencias.length > 0 && p.Preferencias[0].Canal?.nombre) ||
+      'Página Web / Portal Online';
+    const canalId =
+      p.id_canal_origen?.toString() ||
+      (p.Interacciones.length > 0 && p.Interacciones[0].id_canal?.toString()) ||
+      '';
+
+    const fuenteName =
+      (p.Interacciones.length > 0 && p.Interacciones[0].Fuente?.nombre) ||
+      'Formulario Web - Portal NexoSalud';
+    const fuenteId =
+      (p.Interacciones.length > 0 && p.Interacciones[0].id_fuente?.toString()) ||
+      '';
+
+    const lastInteraction = p.Interacciones.length > 0 ? p.Interacciones[0] : null;
+    const activeMessage =
+      lastInteraction?.mensaje?.trim() ||
+      (p.Solicitudes.length > 0 ? p.Solicitudes[0].motivo?.trim() : undefined) ||
+      undefined;
+
+    // Preferencia vigente determinista (id_preferencia desc, respetando fecha_fin)
+    const sortedPrefs = [...(p.Preferencias || [])].sort((a: any, b: any) => (b.id_preferencia || 0) - (a.id_preferencia || 0));
+    const now = new Date();
+    const vigentePref = sortedPrefs.find((pref: any) => {
+      if (!pref) return false;
+      if (pref.fecha_fin) {
+        const fin = new Date(pref.fecha_fin);
+        if (!isNaN(fin.getTime()) && fin <= now) return false;
+      }
+      return true;
+    }) || null;
+    const prefs = vigentePref;
+
+    let captacionInicial: { id_servicio: number | null; nombre_servicio?: string; activo?: boolean } | null = null;
+    try {
+      const [captacionRow] = await (prisma as any).$queryRaw<{ id_servicio: number | null; nombre_servicio?: string; activo?: boolean }[]>`
+        SELECT cb.id_servicio, s.nombre AS nombre_servicio, s.activo
+        FROM dbo.CaptacionesBuyer cb
+        LEFT JOIN dbo.Servicios s ON s.id_servicio = cb.id_servicio
+        WHERE cb.id_persona = ${numId}
+        ORDER BY cb.id_captacion ASC
+      `;
+      if (captacionRow) {
+        captacionInicial = {
+          id_servicio: captacionRow.id_servicio ?? null,
+          nombre_servicio: captacionRow.nombre_servicio,
+          activo: captacionRow.activo,
+        };
+      }
+    } catch {}
+
+    const declaredResolution = resolveDeclaredService({
+      preferencias: p.Preferencias,
+      captacionInicial,
+      solicitudes: p.Solicitudes,
+    });
+    const servicioId = declaredResolution.serviceId;
+    const servicioName = declaredResolution.serviceName;
+    const aca = p.DatosAcademicos.length > 0 ? p.DatosAcademicos[0] : null;
+    const lab = p.DatosLaborales.length > 0 ? p.DatosLaborales[0] : null;
+    const sal = p.SaludOdontologica.length > 0 ? p.SaludOdontologica[0] : null;
+
+    let state = 'NEW';
+    if (p.estado_calidad === 'Rechazado') {
+      state = 'DISCARDED';
+    } else if (['LEAD', 'PAYER', 'CUSTOMER', 'TURNED'].includes(p.Etapa?.nombre || '')) {
+      state = 'CONVERTED';
+    } else if (p.estado_calidad === 'Duplicado') {
+      state = 'DUPLICATED';
+    }
+
+    const eventoConversion = p.EventosEtapa.find((e: any) =>
+      ['LEAD', 'PAYER', 'CUSTOMER', 'TURNED'].includes(e.EtapaDestino?.nombre || '')
+    );
+    const convertedAt = eventoConversion
+      ? eventoConversion.fecha_hora.toISOString()
+      : state === 'CONVERTED'
+      ? (p.fecha_actualizacion || p.fecha_autorizacion || p.fecha_registro).toISOString()
+      : undefined;
+
+    const latestDec = p.DecisionesIA && p.DecisionesIA.length > 0 ? p.DecisionesIA[0] : null;
+    let latestEvaluation: any = null;
+    if (latestDec) {
+      let parsedDec: any = {};
+      try {
+        parsedDec = JSON.parse(latestDec.decision || '{}');
+      } catch {}
+
+      const activeInteractionId = lastInteraction?.id_interaccion || null;
+      const esMensajeVigente = Boolean(
+        activeInteractionId && latestDec.id_interaccion === activeInteractionId
+      );
+      const evaluatedInteraction = p.Interacciones.find((i: any) => i.id_interaccion === latestDec.id_interaccion);
+      const mensajeEvaluado = evaluatedInteraction?.mensaje || parsedDec.mensaje_evaluado || null;
+
+      const currentContextFingerprint = computeEvaluationContextFingerprint({
+        mensaje: activeMessage || '',
+        id_servicio_declarado: declaredResolution.evaluatorServiceId,
+        pref_id_horario: vigentePref?.id_horario ?? null,
+        sede_preferida: vigentePref?.sede_preferida ?? null,
+      });
+
+      let evalFingerprint = parsedDec.contextFingerprint;
+      if (!evalFingerprint && latestDec.entrada) {
+        try {
+          const parsedEntrada = JSON.parse(latestDec.entrada);
+          evalFingerprint = parsedEntrada.contextFingerprint || computeEvaluationContextFingerprint({
+            mensaje: parsedEntrada.mensaje || mensajeEvaluado || '',
+            id_servicio_declarado: parsedEntrada.id_servicio_declarado,
+            pref_id_horario: parsedEntrada.pref_id_horario,
+            sede_preferida: parsedEntrada.sede_preferida,
+          });
+        } catch {}
+      }
+
+      const esContextoVigente = esMensajeVigente && Boolean(
+        evalFingerprint && evalFingerprint === currentContextFingerprint
+      );
+
+      latestEvaluation = {
+        id_decision: latestDec.id_decision,
+        id_interaccion: latestDec.id_interaccion,
+        id_interaccion_vigente: activeInteractionId,
+        es_mensaje_vigente: esMensajeVigente,
+        es_contexto_vigente: esContextoVigente,
+        context_fingerprint: evalFingerprint || null,
+        current_context_fingerprint: currentContextFingerprint,
+        estado: !esContextoVigente && esMensajeVigente
+          ? 'DESACTUALIZADA'
+          : (parsedDec.estado || (latestDec.accion === 'REINTENTO_PENDIENTE' ? 'PENDIENTE' : 'COMPLETADA')),
+        intencion: parsedDec.intencion || null,
+        id_servicio: parsedDec.id_servicio || null,
+        servicio_nombre:
+          (parsedDec.id_servicio &&
+            (p.Solicitudes?.find((s: any) => s.id_servicio === parsedDec.id_servicio)?.Servicio?.nombre ||
+              servicioName)) ||
+          null,
+        accion: latestDec.accion,
+        explicacion: latestDec.resultado_revision || parsedDec.explicacion || parsedDec.motivo || '',
+        fecha_hora: latestDec.fecha_hora.toISOString(),
+        mensaje_evaluado: mensajeEvaluado,
+        mensaje_vigente: activeMessage || null,
+        discrepancia_horario: parsedDec.discrepancia_horario || null,
+        intentosRealizados: parsedDec.intentosRealizados || parsedDec.intentos_realizados || 1,
+        duracionTotalMs: parsedDec.duracionTotalMs || parsedDec.duracion_total_ms || 0,
+        error: parsedDec.error || null,
+      };
+    }
+
+    const buyer = {
+      id: p.id_persona.toString(),
+      personId: p.id_persona.toString(),
+      activeInteractionId: lastInteraction?.id_interaccion || null,
+      person: {
+        firstName: p.nombres,
+        lastName: p.apellidos,
+        documentNumber: p.dni,
+        phone: p.numero,
+        email: p.email,
+      },
+      channel: canalName,
+      channelId: canalId,
+      attractionSource: fuenteName,
+      attractionSourceId: fuenteId,
+      campaignId: p.id_campana_origen?.toString(),
+      campaignName: p.CampanaOrigen?.nombre,
+      serviceOfInterest: servicioName,
+      serviceOfInterestId: servicioId,
+      contactAuthorization: p.autoriza_contacto,
+      qualityStatus: p.estado_calidad || 'Valido',
+      concreteRequest: activeMessage,
+      createdAt: p.fecha_registro.toISOString(),
+      convertedAt,
+      state,
+      consultasCount: p.Interacciones.length || p.Solicitudes.length || 1,
+      solicitudesHistory: p.Solicitudes.map((s: any) => ({
+        id: s.id_solicitud.toString(),
+        servicio: s.Servicio?.nombre || 'Consulta General',
+        motivo: s.motivo || 'Sin detalle',
+        fecha: s.fecha_solicitud ? s.fecha_solicitud.toISOString() : undefined,
+      })),
+      interaccionesHistory: p.Interacciones.map((i: any) => ({
+        id: i.id_interaccion.toString(),
+        tipo: i.tipo,
+        mensaje: i.mensaje || '',
+        canal: i.Canal?.nombre,
+        fuente: i.Fuente?.nombre,
+        fecha: i.fecha_hora.toISOString(),
+      })),
+      pref_id_canal: prefs?.id_canal?.toString() || '',
+      pref_id_horario: prefs?.id_horario?.toString() || '',
+      pref_id_modalidad: prefs?.id_modalidad?.toString() || '',
+      pref_sede_preferida: prefs?.sede_preferida || '',
+      pref_profesional_preferido: prefs?.profesional_preferido || '',
+      latestEvaluation,
+    };
+
+    return res.json(buyer);
+  } catch (error) {
+    console.error('Error al obtener buyer por id:', error);
+    return res.status(500).json({ error: 'Error al obtener ficha de buyer' });
+  }
+});
+
+// Evaluar el mensaje vigente de un BUYER con Gemini en el backend y persistir el resultado
+router.post('/:id/evaluate', async (req, res) => {
+  const { id } = req.params;
+  const numId = Number(id);
+  if (isNaN(numId)) {
+    return res.status(400).json({ error: 'ID de prospecto inválido' });
+  }
+
+  try {
+    const person = await prisma.personas.findUnique({
+      where: { id_persona: numId },
+      include: {
+        Etapa: true,
+        Interacciones: { orderBy: { fecha_hora: 'desc' }, take: 1 },
+        Preferencias: { include: { ServicioInteres: true }, orderBy: { id_preferencia: 'desc' } },
+        Solicitudes: { include: { Servicio: true }, orderBy: { id_solicitud: 'desc' } },
+      },
+    });
+
+    if (!person) {
+      return res.status(404).json({ error: 'Prospecto no encontrado' });
+    }
+
+    const newMessage = req.body?.message?.trim() || req.body?.concreteRequest?.trim();
+    const lastInteraction = person.Interacciones[0] || null;
+
+    let targetInteractionId: number;
+    let messageToEvaluate: string;
+
+    // Si se pasa un mensaje explícito que difiere del último mensaje persistido,
+    // conservar el historial creando una nueva interacción en lugar de sobrescribir silenciosamente
+    if (newMessage && (!lastInteraction || lastInteraction.mensaje !== newMessage)) {
+      const createdInt = await prisma.interacciones.create({
+        data: {
+          id_persona: numId,
+          tipo: 'Mensaje Actualizado / Reevaluación',
+          mensaje: newMessage,
+          id_canal: person.id_canal_origen || lastInteraction?.id_canal || null,
+          fecha_hora: new Date(),
+        },
+      });
+      targetInteractionId = createdInt.id_interaccion;
+      messageToEvaluate = newMessage;
+    } else if (lastInteraction) {
+      targetInteractionId = lastInteraction.id_interaccion;
+      messageToEvaluate = lastInteraction.mensaje || 'Solicitud de información general';
+    } else {
+      const createdInt = await prisma.interacciones.create({
+        data: {
+          id_persona: numId,
+          tipo: 'Consulta Inicial',
+          mensaje: newMessage || 'Solicitud de información general',
+          fecha_hora: new Date(),
+        },
+      });
+      targetInteractionId = createdInt.id_interaccion;
+      messageToEvaluate = createdInt.mensaje || 'Solicitud de información general';
+    }
+
+    const [captacionRow] = await (prisma as any).$queryRaw<{
+      id_captacion: number;
+      id_servicio?: number | null;
+      nombre_servicio?: string;
+      activo?: boolean;
+    }[]>`
+      SELECT TOP (1) cb.id_captacion, cb.id_servicio, s.nombre AS nombre_servicio, s.activo
+      FROM dbo.CaptacionesBuyer cb
+      LEFT JOIN dbo.Servicios s ON s.id_servicio = cb.id_servicio
+      WHERE cb.id_persona=${numId} ORDER BY cb.id_captacion ASC
+    `;
+    let captacionId = captacionRow?.id_captacion;
+    let captacionInicial = captacionRow
+      ? {
+          id_servicio: captacionRow.id_servicio ?? null,
+          nombre_servicio: captacionRow.nombre_servicio,
+          activo: captacionRow.activo,
+        }
+      : null;
+
+    if (!captacionId) {
+      await (prisma as any).$executeRaw`
+        INSERT INTO dbo.CaptacionesBuyer (id_persona, fecha_captacion, estado_calidad)
+        VALUES (${numId}, SYSDATETIME(), 'Valido')
+      `;
+      const [newCaptacionRow] = await (prisma as any).$queryRaw<{
+        id_captacion: number;
+        id_servicio?: number | null;
+        nombre_servicio?: string;
+        activo?: boolean;
+      }[]>`
+        SELECT TOP (1) cb.id_captacion, cb.id_servicio, s.nombre AS nombre_servicio, s.activo
+        FROM dbo.CaptacionesBuyer cb
+        LEFT JOIN dbo.Servicios s ON s.id_servicio = cb.id_servicio
+        WHERE cb.id_persona=${numId} ORDER BY cb.id_captacion DESC
+      `;
+      captacionId = newCaptacionRow?.id_captacion || numId;
+      if (newCaptacionRow) {
+        captacionInicial = {
+          id_servicio: newCaptacionRow.id_servicio ?? null,
+          nombre_servicio: newCaptacionRow.nombre_servicio,
+          activo: newCaptacionRow.activo,
+        };
+      }
+    }
+
+    const declaredResolution = resolveDeclaredService({
+      preferencias: person.Preferencias,
+      captacionInicial,
+      solicitudes: person.Solicitudes,
+    });
+    const declaredServiceId = declaredResolution.evaluatorServiceId;
+
+    const sortedPrefs = [...(person.Preferencias || [])].sort((a: any, b: any) => (b.id_preferencia || 0) - (a.id_preferencia || 0));
+    const now = new Date();
+    const vigentePref = sortedPrefs.find((pref: any) => {
+      if (!pref) return false;
+      if (pref.fecha_fin) {
+        const fin = new Date(pref.fecha_fin);
+        if (!isNaN(fin.getTime()) && fin <= now) return false;
+      }
+      return true;
+    }) || null;
+    const prefHorario = vigentePref?.id_horario || null;
+
+    const outcome = await BuyerEvaluationService.evaluateBuyerInteraction({
+      id_persona: numId,
+      id_captacion: captacionId,
+      id_interaccion: targetInteractionId,
+      mensaje: messageToEvaluate,
+      id_servicio_declarado: declaredServiceId,
+      pref_id_horario: prefHorario,
+      sede_preferida: vigentePref?.sede_preferida || null,
+    });
+
+    return res.json({
+      success: true,
+      data: outcome,
+      latestEvaluation: {
+        id_decision: outcome.id_decision || null,
+        id_interaccion: outcome.id_interaccion,
+        id_interaccion_vigente: outcome.id_interaccion,
+        es_mensaje_vigente: true,
+        es_contexto_vigente: true,
+        context_fingerprint: outcome.contextFingerprint || null,
+        current_context_fingerprint: outcome.contextFingerprint || null,
+        estado: outcome.estado,
+        intencion: outcome.intencion,
+        id_servicio: outcome.id_servicio,
+        servicio_nombre: declaredResolution.serviceName || null,
+        accion: outcome.accion,
+        explicacion: outcome.aclaracion || outcome.error || 'Evaluación persistida correctamente.',
+        fecha_hora: new Date().toISOString(),
+        mensaje_evaluado: messageToEvaluate,
+        mensaje_vigente: messageToEvaluate,
+        discrepancia_horario: outcome.discrepancia_horario || null,
+      },
+    });
+  } catch (err: any) {
+    console.error('Error al evaluar buyer:', err);
+    return res.status(500).json({
+      success: false,
+      error: err?.message || 'Error al evaluar mensaje con Gemini',
+    });
   }
 });
 
@@ -1123,17 +1784,6 @@ router.post('/', async (req, res) => {
       const etapaBuyer = await tx.etapas.findUniqueOrThrow({ where: { nombre: 'BUYER' } });
       const digits = phoneToSave?.replace(/\D/g, '') ?? '';
       const phone = digits.length >= 9 ? digits.slice(-9) : digits.length >= 7 ? digits : null;
-      const existing = await findBuyerIdentity(tx, dniToSave, emailToSave, phone);
-      if (existing) {
-        if (dniToSave && existing.dni && existing.dni.trim() !== dniToSave) {
-          throw new BuyerInputError('El contacto corresponde a una identidad distinta.');
-        }
-        const [capture] = await tx.$queryRaw<{ id_captacion: number }[]>`
-          SELECT id_captacion FROM dbo.CaptacionesBuyer WHERE id_persona=${existing.id_persona}
-        `;
-        if (!capture) throw new BuyerInputError('El contacto histórico requiere validar su captación antes de convertirlo.');
-        return { ...existing, id: existing.id_persona, isDuplicate: true };
-      }
 
       const validCampana = await getValidCampanaId(tx, id_campana_origen);
       const validCanalOrigen = await getValidCanalId(tx, rawCanalOrigen);
@@ -1146,6 +1796,89 @@ router.post('/', async (req, res) => {
 
       const finalCalidad = estado_calidad || (emailToSave || phone ? 'Valido' : 'Incompleto');
       const captureReason = typeof rawRequest === 'string' ? rawRequest.trim().slice(0, 500) || null : null;
+      const fullMessage =
+        (typeof rawRequest === 'string' && rawRequest.trim()) ||
+        'Consulta inicial de información';
+
+      const existing = await findBuyerIdentity(tx, dniToSave, emailToSave, phone);
+      if (existing) {
+        if (dniToSave && existing.dni && existing.dni.trim() !== dniToSave) {
+          throw new BuyerInputError('El contacto corresponde a una identidad distinta.');
+        }
+        let [capture] = await tx.$queryRaw<{ id_captacion: number }[]>`
+          SELECT id_captacion FROM dbo.CaptacionesBuyer WHERE id_persona=${existing.id_persona}
+        `;
+        if (!capture) {
+          await recordBuyerCapture(tx, existing, {
+            sourceId: validAttractionSource,
+            serviceId: validService,
+            branchId: await captureBranch(tx, req.body.id_sede ?? pref_sede_preferida),
+            reason: captureReason,
+          });
+          const [newCapture] = await tx.$queryRaw<{ id_captacion: number }[]>`
+            SELECT id_captacion FROM dbo.CaptacionesBuyer WHERE id_persona=${existing.id_persona}
+          `;
+          capture = newCapture;
+        }
+
+        // 3. Consulta nueva de contacto existente:
+        // Registra la nueva consulta en Interacciones, conserva su etapa y reutiliza persona/captación.
+        // No crees una solicitud ni una persona adicional por esa nueva consulta.
+        // 4. Mensaje completo: texto original completo sin recortar a 500 caracteres
+        const existingFullMessage =
+          (typeof rawRequest === 'string' && rawRequest.trim()) ||
+          'Nueva consulta de contacto existente';
+
+        await tx.interacciones.create({
+          data: {
+            id_persona: existing.id_persona,
+            id_canal: validChannel || validCanalOrigen || existing.id_canal_origen || null,
+            id_fuente: validAttractionSource || null,
+            tipo: 'Nueva Consulta',
+            mensaje: existingFullMessage,
+            fecha_hora: new Date(),
+          },
+        });
+
+        // Actualizar preferencias si se enviaron (incluyendo servicio de interés actual)
+        if (
+          validPrefCanal ||
+          validPrefHorario ||
+          validPrefModalidad ||
+          validService ||
+          pref_sede_preferida ||
+          pref_profesional_preferido
+        ) {
+          const existingPref = await tx.personaPreferencias.findFirst({
+            where: { id_persona: existing.id_persona },
+            orderBy: { id_preferencia: 'desc' },
+          });
+
+          const prefDataToSave: any = {};
+          if (validPrefCanal) prefDataToSave.id_canal = validPrefCanal;
+          if (validPrefHorario) prefDataToSave.id_horario = validPrefHorario;
+          if (validPrefModalidad) prefDataToSave.id_modalidad = validPrefModalidad;
+          if (validService) prefDataToSave.id_servicio_interes = validService;
+          if (pref_sede_preferida) prefDataToSave.sede_preferida = pref_sede_preferida;
+          if (pref_profesional_preferido) prefDataToSave.profesional_preferido = pref_profesional_preferido;
+
+          if (existingPref) {
+            await tx.personaPreferencias.update({
+              where: { id_preferencia: existingPref.id_preferencia },
+              data: prefDataToSave,
+            });
+          } else {
+            await tx.personaPreferencias.create({
+              data: {
+                id_persona: existing.id_persona,
+                ...prefDataToSave,
+              },
+            });
+          }
+        }
+
+        return { ...existing, id: existing.id_persona, isDuplicate: true };
+      }
 
       const persona = await tx.personas.create({
         data: {
@@ -1164,36 +1897,38 @@ router.post('/', async (req, res) => {
         }
       });
 
-      if (validChannel || validCanalOrigen || validAttractionSource) {
-        await tx.interacciones.create({
-          data: {
-            id_persona: persona.id_persona,
-            id_canal: validChannel || validCanalOrigen,
-            id_fuente: validAttractionSource,
-            tipo: 'Registro Inicial',
-            mensaje: 'Creación de BUYER desde Dashboard'
-          }
-        });
-      }
+      // Guardar SIEMPRE la consulta original en dbo.Interacciones con su persona y canal/fuente
+      // Mensaje completo: texto original completo sin recortar a 500 caracteres
+      await tx.interacciones.create({
+        data: {
+          id_persona: persona.id_persona,
+          id_canal: validChannel || validCanalOrigen || null,
+          id_fuente: validAttractionSource || null,
+          tipo: 'Consulta Inicial',
+          mensaje: fullMessage,
+          fecha_hora: new Date(),
+        },
+      });
 
-      if (rawRequest || validService) {
-        await tx.solicitudes.create({
-          data: {
-            id_persona: persona.id_persona,
-            id_servicio: validService,
-            motivo: captureReason?.slice(0, 200) || 'Solicitud de información general'
-          }
-        });
-      }
+      // IMPORTANTE: Una consulta informativa o ambigua NO debe crear una oportunidad en Solicitudes.
+      // La creación de Solicitudes queda estrictamente reservada para la conversión (usp_ConvertirBuyerALead).
 
-      // Gustos y Preferencias
-      if (validPrefCanal || validPrefHorario || validPrefModalidad || pref_sede_preferida || pref_profesional_preferido) {
+      // Gustos y Preferencias (incluyendo servicio de interés actual)
+      if (
+        validPrefCanal ||
+        validPrefHorario ||
+        validPrefModalidad ||
+        validService ||
+        pref_sede_preferida ||
+        pref_profesional_preferido
+      ) {
         await tx.personaPreferencias.create({
           data: {
             id_persona: persona.id_persona,
             id_canal: validPrefCanal,
             id_horario: validPrefHorario,
             id_modalidad: validPrefModalidad,
+            id_servicio_interes: validService,
             sede_preferida: pref_sede_preferida || null,
             profesional_preferido: pref_profesional_preferido || null,
           }
@@ -1301,35 +2036,42 @@ router.put('/:id', async (req, res) => {
         data: updateData
       });
 
-      const validService = await getValidServicioId(tx, serviceOfInterestId);
+      const validService = await getValidServicioId(
+        tx,
+        serviceOfInterestId !== undefined
+          ? serviceOfInterestId
+          : req.body.id_servicio !== undefined
+          ? req.body.id_servicio
+          : req.body.id_servicio_interes
+      );
       const validChannel = await getValidCanalId(tx, channel);
       const validAttractionSource = await getValidFuenteId(tx, attractionSource);
       const validPrefCanal = await getValidCanalId(tx, pref_id_canal);
       const validPrefHorario = await getValidHorarioId(tx, pref_id_horario);
       const validPrefModalidad = await getValidModalidadId(tx, pref_id_modalidad);
 
-      if (concreteRequest !== undefined || serviceOfInterestId !== undefined) {
-        const solicitudExistente = await tx.solicitudes.findFirst({
-          where: { id_persona: Number(id) }
-        });
-
-        if (solicitudExistente) {
-          const dataToUpdate: any = {};
-          if (concreteRequest !== undefined) dataToUpdate.motivo = concreteRequest;
-          if (serviceOfInterestId !== undefined) dataToUpdate.id_servicio = validService;
-
-          await tx.solicitudes.update({
-            where: { id_solicitud: solicitudExistente.id_solicitud },
-            data: dataToUpdate
+      // Conservar historial de interacciones si el mensaje cambió realmente;
+      // NUNCA crear ni modificar solicitudes comerciales históricas de la persona al editar el mensaje
+      if (concreteRequest !== undefined && typeof concreteRequest === 'string') {
+        const trimmedRequest = concreteRequest.trim();
+        if (trimmedRequest) {
+          const lastInteraction = await tx.interacciones.findFirst({
+            where: { id_persona: Number(id) },
+            orderBy: { fecha_hora: 'desc' },
           });
-        } else if (concreteRequest || validService) {
-          await tx.solicitudes.create({
-            data: {
-              id_persona: persona.id_persona,
-              motivo: concreteRequest || 'Solicitud de información general',
-              id_servicio: validService
-            }
-          });
+
+          if (!lastInteraction || lastInteraction.mensaje !== trimmedRequest) {
+            await tx.interacciones.create({
+              data: {
+                id_persona: Number(id),
+                id_canal: validChannel || lastInteraction?.id_canal || null,
+                id_fuente: validAttractionSource || lastInteraction?.id_fuente || null,
+                tipo: 'Mensaje Modificado / Edición',
+                mensaje: trimmedRequest,
+                fecha_hora: new Date(),
+              },
+            });
+          }
         }
       }
 
@@ -1360,19 +2102,51 @@ router.put('/:id', async (req, res) => {
         }
       }
 
-      // Reemplazar Gustos y Preferencias
-      await tx.personaPreferencias.deleteMany({ where: { id_persona: Number(id) } });
-      if (validPrefCanal || validPrefHorario || validPrefModalidad || pref_sede_preferida || pref_profesional_preferido) {
-        await tx.personaPreferencias.create({
-          data: {
-            id_persona: Number(id),
-            id_canal: validPrefCanal,
-            id_horario: validPrefHorario,
-            id_modalidad: validPrefModalidad,
-            sede_preferida: pref_sede_preferida || null,
-            profesional_preferido: pref_profesional_preferido || null,
-          }
+      // Preservar captación inicial: NO sobrescribir CaptacionesBuyer.id_servicio al editar.
+      // Guardar el interés actual en PersonaPreferencias sin borrar las demás preferencias cuando el campo no fue enviado.
+      const hasPrefUpdates =
+        serviceOfInterestId !== undefined ||
+        req.body.id_servicio !== undefined ||
+        req.body.id_servicio_interes !== undefined ||
+        pref_id_canal !== undefined ||
+        pref_id_horario !== undefined ||
+        pref_id_modalidad !== undefined ||
+        pref_sede_preferida !== undefined ||
+        pref_profesional_preferido !== undefined;
+
+      if (hasPrefUpdates) {
+        const existingPref = await tx.personaPreferencias.findFirst({
+          where: { id_persona: Number(id) },
+          orderBy: { id_preferencia: 'desc' },
         });
+
+        const prefDataToSave: any = {};
+        if (
+          serviceOfInterestId !== undefined ||
+          req.body.id_servicio !== undefined ||
+          req.body.id_servicio_interes !== undefined
+        ) {
+          prefDataToSave.id_servicio_interes = validService;
+        }
+        if (pref_id_canal !== undefined) prefDataToSave.id_canal = validPrefCanal;
+        if (pref_id_horario !== undefined) prefDataToSave.id_horario = validPrefHorario;
+        if (pref_id_modalidad !== undefined) prefDataToSave.id_modalidad = validPrefModalidad;
+        if (pref_sede_preferida !== undefined) prefDataToSave.sede_preferida = pref_sede_preferida || null;
+        if (pref_profesional_preferido !== undefined) prefDataToSave.profesional_preferido = pref_profesional_preferido || null;
+
+        if (existingPref) {
+          await tx.personaPreferencias.update({
+            where: { id_preferencia: existingPref.id_preferencia },
+            data: prefDataToSave,
+          });
+        } else {
+          await tx.personaPreferencias.create({
+            data: {
+              id_persona: Number(id),
+              ...prefDataToSave,
+            },
+          });
+        }
       }
 
       // Reemplazar Datos Estudiante

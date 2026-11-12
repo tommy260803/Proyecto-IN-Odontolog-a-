@@ -182,8 +182,9 @@ export const buyerService = {
       const allRes = await fetch(`${API_URL}/buyer`);
       if (allRes.ok) {
         const list = await allRes.json();
+        const items = Array.isArray(list) ? list : (list.items || []);
         return (
-          list.find(
+          items.find(
             (b: any) =>
               String(b.id) === String(id) ||
               String(b.personId) === String(id) ||
@@ -193,6 +194,38 @@ export const buyerService = {
       }
     } catch (_) {}
     return null;
+  },
+
+  // ── EVALUACIÓN Y PERSISTENCIA UNIFICADA CON GEMINI ───────────────────
+  evaluateBuyer: async (id: string | number, options?: { message?: string }) => {
+    if (!useApi) {
+      return { success: true };
+    }
+    const res = await fetch(`${API_URL}/buyer/${id}/evaluate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(options || {}),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Error al evaluar el mensaje del prospecto con Gemini');
+    }
+    return res.json();
+  },
+
+  retryEvaluation: async (interactionId: string | number) => {
+    if (!useApi) {
+      return { success: true };
+    }
+    const res = await fetch(`${API_URL}/buyer/evaluations/${interactionId}/retry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Error al reintentar la evaluación');
+    }
+    return res.json();
   },
 
   // ── VISTAS Y ADMINISTRACIÓN ─────────────────────────────────────────
