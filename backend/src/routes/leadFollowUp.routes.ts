@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { prisma } from '../db';
 import { leadOperationalPriority } from '../services/leadOperationalPriority';
+import { buildLeadFollowUpMessage } from '../services/leadFollowUpMessage';
 import { leadStaffAuthEnabled, getLeadStaffIdentity } from '../services/leadStaffAuth';
 export const leadFollowUpRouter = Router();
 leadFollowUpRouter.use(async (req,res,next) => {
@@ -104,7 +105,7 @@ leadFollowUpRouter.post('/:id', async (req,res) => {
   try {
     const id = Number(req.params.id);
     const { accion,motivo,revision,fecha_lima } = req.body;
-    if (!Number.isSafeInteger(id) || id < 1 || !['programar','pausar','cancelar','preparar'].includes(accion) ||
+    if (!Number.isSafeInteger(id) || id < 1 || !['programar','pausar','cancelar','preparar','actualizar_mensaje'].includes(accion) ||
         typeof motivo !== 'string' || !motivo.trim() || motivo.length>400 || !Number.isSafeInteger(revision)) return res.status(400).json({ error: 'Indica acción, motivo y revisión válidos.' });
     const result = await prisma.$transaction(async tx => {
       if (!await installed(tx)) throw new Error('Requiere instalar 10_SEGUIMIENTO_OPERATIVO_LEAD.sql.');
@@ -124,14 +125,31 @@ leadFollowUpRouter.post('/:id', async (req,res) => {
         await tx.solicitudes.updateMany({ where: { id_solicitud: id },data: { fecha_proximo_seguimiento: date } });
       }
       if (accion==='cancelar') await tx.solicitudes.updateMany({ where: { id_solicitud: id },data: { fecha_proximo_seguimiento: null } });
-      if (accion==='preparar') {
+      if (accion==='preparar' || accion==='actualizar_mensaje') {
+        if (accion==='actualizar_mensaje' && old?.estado!=='PREPARADO') throw new Error('Solo se puede actualizar un mensaje preparado y todavía no enviado.');
         if (old?.estado==='PAUSADO') throw new Error('Reprograma para reanudar el seguimiento.');
         if (!row.Persona.autoriza_contacto || !row.Persona.numero) throw new Error('Falta autorización de contacto o teléfono.');
         if (!row.fecha_proximo_seguimiento) throw new Error('Programa primero el seguimiento.');
-        if (old?.estado==='PREPARADO' && old.borrador) return { reutilizado: true };
+        if (accion==='preparar' && old?.estado==='PREPARADO' && old.borrador) return { reutilizado: true };
         const hours = Number(process.env.LEAD_FOLLOWUP_MIN_HOURS);
         if (old?.ultimo_envio_utc && (!Number.isFinite(hours) || hours<=0 || Date.now()-old.ultimo_envio_utc.getTime()<hours*3600000)) throw new Error('Revisa la frecuencia de contacto permitida.');
-        draft = `Hola ${row.Persona.nombres}, te contactamos de NexoSalud para continuar tu solicitud de ${row.Servicio?.nombre ?? 'atención'}. ¿Deseas revisar las opciones disponibles o tienes alguna duda pendiente?`;
+        const replies = await tx.interacciones.findMany({
+          where: { id_solicitud:id, tipo:'Respuesta del paciente', mensaje:{not:null} },
+          orderBy:[{fecha_hora:'desc'},{id_interaccion:'desc'}],take:2,select:{mensaje:true},
+        });
+        const proposals = await tx.$queryRaw<{id:number;price:string;expiresAt:Date}[]>`
+          SELECT p.id_propuesta AS id, CONVERT(varchar(30),p.precio_cotizado) AS price,
+            p.fecha_vigencia_hasta_utc_lead AS expiresAt
+          FROM dbo.PropuestasEconomicasLead p
+          WHERE p.id_solicitud=${id} AND p.id_servicio=${row.id_servicio} AND p.estado='Pendiente'
+            AND p.fecha_vigencia_hasta_utc_lead>SYSUTCDATETIME()
+            AND NOT EXISTS (SELECT 1 FROM dbo.PropuestasEconomicasLead v
+              WHERE COALESCE(v.id_propuesta_raiz,v.id_propuesta)=COALESCE(p.id_propuesta_raiz,p.id_propuesta)
+                AND v.numero_version>p.numero_version)
+          ORDER BY p.fecha_presentacion DESC,p.id_propuesta DESC
+        `;
+        draft = buildLeadFollowUpMessage({name:row.Persona.nombres,service:row.Servicio?.nombre??'atención',
+          contactAt:row.fecha_proximo_seguimiento,now:new Date(),replies:replies.map(r=>r.mensaje??''),proposals});
         key=old?.estado==='FALLIDO' && old.clave_envio ? old.clave_envio : randomUUID();
         if(old?.estado==='FALLIDO' && old.borrador)draft=old.borrador;
         state='PREPARADO';

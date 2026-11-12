@@ -41,15 +41,16 @@ export function LeadOperationalFollowUp({ requestId }:{ requestId:number }) {
       <input value={reason} maxLength={400} onChange={e=>setReason(e.target.value)} className="mt-1 w-full rounded border bg-background p-2"/>
     </label>
     <div className="flex flex-wrap gap-2">
-      {['programar','pausar','cancelar','preparar'].map((action,index)=><button key={action} type="button"
+      {['programar','pausar','cancelar',data?.seguimiento?.estado==='PREPARADO'?'actualizar_mensaje':'preparar'].map((action,index)=><button key={action} type="button"
         disabled={busy||!data?.instalado||!reason.trim()||(action==='programar'&&!date)} onClick={()=>void save(action)}
         className="rounded border px-3 py-2 text-sm disabled:opacity-50">
-        {['Guardar fecha','Pausar','Cancelar seguimiento','Preparar mensaje'][index]}
+        {['Guardar fecha','Pausar','Cancelar seguimiento',data?.seguimiento?.estado==='PREPARADO'?'Actualizar mensaje':'Preparar mensaje'][index]}
       </button>)}
     </div>
     {data?.seguimiento?.borrador && <div className="rounded border p-3">
       <p className="mb-2 text-xs font-medium">Mensaje preparado · pendiente de envío</p>
       <p className="whitespace-pre-wrap text-sm">{data.seguimiento.borrador}</p>
+      <p className="mt-2 text-xs">Borrador basado en las últimas respuestas registradas y propuestas vigentes para la fecha programada. Revisa antes de enviar; no confirma horarios ni reservas. No se envía automáticamente.</p>
     </div>}
     {error&&<p role="alert" className="text-sm text-red-600">{error}</p>}
   </section>;
