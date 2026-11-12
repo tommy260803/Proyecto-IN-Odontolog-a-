@@ -396,6 +396,7 @@ model Seguimientos {
 }
 
 model EventosEtapa {
+  id_solicitud Int?
   id_evento_etapa Int       @id @default(autoincrement())
   id_persona      Int
   etapa_origen    Int?

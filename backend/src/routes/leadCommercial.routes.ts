@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { Router, type Request, type Response } from 'express';
 import { createHash, randomBytes } from 'node:crypto';
 import { prisma } from '../db';
+import { executePayerTransfer, loadTransferOffer, TransferError } from '../services/leadPayerTransfer';
 import { classifyLeadChat, excludedLeadSites, leadScheduleConstraints, LeadGeminiError } from '../services/leadGemini';
 import { getLeadStaffIdentity, leadStaffAuthEnabled, leadStaffAuthMode, loginLeadStaff, logoutLeadStaff, type LeadStaffIdentity } from '../services/leadStaffAuth';
 
@@ -59,7 +60,7 @@ function route(action: (req: Request, res: Response) => Promise<unknown>) {
     try {
       await action(req, res);
     } catch (error) {
-      if (error instanceof InputError) return res.status(error.status).json({ error: error.message });
+      if (error instanceof InputError || error instanceof TransferError) return res.status(error.status).json({ error: error.message });
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (['P2002', 'P2003', 'P2004', 'P2034'].includes(error.code)) {
           return res.status(409).json({ error: 'La operación entra en conflicto con los datos vigentes.' });
@@ -862,33 +863,19 @@ router.post('/opportunities/:id/staff/payer-transfer', route(async (req, res) =>
     if (!readiness.puede_traspasar || !reference || readiness.autorizacion?.id_autorizacion !== authorizationId) {
       throw new InputError('Los requisitos o la autorización ya no están vigentes. Verifica la preparación para PAYER.', 409);
     }
-    const stages = await tx.etapas.findMany({ where: { nombre: { in: ['LEAD', 'PAYER'] } } });
-    const lead = stages.find(stage => stage.nombre === 'LEAD');
-    const payer = stages.find(stage => stage.nombre === 'PAYER');
-    if (!lead || !payer) throw new InputError('No están configuradas las etapas LEAD y PAYER.', 409);
-    const option = await tx.opciones.findUniqueOrThrow({ where: { id_opcion: reference.id_opcion } });
-    const slot = await tx.disponibilidad.updateMany({
-      where: { id_disponibilidad: option.id_disponibilidad, estado: 'Disponible' }, data: { estado: 'Ocupado' },
+    const offer = await loadTransferOffer(tx,row.id_persona,row.id_solicitud,reference.id_opcion);
+    const reservation = await executePayerTransfer(tx,{
+      personId:row.id_persona,requestId:row.id_solicitud,optionId:reference.id_opcion,
+      fingerprint:offer.huella,key:'authorization_lead_'+authorizationId,
+      accepted:true,authorized:true,contactConsent:false,source:'ASESOR',actorId:user.id_usuario,
+      evidence:'Autorización #'+authorizationId,
     });
-    const moved = await tx.personas.updateMany({
-      where: { id_persona: row.id_persona, id_etapa_actual: lead.id_etapa },
-      data: { id_etapa_actual: payer.id_etapa },
-    });
-    if (slot.count !== 1 || moved.count !== 1) throw new InputError('Cambió el horario o la etapa. Verifica el diagnóstico.', 409);
-    const reservation = await tx.reservas.create({ data: {
-      id_persona: row.id_persona, id_solicitud: row.id_solicitud, id_opcion: option.id_opcion, estado: 'Pendiente',
-    } });
-    await tx.$executeRaw`
-      INSERT dbo.EventosEtapa (id_persona,id_solicitud,etapa_origen,etapa_destino,id_usuario,motivo,evidencia)
-      VALUES (${row.id_persona},${row.id_solicitud},${lead.id_etapa},${payer.id_etapa},${user.id_usuario},
-        N'Traspaso desde LEAD con autorización previa',${'Autorización #' + authorizationId})
-    `;
     const linked = await tx.$executeRaw`
       UPDATE dbo.AutorizacionesReservaLead SET id_reserva = ${reservation.id_reserva}
       WHERE id_autorizacion = ${authorizationId} AND id_solicitud = ${row.id_solicitud} AND id_reserva IS NULL
     `;
     if (linked !== 1) throw new InputError('La autorización ya fue utilizada.', 409);
-    return { id_reserva: reservation.id_reserva, reutilizada: false };
+    return { id_reserva: reservation.id_reserva, reutilizada: reservation.reutilizada };
   }, { ...serializable, timeout: 15_000 });
   res.status(result.reutilizada ? 200 : 201).json(result);
 }));
