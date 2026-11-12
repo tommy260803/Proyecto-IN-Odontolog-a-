@@ -175,7 +175,7 @@ El futuro conector usa `GET /api/lead/operational/connector/pending` para consul
 | 2. OLTP completa | Creación desde vacío y prueba SQL aprobadas | Archivo autónomo con la estructura instalada de BUYER/LEAD y tablas compartidas; conserva los incrementos 09, 10 y 11. Las rutinas analíticas BUYER se instalan por separado con el archivo 03. |
 | 3. Estructura del Mart | Creación desde vacío y pruebas de estructura aprobadas | Tablas BUYER de su versión publicada, dimensiones compartidas y hechos LEAD aprobados. Las bases principales conservan su versión anterior. |
 | 4. Cargas del Mart | Carga vacía, con datos, reejecución y reclasificación aprobadas en el par aislado | Instalador de las rutinas BUYER publicadas, carga transaccional BUYER → dimensiones LEAD → cinco hechos LEAD y conciliación independiente. |
-| 5. Datos ficticios OLTP | Pendiente | Cohorte identificable, historial coherente y resultados esperados definidos antes de insertar. |
+| 5. Datos ficticios OLTP | Cohorte de 500 personas cargada en la copia aislada | Casos BUYER/LEAD, versiones, preferencias y decisiones; medidas conciliadas con el Mart aislado. |
 | 6. Validación integral | Pendiente | Instalación desde vacío, reejecución, OLTP/reportes/Mart y recorridos de interfaz. |
 | 7. Entrega portátil | Pendiente | Requisitos, comandos ordenados, conexiones locales y pasos de presentación. |
 
@@ -317,3 +317,33 @@ Se excluyen de esos totales `sysdiagrams` y ocho funciones/procedimientos auxili
 Se mantienen las nueve dimensiones, los cinco hechos agregados, las 25 FK y las fórmulas aprobadas. El ETL y el nuevo poblamiento priorizarán `SELECT`, `JOIN`, `GROUP BY`, `COUNT`, `SUM`, `CASE`, `INSERT` y `MERGE`. No se añadirán funciones personalizadas, cursores o SQL dinámico para generar datos o cambiar el diseño. Las tres funciones de corte y los disparadores OLTP existentes conservan su función de trazabilidad; su exportación no introduce nuevas reglas dimensionales.
 
 La fase 1 verifica inventario y diferencias; no demuestra una instalación limpia, una carga idempotente ni un recorrido visual. Esas comprobaciones se ejecutarán en sus fases y se registrarán por separado. La versión de la principal queda preservada. Los futuros datos ficticios no se insertaron y no se alteraron los históricos existentes. Los cambios de esta fase se registran en un commit local de `lead`, sin push ni merge.
+
+### Fase 5: cohorte ficticia de 500 personas (copia aislada)
+
+Los archivos [05_POBLAR_BUYER_LEAD.sql](instalacion_actualizada/05_POBLAR_BUYER_LEAD.sql) y [06_AMPLIAR_COHORTE_500.sql](instalacion_actualizada/06_AMPLIAR_COHORTE_500.sql) se ejecutan en ese orden, tras crear la OLTP. Actualmente solo admiten `NexoSalud_InstalacionValidacion`: no instalar en la principal. El primero crea seis personas y tres conversiones; el segundo añade 494 personas y 400 conversiones. No son 500 filas totales: cada persona tiene captación e interacción, y las conversiones tienen solicitud y evento enlazados. Se usan correos `example.invalid`, sin teléfonos ni DNI reales, y la marca DEMO distingue las identidades. No habilitar envíos externos sobre la cohorte.
+
+| Situación final | Personas/solicitudes | Evidencia |
+| --- | ---: | --- |
+| BUYER informativo, aclaración o sin autorización | 97 personas | Consulta inicial y captación; no hay solicitud ni evento de conversión. |
+| LEAD aceptado a tarifa regular | 40 | Propuesta y alternativa aceptadas expresamente; reserva aún no autorizada. |
+| LEAD aceptado con versión y descuento 10% | 40 | Raíz y versión 2, una sola propuesta lógica; acuerdo sobre la versión nueva. |
+| Cerrado por presupuesto a tarifa regular | 40 | Rechazo económico tipificado y cierre documentado. |
+| Cerrado por presupuesto aun con descuento | 40 | Versión 2 rechazada por motivo económico; no contar dos propuestas. |
+| Cerrado por postergación personal | 40 | Motivo de propuesta OTROS, sin atribuirlo al precio. |
+| Precio aceptado, alternativa incompatible y cierre | 40 | Propuesta aceptada, horario rechazado, ampliación de preferencia auditada; sin acuerdo de oportunidad. |
+| Sin resultado comercial documentado | 40 | NULL conservado; no se convierte artificialmente en aceptación o rechazo. |
+| Negociación pendiente | 123 | Tres solicitudes iniciales y 120 con propuesta, opción y respuesta pendiente. |
+
+Distribución prevista: 500 personas/captaciones; 403 solicitudes/eventos BUYER→LEAD; 400 propuestas raíz, 80 versiones adicionales; 400 alternativas, 40 modificaciones; 400 preferencias. M1–M8 esperadas: **80,160,120,120,80,80,160,40**. L1 = **33,3333%**, L2 = **33,3333%**, L3 = **16,6667%**. Las 160 alternativas rechazadas incluyen 40 incompatibles y 120 declinadas por postergación; no toda objeción se clasifica como incompatibilidad.
+
+Se agregan tres servicios, tres tarifas, tres sedes y tres profesionales habilitados solo para su servicio. La agenda tiene 378 disponibilidades futuras: 42 días × tres profesionales × tres franjas, sin superposición por profesional. Ofrecer una opción no bloquea un turno: no hay reservas, pagos, atenciones, seguimientos de TURNED ni transiciones a PAYER. Los casos aceptados acreditan acuerdo comercial, pero esperan autorización de reserva. Los ejemplos no simulan diagnósticos clínicos ni descuentos distintos del catálogo ficticio declarado.
+
+Las fechas de captación, conversión y decisión corresponden a la ejecución actual; la agenda comienza al día siguiente. No se retroceden eventos ni auditorías para fabricar meses históricos. Consultar R1–R3 con el mes actual y corte posterior a la carga. La fecha de vigencia de la propuesta (siete días) y la fecha del turno son conceptos separados.
+
+El archivo 06 protege la carga con una transacción y controles de conteos/M1–M8; un error revierte su ampliación. Si ya existe la propiedad `Cohorte500Lead`, omite nuevas inserciones; no repara ni sobrescribe una cohorte editada. El archivo 05 exige una fuente vacía y rechaza repetirse. Para instalar desde cero: 01 → 02 → 03 → 05 → 06 → 04 → VERIFICAR_CARGA_MART. Esta secuencia conserva actualmente las guardas del par aislado; la instalación portátil y su validación integral siguen pendientes en las fases 6/7.
+
+**Ejecución de la cohorte, 12/11/2026.** Los archivos 05/06 se ejecutaron con código 0 únicamente en las copias aisladas; la ampliación confirmó 500 personas y M1–M8 conforme al diseño. La primera revisión detectó textos de negativa de contacto y servicio no identificado que no coincidían con sus campos en parte de los BUYER informativos. Se corrigió el generador 06 y se alinearon exclusivamente esos registros ficticios sin conversiones en la copia. No se modificaron resultados de LEAD. La conciliación posterior debe mostrar 500 contactos, 481 utilizables y 403 conversiones. Los restantes 19 no autorizan contacto. No se generan teléfonos ficticios que puedan acabar enviando WhatsApp a un tercero.
+
+[VALIDAR_COHORTE_500.sql](instalacion_actualizada/VALIDAR_COHORTE_500.sql) verifica conteos, texto frente a consentimiento/servicio, vínculos persona–captación–solicitud–evento, unicidad de conversión, pertenencia de preferencia/propuesta, importe y profesional habilitado, agenda sin solapamientos, ausencia de operaciones posteriores y ejecución de R1/R2/R3. La prueba del navegador y una reinstalación completa desde vacío con las versiones finales siguen para fase 6. El archivo 06 no pretende simular 500 historias únicas: distribuye diez escenarios comerciales entre identidades y tres servicios/sedes/profesionales para reproducir resultados verificables. No genera meses históricos, pagos, casos clínicos ni campañas con inversión; esos datos no se presentan como probados por esta cohorte.
+
+**Resultados finales ejecutados (código 0).** R1: 403 ingresadas, 80 aceptadas, 160 cerradas sin acuerdo, 123 pendientes y 40 sin resultado; valor acordado S/ 11 400. R2: 400 propuestas raíz, 120 aceptadas, 120 rechazadas (80 económicas), 160 pendientes. R3: 400 alternativas, 80 aceptadas, 160 rechazadas (40 incompatibles), 160 pendientes y 40 modificadas. `DBCC CHECKCONSTRAINTS` terminó sin infracciones. Carga y conciliación del Mart aislado aprobaron nuevamente: M1–M8 = 80,160,120,120,80,80,160,40 y L1–L3 = 33,3333%;33,3333%;16,6667%, iguales en ambas bases. BUYER concilió 500/481/403 (contactos/utilizables/conversiones). Persisten los avisos informativos de omisión de NULL al agregar. Ninguna de estas cargas apuntó a `NexoSaludDB` ni a `NexoSalud_Mart` principales.
