@@ -989,15 +989,22 @@ router.get('/', async (req, res) => {
         duplicateBuyerIds.add(candidate.id_persona);
       }
     }
+    const duplicateIdsForFilter = Array.from(duplicateBuyerIds).slice(0, 1800);
+    if (duplicateBuyerIds.size > duplicateIdsForFilter.length) {
+      console.warn('[buyer.routes] Se limitaron los IDs de duplicados usados en el filtro para respetar el límite de parámetros de SQL Server.');
+    }
 
     if (selectedStates.length > 0) {
       const stateFilters: any[] = [];
       if (selectedStates.some((state) => ['NEW', 'CONTACTED'].includes(state))) {
-        stateFilters.push({
+        const newFilter: any = {
           Etapa: { nombre: 'BUYER' },
-          id_persona: { notIn: Array.from(duplicateBuyerIds) },
           NOT: { estado_calidad: 'Duplicado' },
-        });
+        };
+        if (duplicateIdsForFilter.length > 0) {
+          newFilter.id_persona = { notIn: duplicateIdsForFilter };
+        }
+        stateFilters.push(newFilter);
       }
       if (selectedStates.includes('CONVERTED')) {
         stateFilters.push({ Etapa: { nombre: { in: ['LEAD', 'PAYER', 'CUSTOMER', 'TURNED'] } } });
@@ -1006,12 +1013,11 @@ router.get('/', async (req, res) => {
         stateFilters.push({ estado_calidad: 'Rechazado' });
       }
       if (selectedStates.includes('DUPLICATED')) {
-        stateFilters.push({
-          OR: [
-            { estado_calidad: 'Duplicado' },
-            { id_persona: { in: Array.from(duplicateBuyerIds) } },
-          ],
-        });
+        const duplicateFilter: any[] = [{ estado_calidad: 'Duplicado' }];
+        if (duplicateIdsForFilter.length > 0) {
+          duplicateFilter.push({ id_persona: { in: duplicateIdsForFilter } });
+        }
+        stateFilters.push({ OR: duplicateFilter });
       }
       where.AND = [...(where.AND || []), { OR: stateFilters.length > 0 ? stateFilters : [{ id_persona: -1 }] }];
     }

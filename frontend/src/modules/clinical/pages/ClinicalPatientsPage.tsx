@@ -1,12 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Activity,
   ArrowUpRight,
   Building2,
   Calendar,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   Mail,
   Phone,
@@ -19,11 +22,6 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { useBuyers } from '@/modules/buyer/hooks/useBuyerQueries';
-import { useLeads } from '@/modules/lead/hooks/useLeadQueries';
-import { usePayers } from '@/modules/payer/hooks/usePayerQueries';
-import { useCustomers } from '@/modules/customer/hooks/useCustomerQueries';
-import { useTurnedList } from '@/modules/turned/hooks/useTurnedQueries';
 import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { useSidebar } from '@/shared/context/SidebarContext';
@@ -88,163 +86,23 @@ export default function ClinicalPatientsPage() {
   const navigate = useNavigate();
   const { activeBranch } = useSidebar();
 
-  const { data: buyers = [], isLoading: loadingBuyers } = useBuyers();
-  const { data: leads = [], isLoading: loadingLeads } = useLeads();
-  const { data: payers = [], isLoading: loadingPayers } = usePayers();
-  const { data: customers = [], isLoading: loadingCustomers } = useCustomers();
-  const { data: turnedList = [], isLoading: loadingTurned } = useTurnedList();
+  const { data: unifiedPatients = [], isLoading, isError } = useQuery<UnifiedPatientRecord[]>({
+    queryKey: ['patients', 'directory'],
+    queryFn: async () => {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      const response = await fetch(`${apiUrl}/patients`);
+      if (!response.ok) throw new Error('No se pudo cargar el directorio de pacientes');
+      return response.json();
+    },
+    staleTime: 30_000,
+  });
 
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState<'ALL' | UnifiedPatientRecord['currentStage']>('ALL');
   const [branchFilter, setBranchFilter] = useState<string>('ALL');
   const [selectedPatient, setSelectedPatient] = useState<UnifiedPatientRecord | null>(null);
-
-  const isLoading =
-    loadingBuyers && loadingLeads && loadingPayers && loadingCustomers && loadingTurned;
-
-  // Consolida el directorio único de pacientes priorizando la etapa más avanzada alcanzada
-  const unifiedPatients = useMemo<UnifiedPatientRecord[]>(() => {
-    const map = new Map<string, UnifiedPatientRecord>();
-
-    const upsert = (rec: UnifiedPatientRecord) => {
-      const key =
-        rec.dni && rec.dni !== 'Sin DNI'
-          ? `dni:${rec.dni}`
-          : rec.phone && rec.phone !== 'Sin teléfono'
-            ? `phone:${rec.phone}`
-            : `name:${rec.fullName.toLowerCase()}`;
-
-      const existing = map.get(key);
-      if (!existing || STAGE_STYLE[rec.currentStage].order >= STAGE_STYLE[existing.currentStage].order) {
-        map.set(key, {
-          ...existing,
-          ...rec,
-          customerId: rec.customerId || existing?.customerId,
-        });
-      }
-    };
-
-    for (const b of buyers as any[]) {
-      const firstName = b.person?.firstName || 'Paciente';
-      const lastName = b.person?.lastName || '';
-      upsert({
-        id: `B-${b.id}`,
-        personId: String(b.person?.id || b.id),
-        fullName: `${firstName} ${lastName}`.trim(),
-        firstName,
-        lastName,
-        dni: b.person?.documentNumber || 'Sin DNI',
-        phone: b.person?.phone || 'Sin teléfono',
-        email: b.person?.email || 'No registrado',
-        currentStage: 'BUYER',
-        stageLabel: 'Prospecto (Buyer)',
-        statusLabel: String(b.state || 'Nuevo'),
-        serviceName: b.serviceOfInterest || b.serviceOfInterestId || 'Evaluación Odontológica',
-        branchName: b.preferredBranch || 'Sede California',
-        professionalName: 'Admisión Clínica',
-        lastDate: b.createdAt ? String(b.createdAt).split('T')[0] : '2026-10-15',
-        detailUrl: `/buyer/${b.id}`,
-      });
-    }
-
-    for (const l of leads as any[]) {
-      const firstName = l.person?.firstName || 'Paciente';
-      const lastName = l.person?.lastName || '';
-      upsert({
-        id: `L-${l.id}`,
-        personId: String(l.person?.id || l.id),
-        fullName: `${firstName} ${lastName}`.trim(),
-        firstName,
-        lastName,
-        dni: l.person?.documentNumber || 'Sin DNI',
-        phone: l.person?.phone || 'Sin teléfono',
-        email: l.person?.email || 'No registrado',
-        currentStage: 'LEAD',
-        stageLabel: 'En Negociación (Lead)',
-        statusLabel: String(l.state || 'En negociación'),
-        serviceName: l.requestedServiceId || 'Evaluación Integral',
-        branchName: l.reservation?.branchId || 'Sede California',
-        professionalName: l.reservation?.professionalId || 'Mesa de Admisión',
-        lastDate: l.createdAt ? String(l.createdAt).split('T')[0] : '2026-10-16',
-        detailUrl: `/lead/${l.id}`,
-      });
-    }
-
-    for (const p of payers as any[]) {
-      const firstName = p.person?.firstName || 'Paciente';
-      const lastName = p.person?.lastName || '';
-      upsert({
-        id: `P-${p.id}`,
-        personId: String(p.person?.id || p.id),
-        fullName: `${firstName} ${lastName}`.trim(),
-        firstName,
-        lastName,
-        dni: p.person?.documentNumber || 'Sin DNI',
-        phone: p.person?.phone || 'Sin teléfono',
-        email: p.person?.email || 'No registrado',
-        currentStage: 'PAYER',
-        stageLabel: 'Validación de Pago (Payer)',
-        statusLabel: String(p.state || 'Pendiente'),
-        serviceName: p.lead?.requestedServiceId || 'Tratamiento Programado',
-        branchName: p.reservation?.branchId || 'Sede California',
-        professionalName: p.reservation?.professionalId || 'Caja Clínica',
-        lastDate: p.createdAt ? String(p.createdAt).split('T')[0] : '2026-10-18',
-        detailUrl: `/payer/${p.id}`,
-      });
-    }
-
-    for (const c of customers as any[]) {
-      const firstName = c.person?.firstName || 'Paciente';
-      const lastName = c.person?.lastName || '';
-      upsert({
-        id: `C-${c.id}`,
-        personId: String(c.person?.id || c.id),
-        fullName: `${firstName} ${lastName}`.trim(),
-        firstName,
-        lastName,
-        dni: c.person?.documentNumber || 'Sin DNI',
-        phone: c.person?.phone || 'Sin teléfono',
-        email: c.person?.email || 'No registrado',
-        currentStage: 'CUSTOMER',
-        stageLabel: 'En Tratamiento (Customer)',
-        statusLabel: String(c.state || 'Atendido'),
-        serviceName: c.lead?.requestedServiceId || 'Atención Clínica',
-        branchName: c.reservation?.branchId || 'Sede California',
-        professionalName: c.reservation?.professionalId || 'Dr. Especialista',
-        lastDate: c.reservation?.date ? String(c.reservation.date).split('T')[0] : '2026-10-20',
-        detailUrl: `/customer/${c.id}`,
-        customerId: String(c.id),
-      });
-    }
-
-    for (const t of turnedList as any[]) {
-      const firstName = t.person?.firstName || 'Paciente';
-      const lastName = t.person?.lastName || '';
-      upsert({
-        id: `T-${t.id}`,
-        personId: String(t.person?.id || t.id),
-        fullName: `${firstName} ${lastName}`.trim(),
-        firstName,
-        lastName,
-        dni: t.person?.documentNumber || 'Sin DNI',
-        phone: t.person?.phone || 'Sin teléfono',
-        email: t.person?.email || 'No registrado',
-        currentStage: 'TURNED',
-        stageLabel: 'Fidelizado (Turned)',
-        statusLabel: String(t.state || 'Fidelizado'),
-        serviceName: t.lead?.requestedServiceId || 'Control y Mantenimiento',
-        branchName: t.reservation?.branchId || 'Sede California',
-        professionalName: t.reservation?.professionalId || 'Dr. Especialista',
-        lastDate: t.createdAt ? String(t.createdAt).split('T')[0] : '2026-10-21',
-        detailUrl: `/turned/${t.id}`,
-        customerId: t.customerId ? String(t.customerId) : undefined,
-      });
-    }
-
-    return Array.from(map.values()).sort(
-      (a, b) => STAGE_STYLE[b.currentStage].order - STAGE_STYLE[a.currentStage].order
-    );
-  }, [buyers, leads, payers, customers, turnedList]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const filteredPatients = useMemo(() => {
     return unifiedPatients.filter((p) => {
@@ -268,6 +126,21 @@ export default function ClinicalPatientsPage() {
     });
   }, [unifiedPatients, stageFilter, branchFilter, searchTerm]);
 
+  const totalRecords = filteredPatients.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const paginatedPatients = filteredPatients.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, stageFilter, branchFilter, pageSize]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
   const kpis = useMemo(() => {
     const total = unifiedPatients.length;
     const activeClinical = unifiedPatients.filter(
@@ -281,6 +154,7 @@ export default function ClinicalPatientsPage() {
   }, [unifiedPatients]);
 
   if (isLoading) return <LoadingState />;
+  if (isError) return <p className="text-sm text-rose-600">No se pudo cargar el directorio de pacientes.</p>;
 
   return (
     <div className="space-y-6">
@@ -478,7 +352,7 @@ export default function ClinicalPatientsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredPatients.map((patient) => {
+                paginatedPatients.map((patient) => {
                   const style = STAGE_STYLE[patient.currentStage];
                   return (
                     <tr
@@ -566,6 +440,59 @@ export default function ClinicalPatientsPage() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-slate-200/80 dark:border-slate-800 pt-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-1.5">
+          <span>Mostrando</span>
+          <span className="font-semibold text-slate-700 dark:text-slate-200">
+            {totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1}–
+            {Math.min(currentPage * pageSize, totalRecords)}
+          </span>
+          <span>de</span>
+          <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">
+            {totalRecords.toLocaleString('es-PE')}
+          </span>
+          <label className="ml-3 inline-flex h-8 items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 font-medium text-slate-600 dark:text-slate-300">
+            <select
+              aria-label="Registros por página"
+              value={pageSize}
+              onChange={(event) => setPageSize(Number(event.target.value))}
+              className="bg-transparent font-mono text-xs font-semibold text-slate-700 outline-none dark:text-slate-200"
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span>/ pág</span>
+          </label>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 sm:justify-end">
+          <span className="font-medium text-slate-600 dark:text-slate-300">
+            Página {currentPage} de {totalPages}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={currentPage <= 1}
+              className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 font-medium text-slate-600 dark:text-slate-300 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span>Anterior</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              disabled={currentPage >= totalPages}
+              className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 font-medium text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span>Siguiente</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 

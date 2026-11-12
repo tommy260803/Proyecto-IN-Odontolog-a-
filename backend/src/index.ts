@@ -10,6 +10,7 @@ import turnedRoutes from './routes/turned.routes';
 import reportRoutes from './routes/report.routes';
 import configRoutes from './routes/config.routes';
 import patientAuthRoutes from './routes/patientAuth.routes';
+import patientsRoutes from './routes/patients.routes';
 import { startDunningScheduler } from './services/dunningScheduler';
 import { BuyerEvaluationService } from './services/buyerEvaluationService';
 
@@ -31,6 +32,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/mart', reportRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/patient-auth', patientAuthRoutes);
+app.use('/api/patients', patientsRoutes);
 
 import { CanvaService } from './services/canvaService';
 
