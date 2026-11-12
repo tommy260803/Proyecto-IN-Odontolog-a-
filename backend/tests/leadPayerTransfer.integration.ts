@@ -6,6 +6,7 @@ import express from 'express';
 import { prisma } from '../src/db';
 import { leadTransferRouter } from '../src/routes/leadTransfer.routes';
 import { leadCommercialRouter } from '../src/routes/leadCommercial.routes';
+import payerRouter from '../src/routes/payer.routes';
 import { hashLeadStaffPassword } from '../src/services/leadStaffAuth';
 
 type Fixture={person:number;request:number;option:number;proposal:number;slot:number};
@@ -18,7 +19,7 @@ async function main() {
   let userId:number|undefined;
   let failAt='';
   const report:string[]=[];
-  const app=express();app.use(express.json());app.use('/api/lead/commercial',leadCommercialRouter);app.use('/api/lead',leadTransferRouter);
+  const app=express();app.use(express.json());app.use('/api/lead/commercial',leadCommercialRouter);app.use('/api/lead',leadTransferRouter);app.use('/api/payer',payerRouter);
   let server=app.listen(0,'127.0.0.1');await once(server,'listening');
   let base='http://127.0.0.1:'+(server.address() as AddressInfo).port+'/api/lead';
   const roleMode=process.env.LEAD_STAFF_AUTH_ENABLED,qaMode=process.env.LEAD_STAFF_AUTH_QA;
@@ -106,10 +107,26 @@ async function main() {
       const recovered=await request(`/${f.person}/reserve`,body);assert.equal(recovered.status,200);assert.equal(recovered.body.data.reutilizada,true);
       assert.deepEqual(await counts(f),{reservas:1,eventos:1,pagos:0});
     });
+    await ok('PAYER lista la reserva LEAD como pendiente sin fabricar un pago',async()=>{
+      const reservation=(await prisma.reservas.findFirstOrThrow({where:{id_solicitud:f.request}}));
+      const response=await fetch(base.replace('/api/lead','/api/payer')+'/'+reservation.id_reserva);
+      assert.equal(response.status,200);
+      const payer=await response.json() as any;
+      assert.equal(payer.state,'PENDIENTE');assert.equal(payer.reservationId,String(reservation.id_reserva));assert.equal(payer.payment,undefined);
+      assert.equal((await prisma.pagos.count({where:{Reserva:{id_solicitud:f.request}}})),0);
+    });
     const a=await fixture(),b=await fixture(a.slot),pa=await preview(a),pb=await preview(b);
     await ok('dos solicitudes compiten por un horario: solo una gana',async()=>{
       const results=await Promise.all([request(`/${a.person}/reserve`,payload(a,pa)),request(`/${b.person}/reserve`,payload(b,pb))]);
       assert.deepEqual(results.map(r=>r.status).sort(),[201,409]);assert.equal((await counts(a)).reservas+(await counts(b)).reservas,1);
+    });
+    await ok('bloqueo de solapamientos aunque existan disponibilidades con IDs distintos',async()=>{
+      const occupied=await prisma.disponibilidad.findUniqueOrThrow({where:{id_disponibilidad:a.slot}});
+      const duplicate=await prisma.disponibilidad.create({data:{id_profesional:occupied.id_profesional,id_sede:occupied.id_sede,
+        fecha:occupied.fecha,hora_inicio:occupied.hora_inicio,hora_fin:occupied.hora_fin}});
+      slots.push(duplicate.id_disponibilidad);
+      const overlap=await fixture(duplicate.id_disponibilidad);
+      assert.equal((await request(`/${overlap.person}/transfer-preview?id_solicitud=${overlap.request}&id_opcion=${overlap.option}`)).status,409);
     });
     const pub=await fixture();
     const grant=await request(`/${pub.person}/pre-reservation-access`,{id_solicitud:pub.request,id_opcion:pub.option});assert.equal(grant.status,200,JSON.stringify(grant.body));

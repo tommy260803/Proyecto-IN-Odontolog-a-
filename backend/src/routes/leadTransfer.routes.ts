@@ -65,6 +65,7 @@ leadTransferRouter.get('/public/:id',handler(async(req,res)=>{
     if(offer.huella!==access.huella||receipt&&receipt.huella!==access.huella)throw new TransferError('La oferta cambió. Solicita un nuevo enlace.');
     if(!receipt)await checkTransferOffer(tx,offer);
     const {request:r,proposal:p,slot:d,option:o}=offer;
+    const health=await tx.personaSaludOdontologica.findFirst({where:{id_persona:person},orderBy:{id_salud_odonto:'desc'}});
     return {id_persona:person,patientName:r.Persona.nombres+' '+r.Persona.apellidos,firstName:r.Persona.nombres,lastName:r.Persona.apellidos,
       dni:r.Persona.dni??'',phone:r.Persona.numero??'',email:r.Persona.email??'',id_servicio:r.id_servicio,serviceName:r.Servicio?.nombre,
       serviceDescription:r.Servicio?.descripcion??'',originalPrice:Number(p.precio_cotizado),offeredPrice:Number(p.precio_cotizado),discountPct:0,
@@ -72,7 +73,7 @@ leadTransferRouter.get('/public/:id',handler(async(req,res)=>{
       sede:d.Sede.nombre,sedeId:d.id_sede,doctor:d.Profesional.nombres+' '+d.Profesional.apellidos,
       id_solicitud:r.id_solicitud,id_opcion:o.id_opcion,id_disponibilidad:d.id_disponibilidad,
       fechaOfrecida:d.fecha.toISOString().slice(0,10),horaSugerida:d.hora_inicio.toISOString().slice(11,16)+' - '+d.hora_fin.toISOString().slice(11,16),
-      huella:offer.huella,sedes:[d.Sede],nivelDolor:'',alergias:'',
+      huella:offer.huella,sedes:[d.Sede],nivelDolor:health?.nivel_dolor??'No especificado',alergias:health?.condicion_atencion_especial??'',
       resultado:receipt?{reservaId:receipt.id_reserva,codigoReserva:`NEXO-${String(receipt.id_reserva).padStart(5,'0')}`,reutilizada:true}:null};
   },transferIsolation);
   res.json(result);
@@ -80,7 +81,7 @@ leadTransferRouter.get('/public/:id',handler(async(req,res)=>{
 leadTransferRouter.post('/public/:id/pre-reserve',handler(async(req,res)=>{
   const person=transferId(req.params.id);
   if(typeof req.body.dni!=='string'||!/^\d{8}$/.test(req.body.dni))throw new TransferError('Indica un DNI de ocho dígitos.',400);
-  const fields:{[key:string]:number}={nombres:100,apellidos:100,numero:30,email:150,nivelDolor:30,alergias:300,canal_pago:50,dudaOComentario:500,nombreFamiliar:100,parentesco:50};
+  const fields:{[key:string]:number}={nombres:50,apellidos:50,numero:20,email:100,nivelDolor:20,alergias:100,canal_pago:50,dudaOComentario:500,nombreFamiliar:100,parentesco:50};
   for(const [name,max] of Object.entries(fields))if(req.body[name]!=null&&(typeof req.body[name]!=='string'||req.body[name].length>max))
     throw new TransferError('Revisa la longitud y formato de los datos de contacto.',400);
   const result=await prisma.$transaction(async tx=>{

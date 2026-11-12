@@ -96,6 +96,12 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   });
   const [loading, setLoading] = useState(true);
   const [reserving, setReserving] = useState(false);
+  const [transferPreview, setTransferPreview] = useState<any>(null);
+  const [transferAccepted, setTransferAccepted] = useState(false);
+  const [transferAuthorized, setTransferAuthorized] = useState(false);
+  const [transferEvidence, setTransferEvidence] = useState('');
+  const [transferError, setTransferError] = useState('');
+  const [publicLink, setPublicLink] = useState<{option: string; url: string; expiry: string} | null>(null);
   const [interactionAnalysis, setInteractionAnalysis] = useState<{ requestId: number; result: LeadInteractionAnalysis } | null>(null);
   const [abandonOpen, setAbandonOpen] = useState(false);
   const [abandonReason, setAbandonReason] = useState('');
@@ -507,38 +513,40 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   };
 
   const handleReserveAndConvert = async () => {
-    if (!selectedOpcion) {
-      toast({
-        title: 'Selecciona una propuesta comercial',
-        description: 'Elige una de las ofertas activas en la mesa antes de cerrar el trato.',
-        variant: 'destructive',
-      });
-      return;
+    if (!selectedOpcion || !lead?.Solicitudes?.[0]?.id_solicitud) {
+      toast({title:'Selecciona una propuesta comercial',description:'Se necesita una solicitud y una alternativa concretas.',variant:'destructive'});return;
     }
-
-    const ultimaSolicitud = lead.Solicitudes?.[0];
-    setReserving(true);
+    setReserving(true);setTransferError('');
     try {
-      await leadService.reserve(leadId, {
-        id_solicitud: ultimaSolicitud?.id_solicitud || 1,
-        id_opcion: selectedOpcion,
-      });
-      await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
-      await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYERS] });
-      toast({
-        title: 'Trato cerrado · Transferido a PAYER',
-        description: 'La orden de cobro ha sido generada en el módulo PAYER.',
-      });
-      navigate('/payer');
-    } catch {
-      toast({
-        title: 'Error al confirmar el cierre',
-        description: 'No se pudo procesar el pase a la etapa PAYER.',
-        variant: 'destructive',
-      });
-    } finally {
-      setReserving(false);
-    }
+      const preview=await leadService.transferPreview(leadId,lead.Solicitudes[0].id_solicitud,selectedOpcion);
+      setTransferAccepted(false);setTransferAuthorized(false);setTransferEvidence('');
+      setTransferPreview({...preview,key:crypto.randomUUID()});
+    } catch(error) {toast({title:'No se puede cerrar el trato',description:error instanceof Error?error.message:'No se pudo verificar.',variant:'destructive'});}
+    finally {setReserving(false);}
+  };
+  const confirmTransfer = async (event: React.FormEvent) => {
+    event.preventDefault();if(!transferPreview||reserving)return;
+    setReserving(true);setTransferError('');
+    try {
+      await leadService.reserve(leadId,{id_solicitud:transferPreview.id_solicitud,id_opcion:transferPreview.id_opcion,
+        huella:transferPreview.huella,clave_operacion:transferPreview.key,
+        aceptacion_explicita:transferAccepted,autorizacion_reserva:transferAuthorized,evidencia:transferEvidence.trim()});
+      await queryClient.invalidateQueries({queryKey:[QUERY_KEYS.LEADS]});
+      await queryClient.invalidateQueries({queryKey:[QUERY_KEYS.PAYERS]});
+      toast({title:'Traspaso confirmado',description:'Reserva pendiente registrada en PAYER. No se ha generado ni validado un pago.'});
+      setTransferPreview(null);navigate('/payer');
+    } catch(error) {setTransferError(error instanceof Error?error.message:'No se pudo confirmar. Reintenta la misma operación.');}
+    finally {setReserving(false);}
+  };
+  const preparePublicLink = async () => {
+    if(!selectedOpcion||!lead?.Solicitudes?.[0]?.id_solicitud)throw new Error('Selecciona primero una alternativa de la mesa.');
+    const access=await leadService.createPreReservationAccess(leadId,lead.Solicitudes[0].id_solicitud,selectedOpcion);
+    const url=`${window.location.origin}/pre-reserva/${leadId}#token=${access.token}`;
+    setPublicLink({option:String(selectedOpcion),url,expiry:access.vence_utc});return url;
+  };
+  const openPublicReservation = async () => {
+    try { const url=await preparePublicLink();window.location.assign(url); }
+    catch(error) {toast({title:'No se pudo abrir Pre-Reserva',description:error instanceof Error?error.message:'Revisa la propuesta.',variant:'destructive'});}
   };
 
   if (loading) return <LoadingState />;
@@ -681,7 +689,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     };
   })();
 
-  const generateWhatsAppMessage = () => {
+  const generateWhatsAppMessage = (linkOverride?: string) => {
     const patientFirstName = lead?.nombres || 'Paciente';
     const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Evaluación Odontológica';
 
@@ -694,7 +702,8 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
       const doctor = selectedOptData.Disponibilidad?.Profesional?.apellidos
         ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}`
         : 'Staff Odontológico Colegiado';
-      const fechaVigencia = selectedOptData.Disponibilidad?.fecha?.split('T')[0] || 'Vigente';
+      const expiry = selectedOptData.Propuesta?.fecha_vigencia_hasta_utc_lead;
+      const fechaVigencia = expiry ? new Date(expiry).toLocaleString('es-PE',{timeZone:'America/Lima'}) : 'por verificar';
 
       return (
         `Hola ${patientFirstName}, te saludamos de NexoSalud Dental.\n\n` +
@@ -704,7 +713,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         `• Sede: ${sede}\n` +
         `• Especialista: ${doctor}\n\n` +
         `Puedes confirmar tu pre-reserva en línea aquí:\n` +
-        `https://nexosalud.pe/pre-reserva/${leadId}\n\n` +
+        `${linkOverride || (publicLink?.option===String(selectedOpcion)?publicLink.url:'Solicita el enlace privado mediante Pre-Reserva.')}\n\n` +
         `Quedamos atentos para asegurar tu turno.`
       );
     }
@@ -716,28 +725,37 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     );
   };
 
-  const handleSendWhatsApp = () => {
+  const handleSendWhatsApp = async () => {
+    let link: string | undefined;
+    try { if(selectedOpcion)link=await preparePublicLink(); }
+    catch(error) {toast({title:'Revisa la propuesta',description:error instanceof Error?error.message:'No se pudo generar el enlace.',variant:'destructive'});return;}
     const rawPhone = String(lead?.numero || '').replace(/\D/g, '');
     const cleanPhone = rawPhone.length === 9 ? `51${rawPhone}` : rawPhone;
-    const message = generateWhatsAppMessage();
+    const message = generateWhatsAppMessage(link);
     const url = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
       : `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
 
-  const handleSendEmail = () => {
+  const handleSendEmail = async () => {
+    let link: string | undefined;
+    try { if(selectedOpcion)link=await preparePublicLink(); }
+    catch(error) {toast({title:'Revisa la propuesta',description:error instanceof Error?error.message:'No se pudo generar el enlace.',variant:'destructive'});return;}
     const patientFirstName = lead?.nombres || 'Paciente';
     const email = lead?.email || '';
     const subject = encodeURIComponent(
       `Propuesta Comercial Odontológica — NexoSalud (${patientFirstName})`
     );
-    const body = encodeURIComponent(generateWhatsAppMessage());
+    const body = encodeURIComponent(generateWhatsAppMessage(link));
     window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
   };
 
-  const handleCopyWhatsApp = () => {
-    navigator.clipboard.writeText(generateWhatsAppMessage());
+  const handleCopyWhatsApp = async () => {
+    try {
+      const link=selectedOpcion?await preparePublicLink():undefined;
+      await navigator.clipboard.writeText(generateWhatsAppMessage(link));
+    } catch(error) {toast({title:'No se pudo copiar',description:error instanceof Error?error.message:'Revisa la propuesta.',variant:'destructive'});return;}
     setCopiedWhatsApp(true);
     toast({
       title: 'Propuesta copiada',
@@ -872,13 +890,13 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
               </button>
             )}
 
-            <Link
-              to={`/pre-reserva/${leadId}`}
+            <button
+              type="button" onClick={() => void openPublicReservation()}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             >
               <ExternalLink className="h-3.5 w-3.5 text-slate-400" strokeWidth={1.75} />
               <span>Pre-Reserva</span>
-            </Link>
+            </button>
 
             <button
               type="button"
@@ -2393,6 +2411,33 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
           </div>
         </div>
       </div>
+
+      <Dialog open={!!transferPreview} onOpenChange={(open)=>{if(!open&&!reserving)setTransferPreview(null);}}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar traspaso a PAYER</DialogTitle>
+            <DialogDescription>Confirma las condiciones comunicadas y autorizadas por el paciente. Se creará una reserva pendiente, sin registrar pagos.</DialogDescription>
+          </DialogHeader>
+          {transferPreview && <form onSubmit={confirmTransfer} className="space-y-4">
+            <div className="rounded-lg border p-3 text-sm space-y-1">
+              <p>{transferPreview.servicio} · S/ {transferPreview.precio}</p>
+              <p>{transferPreview.sede} · {transferPreview.profesional}</p>
+              <p>{transferPreview.fecha} · {transferPreview.inicio}–{transferPreview.fin} (Lima)</p>
+              <p>Precio vigente hasta {new Date(transferPreview.vence).toLocaleString('es-PE',{timeZone:'America/Lima'})}</p>
+            </div>
+            <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={transferAccepted} onChange={e=>setTransferAccepted(e.target.checked)} disabled={reserving}/>El paciente aceptó expresamente esta propuesta y su importe.</label>
+            <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={transferAuthorized} onChange={e=>setTransferAuthorized(e.target.checked)} disabled={reserving}/>El paciente autorizó reservar este horario con estas condiciones.</label>
+            <label className="block text-sm">Referencia de la confirmación (llamada, visita o mensaje)
+              <textarea required maxLength={300} value={transferEvidence} onChange={e=>setTransferEvidence(e.target.value)} disabled={reserving} className="mt-1 w-full rounded border bg-background p-2"/>
+            </label>
+            {transferError&&<p role="alert" className="text-sm text-red-600">{transferError}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" disabled={reserving} onClick={()=>setTransferPreview(null)} className="rounded border px-3 py-2">Cancelar</button>
+              <button type="submit" disabled={reserving||!transferAccepted||!transferAuthorized||!transferEvidence.trim()} className="rounded bg-teal-700 px-3 py-2 text-white disabled:opacity-50">{reserving?'Confirmando…':'Confirmar reserva y traspaso'}</button>
+            </div>
+          </form>}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={abandonOpen} onOpenChange={(open) => { if (!abandoning) setAbandonOpen(open); }}>
         <DialogContent>

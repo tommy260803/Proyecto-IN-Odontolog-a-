@@ -29,7 +29,6 @@ import {
   Phone,
   Mail,
   Calendar,
-  CalendarDays,
   Clock,
   MapPin,
   CheckCircle2,
@@ -65,20 +64,6 @@ interface ChatMessage {
   text: string;
   timestamp: string;
 }
-
-const formatDateIso = (d: Date): string => {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const getRecommendedOffset = (dolor: string): number => {
-  const d = (dolor || '').toLowerCase();
-  if (d.includes('intenso') || d.includes('agudo')) return 0; // Hoy o Mañana
-  if (d.includes('moderado')) return 1; // 24-48 horas
-  return 3; // Leve o Ninguno: 3 días después para holgura de pago
-};
 
 interface PaymentOrderPdfData {
   nombres: string;
@@ -134,7 +119,6 @@ export default function PreReservationPage() {
 
   // Form states
   const [selectedServiceKey, setSelectedServiceKey] = useState<string>('main');
-  const [showCalendarInput, setShowCalendarInput] = useState(false);
   const [customCatalogService, setCustomCatalogService] = useState<any>(null);
   const [showCatalogSelector, setShowCatalogSelector] = useState(false);
   const [dni, setDni] = useState('');
@@ -152,7 +136,11 @@ export default function PreReservationPage() {
   const [alergias, setAlergias] = useState('');
   const [canalPago, setCanalPago] = useState('Efectivo en clínica');
   const [comentarios, setComentarios] = useState('');
-  const [consentimiento, setConsentimiento] = useState(true);
+  const [consentimiento, setConsentimiento] = useState(false);
+  const [acceptedOffer,setAcceptedOffer] = useState(false);
+  const [authorizedReservation,setAuthorizedReservation] = useState(false);
+  const accessToken=new URLSearchParams(window.location.hash.slice(1)).get('token')??'';
+  const operationKey=useRef(crypto.randomUUID());
 
   // Submitting state
   const [submitting, setSubmitting] = useState(false);
@@ -167,28 +155,6 @@ export default function PreReservationPage() {
   const [userInput, setUserInput] = useState('');
   const [isAiTyping, setIsAiTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  // Próximos 7 días interactivos
-  const upcomingDays = React.useMemo(() => {
-    const days = [];
-    const today = new Date();
-    const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Dic'];
-
-    for (let i = 0; i < 7; i++) {
-      const d = new Date();
-      d.setDate(today.getDate() + i);
-      const iso = formatDateIso(d);
-      days.push({
-        offset: i,
-        iso,
-        dayName: i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : daysOfWeek[d.getDay()],
-        dayNum: d.getDate(),
-        month: months[d.getMonth()],
-      });
-    }
-    return days;
-  }, []);
 
   // Lista consolidada de servicios: Cotizado principal + Cruzados relacionados
   const availableServices = React.useMemo(() => {
@@ -274,10 +240,7 @@ export default function PreReservationPage() {
   // Cambio inteligente de dolor y ajuste reactivo de fecha recomendada
   const handleSelectNivelDolor = (nuevoNivel: string) => {
     setNivelDolor(nuevoNivel);
-    const offset = getRecommendedOffset(nuevoNivel);
-    const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + offset);
-    setFechaCita(formatDateIso(targetDate));
+
   };
 
   // Cargar datos de la oferta pública
@@ -287,7 +250,7 @@ export default function PreReservationPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await leadService.getPublicOffer(id);
+        const data = await leadService.getPublicOffer(id,accessToken);
         setOfferData(data);
         setNombres(data.firstName || data.patientName || '');
         setApellidos(data.lastName || '');
@@ -296,13 +259,10 @@ export default function PreReservationPage() {
         setDni(data.dni || '');
         setSelectedSedeId(data.sedeId || (data.sedes?.[0]?.id_sede || 1));
 
-        // Inicializar nivel de dolor y sugerir fecha según molestia (por defecto 3 días si leve/ninguno)
-        const initialDolor = data.nivelDolor || 'Ninguno (Preventivo)';
-        setNivelDolor(initialDolor);
-        const offset = getRecommendedOffset(initialDolor);
-        const targetDate = new Date();
-        targetDate.setDate(targetDate.getDate() + offset);
-        setFechaCita(formatDateIso(targetDate));
+        setNivelDolor(data.nivelDolor || 'No especificado');
+        setFechaCita(data.fechaOfrecida);
+        setHoraCita(data.horaSugerida);
+        if(data.resultado)setPreReserveSuccess(data.resultado);
 
         // Mensaje de bienvenida inicial del Asistente NexoSalud
         const patientGreeting = data.firstName ? `¡Hola ${data.firstName}!` : '¡Hola!';
@@ -322,7 +282,7 @@ export default function PreReservationPage() {
       }
     };
     fetchOffer();
-  }, [id]);
+  }, [id,accessToken]);
 
   useEffect(() => {
     if (isChatOpen) {
@@ -415,7 +375,7 @@ export default function PreReservationPage() {
       const fallbackMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'agent',
-        text: 'Nuestra tarifa promocional incluye diagnóstico completo y esterilización garantizada. Puedes completar el formulario para congelar tu precio ahora.',
+        text: 'No pude verificar esa consulta. Revisa las condiciones de tu oferta o solicita ayuda al negociador; no se ha cambiado ni reservado tu horario.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setChatMessages((prev) => [...prev, fallbackMsg]);
@@ -437,10 +397,10 @@ export default function PreReservationPage() {
       return;
     }
 
-    if (!consentimiento) {
+    if (!consentimiento || !acceptedOffer || !authorizedReservation) {
       toast({
         title: 'Consentimiento Requerido',
-        description: 'Debes autorizar el contacto clínico para formalizar la reserva.',
+        description: 'Confirma la aceptación de la propuesta, la autorización de reserva y el consentimiento de contacto.',
         variant: 'destructive',
       });
       return;
@@ -449,6 +409,8 @@ export default function PreReservationPage() {
     setSubmitting(true);
     try {
       const payload = {
+        token:accessToken,huella:offerData.huella,clave_operacion:operationKey.current,
+        aceptacion_explicita:acceptedOffer,autorizacion_reserva:authorizedReservation,consentimiento_contacto:consentimiento,
         dni: dni.trim(),
         nombres: nombres.trim(),
         apellidos: apellidos.trim(),
@@ -476,7 +438,7 @@ export default function PreReservationPage() {
       setPdfModalOpen(true);
       toast({
         title: '¡Pre-Reserva Confirmada! 🎉',
-        description: `Código: ${result.data?.codigoReserva || 'NEXO-CONFIRMADO'}. Hemos bloqueado tu tarifa por 48 horas.`,
+        description: `Código: ${result.data?.codigoReserva || 'NEXO-CONFIRMADO'}. Reserva pendiente registrada en PAYER. No acredita un pago.`,
       });
     } catch (err: any) {
       console.error('Error in pre-reserve submit:', err);
@@ -627,7 +589,7 @@ export default function PreReservationPage() {
                 </Badge>
                 <h2 className="text-lg sm:text-xl font-black tracking-tight mt-0.5">¡Felicitaciones, {nombres}!</h2>
                 <p className="text-teal-100 text-xs mt-0.5 max-w-md mx-auto">
-                  Tu cupo y tarifa para <span className="font-bold text-white underline">{activeService.name}</span> han quedado congelados por 48 horas en nuestra central clínica.
+                  Tu cupo y tarifa para <span className="font-bold text-white underline">{activeService.name}</span> quedaron registrados en una reserva pendiente, vinculada a PAYER. No se ha registrado un pago.
                 </p>
               </div>
 
@@ -745,7 +707,7 @@ export default function PreReservationPage() {
                         Formulario de Pre-Reserva
                       </h2>
                       <p className="text-teal-100 text-[10.5px] font-normal leading-tight">
-                        Completa tus datos para emitir tu orden clínica y congelar la tarifa.
+                        Revisa tus datos y confirma la propuesta y el horario ofrecidos.
                       </p>
                     </div>
                   </div>
@@ -1019,47 +981,10 @@ export default function PreReservationPage() {
                       <span>3. Coordinación de Cita & Sede</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <div className="space-y-1">
-                        <Label className="text-[11px] font-semibold text-slate-700">Sede Preferencial</Label>
-                        <Select
-                          value={String(selectedSedeId)}
-                          onValueChange={(val) => setSelectedSedeId(val)}
-                        >
-                          <SelectTrigger className="!bg-white !text-slate-900 !border-slate-200 text-xs h-9 rounded-xl font-medium shadow-2xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
-                            <SelectValue placeholder="Selecciona sede" />
-                          </SelectTrigger>
-                          <SelectContent className="!bg-white !border-slate-200 text-slate-900 shadow-xl">
-                            {offerData.sedes && offerData.sedes.length > 0 ? (
-                              offerData.sedes.map((s: any) => (
-                                <SelectItem key={s.id_sede} value={String(s.id_sede)}>
-                                  {s.nombre} - {s.direccion || ''}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <>
-                                <SelectItem value="1">Sede California - Av. Larco 820, Urb. California, Trujillo</SelectItem>
-                                <SelectItem value="2">Sede Primavera - Av. Teodoro Valcárcel 345, Urb. Primavera, Trujillo</SelectItem>
-                                <SelectItem value="3">Sede Centro Histórico - Jr. Pizarro 456, Centro Histórico, Trujillo</SelectItem>
-                              </>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-[11px] font-semibold text-slate-700">Turno Preferido de Atención</Label>
-                        <Select value={horaCita} onValueChange={setHoraCita}>
-                          <SelectTrigger className="!bg-white !text-slate-900 !border-slate-200 text-xs h-9 rounded-xl font-medium shadow-2xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
-                            <SelectValue placeholder="Selecciona turno preferido" />
-                          </SelectTrigger>
-                          <SelectContent className="!bg-white !border-slate-200 text-slate-900 shadow-xl">
-                            <SelectItem value="09:00 - 13:00 (Mañana)">Mañana (09:00 AM - 01:00 PM)</SelectItem>
-                            <SelectItem value="14:00 - 18:00 (Tarde)">Tarde (02:00 PM - 06:00 PM)</SelectItem>
-                            <SelectItem value="18:00 - 21:00 (Noche)">Noche (06:00 PM - 09:00 PM)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="rounded-xl border border-teal-200 bg-teal-50 p-3 text-sm space-y-1">
+                      <p><strong>Horario ofrecido:</strong> {fechaCita} · {horaCita} (Lima)</p>
+                      <p>{offerData.sede} · {offerData.doctor}</p>
+                      <p className="text-xs">Esta confirmación conserva la alternativa recibida. Si necesitas otra sede, especialista o fecha, solicita una nueva alternativa al negociador.</p>
                     </div>
 
                     {/* Nivel de dolor con opciones blancas y hover Teal */}
@@ -1091,114 +1016,6 @@ export default function PreReservationPage() {
                           );
                         })}
                       </div>
-                    </div>
-
-                    {/* Banner clínico reactivo según dolor */}
-                    <div className={`p-2.5 rounded-xl border text-[11px] flex items-center gap-2 ${
-                      nivelDolor.includes('Intenso') || nivelDolor.includes('Agudo')
-                        ? 'bg-red-50 border-red-200 text-red-900'
-                        : nivelDolor.includes('Moderado')
-                        ? 'bg-amber-50 border-amber-200 text-amber-900'
-                        : 'bg-teal-50/80 border-teal-200 text-teal-900'
-                    }`}>
-                      <AlertCircle className={`w-4 h-4 shrink-0 ${
-                        nivelDolor.includes('Intenso') || nivelDolor.includes('Agudo')
-                          ? 'text-red-600'
-                          : nivelDolor.includes('Moderado')
-                          ? 'text-amber-600'
-                          : 'text-teal-600'
-                      }`} />
-                      <div className="leading-tight">
-                        {nivelDolor.includes('Intenso') || nivelDolor.includes('Agudo') ? (
-                          <span><strong>Atención Urgente Recomendada:</strong> Al presentar molestia intensa, preseleccionamos fecha prioritaria (Hoy o Mañana).</span>
-                        ) : nivelDolor.includes('Moderado') ? (
-                          <span><strong>Atención Pronta:</strong> Te sugerimos coordinar tu cita en las próximas 24 a 48 horas.</span>
-                        ) : (
-                          <span><strong>Fecha Sugerida (3 días después):</strong> Te damos 3 días de margen para coordinar tu pago y cita con total comodidad.</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Selector Interactivo de Fecha (Próximos 7 días) */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-[11px] font-semibold text-slate-700">
-                          Selecciona el día de tu cita
-                        </Label>
-                        <span className="text-[10px] text-slate-500 font-medium">
-                          Elegido: <strong className="text-teal-700">{fechaCita}</strong>
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
-                        {upcomingDays.map((day) => {
-                          const isSelected = fechaCita === day.iso;
-                          const recommendedOffset = getRecommendedOffset(nivelDolor);
-                          const isRecommended =
-                            (recommendedOffset === 0 && (day.offset === 0 || day.offset === 1)) ||
-                            (recommendedOffset === 1 && (day.offset === 1 || day.offset === 2)) ||
-                            (recommendedOffset === 3 && day.offset === 3);
-
-                          return (
-                            <button
-                              key={day.iso}
-                              type="button"
-                              onClick={() => {
-                                setFechaCita(day.iso);
-                                setShowCalendarInput(false);
-                              }}
-                              className={`py-2 px-1 rounded-xl border flex flex-col items-center justify-center transition-all cursor-pointer relative ${
-                                isSelected
-                                  ? '!bg-teal-600 !border-teal-600 text-white shadow-xs ring-1 ring-teal-500'
-                                  : '!bg-white !border-slate-200 text-slate-700 hover:!bg-teal-50/50 hover:!border-teal-400 hover:!text-teal-950 shadow-2xs'
-                              }`}
-                            >
-                              {isRecommended && (
-                                <span className={`absolute -top-1.5 text-[7.5px] font-black px-1 rounded-full uppercase tracking-tighter ${
-                                  isSelected
-                                    ? 'bg-amber-400 text-slate-950'
-                                    : 'bg-teal-100 text-teal-800'
-                                }`}>
-                                  {day.offset === 0 ? 'Hoy' : day.offset === 3 ? 'Ideal' : 'Sugerido'}
-                                </span>
-                              )}
-                              <span className={`text-[10px] font-bold ${isSelected ? 'text-teal-100' : 'text-slate-500'}`}>
-                                {day.dayName}
-                              </span>
-                              <span className="text-sm font-black tracking-tight leading-tight">
-                                {day.dayNum}
-                              </span>
-                              <span className={`text-[9px] uppercase font-semibold ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
-                                {day.month}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Botón para alternar a fecha personalizada */}
-                      <div className="pt-1 flex items-center justify-between">
-                        <button
-                          type="button"
-                          onClick={() => setShowCalendarInput(!showCalendarInput)}
-                          className="text-[10.5px] font-semibold text-teal-700 hover:text-teal-800 hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <CalendarDays className="w-3.5 h-3.5" />
-                          <span>{showCalendarInput ? 'Ocultar calendario' : '¿Deseas elegir otra fecha más adelante?'}</span>
-                        </button>
-                      </div>
-
-                      {showCalendarInput && (
-                        <div className="pt-1 animate-in fade-in-50 duration-200">
-                          <Input
-                            type="date"
-                            value={fechaCita}
-                            min={formatDateIso(new Date())}
-                            onChange={(e) => setFechaCita(e.target.value)}
-                            className="!bg-white !text-slate-900 !border-slate-200 text-xs h-9 rounded-xl shadow-2xs font-medium focus:!border-teal-500 focus:!ring-1 focus:!ring-teal-500"
-                          />
-                        </div>
-                      )}
                     </div>
 
                     <div className="space-y-1">
@@ -1288,6 +1105,9 @@ export default function PreReservationPage() {
                       />
                     </div>
 
+                    <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" checked={acceptedOffer} onChange={e=>setAcceptedOffer(e.target.checked)}/>Acepto la propuesta de {activeService.name} por S/ {Number(activeService.offeredPrice).toFixed(2)}.</label>
+                    <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" checked={authorizedReservation} onChange={e=>setAuthorizedReservation(e.target.checked)}/>Autorizo reservar el horario, sede y especialista indicados.</label>
+
                     {/* Checkbox de consentimiento con fondo blanco */}
                     <div className="flex items-start gap-2 pt-1">
                       <Checkbox
@@ -1297,7 +1117,7 @@ export default function PreReservationPage() {
                         className={!consentimiento ? '!bg-white !border-slate-300 hover:!border-teal-500 mt-0.5' : '!bg-teal-600 !border-teal-600 text-white mt-0.5'}
                       />
                       <Label htmlFor="consent" className="text-xs text-slate-700 leading-snug cursor-pointer select-none">
-                        Autorizo a Clínica NexoSalud a contactarme por WhatsApp/Email para coordinar mi cita y confirmo que deseo congelar mi tarifa promocional.
+                        Autorizo el contacto por los medios proporcionados para coordinar esta solicitud.
                       </Label>
                     </div>
                   </div>
@@ -1316,7 +1136,7 @@ export default function PreReservationPage() {
                 <Button
                   type="submit"
                   form="preReserveForm"
-                  disabled={submitting}
+                  disabled={submitting || !acceptedOffer || !authorizedReservation || !consentimiento}
                   className="w-full sm:w-auto sm:min-w-[270px] h-10 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl shadow-md shadow-teal-700/20 text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   {submitting ? (
@@ -1430,7 +1250,7 @@ export default function PreReservationPage() {
             {/* Nota de Tranquilidad al Paciente */}
             <div className="w-full p-3 rounded-xl bg-teal-950/50 border border-teal-800/60 backdrop-blur-sm text-[11px] text-teal-200/90 flex items-start gap-2">
               <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
-              <span>Al confirmar tu pre-reserva, congelas tu tarifa por 48 horas sin compromiso de pago inmediato. Nuestro equipo coordinará tu llegada.</span>
+              <span>Al confirmar autorizas la reserva del horario ofrecido. PAYER continuará la coordinación del pago; esta confirmación no acredita un pago.</span>
             </div>
 
           </div>

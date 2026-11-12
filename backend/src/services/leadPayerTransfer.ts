@@ -92,10 +92,12 @@ export async function executePayerTransfer(tx:Prisma.TransactionClient, command:
     if(old.id_persona!==c.personId||old.id_opcion!==c.optionId||old.huella!==c.fingerprint)
       throw new TransferError('La solicitud ya se traspasó con otras condiciones.');
     const reservation=await tx.reservas.findUnique({where:{id_reserva:old.id_reserva}});
-    const event=await tx.eventosEtapa.findUnique({where:{id_evento_etapa:old.id_evento}});
+    const event=await tx.eventosEtapa.findUnique({where:{id_evento_etapa:old.id_evento},include:{EtapaOrigen:true,EtapaDestino:true}});
     if(!reservation||reservation.id_persona!==c.personId||reservation.id_solicitud!==c.requestId||reservation.id_opcion!==c.optionId||
-      !event||event.id_solicitud!==c.requestId||event.id_persona!==c.personId)
+      !event||event.id_solicitud!==c.requestId||event.id_persona!==c.personId||event.EtapaOrigen?.nombre!=='LEAD'||event.EtapaDestino.nombre!=='PAYER')
       throw new TransferError('El traspaso registrado tiene referencias inconsistentes. Requiere revisión.');
+    if(await tx.eventosEtapa.count({where:{id_solicitud:c.requestId,EtapaDestino:{nombre:'PAYER'}}})!==1)
+      throw new TransferError('Hay más de un evento PAYER para esta solicitud. Requiere conciliación.');
     if(['Cancelada','Vencida'].includes(reservation.estado))throw new TransferError('La reserva del traspaso está cancelada o vencida. No se creará otra automáticamente.');
     return {id_reserva:old.id_reserva,codigoReserva:`NEXO-${String(old.id_reserva).padStart(5,'0')}`,reutilizada:true};
   }

@@ -85,8 +85,9 @@ export const leadService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error('Error al registrar reserva');
-    return res.json();
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || 'No se pudo confirmar el traspaso');
+    return body;
   },
 
   getAllLeads: async () => {
@@ -276,47 +277,32 @@ export const leadService = {
     return `https://www.canva.com/api/oauth/authorize?code_challenge_method=s256&response_type=code&client_id=${clientId}&scope=${scopes}&code_challenge=${codeChallenge}&redirect_uri=${redirectUri}`;
   },
 
-  getPublicOffer: async (leadId: string | number) => {
-    const cleanId = String(leadId).replace(/\D/g, '') || leadId;
-    const endpoints = [
-      `${API_URL}/lead/public/${cleanId}`,
-      `/api/lead/public/${cleanId}`,
-      `https://proyecto-odontologia-backend.onrender.com/api/lead/public/${cleanId}`,
-    ];
-    let lastError = null;
-    for (const ep of endpoints) {
-      try {
-        const res = await fetch(ep);
-        if (res.ok) return await res.json();
-      } catch (e) {
-        lastError = e;
-      }
-    }
-    throw lastError || new Error('No se pudo cargar la oferta comercial');
+  transferPreview: async (id: string, request: number, option: number | string) => {
+    const response = await fetch(`${API_URL}/lead/${id}/transfer-preview?id_solicitud=${request}&id_opcion=${option}`);
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'No se pudo verificar la propuesta');
+    return body;
   },
-
+  createPreReservationAccess: async (id: string, request: number, option: number | string) => {
+    const response = await fetch(`${API_URL}/lead/${id}/pre-reservation-access`, {
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id_solicitud:request,id_opcion:option}),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'No se pudo preparar el enlace');
+    return body;
+  },
+  getPublicOffer: async (leadId: string | number, token: string) => {
+    const response=await fetch(`${API_URL}/lead/public/${encodeURIComponent(leadId)}?token=${encodeURIComponent(token)}`, {referrerPolicy:'no-referrer'});
+    const body=await response.json();
+    if(!response.ok) throw new Error(body.error || 'El enlace no está disponible');
+    return body;
+  },
   submitPublicPreReserve: async (leadId: string | number, payload: any) => {
-    const cleanId = String(leadId).replace(/\D/g, '') || leadId;
-    const endpoints = [
-      `${API_URL}/lead/public/${cleanId}/pre-reserve`,
-      `/api/lead/public/${cleanId}/pre-reserve`,
-      `https://proyecto-odontologia-backend.onrender.com/api/lead/public/${cleanId}/pre-reserve`,
-    ];
-    let lastError = null;
-    for (const ep of endpoints) {
-      try {
-        const res = await fetch(ep, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (res.ok) return await res.json();
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Error al procesar la pre-reserva');
-      } catch (e) {
-        lastError = e;
-      }
-    }
-    throw lastError || new Error('No se pudo completar la pre-reserva');
+    const response=await fetch(`${API_URL}/lead/public/${encodeURIComponent(leadId)}/pre-reserve`, {
+      method:'POST',headers:{'Content-Type':'application/json'},referrerPolicy:'no-referrer',body:JSON.stringify(payload),
+    });
+    const body=await response.json();
+    if(!response.ok) throw new Error(body.error || 'No se pudo confirmar. Reintenta la misma operación.');
+    return body;
   },
 };
