@@ -172,14 +172,39 @@ El futuro conector usa `GET /api/lead/operational/connector/pending` para consul
 | Fase | Estado | Entrega |
 | --- | --- | --- |
 | 1. Inventario | Completado el 11/11/2026, Lima | Catálogo observado, correspondencia con fuentes, dependencias y diferencias enumeradas abajo. |
-| 2. OLTP completa | Pendiente | Consolidar la base de BUYER y las ampliaciones de LEAD, incluidos los incrementos 09, 10 y 11. |
+| 2. OLTP completa | Creación desde vacío y prueba SQL aprobadas | Archivo autónomo con la estructura instalada de BUYER/LEAD y tablas compartidas; conserva los incrementos 09, 10 y 11. No incluye las rutinas analíticas BUYER pendientes descritas abajo. |
 | 3. Estructura del Mart | Pendiente | Resolver la diferencia de versión BUYER antes de consolidar la estructura compartida y los cinco hechos LEAD. |
 | 4. Cargas del Mart | Pendiente | Dimensiones y hechos por separado, SQL sencillo y conciliación independiente. |
 | 5. Datos ficticios OLTP | Pendiente | Cohorte identificable, historial coherente y resultados esperados definidos antes de insertar. |
 | 6. Validación integral | Pendiente | Instalación desde vacío, reejecución, OLTP/reportes/Mart y recorridos de interfaz. |
 | 7. Entrega portátil | Pendiente | Requisitos, comandos ordenados, conexiones locales y pasos de presentación. |
 
-El orden final de ejecución será **estructura OLTP → estructura Mart → datos ficticios OLTP → dimensiones → hechos → validación → aplicación**. Las cargas analíticas no crearán decisiones comerciales ficticias. El nuevo paquete se alojará en `instalacion_actualizada/`; por ahora contiene exclusivamente el inventario, no scripts de instalación o poblamiento listos para ejecutar.
+El orden final de ejecución será **estructura OLTP → estructura Mart → datos ficticios OLTP → dimensiones → hechos → validación → aplicación**. Las cargas analíticas no crearán decisiones comerciales ficticias. El paquete se aloja en `instalacion_actualizada/`. Su archivo OLTP ya está disponible para instalación nueva; la estructura del Mart y el poblamiento siguen pendientes.
+
+### Fase 2: instalar la OLTP completa desde cero
+
+Archivo: [01_CREAR_OLTP_ACTUALIZADA.sql](instalacion_actualizada/01_CREAR_OLTP_ACTUALIZADA.sql). Es autónomo: crea la base, 44 tablas, 412 columnas, 70 índices de aplicación, 43 CHECK, 94 FK y 20 módulos. Conserva las estructuras compartidas y las ampliaciones de BUYER/LEAD observadas. Contiene tres funciones de corte y siete disparadores ya existentes, no nuevas funciones para el ETL o para generar datos. Excluye objetos de diagramas SSMS y tablas piloto de QA. Mantiene la lógica instalada; normaliza la codificación del disparador de vigencia y conserva explícitamente la vista heredada `v_DatosDimTiempo` en `dbo`.
+
+SHA-256 del archivo ensayado: `682EECB9A04F83D550F52B9168688049E6E5D352E925971D47891E96939B4CCE`.
+
+**Para una laptop con una base nueva**, este archivo ya incorpora el esquema inicial de Daniel y las ampliaciones de LEAD: no ejecutar primero `buyer_revision/semana9/init_oltp.sql` ni `APLICAR_BUYER_LEAD.sql`. Esas son rutas anteriores para sus respectivos estados de origen. El archivo nuevo rechaza cualquier base que ya exista: no borra, reemplaza o migra registros. En la instancia actual `ANTHONY`, `NexoSaludDB` ya existe y no se debe volver a instalar.
+
+Requisitos: SQL Server 2019/2022 compatible, permisos de creación de bases/objetos, SQLCMD, nombre de destino nuevo y confirmado dos veces. La convención existente de fechas de negocio requiere hora local del servidor UTC−05:00; si no coincide, el instalador se detiene. No se ha modificado la lógica temporal de las funciones para hacerla depender de otra zona. Conservar UTF-8 y `-f 65001` para que los mensajes y catálogos no sufran la codificación alterada detectada en el origen.
+
+Desde la raíz del repositorio, en una instancia donde el nombre elegido NO exista:
+
+```powershell
+sqlcmd -S "SU_INSTANCIA" -E -C -I -b -f 65001 -d master -v BaseDatos=NexoSaludDB ConfirmarDestino=NexoSaludDB -i database/lead_revision/instalacion_actualizada/01_CREAR_OLTP_ACTUALIZADA.sql
+if ($LASTEXITCODE -ne 0) { throw 'Se detuvo la instalación OLTP; revisar la salida antes de continuar.' }
+```
+
+No se copian personas, usuarios, credenciales, citas ni tokens. Se insertan únicamente nombres estructurales de cinco etapas, seis roles, siete canales y dos modalidades, además del inicio de auditoría de esta instalación (`ConfiguracionLeadRevision`). Los servicios, tarifas, sedes, profesionales, promociones, motivos y operaciones ficticias se prepararán en la fase 5. La prueba puede avanzar contadores IDENTITY aunque revierta sus filas; los futuros scripts deben resolver claves por relaciones y no por números asumidos.
+
+**Validación ejecutada entre el 11 y 12/11/2026, Lima.** Se creó exclusivamente `NexoSalud_InstalacionValidacion`, previamente inexistente. La comparación de catálogo coincidió en las 412 columnas, 70 índices, 94 FK y 43 CHECK; los 20 módulos conservaron su lógica al normalizar cabeceras/espacios y la corrección de texto indicada. La reejecución rechazó la base existente con 55002; un destino distinto de su confirmación fue rechazado con 55001 y no se creó. Se normalizaron los finales de línea del archivo a UTF-8/LF y se reconstruyó la misma copia, verificando antes su marcador y ausencia de datos operativos; la instalación, la prueba y la comparación final volvieron a pasar con el archivo de la huella publicada. La exportación final de metadatos agotó primero su límite de 30 segundos y luego completó con 120 segundos. La base de validación se conserva para las fases siguientes, sin crear varias copias adicionales. Ningún comando de instalación apuntó a las dos bases principales.
+
+[PRUEBA_INSTALACION_OLTP.sql](instalacion_actualizada/PRUEBA_INSTALACION_OLTP.sql) exige el marcador del paquete y ausencia de datos operativos; rechaza `NexoSaludDB`, `NexoSalud_Mart` y bases de sistema. Con datos temporales dentro de una transacción comprobó captación, conversión, reintento (una solicitud y un evento), entrada al corte y ejecución de R1/R2/R3. Tras rollback no quedaron personas, servicios, solicitudes, captaciones, eventos ni historial del caso. Pasaron `DBCC CHECKCONSTRAINTS` y `DBCC CHECKDB`. La primera ejecución terminó por tiempo de espera a 60 segundos y no se registró como aprobada; la segunda, con límite de 120 segundos y mensajes de progreso, terminó con código 0. No se demostró la causa del primer timeout.
+
+En ese caso, R1 mostró una entrada sin resultado documentado, no un acuerdo, y R2/R3 devolvieron cero operaciones y porcentajes NULL. Es la conducta del procedimiento existente: la conversión no declara un resultado comercial. La fase 5 registrará explícitamente estados pendientes y decisiones en los casos de demostración. Esta prueba no valida todavía casos aceptados/rechazados, los ocho totales con datos, el frontend ni una recuperación por fallo de instalación; corresponden a fases posteriores. La creación de la base queda fuera de la transacción DDL: si una instalación falla después de crearla, puede quedar vacía; revisar ese destino antes de acordar la recuperación, sin borrar automáticamente nada.
 
 ### Resultado del inventario de lectura
 
