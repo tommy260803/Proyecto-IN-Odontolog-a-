@@ -173,13 +173,15 @@ El futuro conector usa `GET /api/lead/operational/connector/pending` para consul
 | --- | --- | --- |
 | 1. Inventario | Completado el 11/11/2026, Lima | Catálogo observado, correspondencia con fuentes, dependencias y diferencias enumeradas abajo. |
 | 2. OLTP completa | Creación desde vacío y prueba SQL aprobadas | Archivo autónomo con la estructura instalada de BUYER/LEAD y tablas compartidas; conserva los incrementos 09, 10 y 11. No incluye las rutinas analíticas BUYER pendientes descritas abajo. |
-| 3. Estructura del Mart | Pendiente | Resolver la diferencia de versión BUYER antes de consolidar la estructura compartida y los cinco hechos LEAD. |
+| 3. Estructura del Mart | Creación desde vacío y pruebas de estructura aprobadas | Tablas BUYER de su versión publicada, dimensiones compartidas y hechos LEAD aprobados. Las bases principales conservan su versión anterior. |
 | 4. Cargas del Mart | Pendiente | Dimensiones y hechos por separado, SQL sencillo y conciliación independiente. |
 | 5. Datos ficticios OLTP | Pendiente | Cohorte identificable, historial coherente y resultados esperados definidos antes de insertar. |
 | 6. Validación integral | Pendiente | Instalación desde vacío, reejecución, OLTP/reportes/Mart y recorridos de interfaz. |
 | 7. Entrega portátil | Pendiente | Requisitos, comandos ordenados, conexiones locales y pasos de presentación. |
 
-El orden final de ejecución será **estructura OLTP → estructura Mart → datos ficticios OLTP → dimensiones → hechos → validación → aplicación**. Las cargas analíticas no crearán decisiones comerciales ficticias. El paquete se aloja en `instalacion_actualizada/`. Su archivo OLTP ya está disponible para instalación nueva; la estructura del Mart y el poblamiento siguen pendientes.
+**Versión objetivo del Mart para instalación NUEVA (fase 3).** El nuevo paquete utilizará el hecho de captación por persona y el hecho de inversión por gasto ya definidos por el equipo BUYER en `buyer_revision/semana9/init_mart.sql` y `06_segunda_tabla_hecho_inversion_buyer.sql`. Es la versión publicada que espera `MartSyncService`; no es un cambio de grano diseñado por LEAD. Frente al Mart principal inventariado, esta instalación nueva tendrá una definición distinta de `fact_captacion_buyer` y añadirá `fact_inversion_campana_buyer`. Las dimensiones y los otros nueve hechos conservarán sus estructuras observadas, incluidos los cinco LEAD agregados. Esta decisión solo afecta al script para una base nueva: no autoriza convertir, borrar o recargar el BUYER histórico de `NexoSalud_Mart`. Sus datos requerirían una migración acordada por separado. Los procedimientos de sincronización se incorporarán con la fase 4 de cargas; disponer de sus tablas no instala todavía el ETL.
+
+El orden final de ejecución será **estructura OLTP → estructura Mart → datos ficticios OLTP → dimensiones → hechos → validación → aplicación**. Las cargas analíticas no crearán decisiones comerciales ficticias. El paquete se aloja en `instalacion_actualizada/`. Sus archivos OLTP y de estructura Mart ya están disponibles para instalación nueva; las cargas y el poblamiento siguen pendientes.
 
 ### Fase 2: instalar la OLTP completa desde cero
 
@@ -205,6 +207,29 @@ No se copian personas, usuarios, credenciales, citas ni tokens. Se insertan úni
 [PRUEBA_INSTALACION_OLTP.sql](instalacion_actualizada/PRUEBA_INSTALACION_OLTP.sql) exige el marcador del paquete y ausencia de datos operativos; rechaza `NexoSaludDB`, `NexoSalud_Mart` y bases de sistema. Con datos temporales dentro de una transacción comprobó captación, conversión, reintento (una solicitud y un evento), entrada al corte y ejecución de R1/R2/R3. Tras rollback no quedaron personas, servicios, solicitudes, captaciones, eventos ni historial del caso. Pasaron `DBCC CHECKCONSTRAINTS` y `DBCC CHECKDB`. La primera ejecución terminó por tiempo de espera a 60 segundos y no se registró como aprobada; la segunda, con límite de 120 segundos y mensajes de progreso, terminó con código 0. No se demostró la causa del primer timeout.
 
 En ese caso, R1 mostró una entrada sin resultado documentado, no un acuerdo, y R2/R3 devolvieron cero operaciones y porcentajes NULL. Es la conducta del procedimiento existente: la conversión no declara un resultado comercial. La fase 5 registrará explícitamente estados pendientes y decisiones en los casos de demostración. Esta prueba no valida todavía casos aceptados/rechazados, los ocho totales con datos, el frontend ni una recuperación por fallo de instalación; corresponden a fases posteriores. La creación de la base queda fuera de la transacción DDL: si una instalación falla después de crearla, puede quedar vacía; revisar ese destino antes de acordar la recuperación, sin borrar automáticamente nada.
+
+### Fase 3: crear la estructura completa del Mart
+
+Archivo: [02_CREAR_MART_ACTUALIZADO.sql](instalacion_actualizada/02_CREAR_MART_ACTUALIZADO.sql). Es autónomo: crea un Mart NUEVO con 28 tablas (17 dimensiones y 11 hechos), 195 columnas, 39 índices, 15 CHECK y 60 FK. Las nueve dimensiones usadas por LEAD son un subconjunto de esas 17; no se crearon nueve dimensiones adicionales duplicadas. Se conservan las dos columnas calculadas existentes de `Dim_Horario`, incluida la persistencia de `DiaSemana`; no se introducen funciones, disparadores ni procedimientos nuevos en el Mart.
+
+SHA-256 del archivo ensayado: `9478CD0B06CAB61C6556E2C59C25199854B87733FF96917760D4568F5D035A69`.
+
+Los once hechos son los cinco nuevos de LEAD, `fact_negociacion_lead` heredado, los dos BUYER publicados y los tres heredados de PAYER, CUSTOMER y TURNED. El hecho de captación de BUYER es el de Daniel por persona/captación; el de inversión es por gasto. No se cambió el DDL de esas dos tablas respecto a sus fuentes publicadas ni el grano agregado de los cinco hechos LEAD. El cambio de versión de BUYER está limitado a la instalación nueva: el Mart principal sigue con su hecho de captación anterior y sin el hecho de inversión, tal como documenta el inventario.
+
+Desde la raíz, para una instancia donde `NexoSalud_Mart` todavía NO exista, ejecutar después del archivo 01:
+
+```powershell
+sqlcmd -S "SU_INSTANCIA" -E -C -I -b -f 65001 -d master -v BaseMart=NexoSalud_Mart ConfirmarDestino=NexoSalud_Mart -i database/lead_revision/instalacion_actualizada/02_CREAR_MART_ACTUALIZADO.sql
+if ($LASTEXITCODE -ne 0) { throw 'Se detuvo la instalación del Mart; revisar la salida antes de continuar.' }
+```
+
+Este archivo ya contiene la estructura base: no ejecutar antes `buyer_revision/semana9/init_mart.sql` ni los instaladores dimensionales antiguos. Requiere SQL Server 2019/2022 compatible, permisos de creación y SQLCMD. Acepta un destino nuevo confirmado, no una actualización: rechaza cualquier base existente, incluido el Mart principal de `ANTHONY`. Utiliza las ubicaciones predeterminadas de SQL Server, sin rutas de archivos del equipo de origen. La creación de la base queda fuera de la transacción DDL; ante un error puede quedar la base vacía y debe revisarse antes de decidir la recuperación. No borra ni restaura automáticamente.
+
+**Validación ejecutada el 12/11/2026, Lima.** Se creó exclusivamente `NexoSalud_Mart_InstalacionValidacion`, junto a la OLTP aislada de la fase 2, para continuar el mismo ensayo. Se verificaron 28 tablas, 195 columnas, 60 FK habilitadas/confiables y 25 FK de los cinco hechos LEAD. Las 26 tablas conservadas coincidieron con el origen en columnas, tipos, índices (incluido el orden lógico de claves), CHECK y relaciones. Las dos tablas BUYER coincidieron con el DDL publicado. La primera comparación detectó que la generación había cambiado el orden de columnas de la PK heredada de PAYER; se corrigió y se reconstruyó únicamente la copia vacía, comprobando su marcador y ausencia de datos. La versión final volvió a pasar comparación y pruebas. Las definiciones de los archivos de BUYER y las bases principales no se modificaron.
+
+[PRUEBA_ESTRUCTURA_MART.sql](instalacion_actualizada/PRUEBA_ESTRUCTURA_MART.sql) exige un destino aislado marcado y vacío. Comprobó las cinco PK dimensionales, ambos roles de horario apuntando a `Dim_Horario`, las columnas calculadas en UTF-8 y una fila agregada que conserva cinco oportunidades aceptadas. Rechazó PK duplicada, clave dimensional inexistente, medidas negativas, M5 mayor que M4 y M8 mayor que M7. Los miembros y hechos temporales se insertaron dentro de una transacción y se revirtieron; todas las tablas quedaron vacías. Pasaron `DBCC CHECKDB` y `DBCC CHECKCONSTRAINTS`. La reejecución del instalador fue rechazada con 55102; un destino no confirmado fue rechazado con 55101 sin crear esa base.
+
+Los valores temporales de medidas de esa prueba solo ejercitan la estructura: no son una carga desde OLTP ni una conciliación de negocio. La fase 4 preparará las cargas de dimensiones/hechos y las rutinas publicadas de sincronización BUYER; la fase 5 aportará la cohorte transaccional y la fase 6 conciliará M1–M8 y L1–L3. Los hechos de las otras fases conservan su estructura; no se ejecutaron sus ETL. El paquete todavía no tiene datos de presentación ni acredita una prueba visual del frontend.
 
 ### Resultado del inventario de lectura
 
