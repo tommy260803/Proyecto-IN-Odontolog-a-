@@ -12,6 +12,12 @@ export type { BuyerIntention, ServiceCatalogItem, SyntheticBuyerTestCase };
  */
 export const SYNTHETIC_SERVICE_CATALOG: ServiceCatalogItem[] = [
   {
+    id_servicio: 7,
+    nombre: 'Evaluación odontológica',
+    descripcion: 'Evaluación inicial para orientar el diagnóstico y el tratamiento odontológico.',
+    categoria: 'Evaluación',
+  },
+  {
     id_servicio: 1,
     nombre: 'Ortodoncia (Brackets y Alineadores)',
     descripcion: 'Tratamiento correctivo de alineación dental, brackets metálicos, estéticos e invisibles.',
@@ -55,6 +61,14 @@ export const SYNTHETIC_SERVICE_CATALOG: ServiceCatalogItem[] = [
  */
 export const SYNTHETIC_BUYER_MESSAGES: SyntheticBuyerTestCase[] = [
   // --- CASOS ESTÁNDAR: SOLICITA_RESERVA ---
+  {
+    id: 'reserva-evaluacion-odontologica',
+    mensaje: 'Quiero reservar una evaluación odontológica en la sede Centro Histórico por la tarde.',
+    intencionEsperada: 'SOLICITA_RESERVA',
+    idServicioEsperado: 7,
+    descripcion: 'Solicitud de reserva para evaluación odontológica con sede y horario preferidos.',
+    categoriaPrueba: 'reserva',
+  },
   {
     id: 'reserva-ortodoncia',
     mensaje: 'Hola, quiero agendar una cita para ponerme brackets este viernes en la tarde.',

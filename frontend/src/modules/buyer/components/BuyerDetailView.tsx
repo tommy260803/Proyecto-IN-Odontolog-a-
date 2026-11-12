@@ -92,6 +92,37 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
   // Diagnóstico Comercial / BI
   const [aiAnalysis, setAiAnalysis] = useState<BuyerMarketingAnalysis | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiUpdatedAt, setAiUpdatedAt] = useState<Date | null>(null);
+
+  const runAiAnalysis = async (b = buyer): Promise<boolean> => {
+    if (!b || isAiLoading) return false;
+    setIsAiLoading(true);
+    try {
+      const result = await analyzeBuyerMarketingAgent({
+        fullName: `${b.person?.firstName || ''} ${b.person?.lastName || ''}`.trim(),
+        phone: b.person?.phone,
+        email: b.person?.email,
+        serviceOfInterest: b.serviceOfInterest,
+        preferredBranch: b.pref_sede_preferida,
+        preferredTimeSlot: b.pref_id_horario,
+        channel: b.channel,
+        attractionSource: b.attractionSource,
+        concreteRequest: b.concreteRequest,
+        contactAuthorization: b.contactAuthorization,
+        qualityStatus: b.state === BuyerState.CONVERTED ? 'Valido' : undefined,
+        state: b.state,
+        isConverted: b.state === BuyerState.CONVERTED,
+      });
+      setAiAnalysis(result);
+      setAiUpdatedAt(new Date());
+      return true;
+    } catch (err) {
+      console.warn('Error en diagnóstico BI:', err);
+      return false;
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   useEffect(() => {
     buyerService
@@ -125,38 +156,27 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
     }
   }, [buyer]);
 
-  const runAiAnalysis = async (b = buyer) => {
-    if (!b) return;
-    setIsAiLoading(true);
-    try {
-      const result = await analyzeBuyerMarketingAgent({
-        fullName: `${b.person?.firstName || ''} ${b.person?.lastName || ''}`.trim(),
-        phone: b.person?.phone,
-        email: b.person?.email,
-        serviceOfInterest: b.serviceOfInterest,
-        preferredBranch: b.pref_sede_preferida,
-        preferredTimeSlot: b.pref_id_horario,
-        channel: b.channel,
-        attractionSource: b.attractionSource,
-        concreteRequest: b.concreteRequest,
-        contactAuthorization: b.contactAuthorization,
-        qualityStatus: b.state === BuyerState.CONVERTED ? 'Valido' : undefined,
-        state: b.state,
-        isConverted: b.state === BuyerState.CONVERTED,
-      });
-      setAiAnalysis(result);
-    } catch (err) {
-      console.warn('Error en diagnóstico BI:', err);
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (buyer) {
       runAiAnalysis(buyer);
     }
   }, [buyer?.id]);
+
+  const handleRefreshAI = async () => {
+    const updated = await runAiAnalysis(buyer);
+    if (updated) {
+      toast({
+        title: 'Análisis actualizado',
+        description: 'El agente revisó nuevamente los datos del prospecto.',
+      });
+    } else if (buyer) {
+      toast({
+        title: 'No se pudo actualizar',
+        description: 'Verifica la conexión e inténtalo nuevamente.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   // Cálculo de Lead Scoring Comercial (0 - 100)
   const commercialScore = useMemo(() => {
@@ -804,8 +824,23 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
                           ? 'bg-emerald-500'
                           : evt.type === 'inquiry'
                           ? 'bg-[#0f766e]'
+                          : evt.type === 'consent'
+                          ? buyer.contactAuthorization
+                            ? 'bg-emerald-500'
+                            : 'bg-amber-400'
+                          : evt.type === 'created'
+                          ? 'bg-[#0f766e]'
                           : 'bg-slate-300 dark:bg-slate-600'
                       }`}
+                      aria-label={
+                        evt.type === 'consent'
+                          ? buyer.contactAuthorization
+                            ? 'Consentimiento registrado'
+                            : 'Consentimiento pendiente'
+                          : evt.type === 'created'
+                          ? 'Ficha Buyer creada'
+                          : undefined
+                      }
                     />
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
                       <h3 className="text-xs font-semibold text-slate-900 dark:text-white">
@@ -859,14 +894,25 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
 
               <button
                 type="button"
-                onClick={() => runAiAnalysis(buyer)}
+                onClick={handleRefreshAI}
                 disabled={isAiLoading}
-                className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 disabled:opacity-50 cursor-pointer"
+                aria-busy={isAiLoading}
+                className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 text-[11px] font-medium text-slate-600 dark:text-slate-300 transition-[transform,background-color,color] duration-200 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.97] disabled:cursor-wait disabled:opacity-70 cursor-pointer"
                 title="Recalcular análisis con IA"
               >
-                <RefreshCw className={`h-3 w-3 ${isAiLoading ? 'animate-spin' : ''}`} />
-                <span>{isAiLoading ? 'Evaluando' : 'Actualizar'}</span>
+                <RefreshCw className={`h-3 w-3 ${isAiLoading ? 'animate-spin' : ''}`} aria-hidden />
+                <span>{isAiLoading ? 'Analizando…' : 'Actualizar'}</span>
               </button>
+            </div>
+            <div className="flex min-h-4 items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400" aria-live="polite">
+              <span className={`h-1.5 w-1.5 rounded-full ${isAiLoading ? 'animate-pulse bg-amber-500' : aiUpdatedAt ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} aria-hidden />
+              <span>
+                {isAiLoading
+                  ? 'Procesando la evaluación del prospecto…'
+                  : aiUpdatedAt
+                    ? `Análisis actualizado a las ${format(aiUpdatedAt, 'HH:mm:ss')}`
+                    : 'Análisis pendiente'}
+              </span>
             </div>
 
             {/* Scoring del Prospecto */}
@@ -946,7 +992,7 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
               </div>
 
               {/* Actividad 2: Perfil y Clasificación de Preferencias Clínicas */}
-              <div className="border-l-2 border-teal-500 bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
+              <div className="border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-r-lg border-y border-r border-slate-200/70 dark:border-slate-800">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
                     2. Clasificación de Preferencias

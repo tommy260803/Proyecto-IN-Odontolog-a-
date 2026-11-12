@@ -759,37 +759,161 @@ router.post('/evaluations/:id/retry', async (req, res) => {
 // Obtener la lista de BUYERS mapeada al formato que espera el frontend
 router.get('/', async (req, res) => {
   try {
+    const hasPagination = req.query.page !== undefined || req.query.pageSize !== undefined;
+    const page = Math.max(1, Number.parseInt(String(req.query.page || '1'), 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number.parseInt(String(req.query.pageSize || '25'), 10) || 25));
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const selectedStates = typeof req.query.states === 'string'
+      ? req.query.states.split(',').map((value) => value.trim()).filter(Boolean)
+      : [];
+    const selectedChannels = typeof req.query.channels === 'string'
+      ? req.query.channels.split(',').map((value) => value.trim()).filter(Boolean)
+      : [];
+    const fromDate = typeof req.query.fromDate === 'string' ? req.query.fromDate : '';
+    const toDate = typeof req.query.toDate === 'string' ? req.query.toDate : '';
+
     const etapaBuyer = await prisma.etapas.findFirst({ where: { nombre: 'BUYER' } });
     if (!etapaBuyer) return res.json([]);
 
-    const personas = await prisma.personas.findMany({
-      where: {
+    const where: any = {
+      OR: [
+        { id_campana_origen: { not: null } },
+        { id_canal_origen: { not: null } },
+        { Etapa: { nombre: { in: ['BUYER', 'LEAD', 'PAYER', 'CUSTOMER', 'TURNED'] } } }
+      ]
+    };
+
+    if (search) {
+      where.AND = [{
         OR: [
-          { id_campana_origen: { not: null } },
-          { id_canal_origen: { not: null } },
-          { Etapa: { nombre: { in: ['BUYER', 'LEAD'] } } }
+          { nombres: { contains: search } },
+          { apellidos: { contains: search } },
+          { dni: { contains: search } },
+          { email: { contains: search } },
+          { numero: { contains: search } },
+          { CanalOrigen: { nombre: { contains: search } } },
+          { CampanaOrigen: { nombre: { contains: search } } },
+          { Solicitudes: { some: { Servicio: { nombre: { contains: search } } } } },
         ]
+      }];
+    }
+
+    if (fromDate || toDate) {
+      where.fecha_registro = {};
+      if (fromDate) where.fecha_registro.gte = new Date(`${fromDate}T00:00:00`);
+      if (toDate) where.fecha_registro.lte = new Date(`${toDate}T23:59:59.999`);
+    }
+
+    if (selectedChannels.length > 0) {
+      const channelIds = await prisma.canales.findMany({
+        where: { nombre: { in: selectedChannels } },
+        select: { id_canal: true },
+      });
+      where.id_canal_origen = { in: channelIds.map((channel) => channel.id_canal) };
+    }
+
+    // Detectar duplicados entre todos los BUYER antes de paginar. Si se hace
+    // sobre la página actual, el filtro y el estado mostrado dependen del
+    // tamaño de página y pueden clasificarse de forma distinta.
+    const duplicateBuyerIds = new Set<number>();
+    const duplicateCandidates = await prisma.personas.findMany({
+      where: { Etapa: { nombre: 'BUYER' } },
+      select: {
+        id_persona: true,
+        numero: true,
+        dni: true,
+        email: true,
+        estado_calidad: true,
       },
+    });
+    const duplicatePhoneCounts = new Map<string, number>();
+    const duplicateDniCounts = new Map<string, number>();
+    const duplicateEmailCounts = new Map<string, number>();
+    for (const candidate of duplicateCandidates) {
+      const phone = (candidate.numero || '').replace(/\D/g, '').slice(-9);
+      if (phone.length >= 8) duplicatePhoneCounts.set(phone, (duplicatePhoneCounts.get(phone) || 0) + 1);
+      const dni = candidate.dni?.trim();
+      if (dni) duplicateDniCounts.set(dni, (duplicateDniCounts.get(dni) || 0) + 1);
+      const email = candidate.email?.trim().toLowerCase();
+      if (email && email.includes('@')) duplicateEmailCounts.set(email, (duplicateEmailCounts.get(email) || 0) + 1);
+    }
+    for (const candidate of duplicateCandidates) {
+      const phone = (candidate.numero || '').replace(/\D/g, '').slice(-9);
+      const dni = candidate.dni?.trim();
+      const email = candidate.email?.trim().toLowerCase();
+      if (
+        candidate.estado_calidad === 'Duplicado' ||
+        (phone.length >= 8 && (duplicatePhoneCounts.get(phone) || 0) > 1) ||
+        (Boolean(dni) && (duplicateDniCounts.get(dni as string) || 0) > 1) ||
+        (Boolean(email) && (duplicateEmailCounts.get(email as string) || 0) > 1)
+      ) {
+        duplicateBuyerIds.add(candidate.id_persona);
+      }
+    }
+
+    if (selectedStates.length > 0) {
+      const stateFilters: any[] = [];
+      if (selectedStates.some((state) => ['NEW', 'CONTACTED'].includes(state))) {
+        stateFilters.push({
+          Etapa: { nombre: 'BUYER' },
+          id_persona: { notIn: Array.from(duplicateBuyerIds) },
+          NOT: { estado_calidad: 'Duplicado' },
+        });
+      }
+      if (selectedStates.includes('CONVERTED')) {
+        stateFilters.push({ Etapa: { nombre: { in: ['LEAD', 'PAYER', 'CUSTOMER', 'TURNED'] } } });
+      }
+      if (selectedStates.includes('DISCARDED')) {
+        stateFilters.push({ estado_calidad: 'Rechazado' });
+      }
+      if (selectedStates.includes('DUPLICATED')) {
+        stateFilters.push({
+          OR: [
+            { estado_calidad: 'Duplicado' },
+            { id_persona: { in: Array.from(duplicateBuyerIds) } },
+          ],
+        });
+      }
+      where.AND = [...(where.AND || []), { OR: stateFilters.length > 0 ? stateFilters : [{ id_persona: -1 }] }];
+    }
+
+    const queryOptions: any = {
+      where,
       orderBy: { fecha_registro: 'desc' },
       include: {
         Etapa: true,
         CanalOrigen: true,
-        CampanaOrigen: { include: { GastosCampana: true } },
-        EventosEtapa: { include: { EtapaDestino: true }, orderBy: { fecha_hora: 'asc' } },
-        Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'desc' } },
-        Solicitudes: { include: { Servicio: true }, orderBy: { id_solicitud: 'desc' } },
-        Preferencias: { include: { Canal: true } },
-        DatosAcademicos: true,
-        DatosLaborales: true,
-        SaludOdontologica: true,
-      }
-    });
+        CampanaOrigen: { include: { GastosCampana: { select: { importe: true } } } },
+        EventosEtapa: { include: { EtapaDestino: true }, orderBy: { fecha_hora: 'asc' }, ...(hasPagination ? { take: 20 } : {}) },
+        Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'desc' }, ...(hasPagination ? { take: 20 } : {}) },
+        Solicitudes: { include: { Servicio: true }, orderBy: { id_solicitud: 'desc' }, ...(hasPagination ? { take: 20 } : {}) },
+        Preferencias: { include: { Canal: true }, ...(hasPagination ? { take: 1 } : {}) },
+        DatosAcademicos: hasPagination ? { take: 1 } : true,
+        DatosLaborales: hasPagination ? { take: 1 } : true,
+        SaludOdontologica: hasPagination ? { take: 1 } : true,
+      },
+    };
 
-    // Precalcular frecuencias para identificar duplicados por teléfono (últimos 9 dígitos), DNI o correo
+    if (hasPagination) {
+      queryOptions.skip = (page - 1) * pageSize;
+      queryOptions.take = pageSize;
+    }
+
+    const [personas, total] = hasPagination
+      ? await Promise.all([
+          prisma.personas.findMany(queryOptions),
+          prisma.personas.count({ where }),
+        ])
+      : [await prisma.personas.findMany(queryOptions), 0];
+    const buyerPersons: any[] = personas;
+
+    // Un contacto que ya avanzó a otra etapa no es un duplicado de BUYER:
+    // representa la misma ficha dentro del ciclo comercial.
     const phoneCounts = new Map<string, number>();
     const dniCounts = new Map<string, number>();
     const emailCounts = new Map<string, number>();
-    for (const p of personas) {
+    for (const p of buyerPersons) {
+      if (p.Etapa?.nombre !== 'BUYER') continue;
       const ph = (p.numero || '').replace(/\D/g, '').slice(-9);
       if (ph.length >= 8) {
         phoneCounts.set(ph, (phoneCounts.get(ph) || 0) + 1);
@@ -805,7 +929,7 @@ router.get('/', async (req, res) => {
     }
 
     // Mapeamos a BuyerWithPerson
-    const buyers = personas.map(p => {
+    const buyers = buyerPersons.map(p => {
       const ph = (p.numero || '').replace(/\D/g, '').slice(-9);
       const em = p.email ? p.email.trim().toLowerCase() : '';
       const hasDuplicate = 
@@ -813,7 +937,9 @@ router.get('/', async (req, res) => {
         (p.dni && (dniCounts.get(p.dni.trim()) || 0) > 1) ||
         (em && (emailCounts.get(em) || 0) > 1);
 
-      const isDuplicate = hasDuplicate || p.estado_calidad === 'Duplicado';
+      const isDuplicate = p.estado_calidad === 'Duplicado' ||
+        duplicateBuyerIds.has(p.id_persona) ||
+        (hasDuplicate && p.Etapa?.nombre === 'BUYER');
 
       let state = 'NEW';
       if (p.estado_calidad === 'Rechazado') {
@@ -825,7 +951,7 @@ router.get('/', async (req, res) => {
       }
 
       // Buscar fecha real de conversión a LEAD desde EventosEtapa
-      const eventoConversion = p.EventosEtapa.find(e => e.EtapaDestino?.nombre === 'LEAD' || e.EtapaDestino?.nombre === 'PAYER' || e.EtapaDestino?.nombre === 'CUSTOMER');
+      const eventoConversion = p.EventosEtapa.find((e: any) => e.EtapaDestino?.nombre === 'LEAD' || e.EtapaDestino?.nombre === 'PAYER' || e.EtapaDestino?.nombre === 'CUSTOMER');
       const convertedAt = eventoConversion 
         ? eventoConversion.fecha_hora.toISOString() 
         : (state === 'CONVERTED' ? (p.fecha_actualizacion || p.fecha_autorizacion || p.fecha_registro).toISOString() : undefined);
@@ -857,16 +983,16 @@ router.get('/', async (req, res) => {
 
       const campaignId = p.id_campana_origen?.toString();
       const campaignName = p.CampanaOrigen?.nombre;
-      const campaignCost = p.CampanaOrigen?.GastosCampana?.reduce((sum, g) => sum + Number(g.importe), 0);
+      const campaignCost = p.CampanaOrigen?.GastosCampana?.reduce((sum: number, g: any) => sum + Number(g.importe), 0);
 
       const consultasCount = p.Solicitudes.length || 1;
-      const solicitudesHistory = p.Solicitudes.map(s => ({
+      const solicitudesHistory = p.Solicitudes.map((s: any) => ({
         id: s.id_solicitud.toString(),
         servicio: s.Servicio?.nombre || 'Consulta General',
         motivo: s.motivo || 'Sin detalle',
         fecha: s.fecha_solicitud ? s.fecha_solicitud.toISOString() : undefined,
       }));
-      const interaccionesHistory = p.Interacciones.map(i => ({
+      const interaccionesHistory = p.Interacciones.map((i: any) => ({
         id: i.id_interaccion.toString(),
         tipo: i.tipo,
         mensaje: i.mensaje || '',
@@ -931,6 +1057,18 @@ router.get('/', async (req, res) => {
         condicion_atencion_especial: sal?.condicion_atencion_especial || '',
       };
     });
+
+    if (hasPagination) {
+      return res.json({
+        items: buyers,
+        pagination: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.max(1, Math.ceil(total / pageSize)),
+        },
+      });
+    }
 
     res.json(buyers);
   } catch (error) {

@@ -10,6 +10,16 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 const webRequests = new Map<string, string>();
 
+export interface BuyerPage {
+  items: Awaited<ReturnType<typeof buyerUseCases.getAllBuyers>>;
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 async function postBuyerWeb(data: object) {
   const body = JSON.stringify(data);
   let key = webRequests.get(body);
@@ -189,6 +199,44 @@ export const buyerService = {
   getAllBuyers: async () => {
     if (!useApi) return buyerUseCases.getAllBuyers();
     const res = await fetch(`${API_URL}/buyer`);
+    if (!res.ok) throw new Error('Error al cargar buyers');
+    return res.json();
+  },
+
+  getBuyersPage: async (params: {
+    page: number;
+    pageSize: number;
+    search?: string;
+    states?: string[];
+    channels?: string[];
+    fromDate?: string;
+    toDate?: string;
+  }): Promise<BuyerPage> => {
+    if (!useApi) {
+      const all = await buyerUseCases.getAllBuyers();
+      const start = (params.page - 1) * params.pageSize;
+      return {
+        items: all.slice(start, start + params.pageSize),
+        pagination: {
+          page: params.page,
+          pageSize: params.pageSize,
+          total: all.length,
+          totalPages: Math.max(1, Math.ceil(all.length / params.pageSize)),
+        },
+      };
+    }
+
+    const query = new URLSearchParams({
+      page: String(params.page),
+      pageSize: String(params.pageSize),
+    });
+    if (params.search) query.set('search', params.search);
+    if (params.states?.length) query.set('states', params.states.join(','));
+    if (params.channels?.length) query.set('channels', params.channels.join(','));
+    if (params.fromDate) query.set('fromDate', params.fromDate);
+    if (params.toDate) query.set('toDate', params.toDate);
+
+    const res = await fetch(`${API_URL}/buyer?${query.toString()}`);
     if (!res.ok) throw new Error('Error al cargar buyers');
     return res.json();
   },

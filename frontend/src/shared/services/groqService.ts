@@ -494,6 +494,23 @@ export async function analyzeBuyerMarketingAgent(ctx: BuyerMarketingContext): Pr
   const isHighFrictionChannel = cLower.includes('presencial') || cLower.includes('telef') || cLower.includes('llamada') || cLower.includes('sede') || cLower.includes('whatsapp');
   const commercialKeywords = ['precio', 'costo', 'cuanto', 'cuánto', 'cita', 'agendar', 'horario', 'disponib', 'doctor', 'especialista', 'sede', 'turno', 'cotiz', 'evalua', 'consulta', 'sábado', 'mañana', 'urgencia', 'dolor', 'muela', 'sensib', 'sangr', 'ortodoncia', 'implante', 'brackets'];
   const matchedKeywords = commercialKeywords.filter(k => reqLower.includes(k));
+  const normalizedRequest = reqLower.replace(/[,.!?]/g, ' ').replace(/\s+/g, ' ').trim();
+  const isGreetingOnly = new Set([
+    'hola',
+    'buenas',
+    'buenas tardes',
+    'buenos dias',
+    'buenos días',
+    'buenas noches',
+    'hola buenas tardes',
+    'hola buenos dias',
+    'hola buenos días',
+    'hola buenas noches',
+  ]).has(normalizedRequest);
+  const isVagueMessage =
+    isGreetingOnly ||
+    ['info', 'prueba', 'test', 'asdf'].includes(reqLower) ||
+    (!isValidPhone && !ctx.serviceOfInterest && reqLower.length < 5);
 
   let hasConcreteIntent = true;
   let intentLevel: 'ALTA' | 'MEDIA' | 'AMBIGUA' = 'ALTA';
@@ -508,27 +525,20 @@ export async function analyzeBuyerMarketingAgent(ctx: BuyerMarketingContext): Pr
     intentReason = 'Prospecto validado y transferido exitosamente a etapa LEAD. Intención comercial confirmada para negociación clínica.';
     suggestedAction = 'CONVERT_TO_LEAD';
     marketingRecommendation = 'Dar seguimiento en Mesa de Negociación (módulo LEAD) y coordinar cita diagnóstica con el especialista.';
-  } else if (isHighFrictionChannel) {
-    // Canal presencial, telefónico o WhatsApp directo
-    intentLevel = 'ALTA';
-    hasConcreteIntent = true;
-    intentReason = `Contacto directo por canal prioritario (${channel}). Paciente con alta disposición de atención y decisión rápida.`;
-    suggestedAction = 'CONVERT_TO_LEAD';
-    marketingRecommendation = 'Asignar asesor comercial o recepcionista de inmediato para atención prioritaria.';
-  } else if (
-    reqLower === 'info' ||
-    reqLower === 'hola' ||
-    reqLower === 'prueba' ||
-    reqLower === 'test' ||
-    reqLower === 'asdf' ||
-    (!isValidPhone && !ctx.serviceOfInterest && reqLower.length < 5)
-  ) {
+  } else if (isVagueMessage) {
     // Consulta verdaderamente ambigua
     intentLevel = 'AMBIGUA';
     hasConcreteIntent = false;
     intentReason = 'Consulta exploratoria inicial sin especificación de tratamiento ni disponibilidad horaria.';
     suggestedAction = 'KEEP_IN_BUYER';
     marketingRecommendation = 'Mantener en BUYER y enviar mensaje automático de WhatsApp con catálogo de servicios y preguntas orientadoras.';
+  } else if (isHighFrictionChannel) {
+    // Canal presencial, telefónico o WhatsApp directo, solo con una necesidad concreta
+    intentLevel = 'ALTA';
+    hasConcreteIntent = true;
+    intentReason = `Contacto directo por canal prioritario (${channel}). Paciente con alta disposición de atención y decisión rápida.`;
+    suggestedAction = 'CONVERT_TO_LEAD';
+    marketingRecommendation = 'Asignar asesor comercial o recepcionista de inmediato para atención prioritaria.';
   } else if (matchedKeywords.length >= 2 || reqLower.includes('cita') || reqLower.includes('agendar') || reqLower.includes('precio') || reqLower.includes('dolor') || reqLower.includes('urgencia')) {
     intentLevel = 'ALTA';
     hasConcreteIntent = true;

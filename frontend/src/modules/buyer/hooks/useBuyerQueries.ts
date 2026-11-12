@@ -12,6 +12,22 @@ export function useBuyers() {
   });
 }
 
+export function useBuyerPage(params: {
+  page: number;
+  pageSize: number;
+  search?: string;
+  states?: string[];
+  channels?: string[];
+  fromDate?: string;
+  toDate?: string;
+}) {
+  return useQuery({
+    queryKey: [QUERY_KEYS.BUYERS, 'page', params],
+    queryFn: () => buyerService.getBuyersPage(params),
+    placeholderData: (previous) => previous,
+  });
+}
+
 export function useBuyer(id: string) {
   return useQuery({
     queryKey: [QUERY_KEYS.BUYERS, id],

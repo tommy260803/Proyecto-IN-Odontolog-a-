@@ -24,7 +24,7 @@ import {
   BarChart3,
   X,
 } from 'lucide-react';
-import { useBuyers, useConvertBuyerToLead, useUpdateBuyer } from '../hooks/useBuyerQueries';
+import { useBuyerPage, useBuyers, useConvertBuyerToLead, useUpdateBuyer } from '../hooks/useBuyerQueries';
 import { BuyerState } from '@/domain/enums';
 import { leadUseCases } from '@/application/use-cases/lead';
 import { QUERY_KEYS } from '@/shared/constants';
@@ -102,20 +102,31 @@ export function BuyerListView() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: buyers = [], isLoading, isError } = useBuyers();
-  const convertBuyer = useConvertBuyerToLead();
-  const updateBuyer = useUpdateBuyer();
-  const { data: leads = [] } = useQuery({
-    queryKey: [QUERY_KEYS.LEADS],
-    queryFn: () => leadUseCases.getAllLeads(),
-  });
-
   // Filtros multi-selección y búsqueda
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const { data: buyerPage, isLoading, isError } = useBuyerPage({
+    page: currentPage,
+    pageSize,
+    search: searchTerm,
+    states: selectedStates,
+    channels: selectedChannels,
+    fromDate: startDate,
+    toDate: endDate,
+  });
+  const buyers = buyerPage?.items || [];
+  const convertBuyer = useConvertBuyerToLead();
+  const updateBuyer = useUpdateBuyer();
+  const { data: leads = [] } = useQuery({
+    queryKey: [QUERY_KEYS.LEADS],
+    queryFn: () => leadUseCases.getAllLeads(),
+  });
 
   // Control de Popovers de barra de filtros
   const [openFilterPopover, setOpenFilterPopover] = useState<'state' | 'channel' | 'date' | null>(
@@ -132,10 +143,6 @@ export function BuyerListView() {
   const [convertTarget, setConvertTarget] = useState<BuyerWithPerson | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BuyerWithPerson | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Paginación Enterprise
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
 
   // Cerrar popovers y menús al hacer clic fuera
   useEffect(() => {
@@ -177,55 +184,8 @@ export function BuyerListView() {
   }, [buyers]);
 
   // Filtrado reactivo
-  const filteredBuyers = useMemo(() => {
-    return (buyers || []).filter((b: any) => {
-      const term = searchTerm.trim().toLowerCase();
-      if (term) {
-        const firstName = b.person?.firstName || '';
-        const lastName = b.person?.lastName || '';
-        const fullName = `${firstName} ${lastName}`.toLowerCase();
-        const doc = (b.person?.documentNumber || '').toLowerCase();
-        const email = (b.person?.email || '').toLowerCase();
-        const phone = (b.person?.phone || '').toLowerCase();
-        const channel = (b.channel || '').toLowerCase();
-        const source = (b.attractionSource || '').toLowerCase();
-        const service = (b.serviceOfInterest || b.serviceOfInterestId || '').toLowerCase();
-        const id = String(b.id || '').toLowerCase();
-
-        const matchesTerm =
-          fullName.includes(term) ||
-          doc.includes(term) ||
-          email.includes(term) ||
-          phone.includes(term) ||
-          channel.includes(term) ||
-          source.includes(term) ||
-          service.includes(term) ||
-          id.includes(term);
-
-        if (!matchesTerm) return false;
-      }
-
-      if (selectedStates.length > 0 && !selectedStates.includes(b.state)) {
-        return false;
-      }
-
-      if (selectedChannels.length > 0 && !selectedChannels.includes(String(b.channel || ''))) {
-        return false;
-      }
-
-      if (startDate && b.createdAt) {
-        const start = startOfDay(parseISO(startDate));
-        if (isBefore(parseISO(b.createdAt), start)) return false;
-      }
-
-      if (endDate && b.createdAt) {
-        const end = endOfDay(parseISO(endDate));
-        if (isAfter(parseISO(b.createdAt), end)) return false;
-      }
-
-      return true;
-    });
-  }, [buyers, searchTerm, selectedStates, selectedChannels, startDate, endDate]);
+  const filteredBuyers = buyers;
+  const totalRecords = buyerPage?.pagination.total || 0;
 
   // Reiniciar página al cambiar filtros
   useEffect(() => {
@@ -250,7 +210,7 @@ export function BuyerListView() {
       {
         id: 'kpi-volume',
         label: 'Prospectos Captados en Embudo',
-        value: total.toLocaleString('es-PE'),
+        value: totalRecords.toLocaleString('es-PE'),
         trend: '+12.4%',
         trendContext: 'vs mes anterior',
         isPositive: true,
@@ -383,11 +343,8 @@ export function BuyerListView() {
   };
 
   // Paginación
-  const totalPages = Math.max(1, Math.ceil(filteredBuyers.length / pageSize));
-  const paginatedBuyers = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredBuyers.slice(start, start + pageSize);
-  }, [filteredBuyers, currentPage, pageSize]);
+  const totalPages = buyerPage?.pagination.totalPages || 1;
+  const paginatedBuyers = filteredBuyers;
 
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState />;
@@ -732,8 +689,8 @@ export function BuyerListView() {
         {/* Contador de registros como texto de apoyo sobrio */}
         <div className="flex items-center justify-end shrink-0">
           <span className="font-mono text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400">
-            {filteredBuyers.length.toLocaleString('es-PE')}{' '}
-            {filteredBuyers.length === 1 ? 'prospecto encontrado' : 'prospectos encontrados'}
+            {totalRecords.toLocaleString('es-PE')}{' '}
+            {totalRecords === 1 ? 'prospecto encontrado' : 'prospectos encontrados'}
           </span>
         </div>
       </div>
@@ -988,11 +945,11 @@ export function BuyerListView() {
               <span>Mostrando</span>
               <span className="font-mono font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
                 {(currentPage - 1) * pageSize + 1}–
-                {Math.min(currentPage * pageSize, filteredBuyers.length)}
+                {Math.min(currentPage * pageSize, totalRecords)}
               </span>
               <span>de</span>
               <span className="font-mono font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-                {filteredBuyers.length.toLocaleString('es-PE')}
+                {totalRecords.toLocaleString('es-PE')}
               </span>
               <select
                 value={pageSize}
