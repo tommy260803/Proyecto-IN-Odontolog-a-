@@ -4,7 +4,9 @@ import { prisma } from '../db';
 
 const router = Router();
 
-// Estado del microservicio de WhatsApp conectado al contenedor externo :2785
+/**
+ * Consulta el estado de conectividad de la sesión de WhatsApp en el servicio OpenWA.
+ */
 router.get('/status', async (req, res) => {
   const sessionStatus = await WhatsAppService.getSessionStatus();
   const testNumber = process.env.TEST_RECEIVER_NUMBER || '51904388543';
@@ -19,7 +21,9 @@ router.get('/status', async (req, res) => {
   });
 });
 
-// Iniciar sesión en el contenedor
+/**
+ * Inicia la sesión de mensajería en el microservicio OpenWA.
+ */
 router.post('/start', async (req, res) => {
   const baseUrl = process.env.OPENWA_API_URL || 'http://127.0.0.1:2785';
   const apiKey = process.env.OPENWA_API_KEY || 'owa_k1_c2ddc9826fb622c16101ad7e5b841bb2232ea34a9d5fc1117bd98ba6f75d50e2';
@@ -36,12 +40,13 @@ router.post('/start', async (req, res) => {
   }
 });
 
-// Obtener código QR de vinculación
+/**
+ * Obtiene el código QR para emparejar la sesión de WhatsApp mediante la aplicación móvil.
+ */
 router.get('/qr', async (req, res) => {
   const qrData = await WhatsAppService.getSessionQr();
   
   if (req.query.format === 'html' && qrData.qr) {
-    // Si el QR viene en Data URL o texto
     const imgSrc = qrData.qr.startsWith('data:') ? qrData.qr : `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData.qr)}`;
     return res.send(`
       <!DOCTYPE html>
@@ -70,7 +75,9 @@ router.get('/qr', async (req, res) => {
   res.json(qrData);
 });
 
-// Registrar Webhook automáticamente en la sesión
+/**
+ * Registra el webhook de notificación de mensajes entrantes en la sesión de OpenWA.
+ */
 router.post('/register-webhook', async (req, res) => {
   const success = await WhatsAppService.registerWebhook();
   res.json({
@@ -79,7 +86,9 @@ router.post('/register-webhook', async (req, res) => {
   });
 });
 
-// Enviar mensaje de texto puntual de prueba
+/**
+ * Envía un mensaje de texto saliente a un número de teléfono específico.
+ */
 router.post('/send', async (req, res) => {
   const { phone, message } = req.body;
   if (!phone || !message) {
@@ -90,17 +99,16 @@ router.post('/send', async (req, res) => {
   res.json(result);
 });
 
-// Webhook para mensajes entrantes desde el contenedor Docker de OpenWA
+/**
+ * Receptor de eventos webhook emitidos por OpenWA.
+ * Procesa comandos de interacción rápida como solicitudes de prórroga de 24 horas.
+ */
 router.post('/webhook', async (req, res) => {
   try {
     const payload = req.body;
     console.log('[OPENWA WEBHOOK EVENT RECEIVED]', JSON.stringify(payload).slice(0, 250));
 
-    // Desestructurar evento según versión de OpenWA
-    const event = payload.event || '';
     const msg = payload.data?.message || payload.data || payload.message || payload;
-    
-    // Ignorar mensajes enviados por nosotros mismos (fromMe = true)
     if (msg.fromMe) {
       return res.status(200).json({ ignored: true, reason: 'fromMe' });
     }
@@ -108,10 +116,8 @@ router.post('/webhook', async (req, res) => {
     const from = (msg.from || msg.sender?.id || msg.chatId || '').toString();
     const text = (msg.body || msg.text || msg.content || '').toString().trim().toUpperCase();
 
-    // Responder 200 de inmediato a OpenWA
     res.status(200).json({ received: true });
 
-    // Si el mensaje solicita PRÓRROGA
     if (text.includes('PRORROGA') || text === '2') {
       console.log(`[WHATSAPP WEBHOOK] Solicitud de prórroga detectada desde: ${from}`);
       const extensionResult = await WhatsAppService.grant24HourExtension({ phone: from });
@@ -148,7 +154,9 @@ ${extensionResult.message}
   }
 });
 
-// Solicitar prórroga manualmente vía API
+/**
+ * Extiende en 24 horas el vencimiento de una pre-reserva mediante API.
+ */
 router.post('/request-extension', async (req, res) => {
   const { reservaId, phone } = req.body;
   if (!reservaId && !phone) {
@@ -167,7 +175,9 @@ router.post('/request-extension', async (req, res) => {
   res.json(result);
 });
 
-// Endpoint para pruebas instantáneas de Dunning sin esperar las 24 horas
+/**
+ * Endpoint de prueba de notificación de vencimiento (T-24h) y flujo de prórroga interactivo.
+ */
 router.post('/test-dunning', async (req, res) => {
   try {
     const { reservaId, resetProrroga = true } = req.body || {};
@@ -198,7 +208,6 @@ router.post('/test-dunning', async (req, res) => {
       return res.status(404).json({ error: 'No se encontró ninguna reserva pendiente para la prueba.' });
     }
 
-    // Si se solicita reiniciar prórroga para repetir el test
     if (resetProrroga) {
       await prisma.incidencias.deleteMany({
         where: {
@@ -239,13 +248,14 @@ router.post('/test-dunning', async (req, res) => {
   }
 });
 
-// Simular respuesta entrante del paciente (ej. "PRORROGA") sin necesidad de usar el celular
+/**
+ * Simula una respuesta entrante de WhatsApp para pruebas de integración automatizadas.
+ */
 router.post('/simulate-reply', async (req, res) => {
   try {
     const { text = 'PRORROGA', phone } = req.body || {};
     const testNumber = phone || process.env.TEST_RECEIVER_NUMBER || '51904388543';
 
-    // Invocar el webhook internamente simulando a OpenWA
     const extensionResult = await WhatsAppService.grant24HourExtension({ phone: testNumber });
 
     res.json({

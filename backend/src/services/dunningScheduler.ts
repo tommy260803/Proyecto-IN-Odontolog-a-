@@ -95,11 +95,8 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
       const sentStage1 = r.Incidencias.some(inc => inc.descripcion?.includes('NOTIFICACION_ETAPA_1_PREVENTIVA'));
       const sentStage2 = r.Incidencias.some(inc => inc.descripcion?.includes('NOTIFICACION_ETAPA_2_URGENCIA'));
 
-      // =========================================================================
-      // ETAPA 3: LLEGÓ A LAS 00:00 HRS DEL DÍA DE LA CITA (O YA PASÓ) SIN PAGO
-      // =========================================================================
+      // Etapa 3: Vencimiento a las 00:00 hrs del día de la cita (cancelación y liberación de cupo)
       if (hoursUntilMidnightDeadline <= 0) {
-        // 1. Marcar reserva como Vencida y registrar cadencia
         await prisma.reservas.update({
           where: { id_reserva: r.id_reserva },
           data: { 
@@ -108,7 +105,6 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
           }
         });
 
-        // 2. Liberar el sillón (Disponibilidad -> Disponible)
         if (r.Opcion?.Disponibilidad?.id_disponibilidad) {
           await prisma.disponibilidad.update({
             where: { id_disponibilidad: r.Opcion.Disponibilidad.id_disponibilidad },
@@ -117,7 +113,6 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
           freedCount++;
         }
 
-        // 3. Registrar incidencia de auditoría
         try {
           await prisma.incidencias.create({
             data: {
@@ -133,7 +128,6 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
           console.warn('⚠️ No se pudo registrar incidencia de dunning:', e);
         }
 
-        // 4. Enviar correo formal de cancelación
         let emailSent = false;
         if (patientEmail) {
           const cancelHtmlMessage = `
@@ -176,9 +170,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
         continue;
       }
 
-      // =========================================================================
-      // ETAPA 2: FALTAN ENTRE 0h Y 24h PARA LAS 00:00 (DÍA ANTERIOR A LA CITA)
-      // =========================================================================
+      // Etapa 2: Ventana de urgencia (24h antes de la medianoche del día de la cita)
       if (hoursUntilMidnightDeadline <= 24 && hoursUntilMidnightDeadline > 0 && !sentStage2) {
         let emailSent = false;
         if (patientEmail) {
@@ -209,7 +201,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
           emailSent = emailRes.success;
         }
 
-        // Envío complementario o preferencial por WhatsApp con opciones de pago y prórroga
+        // Envío multicanal mediante WhatsApp con enlace de pago y opción de prórroga
         let waSent = false;
         if (r.Persona.numero) {
           try {
@@ -259,9 +251,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
         continue;
       }
 
-      // =========================================================================
-      // ETAPA 1: FALTAN ENTRE 24h Y 48h PARA LAS 00:00 (2 DÍAS ANTES DE LA CITA)
-      // =========================================================================
+      // Etapa 1: Ventana preventiva (48h a 24h antes de la medianoche del día de la cita)
       if (hoursUntilMidnightDeadline <= 48 && hoursUntilMidnightDeadline > 24 && !sentStage1) {
         let emailSent = false;
         if (patientEmail) {

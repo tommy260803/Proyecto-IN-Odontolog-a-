@@ -115,7 +115,11 @@ SELECT
     f.PagosValidados,
     f.PagosRechazados,
     f.PagosRevertidos,
-    CAST(1.0 * f.TiempoTotalValidacionMin / NULLIF(f.PagosValidados, 0) AS DECIMAL(6,1)) AS TiempoPromedioMinutos
+    CASE 
+        WHEN f.TiempoTotalValidacionMin < 0 THEN 15.0
+        WHEN (1.0 * f.TiempoTotalValidacionMin / NULLIF(f.PagosValidados, 0)) < 0 THEN 15.0
+        ELSE ISNULL(CAST(1.0 * f.TiempoTotalValidacionMin / NULLIF(f.PagosValidados, 0) AS DECIMAL(6,1)), 15.0)
+    END AS TiempoPromedioMinutos
 FROM dbo.Fact_ValidacionIncidenciaPayer f
 INNER JOIN dbo.Dim_Tiempo t ON t.KeyTiempo = f.KeyTiempo
 INNER JOIN dbo.Dim_Sede s ON s.KeySede = f.KeySede

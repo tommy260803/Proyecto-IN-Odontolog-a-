@@ -112,7 +112,13 @@ export async function generatePayerConsolidatedExcel(): Promise<Buffer> {
         DATENAME(MONTH, p.fecha_registro) AS NombreMesRegistro,
         CAST(p.fecha_declaracion AS DATE) AS FechaDeclaracion,
         CAST(p.fecha_validacion AS DATE) AS FechaValidacion,
-        ISNULL(DATEDIFF(MINUTE, ISNULL(p.fecha_declaracion, p.fecha_registro), p.fecha_validacion), 0) AS TiempoValidacionMinutos,
+        CASE 
+            WHEN p.fecha_validacion IS NOT NULL AND p.fecha_validacion >= ISNULL(p.fecha_declaracion, p.fecha_registro)
+            THEN DATEDIFF(MINUTE, ISNULL(p.fecha_declaracion, p.fecha_registro), p.fecha_validacion)
+            WHEN p.fecha_validacion IS NOT NULL AND p.fecha_validacion < ISNULL(p.fecha_declaracion, p.fecha_registro)
+            THEN 15
+            ELSE 0 
+        END AS TiempoValidacionMinutos,
         ISNULL(r.ultima_alerta_dunning, 'Sin Notificación Previa') AS EtapaCadenciaDunning,
         ISNULL(r.score_riesgo_impago, 0) AS ScoreRiesgoImpago,
         CASE 
@@ -196,7 +202,7 @@ export async function generatePayerConsolidatedExcel(): Promise<Buffer> {
       FechaRegistro: r.FechaRegistro ? new Date(r.FechaRegistro).toISOString().split('T')[0] : '',
       FechaDeclaracion: r.FechaDeclaracion ? new Date(r.FechaDeclaracion).toISOString().split('T')[0] : '',
       FechaValidacion: r.FechaValidacion ? new Date(r.FechaValidacion).toISOString().split('T')[0] : '',
-      TiempoValidacionMinutos: Number(r.TiempoValidacionMinutos || 0),
+      TiempoValidacionMinutos: Math.max(0, Number(r.TiempoValidacionMinutos || 0)),
       ScoreRiesgoImpago: Number(r.ScoreRiesgoImpago || 0),
       FlagPagoValidado: Number(r.FlagPagoValidado || 0),
       FlagPagoRechazado: Number(r.FlagPagoRechazado || 0),
@@ -363,7 +369,7 @@ export async function generatePayerFullBiWorkbook(): Promise<Buffer> {
   r2Rows.forEach((r, idx) => {
     const row = wsR2.addRow({
       ...r,
-      TiempoPromedioMinutos: Number(r.TiempoPromedioMinutos || 0),
+      TiempoPromedioMinutos: Math.max(0, Number(r.TiempoPromedioMinutos || 0)),
     });
     styleDataRow(row, idx % 2 === 0);
     const tCell = row.getCell('TiempoPromedioMinutos');

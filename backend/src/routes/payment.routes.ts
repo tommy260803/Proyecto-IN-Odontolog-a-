@@ -148,7 +148,7 @@ async function validateAndPromotePayer(payerId: number | string, channel: string
 }
 
 /**
- * 0. Consultar medios de pago habilitados en la cuenta de Mercado Pago
+ * Consulta los medios de pago configurados en la cuenta de Mercado Pago.
  */
 router.get('/payment-methods', async (req, res) => {
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN || 'APP_USR-4001730668702458-091700-e25cb8b7b1adb93aed667a28cfa96a3a-3595881654';
@@ -164,9 +164,7 @@ router.get('/payment-methods', async (req, res) => {
 });
 
 /**
- * 1. Procesar Pago Directo con YAPE (Flujo Oficial Mercado Pago)
- * Paso 1: Generar YAPE_TOKEN con teléfono + OTP usando requestId UUID
- * Paso 2: Crear el pago en /v1/payments con payment_method_id: 'yape', installments: 1
+ * Procesa cobros directos con Yape mediante tokenización PCI y confirmación en Mercado Pago.
  */
 router.post('/process-yape', async (req, res) => {
   const { payerId, amount, phone, otpCode, email } = req.body;
@@ -177,7 +175,6 @@ router.post('/process-yape', async (req, res) => {
   const rawOtp = String(otpCode || '').replace(/\D/g, '');
   const paymentAmount = Math.max(Number(amount) || 2, 2);
 
-  // 1. Validar formato de teléfono y OTP
   if (!rawPhone || rawPhone.length !== 9 || !rawPhone.startsWith('9')) {
     return res.status(400).json({
       error: 'El número de celular de Yape debe tener 9 dígitos y empezar con 9 (ej. 987654321).'
@@ -194,7 +191,7 @@ router.post('/process-yape', async (req, res) => {
     const requestId = randomUUID();
     console.log(`[Yape] Solicitando token a Mercado Pago con requestId UUID: ${requestId}, celular: ${rawPhone}`);
 
-    // Paso 1: Generar el token oficial en la API de Yape de Mercado Pago (todos los campos como string con requestId UUID)
+    // Tokenización PCI de credenciales temporales de Yape
     const tokenResponse = await fetch(`https://api.mercadopago.com/platforms/pci/yape/v1/payment?public_key=${publicKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -223,7 +220,7 @@ router.post('/process-yape', async (req, res) => {
     const yapeTokenId = tokenData.id;
     console.log('[Yape] Token oficial generado con éxito:', yapeTokenId);
 
-    // Paso 2: Crear el cobro en /v1/payments usando el token obtenido
+    // Emisión de cobro mediante el token de transacción
     const paymentData = {
       token: yapeTokenId,
       transaction_amount: Number(paymentAmount.toFixed(2)),
@@ -249,7 +246,6 @@ router.post('/process-yape', async (req, res) => {
     console.log('[Yape] Respuesta de Mercado Pago /v1/payments:', data);
 
     if (response.ok && (data.status === 'approved' || data.status === 'in_process' || response.status === 201)) {
-      // Registrar automáticamente en SQL Server y transferir a CUSTOMER
       if (payerId) {
         await validateAndPromotePayer(payerId, 'YAPE', `MP-${data.id}`, paymentAmount);
       }
@@ -261,7 +257,6 @@ router.post('/process-yape', async (req, res) => {
       });
     }
 
-    // Si el pago no fue aprobado por Mercado Pago
     const causeMsg = data?.cause && Array.isArray(data.cause)
       ? data.cause.map((c: any) => c.description || c.code || JSON.stringify(c)).join(', ')
       : '';
@@ -289,7 +284,7 @@ router.post('/process-yape', async (req, res) => {
 });
 
 /**
- * 2. Generar Preferencia de Checkout Pro
+ * Crea una preferencia de pago para el flujo de Checkout Pro.
  */
 router.post('/create-preference', async (req, res) => {
   const { payerId, title, amount, personName, email } = req.body;
@@ -357,8 +352,8 @@ router.post('/create-preference', async (req, res) => {
 });
 
 /**
- * 3. Procesar Pago vía Checkout API (Payment Brick)
- * Recibe el token y datos generados directamente en el frontend y valida estrictamente con Mercado Pago
+ * Procesa pagos con tarjeta de crédito o débito a través de la API de Mercado Pago.
+ * Valida los tokens de tarjeta y promueve la reserva al confirmarse el abono.
  */
 router.post('/process-checkout-api', async (req, res) => {
   const { payerId, formData, amount, email } = req.body;
@@ -428,7 +423,6 @@ router.post('/process-checkout-api', async (req, res) => {
     }
 
     if (data.status === 'approved' || data.status === 'in_process') {
-      // Registrar automáticamente en SQL Server y transferir a CUSTOMER
       if (payerId) {
         await validateAndPromotePayer(payerId, 'TARJETA_MP', `MP-${data.id}`, paymentAmount);
       }
@@ -446,8 +440,7 @@ router.post('/process-checkout-api', async (req, res) => {
 });
 
 /**
- * 4. Webhook Oficial de Mercado Pago (IPN y Webhook events)
- * Procesa notificaciones automáticas en background cuando un pago es aprobado
+ * Webhook oficial de Mercado Pago para notificaciones asíncronas de cobros aprobados.
  */
 router.post('/webhook', async (req, res) => {
   const { type, data, action } = req.body;

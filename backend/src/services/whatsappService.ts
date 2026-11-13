@@ -197,14 +197,14 @@ export class WhatsAppService {
       console.log(`[WHATSAPP DISPATCHER - DEV MODE] Redirigiendo mensaje de paciente (${formattedPatient}) hacia TEST_RECEIVER_NUMBER (${targetNumber})`);
     }
 
-    // 1. Intentar envío real a través del contenedor OpenWA externo (puerto 2785)
+    // Envío por API a la instancia de OpenWA
     if (isEnabled && openwaUrl) {
       try {
         const sessionId = await this.ensureSession();
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 9000);
 
-        // OpenWA v0.30: POST /api/sessions/:sessionId/messages/send-text
+        // Intento primario con endpoint de mensajería moderno
         const res = await fetch(`${openwaUrl}/api/sessions/${sessionId}/messages/send-text`, {
           method: 'POST',
           headers: {
@@ -217,7 +217,7 @@ export class WhatsAppService {
           }),
           signal: controller.signal
         }).catch(async () => {
-          // Fallback a endpoints legacy (/sendText o /api/sendText)
+          // Fallback para versiones con endpoint legacy (/sendText)
           return await fetch(`${openwaUrl}/sendText`, {
             method: 'POST',
             headers: {
@@ -254,7 +254,7 @@ export class WhatsAppService {
       }
     }
 
-    // 2. MODO SIMULACIÓN (si la sesión aún no está vinculada con QR o no está conectada)
+    // Modo simulación cuando la instancia no está disponible o requiere vinculación QR
     console.log(`[WHATSAPP DISPATCHER] (Modo Simulación) Mensaje procesado para: ${targetNumber} (Original: ${formattedPatient})`);
     return {
       success: true,

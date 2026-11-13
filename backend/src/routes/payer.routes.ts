@@ -11,7 +11,9 @@ import { WhatsAppService } from '../services/whatsappService';
 const router = Router();
 const paymentLogoDataUrl = `data:image/png;base64,${readFileSync(path.resolve(__dirname, '../../assets/Logo_NexoSalud.png')).toString('base64')}`;
 
-// Endpoint para exportación formal a Excel (.xlsx) con estilos y formato corporativo
+/**
+ * Genera y descarga el consolidado de cobranzas o el libro analítico BI en formato Microsoft Excel (.xlsx).
+ */
 router.get('/export/excel', async (req, res) => {
   try {
     const type = (req.query.type as string) || 'general';
@@ -37,7 +39,9 @@ router.get('/export/excel', async (req, res) => {
   }
 });
 
-// Ejecutar manualmente el ciclo de cobranza en 3 etapas (Dunning Cron)
+/**
+ * Dispara manualmente un ciclo de cobranza en 3 etapas (preventivo T-48h, urgencia T-24h, cancelación 00:00).
+ */
 router.post('/run-dunning-cycle', async (req, res) => {
   try {
     const stats = await runDunningCycle();
@@ -52,7 +56,9 @@ router.post('/run-dunning-cycle', async (req, res) => {
   }
 });
 
-// Obtener estadísticas y políticas del ciclo de cobranza
+/**
+ * Retorna las métricas y el registro de la última ejecución del servicio de dunning.
+ */
 router.get('/dunning-stats', (req, res) => {
   const stats = getLastExecutionStats();
   res.json({
@@ -65,7 +71,9 @@ router.get('/dunning-stats', (req, res) => {
   });
 });
 
-// Limpiar todos los PAYERS / Reservas de prueba
+/**
+ * Elimina todos los registros de prueba en pagos, reservas y opciones.
+ */
 router.post('/clear-all', async (req, res) => {
   try {
     await prisma.pagos.deleteMany({});
@@ -429,7 +437,9 @@ router.post('/:id/payment', async (req, res) => {
   }
 });
 
-// Validar pago de una reserva en SQL Server y transferir automáticamente a CUSTOMER
+/**
+ * Valida el pago de una pre-reserva, actualiza el estado en agenda y promueve automáticamente al paciente a CUSTOMER.
+ */
 router.post('/:id/validate', async (req, res) => {
   const { id } = req.params;
   const numId = Number(id);
@@ -467,13 +477,13 @@ router.post('/:id/validate', async (req, res) => {
       return res.status(404).json({ error: 'Reserva no encontrada' });
     }
 
-    // 1. Confirmar Reserva
+    // Confirmación formal de la reserva en agenda médica
     await prisma.reservas.update({
       where: { id_reserva: reserva.id_reserva },
       data: { estado: 'Confirmada', confirmacion_explicita: true, fecha_confirmacion: new Date() }
     });
 
-    // 2. Validar o Crear Pago
+    // Conciliación de comprobante o generación de pago validado
     let pago = reserva.Pagos.length > 0 ? reserva.Pagos[0] : null;
     if (pago) {
       pago = await prisma.pagos.update({
@@ -494,7 +504,7 @@ router.post('/:id/validate', async (req, res) => {
       });
     }
 
-    // 3. Promover automáticamente la persona a etapa CUSTOMER
+    // Transición del paciente al ciclo de vida CUSTOMER
     let etapaCustomer = await prisma.etapas.findFirst({ where: { nombre: 'CUSTOMER' } });
     if (!etapaCustomer) {
       etapaCustomer = await prisma.etapas.create({ data: { nombre: 'CUSTOMER', descripcion: 'Atención' } });
@@ -505,7 +515,7 @@ router.post('/:id/validate', async (req, res) => {
       data: { id_etapa_actual: etapaCustomer.id_etapa }
     });
 
-    // 4. Crear registro en la tabla Atenciones para la historia clínica si no existe
+    // Apertura del registro de atención médica programada para historia clínica
     const existingAtencion = await prisma.atenciones.findFirst({ where: { id_reserva: reserva.id_reserva } });
     if (!existingAtencion) {
       const defaultProf = await prisma.profesionales.findFirst();
@@ -525,7 +535,7 @@ router.post('/:id/validate', async (req, res) => {
       });
     }
 
-    // 5. Enviar automáticamente constancia oficial de pago por correo al paciente
+    // Emisión automática de constancia oficial de pago con PDF adjunto al correo del paciente
     const patientEmail = reserva.Persona?.email || persona.email;
     if (patientEmail) {
       const patientFullName = `${reserva.Persona?.nombres || persona.nombres || ''} ${reserva.Persona?.apellidos || persona.apellidos || ''}`.trim();
@@ -573,7 +583,9 @@ router.post('/:id/validate', async (req, res) => {
   }
 });
 
-// Rechazar pago de una reserva en SQL Server y registrar incidencia
+/**
+ * Marca el comprobante de una reserva como rechazado y registra una incidencia formal de cobranza.
+ */
 router.post('/:id/reject', async (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
@@ -604,7 +616,7 @@ router.post('/:id/reject', async (req, res) => {
     const trimmedReason = reason.trim();
     const now = new Date();
 
-    // 1. Actualizar o crear Pago como Rechazado
+    // Actualización o registro del pago rechazado
     let pago = reserva.Pagos.length > 0 ? reserva.Pagos[0] : null;
     if (pago) {
       pago = await prisma.pagos.update({
@@ -630,13 +642,12 @@ router.post('/:id/reject', async (req, res) => {
       });
     }
 
-    // 2. Actualizar estado de la reserva
+    // Cancelación de la reserva y apertura de incidencia
     await prisma.reservas.update({
       where: { id_reserva: reserva.id_reserva },
       data: { estado: 'Cancelada' }
     });
 
-    // 3. Registrar Incidencia formal
     const incidencia = await prisma.incidencias.create({
       data: {
         id_persona: reserva.id_persona,
@@ -662,7 +673,9 @@ router.post('/:id/reject', async (req, res) => {
   }
 });
 
-// Revertir pago previamente validado en SQL Server y registrar incidencia
+/**
+ * Revierte una aprobación previa de pago y reabre la incidencia para reauditoría.
+ */
 router.post('/:id/revert', async (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
@@ -693,7 +706,7 @@ router.post('/:id/revert', async (req, res) => {
     const trimmedReason = reason.trim();
     const now = new Date();
 
-    // 1. Actualizar o crear Pago como Revertido
+    // Actualización del comprobante a estado Revertido
     let pago = reserva.Pagos.length > 0 ? reserva.Pagos[0] : null;
     if (pago) {
       pago = await prisma.pagos.update({
@@ -719,13 +732,12 @@ router.post('/:id/revert', async (req, res) => {
       });
     }
 
-    // 2. Actualizar estado de la reserva
+    // Cancelación preventiva de la cita en agenda
     await prisma.reservas.update({
       where: { id_reserva: reserva.id_reserva },
       data: { estado: 'Cancelada' }
     });
 
-    // 3. Registrar Incidencia formal de reversión
     const incidencia = await prisma.incidencias.create({
       data: {
         id_persona: reserva.id_persona,
