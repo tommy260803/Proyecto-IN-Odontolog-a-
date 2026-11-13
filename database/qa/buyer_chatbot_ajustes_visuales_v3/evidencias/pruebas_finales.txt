@@ -1,0 +1,13 @@
+
+> in-odontologia@0.0.0 test
+> vitest run --root .. --config frontend/vite.config.ts backend/tests/buyerReadAuthorization.test.ts backend/tests/buyerConversation.test.ts backend/tests/buyerConversationAudit.test.ts frontend/src/modules/buyer/components/BuyerConversationPanel.test.tsx frontend/src/modules/buyer/components/BuyerConversationIntegration.test.tsx frontend/src/modules/buyer/components/BuyerDetailView.test.tsx frontend/src/modules/buyer/components/BuyerVisualAudit.test.tsx frontend/src/shared/context/StaffSessionSecurity.test.tsx frontend/src/modules/buyer/components/landing/StaffLoginModal.test.tsx
+
+
+ RUN  v5.0.1 <RAIZ>
+
+
+ Test Files  9 passed (9)
+      Tests  133 passed (133)
+   Start at  03:59:04
+   Duration  7.28s (import 35%, environment 34%, tests 18%, setup 8%, transform 4%)
+

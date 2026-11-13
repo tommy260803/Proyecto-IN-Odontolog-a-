@@ -1,0 +1,1197 @@
+{
+  "at": "2026-11-13T04:02:19.495Z",
+  "readOnly": true,
+  "sqlWrites": 0,
+  "geminiCalls": 0,
+  "blockers": [],
+  "configuration": {
+    "source": "SQLSERVER_URL",
+    "host": "localhost",
+    "database": "NexoSalud_LeadEnsayoFinal",
+    "localMachine": "DanielPC",
+    "launcherLiteralCompatible": false,
+    "launcherGuardAfterCorrection": true,
+    "geminiConfigured": true,
+    "configuredStaffMode": "enabled",
+    "isolation": {
+      "DISABLE_MART_SYNC": "true",
+      "ENABLE_MART_SYNC": "false",
+      "DUNNING_ENABLED": "false",
+      "RUN_SQL_TESTS": "false"
+    }
+  },
+  "target": {
+    "servidor": "DANIELPC",
+    "base": "NexoSalud_LeadEnsayoFinal",
+    "utc": "2026-11-13T04:02:19.562Z"
+  },
+  "columns": [
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "id_captacion",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "id_persona",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "fecha_captacion",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "id_canal",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "id_fuente",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "id_campana",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "id_sede",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "id_servicio",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "motivo_consulta",
+      "tipo": "nvarchar",
+      "max_length": 1000,
+      "is_nullable": true
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "estado_calidad",
+      "tipo": "varchar",
+      "max_length": 20,
+      "is_nullable": false
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "autoriza_contacto",
+      "tipo": "bit",
+      "max_length": 1,
+      "is_nullable": false
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "fecha_autorizacion",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "origen_datos",
+      "tipo": "varchar",
+      "max_length": 30,
+      "is_nullable": false
+    },
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "fecha_observacion",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false
+    },
+    {
+      "tabla": "DecisionesIA",
+      "columna": "id_decision",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "DecisionesIA",
+      "columna": "id_persona",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "DecisionesIA",
+      "columna": "id_usuario",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "DecisionesIA",
+      "columna": "agente",
+      "tipo": "varchar",
+      "max_length": 50,
+      "is_nullable": false
+    },
+    {
+      "tabla": "DecisionesIA",
+      "columna": "fecha_hora",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false
+    },
+    {
+      "tabla": "DecisionesIA",
+      "columna": "entrada",
+      "tipo": "varchar",
+      "max_length": -1,
+      "is_nullable": true
+    },
+    {
+      "tabla": "DecisionesIA",
+      "columna": "regla_aplicada",
+      "tipo": "varchar",
+      "max_length": 300,
+      "is_nullable": true
+    },
+    {
+      "tabla": "DecisionesIA",
+      "columna": "decision",
+      "tipo": "varchar",
+      "max_length": 500,
+      "is_nullable": true
+    },
+    {
+      "tabla": "DecisionesIA",
+      "columna": "accion",
+      "tipo": "varchar",
+      "max_length": 500,
+      "is_nullable": true
+    },
+    {
+      "tabla": "DecisionesIA",
+      "columna": "requiere_revision",
+      "tipo": "bit",
+      "max_length": 1,
+      "is_nullable": false
+    },
+    {
+      "tabla": "DecisionesIA",
+      "columna": "resultado_revision",
+      "tipo": "varchar",
+      "max_length": 300,
+      "is_nullable": true
+    },
+    {
+      "tabla": "DecisionesIA",
+      "columna": "id_captacion",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "DecisionesIA",
+      "columna": "id_interaccion",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "columna": "id_solicitud",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "columna": "id_evento_etapa",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "columna": "id_captacion",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "columna": "id_persona",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "EntradasAgenteLead",
+      "columna": "fecha_registro_utc",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Etapas",
+      "columna": "id_etapa",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Etapas",
+      "columna": "nombre",
+      "tipo": "varchar",
+      "max_length": 20,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Etapas",
+      "columna": "descripcion",
+      "tipo": "varchar",
+      "max_length": 200,
+      "is_nullable": true
+    },
+    {
+      "tabla": "EventosEtapa",
+      "columna": "id_evento_etapa",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "EventosEtapa",
+      "columna": "id_persona",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "EventosEtapa",
+      "columna": "etapa_origen",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "EventosEtapa",
+      "columna": "etapa_destino",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "EventosEtapa",
+      "columna": "fecha_hora",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false
+    },
+    {
+      "tabla": "EventosEtapa",
+      "columna": "id_usuario",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "EventosEtapa",
+      "columna": "motivo",
+      "tipo": "varchar",
+      "max_length": 300,
+      "is_nullable": true
+    },
+    {
+      "tabla": "EventosEtapa",
+      "columna": "evidencia",
+      "tipo": "varchar",
+      "max_length": 500,
+      "is_nullable": true
+    },
+    {
+      "tabla": "EventosEtapa",
+      "columna": "id_captacion",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "EventosEtapa",
+      "columna": "id_solicitud",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "EventosEtapa",
+      "columna": "clave_operacion_buyer",
+      "tipo": "varchar",
+      "max_length": 80,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Horarios",
+      "columna": "id_horario",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Horarios",
+      "columna": "dia_semana",
+      "tipo": "tinyint",
+      "max_length": 1,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Horarios",
+      "columna": "hora_inicio",
+      "tipo": "time",
+      "max_length": 5,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Horarios",
+      "columna": "hora_fin",
+      "tipo": "time",
+      "max_length": 5,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Interacciones",
+      "columna": "id_interaccion",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Interacciones",
+      "columna": "id_persona",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Interacciones",
+      "columna": "id_canal",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Interacciones",
+      "columna": "id_fuente",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Interacciones",
+      "columna": "id_usuario",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Interacciones",
+      "columna": "fecha_hora",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Interacciones",
+      "columna": "tipo",
+      "tipo": "varchar",
+      "max_length": 50,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Interacciones",
+      "columna": "mensaje",
+      "tipo": "varchar",
+      "max_length": -1,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Interacciones",
+      "columna": "es_respuesta_util",
+      "tipo": "bit",
+      "max_length": 1,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Interacciones",
+      "columna": "resultado",
+      "tipo": "varchar",
+      "max_length": 200,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Interacciones",
+      "columna": "id_solicitud",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "PersonaPreferencias",
+      "columna": "id_preferencia",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "PersonaPreferencias",
+      "columna": "id_persona",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "PersonaPreferencias",
+      "columna": "id_canal",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "PersonaPreferencias",
+      "columna": "id_horario",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "PersonaPreferencias",
+      "columna": "id_modalidad",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "PersonaPreferencias",
+      "columna": "id_servicio_interes",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "PersonaPreferencias",
+      "columna": "sede_preferida",
+      "tipo": "varchar",
+      "max_length": 150,
+      "is_nullable": true
+    },
+    {
+      "tabla": "PersonaPreferencias",
+      "columna": "profesional_preferido",
+      "tipo": "varchar",
+      "max_length": 150,
+      "is_nullable": true
+    },
+    {
+      "tabla": "PersonaPreferencias",
+      "columna": "fecha_inicio",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false
+    },
+    {
+      "tabla": "PersonaPreferencias",
+      "columna": "fecha_fin",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Personas",
+      "columna": "id_persona",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Personas",
+      "columna": "nombres",
+      "tipo": "varchar",
+      "max_length": 50,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Personas",
+      "columna": "apellidos",
+      "tipo": "varchar",
+      "max_length": 50,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Personas",
+      "columna": "dni",
+      "tipo": "char",
+      "max_length": 8,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Personas",
+      "columna": "email",
+      "tipo": "varchar",
+      "max_length": 100,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Personas",
+      "columna": "numero",
+      "tipo": "varchar",
+      "max_length": 20,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Personas",
+      "columna": "fecha_nacimiento",
+      "tipo": "date",
+      "max_length": 3,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Personas",
+      "columna": "zona",
+      "tipo": "varchar",
+      "max_length": 100,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Personas",
+      "columna": "tipo_persona",
+      "tipo": "varchar",
+      "max_length": 30,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Personas",
+      "columna": "autoriza_contacto",
+      "tipo": "bit",
+      "max_length": 1,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Personas",
+      "columna": "fecha_autorizacion",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Personas",
+      "columna": "estado_calidad",
+      "tipo": "varchar",
+      "max_length": 20,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Personas",
+      "columna": "id_campana_origen",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Personas",
+      "columna": "id_canal_origen",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Personas",
+      "columna": "id_etapa_actual",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Personas",
+      "columna": "fecha_registro",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Personas",
+      "columna": "fecha_actualizacion",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Roles",
+      "columna": "id_rol",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Roles",
+      "columna": "nombre",
+      "tipo": "varchar",
+      "max_length": 50,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Servicios",
+      "columna": "id_servicio",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Servicios",
+      "columna": "nombre",
+      "tipo": "varchar",
+      "max_length": 100,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Servicios",
+      "columna": "descripcion",
+      "tipo": "varchar",
+      "max_length": 300,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Servicios",
+      "columna": "activo",
+      "tipo": "bit",
+      "max_length": 1,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "id_solicitud",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "id_persona",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "id_servicio",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "fecha_solicitud",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "motivo",
+      "tipo": "varchar",
+      "max_length": 200,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "tipo_consulta",
+      "tipo": "varchar",
+      "max_length": 50,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "prioridad",
+      "tipo": "varchar",
+      "max_length": 20,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "estado",
+      "tipo": "varchar",
+      "max_length": 30,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "fecha_primera_respuesta",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "fecha_cierre",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "fecha_ingreso_lead",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "archivada_lead_en",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "clave_registro_web_lead",
+      "tipo": "varchar",
+      "max_length": 36,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "hash_registro_web_lead",
+      "tipo": "char",
+      "max_length": 64,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "id_negociador",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "id_canal_origen",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "id_sede_interes_lead",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "resultado_comercial_lead",
+      "tipo": "varchar",
+      "max_length": 25,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "fecha_decision_comercial_lead",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "valor_acordado_lead",
+      "tipo": "decimal",
+      "max_length": 9,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "id_propuesta_aceptada_lead",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "motivo_cierre_lead",
+      "tipo": "varchar",
+      "max_length": 400,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Solicitudes",
+      "columna": "fecha_proximo_seguimiento",
+      "tipo": "datetime2",
+      "max_length": 8,
+      "is_nullable": true
+    },
+    {
+      "tabla": "Usuarios",
+      "columna": "id_usuario",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Usuarios",
+      "columna": "nombres",
+      "tipo": "varchar",
+      "max_length": 50,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Usuarios",
+      "columna": "apellidos",
+      "tipo": "varchar",
+      "max_length": 50,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Usuarios",
+      "columna": "email",
+      "tipo": "varchar",
+      "max_length": 100,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Usuarios",
+      "columna": "password_hash",
+      "tipo": "varchar",
+      "max_length": 255,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Usuarios",
+      "columna": "id_rol",
+      "tipo": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "tabla": "Usuarios",
+      "columna": "activo",
+      "tipo": "bit",
+      "max_length": 1,
+      "is_nullable": false
+    }
+  ],
+  "missingColumns": [],
+  "maxText": [
+    {
+      "field": "DecisionesIA.entrada",
+      "isMax": true
+    },
+    {
+      "field": "Interacciones.mensaje",
+      "isMax": true
+    }
+  ],
+  "procedures": [
+    {
+      "name": "usp_ConvertirBuyerALead",
+      "sha256": "6A42F2ADD1BE9F827074A50A6DCB579C6341F71C35E8F0216E4E04A70DC634A5",
+      "uses_ansi_nulls": true,
+      "uses_quoted_identifier": true
+    },
+    {
+      "name": "usp_RegistrarEntradaAgenteLead",
+      "sha256": "280708E81E3BE607A3772F082961EBE6E8371C1698414F3FDAC8B82D8A0C087E",
+      "uses_ansi_nulls": true,
+      "uses_quoted_identifier": false
+    }
+  ],
+  "procedureDependencies": [
+    {
+      "procedimiento": "usp_RegistrarEntradaAgenteLead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "CaptacionesBuyer"
+    },
+    {
+      "procedimiento": "usp_ConvertirBuyerALead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "CaptacionesBuyer"
+    },
+    {
+      "procedimiento": "usp_RegistrarEntradaAgenteLead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "EntradasAgenteLead"
+    },
+    {
+      "procedimiento": "usp_RegistrarEntradaAgenteLead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Etapas"
+    },
+    {
+      "procedimiento": "usp_ConvertirBuyerALead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Etapas"
+    },
+    {
+      "procedimiento": "usp_RegistrarEntradaAgenteLead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "EventosEtapa"
+    },
+    {
+      "procedimiento": "usp_ConvertirBuyerALead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "EventosEtapa"
+    },
+    {
+      "procedimiento": "usp_ConvertirBuyerALead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Personas"
+    },
+    {
+      "procedimiento": "usp_ConvertirBuyerALead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Servicios"
+    },
+    {
+      "procedimiento": "usp_RegistrarEntradaAgenteLead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Solicitudes"
+    },
+    {
+      "procedimiento": "usp_ConvertirBuyerALead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "Solicitudes"
+    },
+    {
+      "procedimiento": "usp_ConvertirBuyerALead",
+      "referenced_schema_name": "dbo",
+      "referenced_entity_name": "v_DatosCaptacionBuyer"
+    }
+  ],
+  "supportingView": [
+    {
+      "name": "v_DatosCaptacionBuyer",
+      "sha256": "BAC8AB4A8AF43E8FB98BFABFE29FA8DC4F4D17F42CB5389EDEF23844EE85665D"
+    }
+  ],
+  "constraints": [],
+  "staff": [
+    {
+      "id_usuario": 1,
+      "rol": "Administrador",
+      "activo": true,
+      "formato_compatible": 0
+    },
+    {
+      "id_usuario": 2,
+      "rol": "Negociador",
+      "activo": true,
+      "formato_compatible": 0
+    },
+    {
+      "id_usuario": 3,
+      "rol": "Negociador",
+      "activo": true,
+      "formato_compatible": 0
+    },
+    {
+      "id_usuario": 4,
+      "rol": "Negociador",
+      "activo": true,
+      "formato_compatible": 0
+    },
+    {
+      "id_usuario": 5,
+      "rol": "Administrador",
+      "activo": true,
+      "formato_compatible": 1
+    }
+  ],
+  "compatibleStaffCount": 1,
+  "stages": [
+    {
+      "id_etapa": 1,
+      "nombre": "BUYER"
+    },
+    {
+      "id_etapa": 2,
+      "nombre": "LEAD"
+    },
+    {
+      "id_etapa": 3,
+      "nombre": "PAYER"
+    }
+  ],
+  "activeServices": [
+    {
+      "id_servicio": 1,
+      "nombre": "Evaluación odontológica"
+    },
+    {
+      "id_servicio": 2,
+      "nombre": "Limpieza dental"
+    },
+    {
+      "id_servicio": 3,
+      "nombre": "Profilaxis"
+    },
+    {
+      "id_servicio": 4,
+      "nombre": "Fluorización"
+    },
+    {
+      "id_servicio": 5,
+      "nombre": "Restauración dental"
+    },
+    {
+      "id_servicio": 6,
+      "nombre": "Control odontológico"
+    },
+    {
+      "id_servicio": 8,
+      "nombre": "Evaluación General"
+    },
+    {
+      "id_servicio": 9,
+      "nombre": "Limpieza / Profilaxis"
+    },
+    {
+      "id_servicio": 10,
+      "nombre": "Ortodoncia Inicial"
+    },
+    {
+      "id_servicio": 11,
+      "nombre": "Implante Dental"
+    },
+    {
+      "id_servicio": 12,
+      "nombre": "Restauración Estética"
+    },
+    {
+      "id_servicio": 13,
+      "nombre": "Blanqueamiento Dental"
+    }
+  ],
+  "syntheticSubjects": [
+    {
+      "id_persona": 11000,
+      "etapa": "LEAD",
+      "prefijo_qa": 1,
+      "autoriza_contacto": true,
+      "estado_calidad": "Valido",
+      "tiene_telefono": 0,
+      "tiene_email": 1,
+      "nombre_completo": 1,
+      "captaciones": 1,
+      "interacciones": 6,
+      "decisiones_chat": 6,
+      "solicitudes": 1
+    },
+    {
+      "id_persona": 11001,
+      "etapa": "LEAD",
+      "prefijo_qa": 1,
+      "autoriza_contacto": true,
+      "estado_calidad": "Valido",
+      "tiene_telefono": 0,
+      "tiene_email": 1,
+      "nombre_completo": 1,
+      "captaciones": 1,
+      "interacciones": 2,
+      "decisiones_chat": 0,
+      "solicitudes": 1
+    },
+    {
+      "id_persona": 11002,
+      "etapa": "LEAD",
+      "prefijo_qa": 1,
+      "autoriza_contacto": true,
+      "estado_calidad": "Valido",
+      "tiene_telefono": 0,
+      "tiene_email": 1,
+      "nombre_completo": 1,
+      "captaciones": 1,
+      "interacciones": 1,
+      "decisiones_chat": 0,
+      "solicitudes": 1
+    },
+    {
+      "id_persona": 11007,
+      "etapa": "PAYER",
+      "prefijo_qa": 1,
+      "autoriza_contacto": true,
+      "estado_calidad": "Valido",
+      "tiene_telefono": 0,
+      "tiene_email": 1,
+      "nombre_completo": 1,
+      "captaciones": 1,
+      "interacciones": 3,
+      "decisiones_chat": 2,
+      "solicitudes": 1
+    }
+  ],
+  "historicalEvents": [
+    {
+      "id_persona": 11000,
+      "id_evento_etapa": 4104,
+      "id_solicitud": 2932,
+      "id_captacion": 10998,
+      "etapa_origen": "BUYER",
+      "etapa_destino": "LEAD",
+      "recepcion_existente": 1
+    },
+    {
+      "id_persona": 11001,
+      "id_evento_etapa": 4098,
+      "id_solicitud": 2926,
+      "id_captacion": 10999,
+      "etapa_origen": "BUYER",
+      "etapa_destino": "LEAD",
+      "recepcion_existente": 1
+    },
+    {
+      "id_persona": 11002,
+      "id_evento_etapa": 4097,
+      "id_solicitud": 2925,
+      "id_captacion": 11000,
+      "etapa_origen": "BUYER",
+      "etapa_destino": "LEAD",
+      "recepcion_existente": 1
+    },
+    {
+      "id_persona": 11007,
+      "id_evento_etapa": 4101,
+      "id_solicitud": 2929,
+      "id_captacion": 11005,
+      "etapa_origen": "BUYER",
+      "etapa_destino": "LEAD",
+      "recepcion_existente": 1
+    }
+  ],
+  "tableCounts": [
+    {
+      "personas": "10837",
+      "interacciones": "20042",
+      "decisiones": "47",
+      "solicitudes": "2878",
+      "eventos": "4058",
+      "entradas": "17"
+    }
+  ],
+  "otherRequests": [],
+  "otherTransactions": []
+}

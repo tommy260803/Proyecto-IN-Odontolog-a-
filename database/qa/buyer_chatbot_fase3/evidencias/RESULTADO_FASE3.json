@@ -1,0 +1,35 @@
+{
+  "status": "BLOCKED",
+  "reason": "NO_COMPATIBLE_ACTIVE_STAFF_ACCOUNT",
+  "effectiveTarget": {
+    "servidor": "DANIELPC",
+    "base": "NexoSalud_LeadEnsayoFinal",
+    "utc": "2026-11-13T03:39:10.067Z"
+  },
+  "sqlReadOnlyPreflight": "EXECUTED_REAL_SQL",
+  "compatibleStaffAccounts": 0,
+  "executedHttpCases": [],
+  "blockedHttpCases": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F"
+  ],
+  "geminiCalls": 0,
+  "sqlWrites": 0,
+  "realSessionsIssued": 0,
+  "visualAcceptance": "PENDING",
+  "processCrashTest": "NOT_EXECUTED",
+  "crossProcessConcurrency": "NOT_EXECUTED",
+  "unitTests": {
+    "kind": "PURE_GUARD_NO_SQL_NO_GEMINI",
+    "exit": 0,
+    "passed": 6
+  },
+  "changes": [
+    "QA launcher accepts loopback only on machine DANIELPC, effective SELECT guard retained"
+  ],
+  "accountChanges": 0
+}

@@ -1,0 +1,19 @@
+
+> in-odontologia@0.0.0 build
+> tsc && vite build
+
+vite v8.3.0 building client environment for production...
+transforming...
+✓ 3685 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                               1.07 kB │ gzip:   0.59 kB
+dist/assets/index-CU-GeOHy.css              180.01 kB │ gzip:  27.70 kB
+dist/assets/rolldown-runtime-CbXtAM7H.js      0.58 kB │ gzip:   0.36 kB
+dist/assets/reportPdf-B3PDavm1.js             3.47 kB │ gzip:   1.75 kB
+dist/assets/purify.es-7fJ1DZ6H.js            26.92 kB │ gzip:  10.69 kB
+dist/assets/index.es-CpZ_d3-L.js            151.41 kB │ gzip:  48.90 kB
+dist/assets/html2canvas-BM5yyqGY.js         199.49 kB │ gzip:  46.77 kB
+dist/assets/index-BvB-Hvw6.js             2,543.34 kB │ gzip: 818.11 kB
+
+✓ built in 2.55s

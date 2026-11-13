@@ -1,0 +1,118 @@
+{
+  "at": "2026-11-13T09:35:36.882Z",
+  "checks": [
+    {
+      "name": "listado_sin_sesion",
+      "status": 401
+    },
+    {
+      "name": "creacion_sin_sesion_rechazada",
+      "status": 401
+    },
+    {
+      "name": "login_real",
+      "status": 200,
+      "actorId": 5,
+      "role": "Administrador",
+      "futureExpiration": true
+    },
+    {
+      "name": "listado_autorizado",
+      "status": 200,
+      "items": 1,
+      "total": 10839
+    },
+    {
+      "name": "catalogos_autorizados",
+      "status": 200,
+      "services": 12,
+      "channels": 8,
+      "sources": 3,
+      "branches": 3
+    },
+    {
+      "name": "captacion_publica_no_expuesta",
+      "status": 404
+    },
+    {
+      "name": "frontend_spa",
+      "path": "/buyer",
+      "status": 200
+    },
+    {
+      "name": "frontend_spa",
+      "path": "/buyer/nuevo",
+      "status": 200
+    },
+    {
+      "name": "modulo_frontend_actual",
+      "path": "/src/shared/services/staffAuthService.ts",
+      "status": 200
+    },
+    {
+      "name": "modulo_frontend_actual",
+      "path": "/src/modules/buyer/services/buyer.service.ts",
+      "status": 200
+    },
+    {
+      "name": "modulo_frontend_actual",
+      "path": "/src/app/layouts/AppLayout.tsx",
+      "status": 200
+    },
+    {
+      "name": "logout_y_token_revocado",
+      "logout": 204,
+      "nextRead": 401
+    }
+  ],
+  "sqlWrites": 0,
+  "geminiCalls": 0,
+  "prospectsCreated": 0,
+  "target": {
+    "servidor": "DANIELPC",
+    "base": "NexoSalud_LeadEnsayoFinal"
+  },
+  "fingerprint": "902be21f81ea53e955888501c6d5a15698f86d2942dbb148551d2b21d428ac21",
+  "before": {
+    "counts": {
+      "personas": 10839,
+      "captaciones": 10839,
+      "interacciones": 20053,
+      "decisiones": 72,
+      "solicitudes": 2880,
+      "eventos": 4060,
+      "entradas": 19
+    },
+    "protected11012": [
+      {
+        "id_persona": 11012,
+        "etapa": "LEAD",
+        "interacciones": 5,
+        "solicitudes": 1,
+        "eventos": 1
+      }
+    ]
+  },
+  "after": {
+    "counts": {
+      "personas": 10839,
+      "captaciones": 10839,
+      "interacciones": 20053,
+      "decisiones": 72,
+      "solicitudes": 2880,
+      "eventos": 4060,
+      "entradas": 19
+    },
+    "protected11012": [
+      {
+        "id_persona": 11012,
+        "etapa": "LEAD",
+        "interacciones": 5,
+        "solicitudes": 1,
+        "eventos": 1
+      }
+    ]
+  },
+  "countsUnchanged": true,
+  "success": true
+}

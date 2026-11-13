@@ -1,0 +1,296 @@
+{
+  "at": "2026-11-13T06:38:38.384Z",
+  "readOnly": true,
+  "target": {
+    "servidor": "DANIELPC",
+    "base": "NexoSalud_LeadEnsayoFinal"
+  },
+  "destino": [
+    {
+      "servidor": "DANIELPC",
+      "base": "NexoSalud_LeadEnsayoFinal",
+      "utc": "2026-11-13T06:38:38.448Z"
+    }
+  ],
+  "sujetos": [
+    {
+      "id_persona": 11000,
+      "etapa": "LEAD",
+      "captaciones": 1,
+      "interacciones": 6,
+      "solicitudes": 1,
+      "eventos": 1,
+      "entradas": 1
+    },
+    {
+      "id_persona": 11007,
+      "etapa": "PAYER",
+      "captaciones": 1,
+      "interacciones": 4,
+      "solicitudes": 1,
+      "eventos": 1,
+      "entradas": 1
+    },
+    {
+      "id_persona": 11011,
+      "etapa": "LEAD",
+      "captaciones": 1,
+      "interacciones": 5,
+      "solicitudes": 1,
+      "eventos": 1,
+      "entradas": 1
+    },
+    {
+      "id_persona": 11012,
+      "etapa": "BUYER",
+      "captaciones": 1,
+      "interacciones": 4,
+      "solicitudes": 0,
+      "eventos": 0,
+      "entradas": 0
+    }
+  ],
+  "turnos": [
+    {
+      "turnId": 193,
+      "id_persona": 11000,
+      "id_interaccion": 20218,
+      "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+      "estado": "COMPLETADA",
+      "accion": "SOLO_CONSULTA",
+      "entrega": "NO_APLICA",
+      "intentos_clasificacion": "1",
+      "intentos_chat": 1,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 195,
+      "id_persona": 11000,
+      "id_interaccion": 20219,
+      "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+      "estado": "COMPLETADA",
+      "accion": "ACLARACION",
+      "entrega": "NO_APLICA",
+      "intentos_clasificacion": "1",
+      "intentos_chat": 1,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 197,
+      "id_persona": 11000,
+      "id_interaccion": 20220,
+      "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+      "estado": "COMPLETADA",
+      "accion": "SOLO_CONSULTA",
+      "entrega": "NO_APLICA",
+      "intentos_clasificacion": "1",
+      "intentos_chat": 1,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 199,
+      "id_persona": 11000,
+      "id_interaccion": 20221,
+      "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+      "estado": "COMPLETADA",
+      "accion": "SOLO_CONSULTA",
+      "entrega": "NO_APLICA",
+      "intentos_clasificacion": "1",
+      "intentos_chat": 1,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 202,
+      "id_persona": 11007,
+      "id_interaccion": 20222,
+      "conversationId": "bdf7d983-3507-4aea-a38a-6a8d1f34f426",
+      "estado": "COMPLETADA",
+      "accion": "SOLO_CONSULTA",
+      "entrega": "NO_APLICA",
+      "intentos_clasificacion": "1",
+      "intentos_chat": 1,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 204,
+      "id_persona": 11000,
+      "id_interaccion": 20223,
+      "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+      "estado": "COMPLETADA",
+      "accion": "CONVERSION_LEAD",
+      "entrega": "CONFIRMADA",
+      "intentos_clasificacion": "3",
+      "intentos_chat": 4,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 207,
+      "id_persona": 11011,
+      "id_interaccion": 20224,
+      "conversationId": "b79c80bd-1434-4879-ba3a-776c544038e9",
+      "estado": "COMPLETADA",
+      "accion": "SOLO_CONSULTA",
+      "entrega": "NO_APLICA",
+      "intentos_clasificacion": "1",
+      "intentos_chat": 1,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 209,
+      "id_persona": 11011,
+      "id_interaccion": 20225,
+      "conversationId": "b79c80bd-1434-4879-ba3a-776c544038e9",
+      "estado": "COMPLETADA",
+      "accion": "ACLARACION",
+      "entrega": "NO_APLICA",
+      "intentos_clasificacion": "3",
+      "intentos_chat": 3,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 212,
+      "id_persona": 11007,
+      "id_interaccion": 20226,
+      "conversationId": "2d45c29b-8519-4f12-9549-8f0f0399af30",
+      "estado": "COMPLETADA",
+      "accion": "SOLO_CONSULTA",
+      "entrega": "NO_APLICA",
+      "intentos_clasificacion": "1",
+      "intentos_chat": 1,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 214,
+      "id_persona": 11011,
+      "id_interaccion": 20227,
+      "conversationId": "b79c80bd-1434-4879-ba3a-776c544038e9",
+      "estado": "COMPLETADA",
+      "accion": "SOLO_CONSULTA",
+      "entrega": "NO_APLICA",
+      "intentos_clasificacion": "1",
+      "intentos_chat": 1,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 216,
+      "id_persona": 11011,
+      "id_interaccion": 20228,
+      "conversationId": "b79c80bd-1434-4879-ba3a-776c544038e9",
+      "estado": "COMPLETADA",
+      "accion": "ACLARACION",
+      "entrega": "NO_APLICA",
+      "intentos_clasificacion": "1",
+      "intentos_chat": 1,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 218,
+      "id_persona": 11011,
+      "id_interaccion": 20229,
+      "conversationId": "b79c80bd-1434-4879-ba3a-776c544038e9",
+      "estado": "COMPLETADA",
+      "accion": "CONVERSION_LEAD",
+      "entrega": "CONFIRMADA",
+      "intentos_clasificacion": "1",
+      "intentos_chat": 1,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 221,
+      "id_persona": 11012,
+      "id_interaccion": 20230,
+      "conversationId": "890e10a3-0799-4bf0-8830-c65a25f50dea",
+      "estado": "COMPLETADA",
+      "accion": "SOLO_CONSULTA",
+      "entrega": "NO_APLICA",
+      "intentos_clasificacion": "1",
+      "intentos_chat": 1,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 223,
+      "id_persona": 11012,
+      "id_interaccion": 20231,
+      "conversationId": "890e10a3-0799-4bf0-8830-c65a25f50dea",
+      "estado": "COMPLETADA",
+      "accion": "ACLARACION",
+      "entrega": "NO_APLICA",
+      "intentos_clasificacion": "1",
+      "intentos_chat": 1,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 225,
+      "id_persona": 11012,
+      "id_interaccion": 20232,
+      "conversationId": "890e10a3-0799-4bf0-8830-c65a25f50dea",
+      "estado": "COMPLETADA",
+      "accion": "SOLO_CONSULTA",
+      "entrega": "NO_APLICA",
+      "intentos_clasificacion": "1",
+      "intentos_chat": 1,
+      "respuestas_asistente": 1
+    },
+    {
+      "turnId": 227,
+      "id_persona": 11012,
+      "id_interaccion": 20233,
+      "conversationId": "890e10a3-0799-4bf0-8830-c65a25f50dea",
+      "estado": "COMPLETADA",
+      "accion": "ACLARACION",
+      "entrega": "NO_APLICA",
+      "intentos_clasificacion": "1",
+      "intentos_chat": 1,
+      "respuestas_asistente": 1
+    }
+  ],
+  "vinculos": [
+    {
+      "id_persona": 11000,
+      "id_interaccion": 20223,
+      "id_solicitud": 2932,
+      "id_servicio": 1,
+      "id_evento_etapa": 4104,
+      "id_captacion": 10998,
+      "recepcion_solicitud": 2932,
+      "recepcion_evento": 4104
+    },
+    {
+      "id_persona": 11011,
+      "id_interaccion": 20229,
+      "id_solicitud": 2933,
+      "id_servicio": 1,
+      "id_evento_etapa": 4105,
+      "id_captacion": 11009,
+      "recepcion_solicitud": 2933,
+      "recepcion_evento": 4105
+    }
+  ],
+  "personal_sin_credenciales": [
+    {
+      "id_usuario": 1,
+      "activo": true,
+      "rol": "Administrador"
+    },
+    {
+      "id_usuario": 2,
+      "activo": true,
+      "rol": "Negociador"
+    },
+    {
+      "id_usuario": 3,
+      "activo": true,
+      "rol": "Negociador"
+    },
+    {
+      "id_usuario": 4,
+      "activo": true,
+      "rol": "Negociador"
+    },
+    {
+      "id_usuario": 5,
+      "activo": true,
+      "rol": "Administrador"
+    }
+  ]
+}

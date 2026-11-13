@@ -156,6 +156,9 @@ export function hasContextualEvidenceForOpportunity(
 }
 
 export interface EvaluateBuyerInteractionInput {
+  /** Solo el orquestador administrativo puede procesar entradas de chat persistidas. */
+  conversationTurnId?: number;
+  conversationExecutionId?: string;
   id_persona: number;
   id_captacion: number;
   id_interaccion: number;
@@ -489,7 +492,7 @@ export class BuyerEvaluationService {
   /**
    * Mapa en memoria para serializar peticiones concurrentes sobre el mismo id_interaccion.
    */
-  private static inFlightEvaluations = new Map<number, Promise<BuyerEvaluationOutcome>>();
+  private static inFlightEvaluations = new Map<string, Promise<BuyerEvaluationOutcome>>();
 
   /**
    * Ejecuta la evaluación completa de un mensaje Buyer persistido previamente.
@@ -498,18 +501,19 @@ export class BuyerEvaluationService {
     input: EvaluateBuyerInteractionInput
   ): Promise<BuyerEvaluationOutcome> {
     const { id_interaccion } = input;
+    const executionKey = input.conversationExecutionId ? `${id_interaccion}:${input.conversationExecutionId}` : String(id_interaccion);
 
     // Protección concurrente: si ya hay una evaluación en curso para esta interacción, esperar la misma
-    const existingPromise = this.inFlightEvaluations.get(id_interaccion);
+    const existingPromise = this.inFlightEvaluations.get(executionKey);
     if (existingPromise) {
       return existingPromise;
     }
 
     const evaluationPromise = this.executeEvaluationCore(input).finally(() => {
-      this.inFlightEvaluations.delete(id_interaccion);
+      this.inFlightEvaluations.delete(executionKey);
     });
 
-    this.inFlightEvaluations.set(id_interaccion, evaluationPromise);
+    this.inFlightEvaluations.set(executionKey, evaluationPromise);
     return evaluationPromise;
   }
 
@@ -518,6 +522,11 @@ export class BuyerEvaluationService {
   ): Promise<BuyerEvaluationOutcome> {
     const db = (input.dbClient || defaultPrisma) as PrismaClient;
     const { id_persona, id_captacion, id_interaccion, mensaje } = input;
+
+    const chatInteraction = await db.interacciones.findUnique({ where: { id_interaccion } });
+    if (chatInteraction?.tipo === 'BUYER_CHAT_ENTRADA' && !input.conversationTurnId) {
+      throw new Error('CHAT_REQUIRES_ADMINISTRATIVE_ORCHESTRATOR');
+    }
 
     // 1. Obtener catálogo activo real de servicios desde la base de datos
     const catalog = await getActiveServices(db);
@@ -570,6 +579,7 @@ export class BuyerEvaluationService {
 
     // Preparar contexto persistente
     const inputPayload = JSON.stringify({
+      ...(input.conversationTurnId ? { conversationTurnId: input.conversationTurnId } : {}),
       mensaje,
       id_persona,
       id_captacion,
@@ -1011,7 +1021,7 @@ export class BuyerEvaluationService {
         intencion: null,
         id_servicio: null,
         accion: 'REINTENTO_PENDIENTE',
-        etapa_final: 'BUYER',
+        etapa_final: currentStageName,
         error: sanitizedError,
         intentosRealizados: currentAttempt,
         intentos_realizados: currentAttempt,

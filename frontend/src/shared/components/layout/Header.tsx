@@ -28,7 +28,7 @@ import {
 } from '@/shared/components/ui/sheet';
 import { CLINIC_BRANCH_OPTIONS, useSidebar } from '@/shared/context/SidebarContext';
 import { useTheme } from '@/shared/context/ThemeContext';
-import { staffAuthService } from '@/shared/services/staffAuthService';
+import { useStaffAuth } from '@/shared/context/StaffAuthContext';
 import { CommandPaletteModal } from './CommandPaletteModal';
 import { Sidebar } from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
@@ -79,15 +79,15 @@ export function Header() {
 
   const menusContainerRef = useRef<HTMLDivElement>(null);
 
-  const session = staffAuthService.getSession();
+  const { session, logout, openLoginModal } = useStaffAuth();
   const logoSrc = theme === 'dark' ? '/Logo_NexoSalus_Oscuro.png' : '/Logo_NexoSalud.png';
 
   const displayFullName = session
     ? `${session.nombres} ${session.apellidos}`.trim()
-    : 'Dr. Benitez';
-  const displayRole = session ? session.rol : 'Administrador';
-  const displayEmail = session ? session.email : 'dr.benitez@nexosalud.pe';
-  const displayInitials = session ? session.initials : 'DB';
+    : 'Personal Clínico';
+  const displayRole = session ? session.rol : 'Sin sesión activa';
+  const displayEmail = session ? session.email : 'inicia.sesion@nexosalud.pe';
+  const displayInitials = session ? session.initials : 'NS';
 
   const breadcrumbs = resolveBreadcrumbs(location.pathname, location.search);
   const unreadCount = notifications.filter((n) => n.unread).length;
@@ -139,7 +139,7 @@ export function Header() {
 
   const handleLogout = () => {
     setOpenMenu(null);
-    staffAuthService.logout();
+    logout();
     navigate('/');
   };
 
@@ -613,14 +613,28 @@ export function Header() {
                   </div>
 
                   <div className="border-t border-slate-100 dark:border-slate-800 pt-1">
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                    >
-                      <LogOut className="h-3.5 w-3.5" strokeWidth={1.75} />
-                      <span>Cerrar sesión</span>
-                    </button>
+                    {session ? (
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                      >
+                        <LogOut className="h-3.5 w-3.5" strokeWidth={1.75} />
+                        <span>Cerrar sesión</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenMenu(null);
+                          openLoginModal();
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/40 cursor-pointer"
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
+                        <span>Iniciar sesión del personal</span>
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               )}

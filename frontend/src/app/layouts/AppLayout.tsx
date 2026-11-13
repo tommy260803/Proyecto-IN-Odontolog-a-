@@ -14,10 +14,13 @@ import { Sidebar } from '@/shared/components/layout/Sidebar';
 import { Toaster } from '@/shared/components/ui/toaster';
 import { CLINIC_BRANCH_OPTIONS, useSidebar } from '@/shared/context/SidebarContext';
 import { useTheme } from '@/shared/context/ThemeContext';
+import { useStaffAuth } from '@/shared/context/StaffAuthContext';
+import { StaffLoginModal } from '@/modules/buyer/components/landing/StaffLoginModal';
 
 export default function AppLayout() {
   const { isCollapsed, toggleSidebar, activeBranch, setActiveBranch } = useSidebar();
   const { theme } = useTheme();
+  const { isLoginModalOpen, closeLoginModal } = useStaffAuth();
   const navigate = useNavigate();
 
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
@@ -209,6 +212,11 @@ export default function AppLayout() {
           </div>
         </main>
       </div>
+      <StaffLoginModal
+        open={isLoginModalOpen}
+        onOpenChange={(open) => { if (!open) closeLoginModal(); }}
+        onSuccessLogin={(_session, destination) => { closeLoginModal(); navigate(destination || '/buyer'); }}
+      />
       <Toaster />
     </div>
   );

@@ -1,0 +1,24 @@
+
+> in-odontologia@0.0.0 build
+> tsc && vite build
+
+vite v8.3.0 building client environment for production...
+transforming...
+✓ 3689 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                               1.07 kB │ gzip:   0.58 kB
+dist/assets/index-DJUeYMYM.css              180.27 kB │ gzip:  27.73 kB
+dist/assets/rolldown-runtime-CbXtAM7H.js      0.58 kB │ gzip:   0.36 kB
+dist/assets/reportPdf-CHvVh-zc.js             3.47 kB │ gzip:   1.75 kB
+dist/assets/purify.es-7fJ1DZ6H.js            26.92 kB │ gzip:  10.69 kB
+dist/assets/index.es-OEseKfPs.js            151.41 kB │ gzip:  48.90 kB
+dist/assets/html2canvas-BM5yyqGY.js         199.49 kB │ gzip:  46.77 kB
+dist/assets/index-DMahwQEy.js             2,566.27 kB │ gzip: 825.86 kB
+
+✓ built in 2.29s
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.

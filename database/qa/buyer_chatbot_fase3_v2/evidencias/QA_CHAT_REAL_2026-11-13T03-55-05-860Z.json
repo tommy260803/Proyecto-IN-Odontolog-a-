@@ -1,0 +1,1087 @@
+{
+  "run": "QA_CHAT_REAL_2026-11-13T03-55-05-860Z",
+  "at": "2026-11-13T03:55:05.862Z",
+  "realSql": true,
+  "realGemini": true,
+  "model": "gemini-3.5-flash-lite",
+  "cases": {
+    "C2_RESPUESTA_EXPLICITA_A_ACLARACION_REAL": {
+      "result": "FAIL",
+      "reason": "Expected values to be strictly equal:\n\n202 !== 200\n"
+    },
+    "D2_REPLAY_CONVERSION": {
+      "result": "FAIL",
+      "reason": "Expected values to be strictly equal:\n\n'FAIL' !== 'PASS'\n"
+    },
+    "F2_HISTORIAL_FINAL_OTRA_SESION": {
+      "result": "FAIL",
+      "reason": "The expression evaluated to a falsy value:\n\n  assert.ok(history.body.turns.some(t=>t.turnId===converted?.r.body.turnId))\n"
+    }
+  },
+  "steps": [
+    {
+      "label": "C3_RETRY",
+      "person": 11000,
+      "request": {
+        "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+        "message": "Ahora he decidido solicitar la cita de evaluación odontológica. Antes solo quería información, pero ya cambié de decisión. Sí deseo que envíen mi solicitud para que me contacten; no estoy preguntando por más detalles.",
+        "origin": "OPERADOR_TRANSCRIPTOR"
+      },
+      "key": "QA_CHAT_REAL_2026-11-13T03-54-08-431Z_C2",
+      "response": {
+        "status": 202,
+        "body": {
+          "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+          "turnId": 204,
+          "interactionId": 20223,
+          "status": "PENDIENTE",
+          "messages": [
+            {
+              "role": "operador_transcriptor",
+              "origin": "OPERADOR_TRANSCRIPTOR",
+              "text": "Ahora he decidido solicitar la cita de evaluación odontológica. Antes solo quería información, pero ya cambié de decisión. Sí deseo que envíen mi solicitud para que me contacten; no estoy preguntando por más detalles.",
+              "actorId": 5,
+              "at": "2026-11-13T03:54:09.260Z"
+            },
+            {
+              "role": "sistema",
+              "text": "No se pudo completar el turno. El mensaje está guardado y puede reintentarse.",
+              "origin": "BACKEND_ERROR",
+              "at": "2026-11-13T03:54:11.444Z"
+            },
+            {
+              "role": "sistema",
+              "text": "No se pudo completar el turno. El mensaje está guardado y puede reintentarse.",
+              "origin": "BACKEND_ERROR",
+              "at": "2026-11-13T03:55:08.728Z"
+            }
+          ],
+          "attempts": [
+            {
+              "at": "2026-11-13T03:54:09.270Z",
+              "result": "PENDIENTE",
+              "executionId": "647041b1-3617-49bb-beaa-c7b72011cbfc",
+              "errorCode": "MODEL_OR_EVALUATION_PENDING"
+            },
+            {
+              "at": "2026-11-13T03:55:06.677Z",
+              "result": "PENDIENTE",
+              "executionId": "e2c969f3-c098-44b4-ba65-7c7518c5b650",
+              "errorCode": "MODEL_OR_EVALUATION_PENDING"
+            }
+          ],
+          "declaredServiceId": 1,
+          "analysis": null,
+          "evaluation": {
+            "id_persona": 11000,
+            "id_captacion": 10998,
+            "id_interaccion": 20223,
+            "id_decision": 205,
+            "estado": "PENDIENTE",
+            "intencion": null,
+            "id_servicio": null,
+            "accion": "REINTENTO_PENDIENTE",
+            "etapa_final": "BUYER",
+            "error": "La confirmación debe ser una pregunta de aclaración.",
+            "intentosRealizados": 2,
+            "intentos_realizados": 2,
+            "duracionTotalMs": 1976,
+            "duracion_total_ms": 1976,
+            "entregaLeadEstado": "PENDIENTE",
+            "contextFingerprint": "0196e9bbc97dc190c72b69465e6f02e2"
+          },
+          "execution": {
+            "id": "e2c969f3-c098-44b4-ba65-7c7518c5b650",
+            "expiresAt": "2026-11-13T03:56:08.731Z"
+          },
+          "retryable": true,
+          "replayed": false
+        }
+      },
+      "before": {
+        "subjects": [
+          {
+            "id_persona": 11000,
+            "etapa": "BUYER",
+            "interacciones": 6,
+            "decisiones_chat": 6,
+            "evaluaciones": 6,
+            "solicitudes": 0,
+            "eventos": 0,
+            "entradas": 0
+          },
+          {
+            "id_persona": 11007,
+            "etapa": "PAYER",
+            "interacciones": 3,
+            "decisiones_chat": 2,
+            "evaluaciones": 3,
+            "solicitudes": 1,
+            "eventos": 1,
+            "entradas": 1
+          }
+        ],
+        "links": [
+          {
+            "id_interaccion": 20205,
+            "id_persona": 11000,
+            "id_usuario": null,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": null,
+            "estado_chat": null,
+            "turnId": null
+          },
+          {
+            "id_interaccion": 20213,
+            "id_persona": 11007,
+            "id_usuario": null,
+            "id_solicitud": 2929,
+            "id_servicio": 1,
+            "id_evento_etapa": 4101,
+            "id_captacion": 11005,
+            "recepcion_solicitud": 2929,
+            "recepcion_evento": 4101,
+            "conversationId": null,
+            "estado_chat": null,
+            "turnId": null
+          },
+          {
+            "id_interaccion": 20214,
+            "id_persona": 11007,
+            "id_usuario": null,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": null,
+            "estado_chat": null,
+            "turnId": null
+          },
+          {
+            "id_interaccion": 20218,
+            "id_persona": 11000,
+            "id_usuario": 5,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "estado_chat": "COMPLETADA",
+            "turnId": 193
+          },
+          {
+            "id_interaccion": 20219,
+            "id_persona": 11000,
+            "id_usuario": 5,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "estado_chat": "COMPLETADA",
+            "turnId": 195
+          },
+          {
+            "id_interaccion": 20220,
+            "id_persona": 11000,
+            "id_usuario": 5,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "estado_chat": "COMPLETADA",
+            "turnId": 197
+          },
+          {
+            "id_interaccion": 20221,
+            "id_persona": 11000,
+            "id_usuario": 5,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "estado_chat": "COMPLETADA",
+            "turnId": 199
+          },
+          {
+            "id_interaccion": 20222,
+            "id_persona": 11007,
+            "id_usuario": 5,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": "bdf7d983-3507-4aea-a38a-6a8d1f34f426",
+            "estado_chat": "COMPLETADA",
+            "turnId": 202
+          },
+          {
+            "id_interaccion": 20223,
+            "id_persona": 11000,
+            "id_usuario": 5,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "estado_chat": "PENDIENTE",
+            "turnId": 204
+          }
+        ]
+      },
+      "after": {
+        "subjects": [
+          {
+            "id_persona": 11000,
+            "etapa": "BUYER",
+            "interacciones": 6,
+            "decisiones_chat": 6,
+            "evaluaciones": 6,
+            "solicitudes": 0,
+            "eventos": 0,
+            "entradas": 0
+          },
+          {
+            "id_persona": 11007,
+            "etapa": "PAYER",
+            "interacciones": 3,
+            "decisiones_chat": 2,
+            "evaluaciones": 3,
+            "solicitudes": 1,
+            "eventos": 1,
+            "entradas": 1
+          }
+        ],
+        "links": [
+          {
+            "id_interaccion": 20205,
+            "id_persona": 11000,
+            "id_usuario": null,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": null,
+            "estado_chat": null,
+            "turnId": null
+          },
+          {
+            "id_interaccion": 20213,
+            "id_persona": 11007,
+            "id_usuario": null,
+            "id_solicitud": 2929,
+            "id_servicio": 1,
+            "id_evento_etapa": 4101,
+            "id_captacion": 11005,
+            "recepcion_solicitud": 2929,
+            "recepcion_evento": 4101,
+            "conversationId": null,
+            "estado_chat": null,
+            "turnId": null
+          },
+          {
+            "id_interaccion": 20214,
+            "id_persona": 11007,
+            "id_usuario": null,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": null,
+            "estado_chat": null,
+            "turnId": null
+          },
+          {
+            "id_interaccion": 20218,
+            "id_persona": 11000,
+            "id_usuario": 5,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "estado_chat": "COMPLETADA",
+            "turnId": 193
+          },
+          {
+            "id_interaccion": 20219,
+            "id_persona": 11000,
+            "id_usuario": 5,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "estado_chat": "COMPLETADA",
+            "turnId": 195
+          },
+          {
+            "id_interaccion": 20220,
+            "id_persona": 11000,
+            "id_usuario": 5,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "estado_chat": "COMPLETADA",
+            "turnId": 197
+          },
+          {
+            "id_interaccion": 20221,
+            "id_persona": 11000,
+            "id_usuario": 5,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "estado_chat": "COMPLETADA",
+            "turnId": 199
+          },
+          {
+            "id_interaccion": 20222,
+            "id_persona": 11007,
+            "id_usuario": 5,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": "bdf7d983-3507-4aea-a38a-6a8d1f34f426",
+            "estado_chat": "COMPLETADA",
+            "turnId": 202
+          },
+          {
+            "id_interaccion": 20223,
+            "id_persona": 11000,
+            "id_usuario": 5,
+            "id_solicitud": null,
+            "id_servicio": null,
+            "id_evento_etapa": null,
+            "id_captacion": null,
+            "recepcion_solicitud": null,
+            "recepcion_evento": null,
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "estado_chat": "PENDIENTE",
+            "turnId": 204
+          }
+        ]
+      }
+    }
+  ],
+  "target": {
+    "servidor": "DANIELPC",
+    "base": "NexoSalud_LeadEnsayoFinal"
+  },
+  "before": {
+    "subjects": [
+      {
+        "id_persona": 11000,
+        "etapa": "BUYER",
+        "interacciones": 6,
+        "decisiones_chat": 6,
+        "evaluaciones": 6,
+        "solicitudes": 0,
+        "eventos": 0,
+        "entradas": 0
+      },
+      {
+        "id_persona": 11007,
+        "etapa": "PAYER",
+        "interacciones": 3,
+        "decisiones_chat": 2,
+        "evaluaciones": 3,
+        "solicitudes": 1,
+        "eventos": 1,
+        "entradas": 1
+      }
+    ],
+    "links": [
+      {
+        "id_interaccion": 20205,
+        "id_persona": 11000,
+        "id_usuario": null,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": null,
+        "estado_chat": null,
+        "turnId": null
+      },
+      {
+        "id_interaccion": 20213,
+        "id_persona": 11007,
+        "id_usuario": null,
+        "id_solicitud": 2929,
+        "id_servicio": 1,
+        "id_evento_etapa": 4101,
+        "id_captacion": 11005,
+        "recepcion_solicitud": 2929,
+        "recepcion_evento": 4101,
+        "conversationId": null,
+        "estado_chat": null,
+        "turnId": null
+      },
+      {
+        "id_interaccion": 20214,
+        "id_persona": 11007,
+        "id_usuario": null,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": null,
+        "estado_chat": null,
+        "turnId": null
+      },
+      {
+        "id_interaccion": 20218,
+        "id_persona": 11000,
+        "id_usuario": 5,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+        "estado_chat": "COMPLETADA",
+        "turnId": 193
+      },
+      {
+        "id_interaccion": 20219,
+        "id_persona": 11000,
+        "id_usuario": 5,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+        "estado_chat": "COMPLETADA",
+        "turnId": 195
+      },
+      {
+        "id_interaccion": 20220,
+        "id_persona": 11000,
+        "id_usuario": 5,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+        "estado_chat": "COMPLETADA",
+        "turnId": 197
+      },
+      {
+        "id_interaccion": 20221,
+        "id_persona": 11000,
+        "id_usuario": 5,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+        "estado_chat": "COMPLETADA",
+        "turnId": 199
+      },
+      {
+        "id_interaccion": 20222,
+        "id_persona": 11007,
+        "id_usuario": 5,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": "bdf7d983-3507-4aea-a38a-6a8d1f34f426",
+        "estado_chat": "COMPLETADA",
+        "turnId": 202
+      },
+      {
+        "id_interaccion": 20223,
+        "id_persona": 11000,
+        "id_usuario": 5,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+        "estado_chat": "PENDIENTE",
+        "turnId": 204
+      }
+    ]
+  },
+  "activeService": [
+    {
+      "id_servicio": 1,
+      "nombre": "Evaluación odontológica",
+      "activo": true
+    }
+  ],
+  "withoutSession": {
+    "status": 401,
+    "body": {
+      "error": "Se requiere sesión vigente de personal."
+    }
+  },
+  "login": {
+    "status": 200,
+    "id_usuario": 5,
+    "rol": "Administrador"
+  },
+  "authorizedAccess": {
+    "status": 200,
+    "body": {
+      "personId": 11000,
+      "items": [
+        {
+          "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+          "status": "PENDIENTE",
+          "lastTurnId": 204,
+          "lastAction": "REINTENTO_PENDIENTE",
+          "retryable": true
+        }
+      ],
+      "nextAfter": null
+    }
+  },
+  "continuationOf": "QA_CHAT_REAL_2026-11-13T03-54-08-431Z",
+  "secondLogin": {
+    "status": 200,
+    "id_usuario": 5,
+    "rol": "Administrador"
+  },
+  "finalHistory": {
+    "list": {
+      "status": 200,
+      "body": {
+        "personId": 11000,
+        "items": [
+          {
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "status": "PENDIENTE",
+            "lastTurnId": 204,
+            "lastAction": "REINTENTO_PENDIENTE",
+            "retryable": true
+          }
+        ],
+        "nextAfter": null
+      }
+    },
+    "history": {
+      "status": 200,
+      "body": {
+        "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+        "personId": 11000,
+        "turns": [
+          {
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "turnId": 193,
+            "interactionId": 20218,
+            "status": "COMPLETADA",
+            "messages": [
+              {
+                "role": "operador_transcriptor",
+                "origin": "OPERADOR_TRANSCRIPTOR",
+                "text": "¿En qué consiste una evaluación odontológica? Solo quiero información, no deseo solicitar una cita.",
+                "actorId": 5,
+                "at": "2026-11-13T03:53:16.892Z"
+              },
+              {
+                "role": "asistente",
+                "text": "Una evaluación odontológica consiste en una revisión completa de tus dientes, encías y estructuras bucales para detectar cualquier problema a tiempo y planificar el tratamiento adecuado si es necesario.",
+                "origin": "GEMINI",
+                "at": "2026-11-13T03:53:19.061Z"
+              }
+            ],
+            "attempts": [
+              {
+                "at": "2026-11-13T03:53:16.902Z",
+                "result": "COMPLETADA",
+                "executionId": "85e405ed-583b-45f4-97b3-912872b483e3"
+              }
+            ],
+            "declaredServiceId": 1,
+            "analysis": {
+              "intention": "SOLO_CONSULTA",
+              "interpretedServiceId": 1,
+              "pendingData": [],
+              "contradictions": [],
+              "proposedAction": "INFORMAR"
+            },
+            "evaluation": {
+              "id_persona": 11000,
+              "id_captacion": 10998,
+              "id_interaccion": 20218,
+              "id_decision": 194,
+              "estado": "COMPLETADA",
+              "intencion": "SOLO_CONSULTA",
+              "id_servicio": 1,
+              "accion": "SOLO_CONSULTA",
+              "etapa_final": "BUYER",
+              "intentosRealizados": 1,
+              "intentos_realizados": 1,
+              "duracionTotalMs": 2063,
+              "duracion_total_ms": 2063,
+              "entregaLeadEstado": "NO_APLICA",
+              "contextFingerprint": "a86ee515b80b75de4992164567e31d1b"
+            },
+            "execution": {
+              "id": "85e405ed-583b-45f4-97b3-912872b483e3",
+              "expiresAt": "2026-11-13T03:54:19.063Z"
+            },
+            "retryable": false
+          },
+          {
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "turnId": 195,
+            "interactionId": 20219,
+            "status": "COMPLETADA",
+            "messages": [
+              {
+                "role": "operador_transcriptor",
+                "origin": "OPERADOR_TRANSCRIPTOR",
+                "text": "Hola",
+                "actorId": 5,
+                "at": "2026-11-13T03:53:19.081Z"
+              },
+              {
+                "role": "asistente",
+                "text": "Hola, ¿en qué más podemos ayudarte hoy?",
+                "origin": "GEMINI",
+                "at": "2026-11-13T03:53:20.961Z"
+              }
+            ],
+            "attempts": [
+              {
+                "at": "2026-11-13T03:53:19.087Z",
+                "result": "COMPLETADA",
+                "executionId": "139fde57-1f9c-4827-9367-3bfadc56d118"
+              }
+            ],
+            "declaredServiceId": 1,
+            "analysis": {
+              "intention": "AMBIGUA",
+              "interpretedServiceId": null,
+              "pendingData": [],
+              "contradictions": [],
+              "proposedAction": "ACLARAR"
+            },
+            "evaluation": {
+              "id_persona": 11000,
+              "id_captacion": 10998,
+              "id_interaccion": 20219,
+              "id_decision": 196,
+              "estado": "COMPLETADA",
+              "intencion": "AMBIGUA",
+              "id_servicio": null,
+              "accion": "ACLARACION",
+              "etapa_final": "BUYER",
+              "aclaracion": "Gracias por escribir a NexoSalud. ¿Deseas solicitar una cita de reserva para algún tratamiento específico o necesitas consultar información sobre nuestros servicios odontológicos?",
+              "intentosRealizados": 1,
+              "intentos_realizados": 1,
+              "duracionTotalMs": 1804,
+              "duracion_total_ms": 1804,
+              "entregaLeadEstado": "NO_APLICA",
+              "contextFingerprint": "360838ba6dc48f53256b6533157af019"
+            },
+            "execution": {
+              "id": "139fde57-1f9c-4827-9367-3bfadc56d118",
+              "expiresAt": "2026-11-13T03:54:20.962Z"
+            },
+            "retryable": false
+          },
+          {
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "turnId": 197,
+            "interactionId": 20220,
+            "status": "COMPLETADA",
+            "messages": [
+              {
+                "role": "operador_transcriptor",
+                "origin": "OPERADOR_TRANSCRIPTOR",
+                "text": "Me refiero a evaluación odontológica; quiero información, todavía no quiero pedir una cita.",
+                "actorId": 5,
+                "at": "2026-11-13T03:53:20.977Z"
+              },
+              {
+                "role": "asistente",
+                "text": "Entendido. La evaluación odontológica es una revisión completa para detectar cualquier problema a tiempo. ¿Te gustaría conocer algún otro detalle sobre este servicio?",
+                "origin": "GEMINI",
+                "at": "2026-11-13T03:53:22.095Z"
+              }
+            ],
+            "attempts": [
+              {
+                "at": "2026-11-13T03:53:20.981Z",
+                "result": "COMPLETADA",
+                "executionId": "f0642140-0030-45db-8fcf-1287345f6460"
+              }
+            ],
+            "declaredServiceId": 1,
+            "analysis": {
+              "intention": "SOLO_CONSULTA",
+              "interpretedServiceId": 1,
+              "pendingData": [],
+              "contradictions": [],
+              "proposedAction": "INFORMAR"
+            },
+            "evaluation": {
+              "id_persona": 11000,
+              "id_captacion": 10998,
+              "id_interaccion": 20220,
+              "id_decision": 198,
+              "estado": "COMPLETADA",
+              "intencion": "SOLO_CONSULTA",
+              "id_servicio": 1,
+              "accion": "SOLO_CONSULTA",
+              "etapa_final": "BUYER",
+              "intentosRealizados": 1,
+              "intentos_realizados": 1,
+              "duracionTotalMs": 1055,
+              "duracion_total_ms": 1055,
+              "entregaLeadEstado": "NO_APLICA",
+              "contextFingerprint": "eb62ad5883da1086217216d7a5aa987c"
+            },
+            "execution": {
+              "id": "f0642140-0030-45db-8fcf-1287345f6460",
+              "expiresAt": "2026-11-13T03:54:22.098Z"
+            },
+            "retryable": false
+          },
+          {
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "turnId": 199,
+            "interactionId": 20221,
+            "status": "COMPLETADA",
+            "messages": [
+              {
+                "role": "operador_transcriptor",
+                "origin": "OPERADOR_TRANSCRIPTOR",
+                "text": "Quiero solicitar una cita de evaluación odontológica. Por favor, envía mi solicitud para que me contacten.",
+                "actorId": 5,
+                "at": "2026-11-13T03:53:22.114Z"
+              },
+              {
+                "role": "asistente",
+                "text": "Entendido. Aunque mencionas que quieres una cita, en tus mensajes anteriores indicaste que solo buscas información. ¿Prefieres que te brindemos más detalles sobre la evaluación odontológica o deseas agendar la cita ahora?",
+                "origin": "GEMINI",
+                "at": "2026-11-13T03:53:23.507Z"
+              }
+            ],
+            "attempts": [
+              {
+                "at": "2026-11-13T03:53:22.118Z",
+                "result": "COMPLETADA",
+                "executionId": "7a3e6b7f-c8d9-4a3b-857f-8114e872bf0d"
+              }
+            ],
+            "declaredServiceId": 1,
+            "analysis": {
+              "intention": "SOLO_CONSULTA",
+              "interpretedServiceId": 1,
+              "pendingData": [
+                "intencion_reserva_clara"
+              ],
+              "contradictions": [
+                "El usuario solicita una cita en el mensaje actual, pero en el historial indicó explícitamente que solo quería información y no deseaba agendar."
+              ],
+              "proposedAction": "ACLARAR"
+            },
+            "evaluation": {
+              "id_persona": 11000,
+              "id_captacion": 10998,
+              "id_interaccion": 20221,
+              "id_decision": 200,
+              "estado": "COMPLETADA",
+              "intencion": "SOLO_CONSULTA",
+              "id_servicio": 1,
+              "accion": "SOLO_CONSULTA",
+              "etapa_final": "BUYER",
+              "intentosRealizados": 1,
+              "intentos_realizados": 1,
+              "duracionTotalMs": 1305,
+              "duracion_total_ms": 1305,
+              "entregaLeadEstado": "NO_APLICA",
+              "contextFingerprint": "94b4a575e4a576920b9ed83c71b1bb42"
+            },
+            "execution": {
+              "id": "7a3e6b7f-c8d9-4a3b-857f-8114e872bf0d",
+              "expiresAt": "2026-11-13T03:54:23.508Z"
+            },
+            "retryable": false
+          },
+          {
+            "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+            "turnId": 204,
+            "interactionId": 20223,
+            "status": "PENDIENTE",
+            "messages": [
+              {
+                "role": "operador_transcriptor",
+                "origin": "OPERADOR_TRANSCRIPTOR",
+                "text": "Ahora he decidido solicitar la cita de evaluación odontológica. Antes solo quería información, pero ya cambié de decisión. Sí deseo que envíen mi solicitud para que me contacten; no estoy preguntando por más detalles.",
+                "actorId": 5,
+                "at": "2026-11-13T03:54:09.260Z"
+              },
+              {
+                "role": "sistema",
+                "text": "No se pudo completar el turno. El mensaje está guardado y puede reintentarse.",
+                "origin": "BACKEND_ERROR",
+                "at": "2026-11-13T03:54:11.444Z"
+              },
+              {
+                "role": "sistema",
+                "text": "No se pudo completar el turno. El mensaje está guardado y puede reintentarse.",
+                "origin": "BACKEND_ERROR",
+                "at": "2026-11-13T03:55:08.728Z"
+              }
+            ],
+            "attempts": [
+              {
+                "at": "2026-11-13T03:54:09.270Z",
+                "result": "PENDIENTE",
+                "executionId": "647041b1-3617-49bb-beaa-c7b72011cbfc",
+                "errorCode": "MODEL_OR_EVALUATION_PENDING"
+              },
+              {
+                "at": "2026-11-13T03:55:06.677Z",
+                "result": "PENDIENTE",
+                "executionId": "e2c969f3-c098-44b4-ba65-7c7518c5b650",
+                "errorCode": "MODEL_OR_EVALUATION_PENDING"
+              }
+            ],
+            "declaredServiceId": 1,
+            "analysis": null,
+            "evaluation": {
+              "id_persona": 11000,
+              "id_captacion": 10998,
+              "id_interaccion": 20223,
+              "id_decision": 205,
+              "estado": "PENDIENTE",
+              "intencion": null,
+              "id_servicio": null,
+              "accion": "REINTENTO_PENDIENTE",
+              "etapa_final": "BUYER",
+              "error": "La confirmación debe ser una pregunta de aclaración.",
+              "intentosRealizados": 2,
+              "intentos_realizados": 2,
+              "duracionTotalMs": 1976,
+              "duracion_total_ms": 1976,
+              "entregaLeadEstado": "PENDIENTE",
+              "contextFingerprint": "0196e9bbc97dc190c72b69465e6f02e2"
+            },
+            "execution": {
+              "id": "e2c969f3-c098-44b4-ba65-7c7518c5b650",
+              "expiresAt": "2026-11-13T03:56:08.731Z"
+            },
+            "retryable": true
+          }
+        ],
+        "nextAfter": null
+      }
+    }
+  },
+  "after": {
+    "subjects": [
+      {
+        "id_persona": 11000,
+        "etapa": "BUYER",
+        "interacciones": 6,
+        "decisiones_chat": 6,
+        "evaluaciones": 6,
+        "solicitudes": 0,
+        "eventos": 0,
+        "entradas": 0
+      },
+      {
+        "id_persona": 11007,
+        "etapa": "PAYER",
+        "interacciones": 3,
+        "decisiones_chat": 2,
+        "evaluaciones": 3,
+        "solicitudes": 1,
+        "eventos": 1,
+        "entradas": 1
+      }
+    ],
+    "links": [
+      {
+        "id_interaccion": 20205,
+        "id_persona": 11000,
+        "id_usuario": null,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": null,
+        "estado_chat": null,
+        "turnId": null
+      },
+      {
+        "id_interaccion": 20213,
+        "id_persona": 11007,
+        "id_usuario": null,
+        "id_solicitud": 2929,
+        "id_servicio": 1,
+        "id_evento_etapa": 4101,
+        "id_captacion": 11005,
+        "recepcion_solicitud": 2929,
+        "recepcion_evento": 4101,
+        "conversationId": null,
+        "estado_chat": null,
+        "turnId": null
+      },
+      {
+        "id_interaccion": 20214,
+        "id_persona": 11007,
+        "id_usuario": null,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": null,
+        "estado_chat": null,
+        "turnId": null
+      },
+      {
+        "id_interaccion": 20218,
+        "id_persona": 11000,
+        "id_usuario": 5,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+        "estado_chat": "COMPLETADA",
+        "turnId": 193
+      },
+      {
+        "id_interaccion": 20219,
+        "id_persona": 11000,
+        "id_usuario": 5,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+        "estado_chat": "COMPLETADA",
+        "turnId": 195
+      },
+      {
+        "id_interaccion": 20220,
+        "id_persona": 11000,
+        "id_usuario": 5,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+        "estado_chat": "COMPLETADA",
+        "turnId": 197
+      },
+      {
+        "id_interaccion": 20221,
+        "id_persona": 11000,
+        "id_usuario": 5,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+        "estado_chat": "COMPLETADA",
+        "turnId": 199
+      },
+      {
+        "id_interaccion": 20222,
+        "id_persona": 11007,
+        "id_usuario": 5,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": "bdf7d983-3507-4aea-a38a-6a8d1f34f426",
+        "estado_chat": "COMPLETADA",
+        "turnId": 202
+      },
+      {
+        "id_interaccion": 20223,
+        "id_persona": 11000,
+        "id_usuario": 5,
+        "id_solicitud": null,
+        "id_servicio": null,
+        "id_evento_etapa": null,
+        "id_captacion": null,
+        "recepcion_solicitud": null,
+        "recepcion_evento": null,
+        "conversationId": "8187b075-d075-411f-bd48-aa28654a657d",
+        "estado_chat": "PENDIENTE",
+        "turnId": 204
+      }
+    ]
+  },
+  "finishedAt": "2026-11-13T03:55:09.464Z"
+}

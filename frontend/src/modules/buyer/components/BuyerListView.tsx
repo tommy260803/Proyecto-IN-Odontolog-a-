@@ -37,7 +37,7 @@ const BUYER_STATE_META: Record<
   { label: string; badgeClass: string; dotClass: string }
 > = {
   [BuyerState.CONVERTED]: {
-    label: 'Convertido a LEAD',
+    label: 'Conversión registrada',
     badgeClass:
       'bg-emerald-50 text-emerald-700 border border-emerald-200/50 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/60',
     dotClass: 'bg-emerald-500',
@@ -68,7 +68,7 @@ const BUYER_STATE_META: Record<
   },
 };
 
-export function renderBuyerStatusBadge(state: string) {
+export function renderBuyerStatusBadge(state: string, currentStage?: string | null) {
   const meta = BUYER_STATE_META[state] || {
     label: state || 'Nuevo',
     badgeClass:
@@ -81,7 +81,7 @@ export function renderBuyerStatusBadge(state: string) {
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium leading-5 ${meta.badgeClass}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${meta.dotClass}`} />
-      <span>{meta.label}</span>
+      <span>{state === BuyerState.CONVERTED && currentStage ? `Etapa actual: ${currentStage}` : meta.label}</span>
     </span>
   );
 }
@@ -795,7 +795,7 @@ export function BuyerListView() {
 
                       {/* Columna ESTADO */}
                       <td className="py-3.5 px-4 align-middle whitespace-nowrap">
-                        {renderBuyerStatusBadge(b.state)}
+                        {renderBuyerStatusBadge(b.state, b.currentStage)}
                       </td>
 
                       {/* Columna ACCIONES */}

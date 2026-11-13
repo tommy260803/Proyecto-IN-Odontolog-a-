@@ -5,8 +5,12 @@ import { prisma } from '../db';
 import { MartSyncService } from '../services/martSyncService';
 import { BuyerEvaluationService, computeEvaluationContextFingerprint } from '../services/buyerEvaluationService';
 import { calculateBuyerIndicators, type BuyerTemporalEvidence } from '../services/buyerIndicators';
+import { createBuyerConversationRouter } from './buyerConversation.routes';
+import { getLeadStaffIdentity } from '../services/leadStaffAuth';
+import { assignedBuyerRequest, buyerChatReadFilters, protectBuyerChat } from '../services/buyerChatAccess';
 
 const router = Router();
+router.use('/:id/conversations', createBuyerConversationRouter());
 
 const serializable = { isolationLevel: Prisma.TransactionIsolationLevel.Serializable } as const;
 
@@ -1119,6 +1123,9 @@ router.get('/', async (req, res) => {
     ` : [];
     const indicators = calculateBuyerIndicators(indicatorPersons, duplicateBuyerIds, temporalEvidence, fromDate, toDate);
 
+    const staffIdentity = await getLeadStaffIdentity(req, prisma);
+    const chatFilters = buyerChatReadFilters(staffIdentity);
+
     const queryOptions: any = {
       where,
       orderBy: { fecha_registro: 'desc' },
@@ -1126,14 +1133,23 @@ router.get('/', async (req, res) => {
         Etapa: true,
         CanalOrigen: true,
         CampanaOrigen: { include: { GastosCampana: { select: { importe: true } } } },
-        EventosEtapa: { include: { EtapaDestino: true }, orderBy: { fecha_hora: 'asc' }, ...(hasPagination ? { take: 20 } : {}) },
-        Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'desc' }, ...(hasPagination ? { take: 20 } : {}) },
-        Solicitudes: { include: { Servicio: true }, orderBy: { id_solicitud: 'desc' }, ...(hasPagination ? { take: 20 } : {}) },
-        Preferencias: { include: { Canal: true, ServicioInteres: true }, orderBy: { id_preferencia: 'desc' } },
+        EventosEtapa: { include: { EtapaOrigen: true, EtapaDestino: true }, orderBy: { fecha_hora: 'asc' }, ...(hasPagination ? { take: 20 } : {}) },
+        Interacciones: {
+          where: chatFilters.interactions,
+          include: { Canal: true, Fuente: true },
+          orderBy: { fecha_hora: 'desc' },
+          ...(hasPagination ? { take: 20 } : {}),
+        },
+        Solicitudes: { include: { Servicio: true }, orderBy: { id_solicitud: 'desc' } },
+        Preferencias: { include: { Canal: true, ServicioInteres: true, Horario: true }, orderBy: { id_preferencia: 'desc' } },
         DatosAcademicos: hasPagination ? { take: 1 } : true,
         DatosLaborales: hasPagination ? { take: 1 } : true,
         SaludOdontologica: hasPagination ? { take: 1 } : true,
-        DecisionesIA: { where: { agente: 'BUYER' }, orderBy: { id_decision: 'desc' }, take: 1 },
+        DecisionesIA: {
+          where: chatFilters.decisions,
+          orderBy: { id_decision: 'desc' },
+          take: 1,
+        },
       },
     };
 
@@ -1148,7 +1164,7 @@ router.get('/', async (req, res) => {
           prisma.personas.count({ where }),
         ])
       : [await prisma.personas.findMany(queryOptions), 0];
-    const buyerPersons: any[] = personas;
+    const buyerPersons: any[] = personas.map((p: any) => protectBuyerChat(p, staffIdentity));
 
     // Cargar captaciones iniciales en lote para evitar N+1 queries en el listado
     const personIds = buyerPersons.map(p => p.id_persona);
@@ -1225,10 +1241,9 @@ router.get('/', async (req, res) => {
       }
 
       // Buscar fecha real de conversión a LEAD desde EventosEtapa
-      const eventoConversion = p.EventosEtapa.find((e: any) => e.EtapaDestino?.nombre === 'LEAD' || e.EtapaDestino?.nombre === 'PAYER' || e.EtapaDestino?.nombre === 'CUSTOMER');
-      const convertedAt = eventoConversion 
-        ? eventoConversion.fecha_hora.toISOString() 
-        : (state === 'CONVERTED' ? (p.fecha_actualizacion || p.fecha_autorizacion || p.fecha_registro).toISOString() : undefined);
+      const eventoConversion = p.EventosEtapa.find((e: any) =>
+        e.EtapaOrigen?.nombre === 'BUYER' && e.EtapaDestino?.nombre === 'LEAD');
+      const convertedAt = eventoConversion?.fecha_hora.toISOString();
 
       const canalName = p.CanalOrigen?.nombre || 
         (p.Interacciones.length > 0 && p.Interacciones[0].Canal?.nombre) || 
@@ -1319,6 +1334,7 @@ router.get('/', async (req, res) => {
         concreteRequest: motivo,
         createdAt: p.fecha_registro.toISOString(),
         convertedAt,
+        currentStage: p.Etapa?.nombre || null,
         state,
         consultasCount,
         solicitudesHistory,
@@ -1327,6 +1343,10 @@ router.get('/', async (req, res) => {
         // Nuevos campos
         pref_id_canal: prefs?.id_canal?.toString() || '',
         pref_id_horario: prefs?.id_horario?.toString() || '',
+        pref_horario: prefs?.Horario ? {
+          hora_inicio: prefs.Horario.hora_inicio.toISOString().slice(11, 16),
+          hora_fin: prefs.Horario.hora_fin.toISOString().slice(11, 16),
+        } : null,
         pref_id_modalidad: prefs?.id_modalidad?.toString() || '',
         pref_sede_preferida: prefs?.sede_preferida || '',
         pref_profesional_preferido: prefs?.profesional_preferido || '',
@@ -1447,24 +1467,43 @@ router.get('/:id', async (req, res) => {
     return res.status(400).json({ error: 'ID de prospecto inválido' });
   }
 
+  const staffIdentity = await getLeadStaffIdentity(req, prisma);
+  let isStaffAuthorized = false;
+  if (staffIdentity !== null) {
+    if (staffIdentity.rol === 'Administrador') {
+      isStaffAuthorized = true;
+    } else if (staffIdentity.rol === 'Negociador') {
+      isStaffAuthorized = Boolean(await assignedBuyerRequest(prisma, numId, staffIdentity.id_usuario));
+    }
+  }
+
   try {
-    const p = await prisma.personas.findUnique({
+    const loadedPerson = await prisma.personas.findUnique({
       where: { id_persona: numId },
       include: {
         Etapa: true,
         CanalOrigen: true,
         CampanaOrigen: { include: { GastosCampana: { select: { importe: true } } } },
-        EventosEtapa: { include: { EtapaDestino: true }, orderBy: { fecha_hora: 'asc' } },
-        Interacciones: { include: { Canal: true, Fuente: true }, orderBy: { fecha_hora: 'desc' } },
+        EventosEtapa: { include: { EtapaOrigen: true, EtapaDestino: true }, orderBy: { fecha_hora: 'asc' } },
+        Interacciones: {
+          where: buyerChatReadFilters(isStaffAuthorized ? staffIdentity : null).interactions,
+          include: { Canal: true, Fuente: true },
+          orderBy: { fecha_hora: 'desc' },
+        },
         Solicitudes: { include: { Servicio: true }, orderBy: { id_solicitud: 'desc' } },
-        Preferencias: { include: { Canal: true, ServicioInteres: true }, orderBy: { id_preferencia: 'desc' } },
+        Preferencias: { include: { Canal: true, ServicioInteres: true, Horario: true }, orderBy: { id_preferencia: 'desc' } },
         DatosAcademicos: true,
         DatosLaborales: true,
         SaludOdontologica: true,
-        DecisionesIA: { where: { agente: 'BUYER' }, orderBy: { id_decision: 'desc' }, take: 10 },
+        DecisionesIA: {
+          where: buyerChatReadFilters(isStaffAuthorized ? staffIdentity : null).decisions,
+          orderBy: { id_decision: 'desc' },
+          take: 10,
+        },
       },
     });
 
+    const p = loadedPerson ? protectBuyerChat(loadedPerson, isStaffAuthorized ? staffIdentity : null) : null;
     if (!p) {
       return res.status(404).json({ error: 'No se encontró la ficha del prospecto solicitado.' });
     }
@@ -1544,13 +1583,8 @@ router.get('/:id', async (req, res) => {
     }
 
     const eventoConversion = p.EventosEtapa.find((e: any) =>
-      ['LEAD', 'PAYER', 'CUSTOMER', 'TURNED'].includes(e.EtapaDestino?.nombre || '')
-    );
-    const convertedAt = eventoConversion
-      ? eventoConversion.fecha_hora.toISOString()
-      : state === 'CONVERTED'
-      ? (p.fecha_actualizacion || p.fecha_autorizacion || p.fecha_registro).toISOString()
-      : undefined;
+      e.EtapaOrigen?.nombre === 'BUYER' && e.EtapaDestino?.nombre === 'LEAD');
+    const convertedAt = eventoConversion?.fecha_hora.toISOString();
 
     const latestDec = p.DecisionesIA && p.DecisionesIA.length > 0 ? p.DecisionesIA[0] : null;
     let latestEvaluation: any = null;
@@ -1559,13 +1593,18 @@ router.get('/:id', async (req, res) => {
       try {
         parsedDec = JSON.parse(latestDec.decision || '{}');
       } catch {}
+      let parsedEntrada: any = {};
+      try {
+        if (latestDec.entrada) parsedEntrada = JSON.parse(latestDec.entrada);
+      } catch {}
 
+      const isChatTurn = Boolean(parsedEntrada.conversationTurnId);
       const activeInteractionId = lastInteraction?.id_interaccion || null;
       const esMensajeVigente = Boolean(
         activeInteractionId && latestDec.id_interaccion === activeInteractionId
       );
       const evaluatedInteraction = p.Interacciones.find((i: any) => i.id_interaccion === latestDec.id_interaccion);
-      const mensajeEvaluado = evaluatedInteraction?.mensaje || parsedDec.mensaje_evaluado || null;
+      const mensajeEvaluado = evaluatedInteraction?.mensaje || parsedDec.mensaje_evaluado || parsedEntrada.mensaje || null;
 
       const currentContextFingerprint = computeEvaluationContextFingerprint({
         mensaje: activeMessage || '',
@@ -1577,7 +1616,6 @@ router.get('/:id', async (req, res) => {
       let evalFingerprint = parsedDec.contextFingerprint;
       if (!evalFingerprint && latestDec.entrada) {
         try {
-          const parsedEntrada = JSON.parse(latestDec.entrada);
           evalFingerprint = parsedEntrada.contextFingerprint || computeEvaluationContextFingerprint({
             mensaje: parsedEntrada.mensaje || mensajeEvaluado || '',
             id_servicio_declarado: parsedEntrada.id_servicio_declarado,
@@ -1587,9 +1625,9 @@ router.get('/:id', async (req, res) => {
         } catch {}
       }
 
-      const esContextoVigente = esMensajeVigente && Boolean(
+      const esContextoVigente = isChatTurn ? esMensajeVigente : (esMensajeVigente && Boolean(
         evalFingerprint && evalFingerprint === currentContextFingerprint
-      );
+      ));
 
       latestEvaluation = {
         id_decision: latestDec.id_decision,
@@ -1599,7 +1637,7 @@ router.get('/:id', async (req, res) => {
         es_contexto_vigente: esContextoVigente,
         context_fingerprint: evalFingerprint || null,
         current_context_fingerprint: currentContextFingerprint,
-        estado: !esContextoVigente && esMensajeVigente
+        estado: !esContextoVigente && esMensajeVigente && !isChatTurn
           ? 'DESACTUALIZADA'
           : (parsedDec.estado || (latestDec.accion === 'REINTENTO_PENDIENTE' ? 'PENDIENTE' : 'COMPLETADA')),
         intencion: parsedDec.intencion || null,
@@ -1618,6 +1656,10 @@ router.get('/:id', async (req, res) => {
         intentosRealizados: parsedDec.intentosRealizados || parsedDec.intentos_realizados || 1,
         duracionTotalMs: parsedDec.duracionTotalMs || parsedDec.duracion_total_ms || 0,
         error: parsedDec.error || null,
+        id_solicitud: parsedDec.id_solicitud || null,
+        entregaLeadEstado: parsedDec.entregaLeadEstado || 'NO_APLICA',
+        isChatTurn,
+        turnId: parsedEntrada.conversationTurnId || null,
       };
     }
 
@@ -1645,6 +1687,7 @@ router.get('/:id', async (req, res) => {
       concreteRequest: activeMessage,
       createdAt: p.fecha_registro.toISOString(),
       convertedAt,
+      currentStage: p.Etapa?.nombre || null,
       state,
       consultasCount: p.Interacciones.length || p.Solicitudes.length || 1,
       solicitudesHistory: p.Solicitudes.map((s: any) => ({
@@ -1663,10 +1706,19 @@ router.get('/:id', async (req, res) => {
       })),
       pref_id_canal: prefs?.id_canal?.toString() || '',
       pref_id_horario: prefs?.id_horario?.toString() || '',
+      pref_horario: prefs?.Horario ? {
+        hora_inicio: prefs.Horario.hora_inicio.toISOString().slice(11, 16),
+        hora_fin: prefs.Horario.hora_fin.toISOString().slice(11, 16),
+      } : null,
       pref_id_modalidad: prefs?.id_modalidad?.toString() || '',
       pref_sede_preferida: prefs?.sede_preferida || '',
       pref_profesional_preferido: prefs?.profesional_preferido || '',
       latestEvaluation,
+      hasChatConversation: isStaffAuthorized && Boolean(
+        p.Interacciones.some((i: any) => i.tipo === 'BUYER_CHAT_ENTRADA') ||
+        p.DecisionesIA.some((d: any) => d.entrada?.includes('"conversationTurnId":')) ||
+        latestEvaluation?.isChatTurn
+      ),
     };
 
     return res.json(buyer);

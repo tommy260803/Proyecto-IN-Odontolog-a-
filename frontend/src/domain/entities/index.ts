@@ -52,6 +52,7 @@ export interface Buyer {
   contactAuthorization: boolean;
   qualityStatus?: string;
   convertedAt?: string;
+  currentStage?: string | null;
   state: BuyerState;
   createdAt: string;
   concreteRequest?: string; // Requerido para pasar a LEAD
@@ -59,6 +60,7 @@ export interface Buyer {
   // Campos adicionales de Mesa de Negociación
   pref_id_canal?: string;
   pref_id_horario?: string;
+  pref_horario?: { hora_inicio: string; hora_fin: string } | null;
   pref_id_modalidad?: string;
   pref_sede_preferida?: string;
   pref_profesional_preferido?: string;

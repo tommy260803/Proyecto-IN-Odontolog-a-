@@ -8,6 +8,16 @@ const person = (id = 1) => ({ id_persona:id,nombres:'QA',apellidos:'Sintetico',n
   fecha_actualizacion:date('2050-12-31T00:00:00Z') });
 
 describe('Indicadores Buyer: fuente de conversion y denominadores', () => {
+  it('mantiene B3 no disponible ante un intervalo negativo sin ajustar ni excluir fechas', () => {
+    const p = person();
+    const conversion = date('2025-12-31T19:00:00Z');
+    const r = calculateBuyerIndicators([p], new Set(), [{ id_persona: 1,
+      fecha_captacion: p.fecha_registro, fecha_conversion: conversion }]);
+    expect(r.b3).toMatchObject({ conversions: 1, averageDays: null, totalDays: null });
+    expect(r.b3.explanation).toContain('intervalo válido');
+    expect(p.fecha_registro.toISOString()).toBe('2026-01-01T00:00:00.000Z');
+    expect(conversion.toISOString()).toBe('2025-12-31T19:00:00.000Z');
+  });
   it('B1 parte de captacion y B3 de registro, sin usar fecha_actualizacion', () => {
     const r=calculateBuyerIndicators([person()],new Set(),[{id_persona:1,fecha_captacion:date('2026-01-02T00:00:00Z'),fecha_conversion:date('2026-01-04T00:00:00Z')}]);
     expect(r.b1).toMatchObject({numerator:1,denominator:1,rate:100});

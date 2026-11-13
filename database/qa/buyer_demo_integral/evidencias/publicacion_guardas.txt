@@ -1,0 +1,18 @@
+✔ nombre canónico QA admitido (1.2066ms)
+✔ localhost solo en DanielPC (0.2331ms)
+✔ 127.0.0.1 solo en DanielPC (0.1235ms)
+✔ otro servidor y nombres parecidos se rechazan (0.1134ms)
+✔ otra base y base duplicada se rechazan (0.4789ms)
+✔ conexión vacía o sin base se rechaza (0.0816ms)
+✔ sin opt-in rechaza antes de conectar (78.4145ms)
+✔ otra base configurada se rechaza antes de conectar (135.3022ms)
+✔ lista cerrada: no pública, edición, evaluación general ni recuperación (6.0225ms)
+✔ HTTP real del guard aislado: sesión y permisos antes de handlers (dependencias de identidad simuladas) (389.7873ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 526.433

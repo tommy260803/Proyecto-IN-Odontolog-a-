@@ -1,0 +1,17 @@
+
+> in-odontologia@0.0.0 test
+> vitest run --root .. --config frontend/vite.config.ts backend/tests/buyerConversation.test.ts backend/tests/buyerConversationAudit.test.ts backend/tests/buyerConversationRealQa.test.ts backend/tests/buyerReadAuthorization.test.ts backend/tests/buyerMessageClassifier.test.ts backend/tests/buyerUnifiedEvaluation.test.ts backend/tests/buyerMessageJourney.test.ts backend/tests/buyerIndicators.test.ts frontend/src/modules/buyer/components/BuyerConversationPanel.test.tsx frontend/src/modules/buyer/components/BuyerConversationIntegration.test.tsx frontend/src/modules/buyer/components/BuyerDetailView.test.tsx frontend/src/modules/buyer/components/BuyerVisualAudit.test.tsx frontend/src/modules/buyer/components/landing/StaffLoginModal.test.tsx frontend/src/shared/context/StaffSessionSecurity.test.tsx frontend/src/app/layouts/BuyerAdministrativeNavigation.test.tsx frontend/src/modules/buyer/services/buyerAdministrative.test.ts
+
+
+ RUN  v5.0.1 <RAIZ>
+
+
+ Test Files  16 passed (16)
+      Tests  217 passed | 4 skipped (221)
+   Start at  05:06:14
+   Duration  7.79s (environment 42%, import 30%, tests 13%, setup 11%, transform 4%)
+
+Environment  jsdom was created 16 times · 25.47s total, 42% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

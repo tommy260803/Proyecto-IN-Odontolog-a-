@@ -1,0 +1,25 @@
+{
+  "realMessages": 0,
+  "sqlWrites": 0,
+  "tests": {
+    "files": 9,
+    "passed": 133,
+    "exitCode": 0,
+    "mockedSql": true,
+    "mockedGemini": true
+  },
+  "branch": "feature/buyer-orientacion-interactiva",
+  "push": false,
+  "head": "de14f0d6d921c778d90aedb28948f8f5a9403935",
+  "frontendBuild": {
+    "exitCode": 0,
+    "warning": "Chunks mayores de 500 kB"
+  },
+  "commit": false,
+  "sqlConnected": false,
+  "person11012Touched": false,
+  "backendBuild": {
+    "exitCode": 0
+  },
+  "realGeminiCalls": 0
+}

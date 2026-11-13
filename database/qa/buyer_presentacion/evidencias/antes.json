@@ -1,0 +1,546 @@
+{
+  "version": {
+    "branch": "feature/buyer-orientacion-interactiva",
+    "HEAD": "de14f0d6d921c778d90aedb28948f8f5a9403935",
+    "sourceHashes": {
+      "backend/src/db.ts": "CE14302F5ED3B5457471878AF9290FBFFB0AD63083F36F1BC2BF77CFEE51E0C3",
+      "backend/prisma/schema.prisma": "66D541DDE034837AFF46ACD52DCB58C8DF029B2A0F7ECA3B7F9EB70A1CD725FD",
+      "backend/src/routes/buyer.routes.ts": "77119E3645B3AAAAF3322544F7BDB6E59DD8678DC464D701BB49760E4EFA632A",
+      "backend/src/services/buyerEvaluationService.ts": "30AA39AE2850D012A99DBE4BD93E8D3DDF3828ACA8442AA91C22BF4C0C95541C",
+      "backend/src/services/buyerMessageClassifier.ts": "F7E7C640CED2384006369E3960BA20D7E8BA7E60C773C08822F67189AF53C158",
+      "backend/src/services/leadIntake.ts": "B447FFC9E53D957D79583DB831F52B880F0F9206C4745E096F86FF9C6A8C4622",
+      "backend/src/services/martSyncService.ts": "CEC7B12EF94BF0D5C941F0787E660B3AC2016ACF0D439A5755690200192C5C98",
+      "backend/src/types/buyer.ts": "49C7D117A22E4DFF4E9CCA41FAC2E1767793B3162279925867A464FF2401835E"
+    }
+  },
+  "phase": "antes",
+  "startedUtc": "2026-11-12T23:13:03.670Z",
+  "subjects": [
+    {
+      "id": 11000,
+      "person": {
+        "id_persona": 11000,
+        "nombres": "QA_BBE_20261112T223700Z_a11e_INFO",
+        "etapa": "BUYER",
+        "registro_sql_sin_zona": "2026-11-12T22:37:36.8540000",
+        "registro_prisma": "2026-11-12T22:37:36.854Z"
+      },
+      "preferences": [
+        {
+          "id_preferencia": 23,
+          "sede_preferida": null,
+          "id_horario": null,
+          "fecha_inicio": "2026-11-12T22:37:36.8810000",
+          "fecha_fin": null
+        }
+      ],
+      "events": [],
+      "status": 200,
+      "api": {
+        "id": "11000",
+        "personId": "11000",
+        "activeInteractionId": 20205,
+        "person": {
+          "firstName": "QA_BBE_20261112T223700Z_a11e_INFO",
+          "lastName": "QA LIVE",
+          "documentNumber": null,
+          "phone": null,
+          "email": "qa_bbe_20261112t223700z_a11e_info@example.invalid"
+        },
+        "channel": "Página Web",
+        "channelId": "4",
+        "attractionSource": "Formulario Web - Portal NexoSalud",
+        "attractionSourceId": "3",
+        "serviceOfInterest": "Evaluación odontológica",
+        "serviceOfInterestId": "1",
+        "contactAuthorization": true,
+        "qualityStatus": "Valido",
+        "concreteRequest": "¿Cuánto cuesta una evaluación odontológica? Solo deseo información; no quiero reservar una cita.",
+        "createdAt": "2026-11-12T22:37:36.854Z",
+        "state": "NEW",
+        "consultasCount": 1,
+        "solicitudesHistory": [],
+        "interaccionesHistory": [
+          {
+            "id": "20205",
+            "tipo": "Registro y Consulta Inicial (#1)",
+            "mensaje": "¿Cuánto cuesta una evaluación odontológica? Solo deseo información; no quiero reservar una cita.",
+            "canal": "Página Web",
+            "fuente": "Formulario Web - Portal NexoSalud",
+            "fecha": "2026-11-12T22:37:36.870Z"
+          }
+        ],
+        "pref_id_canal": "4",
+        "pref_id_horario": "",
+        "pref_id_modalidad": "",
+        "pref_sede_preferida": "",
+        "pref_profesional_preferido": "",
+        "latestEvaluation": {
+          "id_decision": 179,
+          "id_interaccion": 20205,
+          "id_interaccion_vigente": 20205,
+          "es_mensaje_vigente": true,
+          "es_contexto_vigente": true,
+          "context_fingerprint": "03d424e6aee7024f1b829735f1769bd2",
+          "current_context_fingerprint": "03d424e6aee7024f1b829735f1769bd2",
+          "estado": "COMPLETADA",
+          "intencion": "SOLO_CONSULTA",
+          "id_servicio": 1,
+          "servicio_nombre": "Evaluación odontológica",
+          "accion": "SOLO_CONSULTA",
+          "explicacion": "Consulta informativa registrada; el contacto permanece en etapa BUYER.",
+          "fecha_hora": "2026-11-12T22:37:36.874Z",
+          "mensaje_evaluado": "¿Cuánto cuesta una evaluación odontológica? Solo deseo información; no quiero reservar una cita.",
+          "mensaje_vigente": "¿Cuánto cuesta una evaluación odontológica? Solo deseo información; no quiero reservar una cita.",
+          "discrepancia_horario": null,
+          "intentosRealizados": 1,
+          "duracionTotalMs": 2128,
+          "error": null
+        }
+      }
+    },
+    {
+      "id": 11001,
+      "person": {
+        "id_persona": 11001,
+        "nombres": "QA_BBE_20261112T223700Z_a11e_AMB",
+        "etapa": "LEAD",
+        "registro_sql_sin_zona": "2026-11-12T22:37:39.0880000",
+        "registro_prisma": "2026-11-12T22:37:39.088Z"
+      },
+      "preferences": [
+        {
+          "id_preferencia": 24,
+          "sede_preferida": null,
+          "id_horario": null,
+          "fecha_inicio": "2026-11-12T22:37:39.1110000",
+          "fecha_fin": null
+        }
+      ],
+      "events": [
+        {
+          "id_evento_etapa": 4098,
+          "origen": "BUYER",
+          "destino": "LEAD",
+          "fecha_sql_sin_zona": "2026-11-12T17:37:43.6092365",
+          "fecha_prisma": "2026-11-12T17:37:43.609Z",
+          "segundos_desde_registro": -17996
+        }
+      ],
+      "status": 200,
+      "api": {
+        "id": "11001",
+        "personId": "11001",
+        "activeInteractionId": 20208,
+        "person": {
+          "firstName": "QA_BBE_20261112T223700Z_a11e_AMB",
+          "lastName": "QA LIVE",
+          "documentNumber": null,
+          "phone": null,
+          "email": "qa_bbe_20261112t223700z_a11e_amb@example.invalid"
+        },
+        "channel": "Página Web",
+        "channelId": "4",
+        "attractionSource": "Formulario Web - Portal NexoSalud",
+        "attractionSourceId": "3",
+        "serviceOfInterest": "Evaluación odontológica",
+        "serviceOfInterestId": "1",
+        "contactAuthorization": true,
+        "qualityStatus": "Valido",
+        "concreteRequest": "Sí, quiero solicitar una cita para una evaluación odontológica.",
+        "createdAt": "2026-11-12T22:37:39.088Z",
+        "convertedAt": "2026-11-12T17:37:43.609Z",
+        "state": "CONVERTED",
+        "consultasCount": 2,
+        "solicitudesHistory": [
+          {
+            "id": "2926",
+            "servicio": "Evaluación odontológica",
+            "motivo": "Sí, quiero solicitar una cita para una evaluación odontológica.",
+            "fecha": "2026-11-12T17:37:43.609Z"
+          }
+        ],
+        "interaccionesHistory": [
+          {
+            "id": "20208",
+            "tipo": "Consulta Web Recurrente (#2)",
+            "mensaje": "Sí, quiero solicitar una cita para una evaluación odontológica.",
+            "canal": "Página Web",
+            "fuente": "Formulario Web - Portal NexoSalud",
+            "fecha": "2026-11-12T22:37:41.666Z"
+          },
+          {
+            "id": "20206",
+            "tipo": "Registro y Consulta Inicial (#1)",
+            "mensaje": "Hola, buenas tardes.",
+            "canal": "Página Web",
+            "fuente": "Formulario Web - Portal NexoSalud",
+            "fecha": "2026-11-12T22:37:39.100Z"
+          }
+        ],
+        "pref_id_canal": "4",
+        "pref_id_horario": "",
+        "pref_id_modalidad": "",
+        "pref_sede_preferida": "",
+        "pref_profesional_preferido": "",
+        "latestEvaluation": {
+          "id_decision": 182,
+          "id_interaccion": 20208,
+          "id_interaccion_vigente": 20208,
+          "es_mensaje_vigente": true,
+          "es_contexto_vigente": true,
+          "context_fingerprint": "823dd563afa1224c7eeab0cf9400f4c1",
+          "current_context_fingerprint": "823dd563afa1224c7eeab0cf9400f4c1",
+          "estado": "COMPLETADA",
+          "intencion": "SOLICITA_RESERVA",
+          "id_servicio": 1,
+          "servicio_nombre": "Evaluación odontológica",
+          "accion": "CONVERSION_LEAD",
+          "explicacion": "Conversión confirmada y entregada al Agente LEAD (Solicitud #2926, Entrada #2926).",
+          "fecha_hora": "2026-11-12T22:37:41.671Z",
+          "mensaje_evaluado": "Sí, quiero solicitar una cita para una evaluación odontológica.",
+          "mensaje_vigente": "Sí, quiero solicitar una cita para una evaluación odontológica.",
+          "discrepancia_horario": null,
+          "intentosRealizados": 1,
+          "duracionTotalMs": 1880,
+          "error": null
+        }
+      }
+    },
+    {
+      "id": 11002,
+      "person": {
+        "id_persona": 11002,
+        "nombres": "QA_BBE_20261112T223700Z_a11e_RES",
+        "etapa": "LEAD",
+        "registro_sql_sin_zona": "2026-11-12T22:37:40.4800000",
+        "registro_prisma": "2026-11-12T22:37:40.480Z"
+      },
+      "preferences": [
+        {
+          "id_preferencia": 25,
+          "sede_preferida": null,
+          "id_horario": null,
+          "fecha_inicio": "2026-11-12T22:37:40.5030000",
+          "fecha_fin": null
+        }
+      ],
+      "events": [
+        {
+          "id_evento_etapa": 4097,
+          "origen": "BUYER",
+          "destino": "LEAD",
+          "fecha_sql_sin_zona": "2026-11-12T17:37:41.4672126",
+          "fecha_prisma": "2026-11-12T17:37:41.467Z",
+          "segundos_desde_registro": -17999
+        }
+      ],
+      "status": 200,
+      "api": {
+        "id": "11002",
+        "personId": "11002",
+        "activeInteractionId": 20207,
+        "person": {
+          "firstName": "QA_BBE_20261112T223700Z_a11e_RES",
+          "lastName": "QA LIVE",
+          "documentNumber": null,
+          "phone": null,
+          "email": "qa_bbe_20261112t223700z_a11e_res@example.invalid"
+        },
+        "channel": "Página Web",
+        "channelId": "4",
+        "attractionSource": "Formulario Web - Portal NexoSalud",
+        "attractionSourceId": "3",
+        "serviceOfInterest": "Evaluación odontológica",
+        "serviceOfInterestId": "1",
+        "contactAuthorization": true,
+        "qualityStatus": "Valido",
+        "concreteRequest": "Quiero solicitar una cita para una evaluación odontológica. Deseo reservarla.",
+        "createdAt": "2026-11-12T22:37:40.480Z",
+        "convertedAt": "2026-11-12T17:37:41.467Z",
+        "state": "CONVERTED",
+        "consultasCount": 1,
+        "solicitudesHistory": [
+          {
+            "id": "2925",
+            "servicio": "Evaluación odontológica",
+            "motivo": "Quiero solicitar una cita para una evaluación odontológica. Deseo reservarla.",
+            "fecha": "2026-11-12T17:37:41.467Z"
+          }
+        ],
+        "interaccionesHistory": [
+          {
+            "id": "20207",
+            "tipo": "Registro y Consulta Inicial (#1)",
+            "mensaje": "Quiero solicitar una cita para una evaluación odontológica. Deseo reservarla.",
+            "canal": "Página Web",
+            "fuente": "Formulario Web - Portal NexoSalud",
+            "fecha": "2026-11-12T22:37:40.493Z"
+          }
+        ],
+        "pref_id_canal": "4",
+        "pref_id_horario": "",
+        "pref_id_modalidad": "",
+        "pref_sede_preferida": "",
+        "pref_profesional_preferido": "",
+        "latestEvaluation": {
+          "id_decision": 181,
+          "id_interaccion": 20207,
+          "id_interaccion_vigente": 20207,
+          "es_mensaje_vigente": true,
+          "es_contexto_vigente": true,
+          "context_fingerprint": "745f2c7faa061fd21f0fabde08c6b452",
+          "current_context_fingerprint": "745f2c7faa061fd21f0fabde08c6b452",
+          "estado": "COMPLETADA",
+          "intencion": "SOLICITA_RESERVA",
+          "id_servicio": 1,
+          "servicio_nombre": "Evaluación odontológica",
+          "accion": "CONVERSION_LEAD",
+          "explicacion": "Conversión confirmada y entregada al Agente LEAD (Solicitud #2925, Entrada #2925).",
+          "fecha_hora": "2026-11-12T22:37:40.496Z",
+          "mensaje_evaluado": "Quiero solicitar una cita para una evaluación odontológica. Deseo reservarla.",
+          "mensaje_vigente": "Quiero solicitar una cita para una evaluación odontológica. Deseo reservarla.",
+          "discrepancia_horario": null,
+          "intentosRealizados": 1,
+          "duracionTotalMs": 928,
+          "error": null
+        }
+      }
+    },
+    {
+      "id": 11007,
+      "person": {
+        "id_persona": 11007,
+        "nombres": "QA_BBE_20261112T224800Z_b_E",
+        "etapa": "PAYER",
+        "registro_sql_sin_zona": "2026-11-12T22:47:44.9700000",
+        "registro_prisma": "2026-11-12T22:47:44.970Z"
+      },
+      "preferences": [
+        {
+          "id_preferencia": 30,
+          "sede_preferida": null,
+          "id_horario": null,
+          "fecha_inicio": "2026-11-12T22:47:44.9840000",
+          "fecha_fin": null
+        }
+      ],
+      "events": [
+        {
+          "id_evento_etapa": 4101,
+          "origen": "BUYER",
+          "destino": "LEAD",
+          "fecha_sql_sin_zona": "2026-11-12T17:47:45.0493630",
+          "fecha_prisma": "2026-11-12T17:47:45.049Z",
+          "segundos_desde_registro": -17999
+        }
+      ],
+      "status": 200,
+      "api": {
+        "id": "11007",
+        "personId": "11007",
+        "activeInteractionId": 20214,
+        "person": {
+          "firstName": "QA_BBE_20261112T224800Z_b_E",
+          "lastName": "QA SINTETICO",
+          "documentNumber": null,
+          "phone": null,
+          "email": "qa_bbe_20261112t224800z_b_e@example.invalid"
+        },
+        "channel": "Página Web / Portal Online",
+        "channelId": "",
+        "attractionSource": "Formulario Web - Portal NexoSalud",
+        "attractionSourceId": "",
+        "serviceOfInterest": "Evaluación odontológica",
+        "serviceOfInterestId": "1",
+        "contactAuthorization": true,
+        "qualityStatus": "Valido",
+        "concreteRequest": "QA_BBE_20261112T224800Z_b_E_NUEVA ¿Cuáles son los horarios y precios? Solo información, no quiero otra cita.",
+        "createdAt": "2026-11-12T22:47:44.970Z",
+        "convertedAt": "2026-11-12T17:47:45.049Z",
+        "state": "CONVERTED",
+        "consultasCount": 2,
+        "solicitudesHistory": [
+          {
+            "id": "2929",
+            "servicio": "Evaluación odontológica",
+            "motivo": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+            "fecha": "2026-11-12T17:47:45.049Z"
+          }
+        ],
+        "interaccionesHistory": [
+          {
+            "id": "20214",
+            "tipo": "Nueva Consulta",
+            "mensaje": "QA_BBE_20261112T224800Z_b_E_NUEVA ¿Cuáles son los horarios y precios? Solo información, no quiero otra cita.",
+            "fecha": "2026-11-12T22:47:45.119Z"
+          },
+          {
+            "id": "20213",
+            "tipo": "Consulta Inicial",
+            "mensaje": "QA_BBE_20261112T224800Z_b_E_INICIAL Quiero reservar una cita para Evaluación odontológica.",
+            "fecha": "2026-11-12T22:47:44.977Z"
+          }
+        ],
+        "pref_id_canal": "",
+        "pref_id_horario": "",
+        "pref_id_modalidad": "",
+        "pref_sede_preferida": "",
+        "pref_profesional_preferido": "",
+        "latestEvaluation": {
+          "id_decision": 188,
+          "id_interaccion": 20214,
+          "id_interaccion_vigente": 20214,
+          "es_mensaje_vigente": true,
+          "es_contexto_vigente": true,
+          "context_fingerprint": "452f8c7ec3663f77d4b1c3746f71368d",
+          "current_context_fingerprint": "452f8c7ec3663f77d4b1c3746f71368d",
+          "estado": "COMPLETADA",
+          "intencion": "SOLO_CONSULTA",
+          "id_servicio": null,
+          "servicio_nombre": null,
+          "accion": "SOLO_CONSULTA",
+          "explicacion": "Consulta informativa registrada; el contacto permanece en etapa PAYER.",
+          "fecha_hora": "2026-11-12T22:47:45.170Z",
+          "mensaje_evaluado": "QA_BBE_20261112T224800Z_b_E_NUEVA ¿Cuáles son los horarios y precios? Solo información, no quiero otra cita.",
+          "mensaje_vigente": "QA_BBE_20261112T224800Z_b_E_NUEVA ¿Cuáles son los horarios y precios? Solo información, no quiero otra cita.",
+          "discrepancia_horario": null,
+          "intentosRealizados": 1,
+          "duracionTotalMs": 0,
+          "error": null
+        }
+      }
+    }
+  ],
+  "identity": {
+    "servidor": "DANIELPC",
+    "base": "NexoSalud_LeadEnsayoFinal"
+  },
+  "otherRequests": [],
+  "before": [
+    {
+      "table": "Personas",
+      "cantidad": 4,
+      "sha256": "313F8AEDBBF4B50411BC843AB9DDC42F3C31C2169C9978529B6D3B2777DC7939"
+    },
+    {
+      "table": "PersonaPreferencias",
+      "cantidad": 4,
+      "sha256": "C771BBAC0929E9A827C66935C4420ACF7505D028F5FC4BFB6926D05547782AEC"
+    },
+    {
+      "table": "CaptacionesBuyer",
+      "cantidad": 4,
+      "sha256": "A71CD7F235F7E01982670E2C572A5DC3F088C993D7F2A465F15E509AD74562F5"
+    },
+    {
+      "table": "Interacciones",
+      "cantidad": 6,
+      "sha256": "E6045A54AAF6A64D01FD6DFCEC4A0A5CC75AC253796854B509DCFD188832637C"
+    },
+    {
+      "table": "DecisionesIA",
+      "cantidad": 6,
+      "sha256": "A2C41D585AE0DE9B7469C3DA78FFA2FCEBC1AC71C51F742EADEBFAF0F20F41AD"
+    },
+    {
+      "table": "Solicitudes",
+      "cantidad": 3,
+      "sha256": "8B9B550044D81C6A63533FF0CF8EF7DBABEE1C39F770808867833CC3D1257363"
+    },
+    {
+      "table": "EventosEtapa",
+      "cantidad": 3,
+      "sha256": "5D3F3B231CC8522B5F72F4A0847EEC9978B2DE19C670A451D20C89E35A66BEC4"
+    },
+    {
+      "table": "EntradasAgenteLead",
+      "cantidad": 3,
+      "sha256": "08BEE5C737BE61A1A12B0EC347D1E65C227370731D8D8FA08DCD012D2B5B4559"
+    }
+  ],
+  "clocks": [
+    {
+      "sql_local": "2026-11-12T18:13:05.2082099",
+      "sql_utc": "2026-11-12T23:13:05.2082099",
+      "sql_offset": "2026-11-12T23:13:05.2082099Z"
+    }
+  ],
+  "nodeClock": {
+    "isoUtc": "2026-11-12T23:13:05.208Z",
+    "local": "Thu Nov 12 2026 18:13:05 GMT-0500 (hora estándar de Colombia)",
+    "zone": "America/Bogota",
+    "offsetMinutes": 300
+  },
+  "defaults": [
+    {
+      "tabla": "CaptacionesBuyer",
+      "columna": "fecha_captacion",
+      "tipo": "datetime2",
+      "valor_default": null
+    },
+    {
+      "tabla": "EventosEtapa",
+      "columna": "fecha_hora",
+      "tipo": "datetime2",
+      "valor_default": "(sysdatetime())"
+    },
+    {
+      "tabla": "Personas",
+      "columna": "fecha_registro",
+      "tipo": "datetime2",
+      "valor_default": "(sysdatetime())"
+    }
+  ],
+  "procedureClock": [
+    {
+      "procedimiento": "usp_ConvertirBuyerALead",
+      "sha256": "6A42F2ADD1BE9F827074A50A6DCB579C6341F71C35E8F0216E4E04A70DC634A5",
+      "reloj": "@fecha DATETIME2=SYSDATETIME(),@captacion DATETIME2;\r\n        SELECT @persona=c.id_persona,@captacio"
+    }
+  ],
+  "after": [
+    {
+      "table": "Personas",
+      "cantidad": 4,
+      "sha256": "313F8AEDBBF4B50411BC843AB9DDC42F3C31C2169C9978529B6D3B2777DC7939"
+    },
+    {
+      "table": "PersonaPreferencias",
+      "cantidad": 4,
+      "sha256": "C771BBAC0929E9A827C66935C4420ACF7505D028F5FC4BFB6926D05547782AEC"
+    },
+    {
+      "table": "CaptacionesBuyer",
+      "cantidad": 4,
+      "sha256": "A71CD7F235F7E01982670E2C572A5DC3F088C993D7F2A465F15E509AD74562F5"
+    },
+    {
+      "table": "Interacciones",
+      "cantidad": 6,
+      "sha256": "E6045A54AAF6A64D01FD6DFCEC4A0A5CC75AC253796854B509DCFD188832637C"
+    },
+    {
+      "table": "DecisionesIA",
+      "cantidad": 6,
+      "sha256": "A2C41D585AE0DE9B7469C3DA78FFA2FCEBC1AC71C51F742EADEBFAF0F20F41AD"
+    },
+    {
+      "table": "Solicitudes",
+      "cantidad": 3,
+      "sha256": "8B9B550044D81C6A63533FF0CF8EF7DBABEE1C39F770808867833CC3D1257363"
+    },
+    {
+      "table": "EventosEtapa",
+      "cantidad": 3,
+      "sha256": "5D3F3B231CC8522B5F72F4A0847EEC9978B2DE19C670A451D20C89E35A66BEC4"
+    },
+    {
+      "table": "EntradasAgenteLead",
+      "cantidad": 3,
+      "sha256": "08BEE5C737BE61A1A12B0EC347D1E65C227370731D8D8FA08DCD012D2B5B4559"
+    }
+  ],
+  "result": "APROBADO",
+  "finishedUtc": "2026-11-12T23:13:05.267Z"
+}

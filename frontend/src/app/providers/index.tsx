@@ -3,6 +3,8 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from '../router';
 import { ThemeProvider } from '@/shared/context/ThemeContext';
 import { SidebarProvider } from '@/shared/context/SidebarContext';
+import { StaffAuthProvider } from '@/shared/context/StaffAuthContext';
+import { StaffProtectedCacheBoundary } from '@/shared/context/StaffProtectedCacheBoundary';
 
 declare global {
   interface Window {
@@ -43,9 +45,11 @@ export function AppProviders() {
   return (
     <ThemeProvider>
       <SidebarProvider>
-        <QueryClientProvider client={queryClient}>
-          <RouterProvider router={router} />
-        </QueryClientProvider>
+        <StaffAuthProvider>
+          <QueryClientProvider client={queryClient}>
+            <StaffProtectedCacheBoundary><RouterProvider router={router} /></StaffProtectedCacheBoundary>
+          </QueryClientProvider>
+        </StaffAuthProvider>
       </SidebarProvider>
     </ThemeProvider>
   );

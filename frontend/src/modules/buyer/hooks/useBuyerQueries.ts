@@ -4,11 +4,14 @@ import type { BuyerFormValues } from '../schemas/buyerSchema';
 import type { Buyer } from '@/domain/entities';
 
 import { buyerService } from '../services/buyer.service';
+import { useStaffAuth } from '@/shared/context/StaffAuthContext';
+import { staffSessionScope } from '@/shared/services/staffAuthService';
 
 export function useBuyers() {
+  const scope=staffSessionScope(useStaffAuth().session);
   return useQuery({
-    queryKey: [QUERY_KEYS.BUYERS],
-    queryFn: () => buyerService.getAllBuyers(),
+    queryKey: [QUERY_KEYS.BUYERS, 'all', scope],
+    queryFn: ({signal}) => buyerService.getAllBuyers(signal),
   });
 }
 
@@ -21,17 +24,19 @@ export function useBuyerPage(params: {
   fromDate?: string;
   toDate?: string;
 }) {
+  const scope=staffSessionScope(useStaffAuth().session);
   return useQuery({
-    queryKey: [QUERY_KEYS.BUYERS, 'page', params],
-    queryFn: () => buyerService.getBuyersPage(params),
-    placeholderData: (previous) => previous,
+    queryKey: [QUERY_KEYS.BUYERS, 'page', scope, params],
+    queryFn: ({signal}) => buyerService.getBuyersPage(params,signal),
+    placeholderData: (previous,query) => query?.queryKey[2]===scope?previous:undefined,
   });
 }
 
 export function useBuyer(id: string) {
+  const scope=staffSessionScope(useStaffAuth().session);
   return useQuery({
-    queryKey: [QUERY_KEYS.BUYERS, id],
-    queryFn: () => buyerService.getBuyerById(id),
+    queryKey: [QUERY_KEYS.BUYERS, id, scope],
+    queryFn: ({signal}) => buyerService.getBuyerById(id,signal),
     enabled: !!id,
   });
 }

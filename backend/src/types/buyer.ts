@@ -38,6 +38,24 @@ export interface BuyerClassificationResult {
   duracionTotalMs: number;
   duracion_total_ms: number;
   intentos: BuyerClassificationAttempt[];
+  conversation?: BuyerConversationProposal;
+}
+
+export interface BuyerConversationProposal {
+  respuesta: string;
+  datos_pendientes: string[];
+  contradicciones: string[];
+  accion_propuesta: 'INFORMAR' | 'ACLARAR' | 'SOLICITAR_CONVERSION';
+  confirmar_servicio: number | null;
+}
+
+/** Solo contexto reconstruido y minimizado por el servidor, nunca por el cuerpo HTTP. */
+export interface BuyerConversationContext {
+  history: Array<{ role: 'paciente' | 'operador_transcriptor' | 'asistente' | 'sistema'; text: string }>;
+  preferences: { declaredServiceId: number | null; branch: string | null; schedule: string | null; source: string };
+  facts: string[];
+  confirmationServiceId: number | null;
+  confirmationQuestion?: string | null;
 }
 
 /**
@@ -51,6 +69,7 @@ export interface BuyerClassifierOptions {
   initialRetryDelayMs?: number;
   backoffFactor?: number;
   client?: GoogleGenAI;
+  conversationContext?: BuyerConversationContext;
 }
 
 /**

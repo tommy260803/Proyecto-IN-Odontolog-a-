@@ -1,0 +1,10 @@
+{
+  "at": "2026-11-13T04:11:51.1841297Z",
+  "http": 200,
+  "personId": "11012",
+  "currentStage": "BUYER",
+  "solicitudes": 0,
+  "interacciones": 0,
+  "manualUrl": "http://127.0.0.1:5173/buyer/11012",
+  "aceptacionVisual": "PENDIENTE"
+}

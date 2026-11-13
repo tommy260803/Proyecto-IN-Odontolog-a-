@@ -1,0 +1,13 @@
+
+> in-odontologia@0.0.0 test
+> vitest run --root .. --config frontend/vite.config.ts frontend/src/modules/buyer/components/BuyerDetailView.test.tsx backend/tests/buyerIndicators.test.ts
+
+
+ RUN  v5.0.1 C:/Users/Daniel/Downloads/Proyecto-IN-Odontolog-a-
+
+
+ Test Files  2 passed (2)
+      Tests  13 passed (13)
+   Start at  18:16:17
+   Duration  6.74s (import 40%, environment 38%, tests 10%, setup 9%, transform 4%)
+

@@ -37,18 +37,25 @@ import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { ErrorState } from '@/shared/components/feedback/ErrorState';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 import { renderBuyerStatusBadge } from './BuyerListView';
+import { resolveBuyerPreferences } from '../lib/buyerPresentation';
+import type { BuyerCatalogs } from '../types/buyer.types';
+import type { ChatTurn } from '../types/buyerConversation.types';
+import { BuyerConversationPanel } from './BuyerConversationPanel';
+import { useStaffAuth } from '@/shared/context/StaffAuthContext';
+import { staffSessionScope } from '@/shared/services/staffAuthService';
 
 interface BuyerDetailViewProps {
   buyerId: string;
 }
 
-const HORARIO_LABELS: Record<string, string> = {
-  '1': 'Mañana (08:00 - 13:00)',
-  '2': 'Tarde (13:00 - 18:00)',
-  '3': 'Noche (18:00 - 21:00)',
-};
-
 export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
+  const {session}=useStaffAuth();
+  const scope=staffSessionScope(session);
+  return <BuyerDetailWorkspace key={`${buyerId}:${scope}`} buyerId={buyerId} scope={scope} />;
+}
+
+function BuyerDetailWorkspace({buyerId,scope}:BuyerDetailViewProps & {scope:string}) {
+  const {session}=useStaffAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -64,12 +71,9 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
   const [isRetrying, setIsRetrying] = useState(false);
 
   // Catálogos para edición
-  const [catalogs, setCatalogs] = useState<{
-    canales: any[];
-    fuentes: any[];
-    servicios: any[];
-    sedes: any[];
-  }>({ canales: [], fuentes: [], servicios: [], sedes: [] });
+  const [catalogs, setCatalogs] = useState<BuyerCatalogs>({
+    canales: [], fuentes: [], servicios: [], sedes: [], horarios: [], modalidades: [],
+  });
 
   // Estado del formulario de edición in-place
   const [editForm, setEditForm] = useState({
@@ -87,8 +91,72 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
     contactAuthorization: true,
   });
 
-  // La evaluación se recupera directamente de la entidad persistida cargada desde el backend
-  const evaluacion = (buyer as any)?.latestEvaluation;
+  // La evaluación se recupera directamente de la entidad persistida cargada desde el backend o del turno reciente del chat
+  const [chatSnapshot,setChatSnapshot]=useState<{personId:string;scope:string;turn:ChatTurn}|null>(null);
+  const latestChatTurn=chatSnapshot?.personId===buyerId && chatSnapshot.scope===scope && session &&
+    chatSnapshot.turn.interactionId>=Number((buyer as any)?.activeInteractionId||0) ? chatSnapshot.turn : null;
+
+  // Limpiar el turno del chat al cambiar de persona para evitar que el turno anterior
+  // sobrescriba la evaluación de la persona recién abierta.
+  useEffect(() => {
+    setChatSnapshot(null);
+  }, [buyerId]);
+
+  const rawEvaluation = !session && (buyer as any)?.latestEvaluation?.isChatTurn ? null : (buyer as any)?.latestEvaluation;
+
+  const evaluacion = useMemo(() => {
+    if (latestChatTurn) {
+      // Turno completado con evaluación: mostrar resultado real
+      if (latestChatTurn.status === 'COMPLETADA' && latestChatTurn.evaluation) {
+        const ev = latestChatTurn.evaluation;
+        const an = latestChatTurn.analysis;
+        const assistantMsg = Array.isArray(latestChatTurn.messages)
+          ? latestChatTurn.messages.find((m: any) => m.role === 'asistente')
+          : undefined;
+        return {
+          id_decision: ev.id_decision,
+          id_interaccion: latestChatTurn.interactionId,
+          id_interaccion_vigente: latestChatTurn.interactionId,
+          es_mensaje_vigente: true,
+          es_contexto_vigente: true,
+          estado: ev.estado,
+          intencion: an?.intention || (ev as any).intencion,
+          id_servicio: an?.interpretedServiceId || latestChatTurn.declaredServiceId,
+          servicio_nombre:
+            (buyer as any)?.serviceOfInterest ||
+            (an?.interpretedServiceId ? `Servicio #${an.interpretedServiceId}` : 'Ninguno'),
+          accion: ev.accion,
+          explicacion: assistantMsg?.text || (ev as any).explicacion || '',
+          fecha_hora: assistantMsg?.at || new Date().toISOString(),
+          id_solicitud: ev.id_solicitud,
+          entregaLeadEstado: ev.entregaLeadEstado || 'NO_APLICA',
+          isChatTurn: true,
+          turnId: latestChatTurn.turnId,
+        };
+      }
+      // Turno PENDIENTE o PROCESANDO: mostrar estado intermedio; NO marcar es_mensaje_vigente
+      // ni sobrescribir la evaluación histórica de la ficha con una decisión no finalizada.
+      if (latestChatTurn.status === 'PENDIENTE' || latestChatTurn.status === 'PROCESANDO') {
+        return {
+          isChatTurn: true,
+          id_interaccion: latestChatTurn.interactionId,
+          turnId: latestChatTurn.turnId,
+          estado: latestChatTurn.status,
+          es_mensaje_vigente: false,  // No es vigente: la evaluación no está completa
+          accion: latestChatTurn.status === 'PROCESANDO' ? 'PROCESANDO' : 'PENDIENTE',
+          explicacion: `Turno #${latestChatTurn.turnId} · ${latestChatTurn.status} — evaluación en curso`,
+        };
+      }
+    }
+    return rawEvaluation;
+  }, [latestChatTurn, rawEvaluation, (buyer as any)?.serviceOfInterest]);
+
+  const hasChatConversation = Boolean(
+    latestChatTurn ||
+      rawEvaluation?.isChatTurn ||
+      (buyer as any)?.hasChatConversation
+  );
+
   const isEvaluationCurrent = Boolean(
     evaluacion &&
       evaluacion.es_mensaje_vigente !== false &&
@@ -100,10 +168,12 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
   );
   const isEvaluationOutdated = Boolean(
     evaluacion &&
+      !evaluacion.isChatTurn &&
       (evaluacion.es_contexto_vigente === false || evaluacion.estado === 'DESACTUALIZADA')
   );
   const hasUnevaluatedNewMessage = Boolean(
     evaluacion &&
+      !evaluacion.isChatTurn &&
       (evaluacion.es_mensaje_vigente === false ||
         (evaluacion.mensaje_evaluado &&
           buyer?.concreteRequest &&
@@ -132,8 +202,8 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
         phone: buyer.person?.phone || '',
         email: buyer.person?.email || '',
         serviceOfInterestId: String(buyer.serviceOfInterestId || ''),
-        pref_sede_preferida: buyer.pref_sede_preferida || 'Sede California',
-        pref_id_horario: String(buyer.pref_id_horario || '1'),
+        pref_sede_preferida: buyer.pref_sede_preferida || '',
+        pref_id_horario: String(buyer.pref_id_horario || ''),
         concreteRequest: buyer.concreteRequest || 'Consultar presupuesto y disponibilidad',
         channel: String(buyer.channelId || buyer.channel || '1'),
         attractionSource: String(buyer.attractionSourceId || buyer.attractionSource || '1'),
@@ -142,8 +212,16 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
     }
   }, [buyer]);
 
-  // Actualizar: evalúa el mensaje vigente con Gemini en el backend y persiste el resultado
+  // Actualizar: sincroniza el estado o evalúa el mensaje vigente con Gemini en el backend y persiste el resultado
   const handleRefreshAI = () => {
+    if (hasChatConversation) {
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUYERS] });
+      toast({
+        title: 'Estado sincronizado',
+        description: 'Se actualizó el estado persistido desde la base de datos sin ejecutar llamadas duplicadas.',
+      });
+      return;
+    }
     if (!buyer || evaluateBuyer.isPending || isRetrying) return;
     evaluateBuyer.mutate(
       { id: buyerId, message: buyer.concreteRequest },
@@ -201,13 +279,13 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
       type: 'conversion' | 'inquiry' | 'consent' | 'created';
     }> = [];
 
-    if (buyer.state === BuyerState.CONVERTED) {
+    if (buyer.convertedAt) {
       events.push({
         id: 'evt-converted',
-        title: 'Prospecto transferido a etapa LEAD',
-        subtitle: 'Calificación comercial completada · Pasa a Mesa de Negociación',
+        title: 'Conversión histórica a LEAD',
+        subtitle: `Etapa actual: ${buyer.currentStage || 'No informada'} · Evento de transición registrado`,
         detail: `Servicio priorizado: ${buyer.serviceOfInterest || 'Evaluación Odontológica'}`,
-        timestamp: buyer.updatedAt || buyer.createdAt,
+        timestamp: buyer.convertedAt,
         type: 'conversion',
       });
     }
@@ -227,7 +305,7 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
       events.push({
         id: 'evt-initial-inquiry',
         title: 'Solicitud de información registrada',
-        subtitle: `Tratamiento: ${buyer.serviceOfInterest || 'Evaluación Odontológica'} · Sede: ${buyer.pref_sede_preferida || 'Sede California'}`,
+        subtitle: `Tratamiento: ${buyer.serviceOfInterest || 'Evaluación Odontológica'} · Sede: ${resolveBuyerPreferences(buyer).branch}`,
         detail: buyer.concreteRequest || 'Consulta de costos y disponibilidad de cita odontológica.',
         timestamp: buyer.createdAt,
         type: 'inquiry',
@@ -262,6 +340,7 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
     `${buyer.person?.firstName || ''} ${buyer.person?.lastName || ''}`.trim() ||
     'Prospecto Sin Nombre';
   const isConverted = buyer.state === BuyerState.CONVERTED;
+  const preferences = resolveBuyerPreferences(buyer);
 
   const cleanPhone = String(buyer.person?.phone || '').replace(/\D/g, '');
   const whatsappText = encodeURIComponent(
@@ -366,7 +445,7 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
               <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">
                 {fullName}
               </h1>
-              {renderBuyerStatusBadge(buyer.state)}
+              {renderBuyerStatusBadge(buyer.state, buyer.currentStage)}
               <span className="font-mono text-xs text-slate-400 dark:text-slate-500 tabular-nums">
                 ID #{buyer.id}
                 {buyer.person?.documentNumber ? ` · DNI ${buyer.person.documentNumber}` : ''}
@@ -542,7 +621,7 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
                       </dt>
                       <dd className="mt-1 font-medium text-slate-900 dark:text-white flex items-center gap-1.5">
                         <MapPin className="h-3.5 w-3.5 text-slate-400" strokeWidth={1.75} />
-                        <span>{buyer.pref_sede_preferida || 'Sede California'}</span>
+                        <span>{preferences.branch}</span>
                       </dd>
                     </div>
 
@@ -553,9 +632,7 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
                       <dd className="mt-1 text-slate-900 dark:text-white flex items-center gap-1.5">
                         <Clock className="h-3.5 w-3.5 text-slate-400" strokeWidth={1.75} />
                         <span>
-                          {HORARIO_LABELS[String(buyer.pref_id_horario)] ||
-                            buyer.pref_id_horario ||
-                            'Mañana / Tarde (Flexible)'}
+                          {preferences.schedule}
                         </span>
                       </dd>
                     </div>
@@ -705,14 +782,11 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
                         }
                         className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-xs text-slate-900 dark:text-white"
                       >
-                        {(catalogs.sedes.length > 0
-                          ? catalogs.sedes
-                          : [
-                              { nombre: 'Sede California' },
-                              { nombre: 'Sede El Golf' },
-                              { nombre: 'Sede Centro Historico' },
-                            ]
-                        ).map((s: any) => (
+                        <option value="">No informado</option>
+                        {editForm.pref_sede_preferida && !catalogs.sedes.some(s => s.nombre === editForm.pref_sede_preferida) && (
+                          <option value={editForm.pref_sede_preferida}>{preferences.branch}</option>
+                        )}
+                        {catalogs.sedes.map(s => (
                           <option key={s.nombre} value={s.nombre}>
                             {s.nombre}
                           </option>
@@ -734,9 +808,18 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
                         }
                         className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-xs text-slate-900 dark:text-white"
                       >
-                        <option value="1">Mañana (08:00 - 13:00)</option>
-                        <option value="2">Tarde (13:00 - 18:00)</option>
-                        <option value="3">Noche (18:00 - 21:00)</option>
+                        <option value="">No informado</option>
+                        {editForm.pref_id_horario && !catalogs.horarios.some(h => String(h.id_horario) === editForm.pref_id_horario) && (
+                          <option value={editForm.pref_id_horario}>{preferences.schedule}</option>
+                        )}
+                        {catalogs.horarios.map(h => (
+                          <option key={h.id_horario} value={String(h.id_horario)}>
+                            {resolveBuyerPreferences({ pref_id_horario: String(h.id_horario), pref_horario: {
+                              hora_inicio: h.hora_inicio?.match(/(?:T|^)(\d{2}:\d{2})/)?.[1] || '',
+                              hora_fin: h.hora_fin?.match(/(?:T|^)(\d{2}:\d{2})/)?.[1] || '',
+                            } }).schedule}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
@@ -870,7 +953,21 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
 
         {/* COLUMNA DERECHA (35%): Tarjeta del Agente Inteligente de Admisión (Gemini) */}
         <div className="lg:col-span-4 space-y-5">
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 p-5 shadow-2xs space-y-5">
+          <BuyerConversationPanel personId={String(buyer.personId)} onTurnChanged={(turn,context)=>{
+            if(!session || context.source!=='active' || context.personId!==buyerId ||
+              context.actorId!==session.id_usuario || turn.interactionId < Number((buyer as any)?.activeInteractionId||0))return;
+            setChatSnapshot(previous=>previous && previous.turn.interactionId>turn.interactionId?previous:{personId:buyerId,scope,turn});
+          }} onCompleted={turn => {
+            if(!session || turn.status!=='COMPLETADA' || turn.interactionId < Number((buyer as any)?.activeInteractionId||0))return;
+            queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUYERS] });
+            if (turn.evaluation?.estado === 'COMPLETADA' && turn.evaluation.accion === 'CONVERSION_LEAD' &&
+              turn.evaluation.id_solicitud && turn.evaluation.id_evento_etapa) {
+              queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
+              queryClient.invalidateQueries({ queryKey: ['lead', 'opportunities'] });
+              queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.JOURNEYS] });
+            }
+          }} />
+          <div aria-label="Estado actual del agente Buyer" className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 p-5 shadow-2xs space-y-5">
             {/* Cabecera del Agente de Admisión Gemini */}
             <div className="flex items-start justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-2.5">
@@ -899,7 +996,7 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
                 disabled={evaluateBuyer.isPending || isRetrying}
                 aria-busy={evaluateBuyer.isPending}
                 className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 text-[11px] font-medium text-slate-600 dark:text-slate-300 transition-[transform,background-color,color] duration-200 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.97] disabled:cursor-wait disabled:opacity-70 cursor-pointer"
-                title="Evaluar mensaje actual con Gemini en el backend y persistir resultado"
+                title={hasChatConversation ? 'Sincronizar estado persistido desde la base de datos' : 'Evaluar mensaje actual con Gemini en el backend y persistir resultado'}
               >
                 <RefreshCw className={`h-3 w-3 ${evaluateBuyer.isPending ? 'animate-spin' : ''}`} aria-hidden />
                 <span>{evaluateBuyer.isPending ? 'Evaluando…' : 'Actualizar'}</span>
@@ -926,12 +1023,14 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
               <span>
                 {evaluateBuyer.isPending
                   ? 'Evaluando mensaje con Gemini en backend…'
+                  : evaluacion?.isChatTurn && ['PENDIENTE','PROCESANDO'].includes(evaluacion.estado)
+                  ? `Turno #${evaluacion.turnId} · ${evaluacion.estado}`
                   : isEvaluationOutdated
                   ? 'Preferencias modificadas · Evaluación desactualizada · Pulsa Actualizar'
                   : hasUnevaluatedNewMessage
                   ? 'Mensaje vigente pendiente de evaluación · Pulsa Actualizar'
                   : evaluacion?.fecha_hora
-                  ? `Evaluación persistida · ${format(new Date(evaluacion.fecha_hora), 'dd/MM/yyyy HH:mm')}`
+                  ? `${evaluacion.isChatTurn ? `Turno #${evaluacion.turnId || ''} · ` : ''}Evaluación persistida · ${format(new Date(evaluacion.fecha_hora), 'dd/MM/yyyy HH:mm')}`
                   : evaluacion?.estado === 'PENDIENTE'
                   ? 'Evaluación pendiente de procesamiento · Reintento disponible'
                   : 'Sin evaluación registrada · Pulsa Actualizar'}
@@ -1070,7 +1169,7 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
                 </p>
               </div>
 
-              {(evaluacion?.estado === 'PENDIENTE' || evaluacion?.accion === 'REINTENTO_PENDIENTE') && evaluacion?.id_interaccion && (
+              {(evaluacion?.estado === 'PENDIENTE' || evaluacion?.accion === 'REINTENTO_PENDIENTE') && evaluacion?.id_interaccion && !evaluacion?.isChatTurn && (
                 <div className="pt-1">
                   <button
                     type="button"
@@ -1110,6 +1209,7 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
                 </div>
                 <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   El agente interpreta el mensaje vigente y lo contrasta con el perfil registrado.
+                  {' '}Sede y horario provienen del registro vigente; no son inferencias de Gemini.
                 </p>
                 <dl className="mt-2 grid grid-cols-1 gap-1.5 text-[11px] sm:grid-cols-3">
                   <div className="rounded-md bg-slate-50 dark:bg-slate-950/50 px-2 py-1.5">
@@ -1121,13 +1221,13 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
                   <div className="rounded-md bg-slate-50 dark:bg-slate-950/50 px-2 py-1.5">
                     <dt className="text-slate-400">Sede:</dt>
                     <dd className="font-medium text-slate-700 dark:text-slate-200">
-                      {buyer.pref_sede_preferida || 'No especificada'}
+                      {preferences.branch}
                     </dd>
                   </div>
                   <div className="rounded-md bg-slate-50 dark:bg-slate-950/50 px-2 py-1.5">
                     <dt className="text-slate-400">Horario:</dt>
                     <dd className="font-medium text-slate-700 dark:text-slate-200">
-                      {HORARIO_LABELS[String(buyer.pref_id_horario)] || buyer.pref_id_horario || 'No especificado'}
+                      {preferences.schedule}
                     </dd>
                   </div>
                 </dl>
@@ -1162,7 +1262,9 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
                     : evaluacion?.intencion === 'AMBIGUA'
                     ? <p><strong>Intención:</strong> Ambigua. No permite confirmar qué servicio o acción desea el paciente.</p>
                     : <p><strong>Intención:</strong> Sin evaluar.</p>}
-                  {evaluacion?.accion === 'CONVERSION_LEAD'
+                  {isConverted && evaluacion?.accion !== 'CONVERSION_LEAD'
+                    ? <p><strong>Preparación:</strong> La consulta actual conserva la etapa {buyer.currentStage || 'avanzada'}; no representa una nueva conversión.</p>
+                    : evaluacion?.accion === 'CONVERSION_LEAD'
                     ? isConverted
                       ? <p><strong>Preparación:</strong> Intención validada. Ya fue transferido a LEAD.</p>
                       : <p><strong>Preparación:</strong> Está preparado para iniciar la transferencia a LEAD.</p>

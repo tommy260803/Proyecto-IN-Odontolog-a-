@@ -1,3 +1,4 @@
+import { staffAuthService } from '@/shared/services/staffAuthService';
 import { buyerUseCases } from '@/application/use-cases/buyer';
 import type {
   BuyerCatalogs,
@@ -9,6 +10,18 @@ const useApi = import.meta.env.VITE_USE_API !== 'false';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 const webRequests = new Map<string, string>();
+
+async function readBuyer(url: string, signal?: AbortSignal) {
+  const token=staffAuthService.getSession()?.token;
+  const verify=()=>{
+    if(signal?.aborted || staffAuthService.getSession()?.token!==token)throw new DOMException('La sesión o petición cambió.','AbortError');
+  };
+  verify();
+  const response=await fetch(url,{signal,headers:token?{Authorization:`Bearer ${token}`}:{}});
+  verify();
+  if(!response.ok)throw new Error(`No se pudo cargar Buyer (HTTP ${response.status}).`);
+  const data=await response.json();verify();return data;
+}
 
 export interface BuyerPage {
   items: Awaited<ReturnType<typeof buyerUseCases.getAllBuyers>>;
@@ -88,9 +101,7 @@ export const buyerService = {
         horarios: [],
       };
     }
-    const res = await fetch(`${API_URL}/buyer/catalogs`);
-    if (!res.ok) throw new Error('Error al cargar catálogos comerciales');
-    return res.json();
+    return readBuyer(`${API_URL}/buyer/catalogs`);
   },
 
   // ── DEDUPLICACIÓN EN TIEMPO REAL ────────────────────────────────────
@@ -102,9 +113,7 @@ export const buyerService = {
     if (params.excludeId !== undefined && params.excludeId !== null) query.append('excludeId', String(params.excludeId));
 
     try {
-      const res = await fetch(`${API_URL}/buyer/check-duplicate?${query.toString()}`);
-      if (!res.ok) return { isDuplicate: false };
-      return res.json();
+      return await readBuyer(`${API_URL}/buyer/check-duplicate?${query.toString()}`);
     } catch (e) {
       console.warn('Error checking duplicate:', e);
       return { isDuplicate: false };
@@ -171,35 +180,13 @@ export const buyerService = {
   },
 
   // ── OBTENER BUYER POR ID CON FALLBACK ──────────────────────────────
-  getBuyerById: async (id: string | number) => {
+  getBuyerById: async (id: string | number, signal?: AbortSignal) => {
     if (!useApi) {
       const all = await buyerUseCases.getAllBuyers();
       return all.find((b: any) => String(b.id) === String(id) || String(b.personId) === String(id)) || null;
     }
-    try {
-      const res = await fetch(`${API_URL}/buyer/${id}`);
-      if (res.ok) {
-        return res.json();
-      }
-    } catch (e) {
-      console.warn('Error fetching buyer by id directly, trying fallback:', e);
-    }
-    try {
-      const allRes = await fetch(`${API_URL}/buyer`);
-      if (allRes.ok) {
-        const list = await allRes.json();
-        const items = Array.isArray(list) ? list : (list.items || []);
-        return (
-          items.find(
-            (b: any) =>
-              String(b.id) === String(id) ||
-              String(b.personId) === String(id) ||
-              String(b.id_oportunidad) === String(id)
-          ) || null
-        );
-      }
-    } catch (_) {}
-    return null;
+    // Un fallo de acceso/cancelación no debe reintentar por el listado general.
+    return readBuyer(`${API_URL}/buyer/${id}`,signal);
   },
 
   // ── EVALUACIÓN Y PERSISTENCIA UNIFICADA CON GEMINI ───────────────────
@@ -235,11 +222,9 @@ export const buyerService = {
   },
 
   // ── VISTAS Y ADMINISTRACIÓN ─────────────────────────────────────────
-  getAllBuyers: async () => {
+  getAllBuyers: async (signal?: AbortSignal) => {
     if (!useApi) return buyerUseCases.getAllBuyers();
-    const res = await fetch(`${API_URL}/buyer`);
-    if (!res.ok) throw new Error('Error al cargar buyers');
-    return res.json();
+    return readBuyer(`${API_URL}/buyer`,signal);
   },
 
   getBuyersPage: async (params: {
@@ -250,7 +235,7 @@ export const buyerService = {
     channels?: string[];
     fromDate?: string;
     toDate?: string;
-  }): Promise<BuyerPage> => {
+  }, signal?: AbortSignal): Promise<BuyerPage> => {
     if (!useApi) {
       const all = await buyerUseCases.getAllBuyers();
       const start = (params.page - 1) * params.pageSize;
@@ -275,23 +260,25 @@ export const buyerService = {
     if (params.fromDate) query.set('fromDate', params.fromDate);
     if (params.toDate) query.set('toDate', params.toDate);
 
-    const res = await fetch(`${API_URL}/buyer?${query.toString()}`);
-    if (!res.ok) throw new Error('Error al cargar buyers');
-    return res.json();
+    return readBuyer(`${API_URL}/buyer?${query.toString()}`,signal);
   },
 
   createBuyer: async (data: any) => {
     if (!useApi) return buyerUseCases.createBuyer(data);
+    const token=staffAuthService.getSession()?.token;
+    if(!token)throw new Error('Inicia sesión con personal autorizado antes de registrar.');
+    const verify=()=>{if(staffAuthService.getSession()?.token!==token)throw new DOMException('La sesión cambió.','AbortError');};
     const res = await fetch(`${API_URL}/buyer`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(data),
     });
+    verify();
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       throw new Error(errorData.error || 'Error al crear buyer');
     }
-    return res.json();
+    const result=await res.json();verify();return result;
   },
 
   updateBuyer: async (id: string, data: any) => {

@@ -1,0 +1,29 @@
+{
+  "beforeUtc": "2026-11-13T03:31:27.164Z",
+  "afterUtc": "2026-11-13T03:39:10.067Z",
+  "before": [
+    {
+      "personas": "10837",
+      "interacciones": "20036",
+      "decisiones": "33",
+      "solicitudes": "2877",
+      "eventos": "4057",
+      "entradas": "16"
+    }
+  ],
+  "after": [
+    {
+      "personas": "10837",
+      "interacciones": "20036",
+      "decisiones": "33",
+      "solicitudes": "2877",
+      "eventos": "4057",
+      "entradas": "16"
+    }
+  ],
+  "countsEqual": true,
+  "sqlWritesExecuted": 0,
+  "geminiCalls": 0,
+  "httpCasesExecuted": 0,
+  "fullDataContentValidation": false
+}
