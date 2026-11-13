@@ -33,6 +33,8 @@ export function useBuyer(id: string) {
     queryKey: [QUERY_KEYS.BUYERS, id],
     queryFn: () => buyerService.getBuyerById(id),
     enabled: !!id,
+    staleTime: 30_000,
+    retry: false,
   });
 }
 

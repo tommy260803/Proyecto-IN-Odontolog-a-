@@ -181,7 +181,14 @@ export const buyerService = {
       if (res.ok) {
         return res.json();
       }
+      if (res.status >= 500) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error del servidor al cargar el prospecto');
+      }
     } catch (e) {
+      if (e instanceof Error && e.message.startsWith('Error del servidor')) {
+        throw e;
+      }
       console.warn('Error fetching buyer by id directly, trying fallback:', e);
     }
     try {

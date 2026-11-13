@@ -111,11 +111,13 @@ export function BuyerDetailView({ buyerId }: BuyerDetailViewProps) {
   );
 
   useEffect(() => {
+    if (!isEditing) return;
+
     buyerService
       .getCatalogs()
       .then((data) => setCatalogs(data))
       .catch((err) => console.error('Error loading catalogs:', err));
-  }, []);
+  }, [isEditing]);
 
   useEffect(() => {
     if (searchParams.get('mode') === 'edit') {
