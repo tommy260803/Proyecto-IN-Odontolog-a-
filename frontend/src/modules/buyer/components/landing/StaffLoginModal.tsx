@@ -39,7 +39,6 @@ interface StaffLoginModalProps {
 const DESTINATION_MODULES = [
   { path: '/buyer', label: 'Embudo BUYER (Captación)', icon: Users },
   { path: '/lead', label: 'Mesa de Negociación (LEAD)', icon: UserCheck },
-  { path: '/customer', label: 'Atención Clínica (CUSTOMER)', icon: Stethoscope },
   { path: '/reportes', label: 'Reportes Matriciales (BI)', icon: BarChart3 },
   { path: '/configuracion', label: 'Configuración de Clínica', icon: Settings },
 ];

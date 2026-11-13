@@ -1,0 +1,83 @@
+{
+  "persuasion": {
+    "tono": "consultivo",
+    "objetivo_campana": "Convertir el interés inicial en una evaluación diagnóstica presencial resaltando confianza clínica, cercanía de sede y facilidades de pago.",
+    "reglas": [
+      {
+        "id": "pers-dolor",
+        "nombre": "Dolor o Urgencia Clínica",
+        "activa": true,
+        "criterio_campo": "motivo",
+        "criterio_valor": "dolor, duele, frío, frio, sensibilidad, urgente, inflamación, hincha",
+        "angulo_persuasion": "Alivio rápido y atención prioritaria sin dolor",
+        "argumento_clave": "Destacar que contamos con atención prioritaria para aliviar la molestia desde la primera visita y diagnóstico digital preciso.",
+        "prioridad": 1
+      },
+      {
+        "id": "pers-ortodoncia-estetica",
+        "nombre": "Ortodoncia y Estética Dental",
+        "activa": true,
+        "criterio_campo": "servicio",
+        "criterio_valor": "ortodoncia, brackets, alineadores, estética, diseño, carillas, blanqueamiento",
+        "angulo_persuasion": "Transformación de sonrisa con financiamiento accesible",
+        "argumento_clave": "Enfatizar evaluación con planificación digital 3D y cuotas mensuales directas sin intereses.",
+        "prioridad": 2
+      },
+      {
+        "id": "pers-implantes",
+        "nombre": "Implantes y Rehabilitación",
+        "activa": true,
+        "criterio_campo": "servicio",
+        "criterio_valor": "implante, prótesis, corona, rehabilitación",
+        "angulo_persuasion": "Seguridad clínica y recuperación funcional definitiva",
+        "argumento_clave": "Resaltar cirugía guiada de alta precisión, materiales biocompatibles y plan por etapas.",
+        "prioridad": 2
+      },
+      {
+        "id": "pers-precio",
+        "nombre": "Consulta de Precios o Presupuesto",
+        "activa": true,
+        "criterio_campo": "motivo",
+        "criterio_valor": "precio, costo, cuánto, cuanto, presupuesto, caro, barato, cuotas",
+        "angulo_persuasion": "Transparencia y valor diagnóstico antes del gasto",
+        "argumento_clave": "Explicar que la evaluación permite dar un presupuesto exacto a su medida y mostrar opciones de financiamiento.",
+        "prioridad": 3
+      },
+      {
+        "id": "pers-recurrente",
+        "nombre": "Contacto Recurrente",
+        "activa": true,
+        "criterio_campo": "recurrencia",
+        "criterio_valor": "recurrente",
+        "angulo_persuasion": "Seguimiento personalizado sin empezar de cero",
+        "argumento_clave": "Retomar su consulta previa demostrando memoria del caso y ofrecer prioridad de horario en su sede preferida.",
+        "prioridad": 2
+      }
+    ]
+  },
+  "chatbot": {
+    "tono": "calido",
+    "beneficios_permitidos": [
+      "Evaluación odontológica integral",
+      "Financiamiento directo en cuotas sin intereses para ortodoncia e implantes",
+      "Atención de lunes a sábado en nuestras sedes"
+    ],
+    "reglas": [
+      {
+        "id": "chat-empatia",
+        "nombre": "Orientación empática de síntomas",
+        "activa": true,
+        "tema": "Síntomas y dolor",
+        "instruccion": "Ante dolor o sensibilidad, validar la molestia con empatía y mencionar la especialidad probable sin emitir recetas médicas."
+      },
+      {
+        "id": "chat-limite-lead",
+        "nombre": "No cotizar ni agendar citas cerradas",
+        "activa": true,
+        "tema": "Precios y agenda",
+        "instruccion": "No confirmar horarios específicos de doctores ni precios cerrados; explicar que un asesor de LEAD lo coordinará tras el registro."
+      }
+    ]
+  },
+  "updatedAt": "2026-11-13T23:33:50.938Z"
+}

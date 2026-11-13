@@ -25,6 +25,7 @@ import { staffAuthService, type StaffSession } from '@/shared/services/staffAuth
 import { buyerService } from '../services/buyer.service';
 import { LandingNavbar } from '../components/landing/LandingNavbar';
 import { BuyerIntakeForm } from '../components/landing/BuyerIntakeForm';
+import { BuyerChatbotWidget } from '../components/landing/BuyerChatbotWidget';
 import { StaffLoginModal } from '../components/landing/StaffLoginModal';
 import { LocationsAndFooter } from '../components/landing/LocationsAndFooter';
 import type { SedeCatalogItem, ServicioCatalogItem } from '../types/buyer.types';
@@ -593,13 +594,19 @@ export default function BuyerRequestInfoPage() {
           href="https://wa.me/51944612840?text=Hola%20NexoSalud%2C%20quisiera%20hacer%20una%20consulta%20directa."
           target="_blank"
           rel="noopener noreferrer"
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 text-xs font-bold text-white shadow-xl shadow-[#25D366]/30 transition-all hover:scale-105 hover:bg-[#20BD5A] active:scale-[0.98]"
+          className="fixed bottom-6 left-6 z-40 flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 text-xs font-bold text-white shadow-xl shadow-[#25D366]/30 transition-all hover:scale-105 hover:bg-[#20BD5A] active:scale-[0.98]"
           title="Consultar por WhatsApp ahora"
         >
           <MessageSquare className="h-4 w-4 fill-white" />
           <span className="hidden sm:inline">¿Dudas? Escríbenos por WhatsApp</span>
         </a>
       )}
+
+      {/* Widget Flotante del Chatbot de Orientación y Admisión BUYER */}
+      <BuyerChatbotWidget
+        servicios={catalogs.servicios}
+        sedes={catalogs.sedes}
+      />
 
       {/* Modal de Acceso para Personal de la Clínica */}
       <StaffLoginModal

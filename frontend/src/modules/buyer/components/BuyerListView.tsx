@@ -22,6 +22,7 @@ import {
   ChevronRight,
   BarChart3,
   X,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { useBuyerPage, useBuyers, useConvertBuyerToLead, useUpdateBuyer } from '../hooks/useBuyerQueries';
 import { BuyerState } from '@/domain/enums';
@@ -30,6 +31,7 @@ import { useToast } from '@/shared/hooks/use-toast';
 import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { ErrorState } from '@/shared/components/feedback/ErrorState';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
+import { BuyerAgentRulesModal } from './BuyerAgentRulesModal';
 import type { BuyerWithPerson } from '@/application/use-cases/buyer';
 
 const BUYER_STATE_META: Record<
@@ -136,6 +138,7 @@ export function BuyerListView() {
   const [convertTarget, setConvertTarget] = useState<BuyerWithPerson | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BuyerWithPerson | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [rulesModalOpen, setRulesModalOpen] = useState(false);
 
   // Cerrar popovers y menús al hacer clic fuera
   useEffect(() => {
@@ -316,18 +319,27 @@ export function BuyerListView() {
     setIsDeleting(true);
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
     try {
-      await fetch(`${API_URL}/buyer/${deleteTarget.id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/buyer/${deleteTarget.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'No se pudo eliminar el prospecto.');
+      }
+      await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUYERS] });
+      await queryClient.refetchQueries({ queryKey: [QUERY_KEYS.BUYERS] });
+      toast({
+        title: 'Prospecto eliminado',
+        description: `El registro de ${deleteTarget.person.firstName} ${deleteTarget.person.lastName} fue removido permanentemente.`,
+      });
     } catch (e) {
-      console.error(e);
+      toast({
+        title: 'No se pudo eliminar',
+        description: e instanceof Error ? e.message : 'Error al eliminar el prospecto.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
     }
-    await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUYERS] });
-    await queryClient.refetchQueries({ queryKey: [QUERY_KEYS.BUYERS] });
-    toast({
-      title: 'Prospecto eliminado',
-      description: `El registro de ${deleteTarget.person.firstName} ${deleteTarget.person.lastName} fue removido permanentemente.`,
-    });
-    setIsDeleting(false);
-    setDeleteTarget(null);
   };
 
   // Paginación
@@ -350,7 +362,16 @@ export function BuyerListView() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setRulesModalOpen(true)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50/70 dark:bg-teal-950/40 px-3 text-xs font-semibold text-teal-800 dark:text-teal-300 shadow-2xs transition-colors hover:bg-teal-100/70 dark:hover:bg-teal-900/50 cursor-pointer"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={1.75} />
+            <span>Reglas del Agente</span>
+          </button>
+
           <Link
             to="/reportes?tab=buyer"
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-2xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -1002,6 +1023,11 @@ export function BuyerListView() {
         confirmText="Eliminar Prospecto"
         cancelText="Cancelar"
         variant="destructive"
+      />
+
+      <BuyerAgentRulesModal
+        open={rulesModalOpen}
+        onOpenChange={setRulesModalOpen}
       />
     </div>
   );

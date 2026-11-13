@@ -4,10 +4,20 @@ import { Prisma, type Personas } from '@prisma/client';
 import { prisma } from '../db';
 import { MartSyncService } from '../services/martSyncService';
 import { BuyerEvaluationService, computeEvaluationContextFingerprint } from '../services/buyerEvaluationService';
+import { runBuyerChatbotTurn, type ChatbotMessage, type ChatbotCollectedData } from '../services/buyerChatbotService';
+import {
+  loadBuyerAgentRules,
+  saveBuyerAgentRules,
+  generateBuyerPersuasionStrategy,
+} from '../services/buyerAgentRulesService';
 
 const router = Router();
 
-const serializable = { isolationLevel: Prisma.TransactionIsolationLevel.Serializable } as const;
+const serializable = {
+  isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+  maxWait: 15000,
+  timeout: 45000,
+} as const;
 
 class BuyerInputError extends Error {
   constructor(message: string, readonly status = 409) { super(message); }
@@ -19,7 +29,7 @@ async function writeBuyer<T>(action: (tx: Prisma.TransactionClient) => Promise<T
       return await prisma.$transaction(action, serializable);
     } catch (error) {
       if (!(error instanceof Prisma.PrismaClientKnownRequestError) ||
-          !['P2034', 'P2002'].includes(error.code) || attempt === 3) throw error;
+          !['P2034', 'P2002', 'P2028'].includes(error.code) || attempt === 3) throw error;
     }
   }
 }
@@ -31,7 +41,7 @@ async function findBuyerIdentity(tx: Prisma.TransactionClient, dni: string | nul
   if (phone) conditions.push(Prisma.sql`RIGHT(REPLACE(REPLACE(REPLACE(REPLACE(numero,' ',''),'-',''),'(',''),')',''),${phone.length})=${phone}`);
   if (!conditions.length) return null;
   const matches = await tx.$queryRaw<{ id_persona: number }[]>`
-    SELECT TOP (2) id_persona FROM dbo.Personas WITH (UPDLOCK,HOLDLOCK)
+    SELECT TOP (2) id_persona FROM dbo.Personas
     WHERE ${Prisma.join(conditions, ' OR ')} ORDER BY id_persona
   `;
   if (matches.length > 1) throw new BuyerInputError('Los datos de contacto coinciden con más de una persona.');
@@ -396,11 +406,33 @@ router.get('/check-duplicate', async (req, res) => {
   }
 });
 
+// ── REGLAS EDITABLES DEL AGENTE BUYER (PERSUASIÓN + CHATBOT SEPARADOS) ──────
+router.get('/agent-rules', async (_req, res) => {
+  try {
+    const rules = await loadBuyerAgentRules();
+    return res.json({ success: true, data: rules });
+  } catch (error) {
+    console.error('[GET /api/buyer/agent-rules] Error:', error);
+    return res.status(500).json({ error: 'No se pudieron cargar las reglas del agente.' });
+  }
+});
+
+router.put('/agent-rules', async (req, res) => {
+  try {
+    const saved = await saveBuyerAgentRules(req.body || {});
+    return res.json({ success: true, data: saved });
+  } catch (error) {
+    console.error('[PUT /api/buyer/agent-rules] Error:', error);
+    return res.status(500).json({ error: 'No se pudieron guardar las reglas del agente.' });
+  }
+});
+
 // Registrar BUYER: persiste contacto, captación, mensaje y trabajo pendiente atómicamente; evalúa con Gemini fuera de SQL
 router.post('/register', async (req, res) => {
   const {
     nombres,
     apellidos,
+    dni,
     email,
     numero,
     autoriza_contacto,
@@ -452,6 +484,8 @@ router.post('/register', async (req, res) => {
     const rawDigits = numero ? String(numero).replace(/\D/g, '') : '';
     const cleanPhone = rawDigits.length >= 9 ? rawDigits.slice(-9) : (rawDigits.length >= 7 ? rawDigits : null);
     const cleanEmail = email ? String(email).trim().toLowerCase() : null;
+    const rawDni = dni ? String(dni).replace(/\D/g, '') : '';
+    const cleanDni = rawDni.length >= 8 ? rawDni.slice(0, 15) : null;
 
     const rawInquiry = String(
       req.body.mensaje ||
@@ -556,6 +590,65 @@ router.post('/register', async (req, res) => {
       }
     }
 
+    // Pre-resolver catálogos fuera de la transacción Serializable para reducir tiempo de bloqueo
+    let webCanal = await prisma.canales.findFirst({
+      where: { nombre: { in: ['Página Web', 'Página Web / Portal Online'] }, activo: true },
+      orderBy: { id_canal: 'asc' },
+    });
+    if (!webCanal) {
+      webCanal = await prisma.canales.create({
+        data: { nombre: 'Página Web / Portal Online', activo: true },
+      });
+    }
+
+    let webFuente = await prisma.fuentes.findFirst({
+      where: { nombre: { in: ['Formulario Web', 'Formulario Web - Portal NexoSalud'] }, activo: true },
+      orderBy: { id_fuente: 'asc' },
+    });
+    if (!webFuente) {
+      webFuente = await prisma.fuentes.create({
+        data: { nombre: 'Formulario Web - Portal NexoSalud', activo: true },
+      });
+    }
+
+    const validCanal = (id_canal ? await getValidCanalId(prisma, id_canal) : null) ?? webCanal.id_canal;
+    const validCanalOrigen = (id_canal_origen ? await getValidCanalId(prisma, id_canal_origen) : null) ?? validCanal;
+    const validFuente = (id_fuente ? await getValidFuenteId(prisma, id_fuente) : null) ?? webFuente.id_fuente;
+    const validCampana = id_campana_origen ? await getValidCampanaId(prisma, id_campana_origen) : null;
+    const validServicio = await getValidServicioId(prisma, id_servicio);
+    const validServicioInteres = (await getValidServicioId(prisma, id_servicio_interes)) || validServicio;
+
+    let validHorario = await getValidHorarioId(prisma, req.body.id_horario ?? req.body.pref_id_horario);
+    if (!validHorario && typeof req.body.horario_preferido === 'string' && req.body.horario_preferido.trim()) {
+      const horarioText = req.body.horario_preferido.trim().toLowerCase();
+      let candidateId: number | null = null;
+      if (/ma[ñn]ana/.test(horarioText)) candidateId = 1;
+      else if (/tarde/.test(horarioText)) candidateId = 2;
+      else if (/noche/.test(horarioText)) candidateId = 3;
+
+      if (candidateId) {
+        validHorario = await getValidHorarioId(prisma, candidateId);
+      }
+      if (!validHorario) {
+        const allHorarios = await prisma.horarios.findMany();
+        const matched = allHorarios.find((h) => {
+          const hour = h.hora_inicio ? h.hora_inicio.getUTCHours() : -1;
+          if (/ma[ñn]ana/.test(horarioText)) return hour >= 6 && hour < 13;
+          if (/tarde/.test(horarioText)) return hour >= 13 && hour < 18;
+          if (/noche/.test(horarioText)) return hour >= 18 && hour <= 23;
+          return false;
+        });
+        if (matched) validHorario = matched.id_horario;
+      }
+    }
+
+    let preResolvedSede = sede_preferida || req.body.sede || null;
+    if (!preResolvedSede && req.body.id_sede) {
+      const foundSede = await prisma.sedes.findUnique({ where: { id_sede: Number(req.body.id_sede) } });
+      if (foundSede) preResolvedSede = foundSede.nombre;
+    }
+    const preResolvedBranchId = await captureBranch(prisma as any, req.body.id_sede ?? preResolvedSede);
+
     // 1. Fase transaccional: guardar contacto, captación, mensaje y trabajo pendiente atómicamente
     const txResult = await writeBuyer(async tx => {
       // Detectar duplicado de persona por teléfono o correo
@@ -564,7 +657,7 @@ router.post('/register', async (req, res) => {
       const isNewPersonConfirmed = Boolean(req.body.isNewPersonConfirmed);
 
       if (!isNewPersonConfirmed) {
-        existingPerson = await findBuyerIdentity(tx, null, cleanEmail, cleanPhone);
+        existingPerson = await findBuyerIdentity(tx, cleanDni, cleanEmail, cleanPhone);
         isDuplicate = Boolean(existingPerson);
       }
 
@@ -582,30 +675,6 @@ router.post('/register', async (req, res) => {
         }
       }
 
-      // Canal Web y Fuente Web
-      let webCanal = await tx.canales.findFirst({
-        where: { nombre: { in: ['Página Web', 'Página Web / Portal Online'] }, activo: true },
-        orderBy: { id_canal: 'asc' },
-      });
-      if (!webCanal) webCanal = await tx.canales.create({
-        data: { nombre: 'Página Web / Portal Online', activo: true },
-      });
-
-      let webFuente = await tx.fuentes.findFirst({
-        where: { nombre: { in: ['Formulario Web', 'Formulario Web - Portal NexoSalud'] }, activo: true },
-        orderBy: { id_fuente: 'asc' },
-      });
-      if (!webFuente) webFuente = await tx.fuentes.create({
-        data: { nombre: 'Formulario Web - Portal NexoSalud', activo: true },
-      });
-
-      const validCanal = (id_canal ? await getValidCanalId(tx, id_canal) : null) ?? webCanal.id_canal;
-      const validCanalOrigen = (id_canal_origen ? await getValidCanalId(tx, id_canal_origen) : null) ?? validCanal;
-      const validFuente = (id_fuente ? await getValidFuenteId(tx, id_fuente) : null) ?? webFuente.id_fuente;
-      const validCampana = id_campana_origen ? await getValidCampanaId(tx, id_campana_origen) : null;
-      const validServicio = await getValidServicioId(tx, id_servicio);
-      const validServicioInteres = (await getValidServicioId(tx, id_servicio_interes)) || validServicio;
-
       let persona;
       let totalConsultas = 1;
 
@@ -617,6 +686,7 @@ router.post('/register', async (req, res) => {
         persona = await tx.personas.update({
           where: { id_persona: existingPerson.id_persona },
           data: {
+            dni: cleanDni || existingPerson.dni,
             email: email ? String(email).trim() : existingPerson.email,
             fecha_actualizacion: new Date(),
             id_etapa_actual: existingPerson.id_etapa_actual, // Conserva estrictamente su etapa
@@ -629,6 +699,7 @@ router.post('/register', async (req, res) => {
           data: {
             nombres: resolvedNombres,
             apellidos: resolvedApellidos,
+            dni: cleanDni,
             email: email ? String(email).trim() : null,
             numero: numero ? String(numero).trim() : null,
             autoriza_contacto: autoriza_contacto || false,
@@ -645,17 +716,12 @@ router.post('/register', async (req, res) => {
       // Detalle del motivo
       const prefix = isNewPersonConfirmed ? '[Contacto Compartido] ' : '';
       const motivoConsulta = String(prefix + rawInquiry).slice(0, 195);
-
-      let resolvedSede = sede_preferida || req.body.sede || null;
-      if (!resolvedSede && req.body.id_sede) {
-        const foundSede = await tx.sedes.findUnique({ where: { id_sede: Number(req.body.id_sede) } });
-        if (foundSede) resolvedSede = foundSede.nombre;
-      }
+      const resolvedSede = preResolvedSede;
 
       // Para contactos existentes, conserva su primera captación; si no existe, registrar
       await recordBuyerCapture(tx, persona, {
         sourceId: validFuente, serviceId: validServicio ?? validServicioInteres,
-        branchId: await captureBranch(tx, req.body.id_sede ?? resolvedSede), reason: motivoConsulta,
+        branchId: preResolvedBranchId, reason: motivoConsulta,
       });
 
       const [captacionRow] = await tx.$queryRaw<{ id_captacion: number }[]>`
@@ -718,7 +784,7 @@ router.post('/register', async (req, res) => {
       });
 
       // Preferencias del paciente (Upsert)
-      if (resolvedSede || validCanal || validServicioInteres) {
+      if (resolvedSede || validCanal || validServicioInteres || validHorario) {
         const existingPref = await tx.personaPreferencias.findFirst({ where: { id_persona: persona.id_persona } });
         if (existingPref) {
           await tx.personaPreferencias.update({
@@ -726,6 +792,7 @@ router.post('/register', async (req, res) => {
             data: {
               id_canal: validCanal || existingPref.id_canal,
               id_servicio_interes: validServicioInteres || existingPref.id_servicio_interes,
+              id_horario: validHorario || existingPref.id_horario,
               sede_preferida: resolvedSede || existingPref.sede_preferida,
             }
           });
@@ -735,6 +802,7 @@ router.post('/register', async (req, res) => {
               id_persona: persona.id_persona,
               id_canal: validCanal,
               id_servicio_interes: validServicioInteres,
+              id_horario: validHorario,
               sede_preferida: resolvedSede || null,
             }
           });
@@ -748,6 +816,7 @@ router.post('/register', async (req, res) => {
         id_decision: decisionRecord.id_decision,
         rawInquiry,
         validServicio,
+        validHorario,
         motivoConsulta,
         resolvedSede,
         isDuplicate,
@@ -767,6 +836,7 @@ router.post('/register', async (req, res) => {
       id_servicio_declarado: (txResult as any).validServicio,
       motivo_consulta: (txResult as any).motivoConsulta,
       sede_preferida: (txResult as any).resolvedSede,
+      pref_id_horario: (txResult as any).validHorario ?? null,
       contextoConversacional: previousContext || undefined,
     });
 
@@ -2353,18 +2423,20 @@ router.delete('/:id', async (req, res) => {
     await writeBuyer(async tx => {
       const person = await tx.personas.findUnique({ where: { id_persona: personId }, include: { Etapa: true } });
       if (!person) throw new BuyerInputError('Persona inexistente.', 404);
-      const [capture] = await tx.$queryRaw<{ id_captacion: number }[]>`
-        SELECT id_captacion FROM dbo.CaptacionesBuyer WITH (UPDLOCK,HOLDLOCK) WHERE id_persona=${personId}
-      `;
       const requests = await tx.solicitudes.findMany({ where: { id_persona: personId } });
-      if (person.Etapa.nombre !== 'BUYER' || capture ||
+      if (person.Etapa.nombre !== 'BUYER' ||
           requests.some(request => request.fecha_ingreso_lead || request.resultado_comercial_lead) ||
           await tx.reservas.count({ where: { id_persona: personId } })) {
-        throw new BuyerInputError('La persona tiene trazabilidad comercial o reservas y no admite borrado físico.');
+        throw new BuyerInputError('La persona ya avanzó a LEAD o tiene reservas y no admite borrado físico.');
       }
       for (const request of requests) {
         await tx.opciones.deleteMany({ where: { id_solicitud: request.id_solicitud } });
       }
+      await tx.decisionesIA.deleteMany({ where: { id_persona: personId } });
+      await tx.$executeRaw`DELETE FROM dbo.CaptacionesBuyer WHERE id_persona = ${personId}`;
+      await tx.datosAcademicos.deleteMany({ where: { id_persona: personId } });
+      await tx.datosLaborales.deleteMany({ where: { id_persona: personId } });
+      await tx.personaSaludOdontologica.deleteMany({ where: { id_persona: personId } });
       await tx.interacciones.deleteMany({ where: { id_persona: personId } });
       await tx.eventosEtapa.deleteMany({ where: { id_persona: personId } });
       await tx.solicitudes.deleteMany({ where: { id_persona: personId } });
@@ -2376,6 +2448,52 @@ router.delete('/:id', async (req, res) => {
     if (error instanceof BuyerInputError) return res.status(error.status).json({ error: error.message });
     console.error(error);
     res.status(500).json({ error: 'No se pudo eliminar el BUYER.' });
+  }
+});
+
+// ── CHATBOT DE ORIENTACIÓN Y ADMISIÓN BUYER ──────────────────────────────────
+router.post('/chat', async (req, res) => {
+  try {
+    const rawMessages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+    const messages: ChatbotMessage[] = rawMessages
+      .filter(
+        (m: any) =>
+          m &&
+          (m.role === 'user' || m.role === 'model') &&
+          typeof m.text === 'string' &&
+          m.text.trim().length > 0
+      )
+      .map((m: any) => ({ role: m.role, text: m.text.trim() }));
+
+    if (messages.length === 0) {
+      return res.status(400).json({ error: 'Se requiere al menos un mensaje del usuario.' });
+    }
+
+    const collectedData: ChatbotCollectedData | undefined =
+      req.body?.collectedData && typeof req.body.collectedData === 'object'
+        ? req.body.collectedData
+        : undefined;
+
+    const result = await runBuyerChatbotTurn({ messages, collectedData });
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('[POST /api/buyer/chat] Error:', error);
+    return res.status(500).json({ error: 'No se pudo procesar el mensaje del asistente.' });
+  }
+});
+
+// ── ESTRATEGIA DE PERSUASIÓN PERSONALIZADA POR BUYER ─────────────────────────
+router.post('/:id/persuasion', async (req, res) => {
+  const personId = Number(req.params.id);
+  if (!Number.isInteger(personId) || personId < 1 || personId > 2147483647) {
+    return res.status(400).json({ error: 'ID de persona inválido.' });
+  }
+  try {
+    const strategy = await generateBuyerPersuasionStrategy(personId);
+    return res.json({ success: true, data: strategy });
+  } catch (error) {
+    console.error('[POST /api/buyer/:id/persuasion] Error:', error);
+    return res.status(500).json({ error: 'No se pudo generar la estrategia de persuasión.' });
   }
 });
 

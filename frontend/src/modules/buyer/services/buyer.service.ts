@@ -118,6 +118,9 @@ export const buyerService = {
     motivo_consulta?: string;
     id_servicio?: number | null;
     id_sede?: number | null;
+    sede_preferida?: string | null;
+    horario_preferido?: string | null;
+    dni?: string | null;
     email?: string | null;
     consentimiento_atencion: boolean;
     utm_source?: string;
@@ -132,9 +135,12 @@ export const buyerService = {
       nombres: firstName,
       apellidos: lastName,
       numero: data.telefono,
+      dni: data.dni || null,
       email: data.email || null,
       id_servicio: data.id_servicio || null,
       id_sede: data.id_sede || null,
+      sede_preferida: data.sede_preferida || null,
+      horario_preferido: data.horario_preferido || null,
       necesidad_declarada: data.motivo_consulta || 'Información de orientación y tratamientos dentales',
       motivo_consulta: data.motivo_consulta || 'Información de orientación y tratamientos dentales',
       autoriza_contacto: data.consentimiento_atencion,
@@ -327,5 +333,94 @@ export const buyerService = {
       throw new Error(errorData.error || 'Error al convertir buyer a lead');
     }
     return res.json();
+  },
+
+  chatWithBuyerAssistant: async (payload: {
+    messages: Array<{ role: 'user' | 'model'; text: string }>;
+    collectedData?: {
+      nombre?: string | null;
+      telefono?: string | null;
+      dni?: string | null;
+      email?: string | null;
+      sede_nombre?: string | null;
+      servicio_nombre?: string | null;
+      horario_nombre?: string | null;
+      motivo_consulta?: string | null;
+      autoriza_contacto?: boolean | null;
+    };
+  }) => {
+    const res = await fetch(`${API_URL}/buyer/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Error al comunicarse con el asistente');
+    }
+    const json = await res.json();
+    return json.data as {
+      reply: string;
+      intent: 'ORIENTACION' | 'FAQ' | 'INTERES_CONTACTO' | 'LISTO_PARA_REGISTRO';
+      extracted: {
+        nombre?: string | null;
+        telefono?: string | null;
+        dni?: string | null;
+        email?: string | null;
+        sede_nombre?: string | null;
+        servicio_nombre?: string | null;
+        horario_nombre?: string | null;
+        motivo_consulta?: string | null;
+        autoriza_contacto?: boolean | null;
+      };
+      suggestedActions: string[];
+      readyToRegister: boolean;
+      source: 'gemini' | 'fallback';
+    };
+  },
+
+  getAgentRules: async () => {
+    const res = await fetch(`${API_URL}/buyer/agent-rules`);
+    if (!res.ok) throw new Error('No se pudieron cargar las reglas del agente');
+    const json = await res.json();
+    return json.data;
+  },
+
+  saveAgentRules: async (rules: any) => {
+    const res = await fetch(`${API_URL}/buyer/agent-rules`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rules),
+    });
+    if (!res.ok) throw new Error('No se pudieron guardar las reglas del agente');
+    const json = await res.json();
+    return json.data;
+  },
+
+  generatePersuasionStrategy: async (id: string) => {
+    const res = await fetch(`${API_URL}/buyer/${id}/persuasion`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('No se pudo generar la estrategia de persuasión');
+    const json = await res.json();
+    return json.data as {
+      id_persona: number;
+      angulo_principal: string;
+      argumentos: string[];
+      reglas_aplicadas: string[];
+      objecion_probable: string;
+      guion_whatsapp: string;
+      source: 'gemini' | 'reglas_locales';
+      descuento_recomendado: {
+        activo: boolean;
+        porcentaje: number;
+        datos_completados: string[];
+        datos_faltantes: string[];
+        total_datos: number;
+        urgencia_texto: string;
+        frases_gancho: string[];
+      };
+    };
   },
 };
