@@ -129,7 +129,7 @@ export default function CohortsAnalyticsPage() {
               Análisis de Cohortes y Retención del Flujo de Pacientes
             </h1>
             <span className="rounded-full bg-[#ECFDF5] dark:bg-teal-950/60 px-2.5 py-0.5 font-mono text-xs font-semibold text-[#065F46] dark:text-teal-300">
-              DataMart BI
+              BI & Analítica Clínica
             </span>
           </div>
           <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">

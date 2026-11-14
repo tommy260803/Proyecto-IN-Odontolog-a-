@@ -16,7 +16,6 @@ import CustomerPage from '@/modules/customer/pages/CustomerPage';
 import CustomerDetailPage from '@/modules/customer/pages/CustomerDetailPage';
 import TurnedPage from '@/modules/turned/pages/TurnedPage';
 import TurnedDetailPage from '@/modules/turned/pages/TurnedDetailPage';
-import ReportsPage from '@/modules/reports/pages/ReportsPage';
 import CohortsAnalyticsPage from '@/modules/reports/pages/CohortsAnalyticsPage';
 import ClinicalPerformancePage from '@/modules/reports/pages/ClinicalPerformancePage';
 import ClinicalPatientsPage from '@/modules/clinical/pages/ClinicalPatientsPage';
@@ -139,7 +138,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'reportes',
-        element: <ReportsPage />,
+        element: <Navigate to="/analitica/cohortes" replace />,
       },
       {
         path: 'analitica/cohortes',

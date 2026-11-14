@@ -56,9 +56,9 @@ const INITIAL_NOTIFICATIONS = [
   {
     id: 'n3',
     title: 'Corte analítico actualizado',
-    detail: 'Tablero consolidado sincronizado con el DataMart',
+    detail: 'Tablero consolidado de citas y cobranzas clínicas',
     time: 'Hace 32 min',
-    to: '/reportes?tab=all',
+    to: '/payer',
     unread: false,
   },
 ];

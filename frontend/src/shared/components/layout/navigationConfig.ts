@@ -116,13 +116,6 @@ export const SIDEBAR_NAV_GROUPS: NavGroupConfig[] = [
     label: 'ANALÍTICA & BI',
     items: [
       {
-        id: 'bi-ejecutivos',
-        to: '/reportes',
-        label: 'Reportes Ejecutivos',
-        icon: FileSpreadsheet,
-        matchPath: '/reportes',
-      },
-      {
         id: 'bi-cohortes',
         to: '/analitica/cohortes',
         label: 'Cohortes',
@@ -204,31 +197,15 @@ export function resolveBreadcrumbs(pathname: string, search: string): Breadcrumb
 
   if (pathname.startsWith('/analitica/cohortes')) {
     return [
-      { label: 'Analítica & BI', to: '/reportes' },
+      { label: 'Analítica & BI', to: '/analitica/cohortes' },
       { label: 'Análisis de Cohortes y Conversión del Embudo' },
     ];
   }
 
   if (pathname.startsWith('/analitica/rendimiento')) {
     return [
-      { label: 'Analítica & BI', to: '/reportes' },
+      { label: 'Analítica & BI', to: '/analitica/rendimiento' },
       { label: 'Rendimiento Clínico y Productividad Médica' },
-    ];
-  }
-
-  if (pathname.startsWith('/reportes')) {
-    const tab = params.get('tab') || 'buyer';
-    const tabLabels: Record<string, string> = {
-      all: 'Dashboard Consolidado · Visión General',
-      buyer: 'Dashboard Analítico · Prospectos Web',
-      lead: 'Dashboard Analítico · Cotizaciones y Citas',
-      payer: 'Dashboard Analítico · Caja y Cobranzas',
-      customer: 'Dashboard Analítico · Atención Clínica',
-      turned: 'Dashboard Analítico · Fidelización y Retorno',
-    };
-    return [
-      { label: 'Analítica & BI', to: '/reportes' },
-      { label: tabLabels[tab] || 'Dashboard Ejecutivo y Analítica' },
     ];
   }
 
@@ -420,15 +397,6 @@ export const STATIC_COMMAND_ITEMS: QuickCommandItem[] = [
     to: '/turned',
     icon: HeartHandshake,
     keywords: 'turned fidelizacion postventa controles recall seguimiento',
-  },
-  {
-    id: 'cmd-reportes-all',
-    title: 'Dashboard Ejecutivo y Analítica',
-    subtitle: 'Analítica & BI · Tablero multidimensional del flujo de pacientes',
-    category: 'Analítica & BI',
-    to: '/reportes',
-    icon: BarChart3,
-    keywords: 'reportes bi matriz ejecutiva kpi datamart dashboard flujo',
   },
   {
     id: 'cmd-reportes-cohortes',
