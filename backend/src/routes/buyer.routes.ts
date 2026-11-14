@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { createHash } from 'node:crypto';
 import { Prisma, type Personas } from '@prisma/client';
 import { prisma } from '../db';
-import { MartSyncService } from '../services/martSyncService';
 
 const router = Router();
 
@@ -519,7 +518,6 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    MartSyncService.syncBuyer().catch(err => console.warn('[AutoSync] Error:', err.message));
     res.status(201).json({ 
       success: true, 
       isDuplicate: false, 
@@ -895,7 +893,6 @@ router.post('/', async (req, res) => {
       return { ...persona, id: persona.id_persona, isDuplicate: false };
     });
 
-    if (!result.isDuplicate) MartSyncService.syncBuyer().catch(err => console.warn('[AutoSync] Error:', err.message));
     res.status(result.isDuplicate ? 200 : 201).json(result);
   } catch (error: any) {
     if (error instanceof BuyerInputError) return res.status(error.status).json({ error: error.message });
