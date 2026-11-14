@@ -202,7 +202,7 @@ export default function ActivateAccountPage() {
 
               <div className="pt-2">
                 <Button
-                  onClick={() => navigate('/solicitar-informacion')}
+                  onClick={() => navigate('/lead')}
                   className="w-full h-11 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs gap-2 cursor-pointer shadow-md shadow-teal-700/20 transition-all hover:shadow-lg"
                 >
                   <span>Ir al Portal del Paciente</span>
@@ -229,7 +229,7 @@ export default function ActivateAccountPage() {
 
               <div className="pt-2">
                 <Button
-                  onClick={() => navigate('/solicitar-informacion')}
+                  onClick={() => navigate('/lead')}
                   className="w-full h-11 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl text-xs gap-2 cursor-pointer shadow-lg shadow-teal-700/25 transition-all hover:scale-[1.01]"
                 >
                   <span>Iniciar Sesión en el Portal</span>

@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import BuyerPage from '@/modules/buyer/pages/BuyerPage';
 import NewBuyerPage from '@/modules/buyer/pages/NewBuyerPage';
 import BuyerDetailPage from '@/modules/buyer/pages/BuyerDetailPage';
-import BuyerRequestInfoPage from '@/modules/buyer/pages/BuyerRequestInfoPage';
 import ActivateAccountPage from '@/modules/buyer/pages/ActivateAccountPage';
 import PreReservationPage from '@/modules/lead/pages/PreReservationPage';
 import ProrrogaExpressPage from '@/modules/payer/pages/ProrrogaExpressPage';
@@ -27,11 +26,11 @@ import AppLayout from '@/app/layouts/AppLayout';
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <BuyerRequestInfoPage />,
+    element: <Navigate to="/lead" replace />,
   },
   {
     path: '/solicitar-informacion',
-    element: <Navigate to="/" replace />,
+    element: <Navigate to="/lead" replace />,
   },
   {
     path: '/activar-cuenta',
