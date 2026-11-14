@@ -17,6 +17,7 @@ import turnedRoutes from './routes/turned.routes';
 import configRoutes from './routes/config.routes';
 import patientAuthRoutes from './routes/patientAuth.routes';
 import whatsappRoutes from './routes/whatsapp.routes';
+import groqRoutes from './routes/groq.routes';
 import { startDunningScheduler } from './services/dunningScheduler';
 
 const app = express();
@@ -38,6 +39,7 @@ app.use('/api/turned', turnedRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/patient-auth', patientAuthRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/groq', groqRoutes);
 
 import { CanvaService } from './services/canvaService';
 

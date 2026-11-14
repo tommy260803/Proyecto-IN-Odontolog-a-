@@ -1,9 +1,96 @@
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODELS = ['groq/compound-mini', 'qwen/qwen3.8-27b', 'openai/gpt-oss-120b'];
+const GROQ_MODELS = [
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'groq/compound-mini',
+  'qwen/qwen3.8-27b',
+  'openai/gpt-oss-120b'
+];
 
 export interface GroqMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
+}
+
+/**
+ * Ejecuta inferencia con Groq de forma segura:
+ * 1. Prioriza el Backend Proxy Seguro (/api/groq/chat) para no exponer API keys en el navegador.
+ * 2. Si el backend no está disponible, utiliza fallback directo si VITE_GROQ_API_KEY fue configurada.
+ */
+export async function executeGroqChat(params: {
+  messages: GroqMessage[];
+  temperature?: number;
+  max_tokens?: number;
+  model?: string;
+  models?: string[];
+  response_format?: any;
+  signal?: AbortSignal;
+}): Promise<string | null> {
+  const models = params.models || (params.model ? [params.model] : GROQ_MODELS);
+
+  // 1. Intentar primero vía Proxy Seguro en Express
+  try {
+    const backendRes = await fetch(`${API_URL}/groq/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: params.messages,
+        temperature: params.temperature ?? 0.4,
+        max_tokens: params.max_tokens ?? 1000,
+        models,
+        response_format: params.response_format,
+      }),
+      signal: params.signal,
+    });
+
+    if (backendRes.ok) {
+      const data = await backendRes.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (content) return content;
+    }
+  } catch (backendErr: any) {
+    if (backendErr.name === 'AbortError') return null;
+  }
+
+  // 2. Fallback directo en cliente (solo si VITE_GROQ_API_KEY sigue presente)
+  const clientApiKey = import.meta.env.VITE_GROQ_API_KEY;
+  if (clientApiKey && clientApiKey !== 'tu_groq_api_key_aqui') {
+    for (const m of models) {
+      try {
+        const payload: any = {
+          model: m,
+          messages: params.messages,
+          temperature: params.temperature ?? 0.4,
+          max_tokens: params.max_tokens ?? 1000,
+          stream: false,
+        };
+        if (params.response_format) {
+          payload.response_format = params.response_format;
+        }
+
+        const response = await fetch(GROQ_API_URL, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${clientApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+          signal: params.signal,
+        });
+
+        if (!response.ok) continue;
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return content;
+      } catch (err: any) {
+        if (err.name === 'AbortError') return null;
+      }
+    }
+  }
+
+  return null;
 }
 
 export interface PayerContext {
@@ -291,7 +378,6 @@ Genera el JSON con: internalRecommendation y el objeto strategies con friendly, 
 export async function callGroqAssistant(ctx: PayerContext): Promise<AiCollectionResult> {
   const risk = calculatePayerRisk(ctx);
   const fallbackStrategies = generateHeuristicStrategies(ctx, risk);
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
 
   let defaultRecommendation = '';
   if (ctx.state === 'VALIDADO' || ctx.state === 'VALIDATED') {
@@ -312,38 +398,19 @@ export async function callGroqAssistant(ctx: PayerContext): Promise<AiCollection
     emailBody: fallbackStrategies.friendly.emailBody,
   };
 
-  if (!apiKey || apiKey === 'tu_groq_api_key_aqui') {
-    return fallbackResult;
-  }
-
   const messages: GroqMessage[] = [
     { role: 'system', content: buildSystemPrompt() },
     { role: 'user', content: buildUserPrompt(ctx, risk) },
   ];
 
-  for (const model of GROQ_MODELS) {
-    try {
-      const response = await fetch(GROQ_API_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature: 0.4,
-          max_tokens: 1000,
-          stream: false,
-        }),
-      });
+  try {
+    const rawContent = await executeGroqChat({
+      messages,
+      temperature: 0.4,
+      max_tokens: 1000,
+    });
 
-      if (!response.ok) continue;
-
-      const data = await response.json();
-      const rawContent = data.choices?.[0]?.message?.content;
-      if (!rawContent) continue;
-
+    if (rawContent) {
       const cleanJson = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(cleanJson);
 
@@ -377,9 +444,9 @@ export async function callGroqAssistant(ctx: PayerContext): Promise<AiCollection
           emailBody: parsed.strategies.friendly.emailBody || fallbackStrategies.friendly.emailBody,
         };
       }
-    } catch {
-      // Try next model or fallback
     }
+  } catch {
+    // Si falla la respuesta o el parseo, retorna fallbackResult de inmediato
   }
 
   return fallbackResult;
@@ -551,9 +618,8 @@ export async function analyzeBuyerMarketingAgent(ctx: BuyerMarketingContext): Pr
     marketingRecommendation = 'Enviar catálogo del tratamiento y agendar llamada de orientación odontológica.';
   }
 
-  // Si hay API Key de Groq y la consulta tiene texto descriptivo adicional, enriquecer el análisis
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-  if (apiKey && apiKey !== 'tu_groq_api_key_aqui' && ctx.concreteRequest && ctx.concreteRequest.trim().length > 6 && !isAlreadyConverted) {
+  // Enriquecimiento con Groq AI si la consulta tiene texto descriptivo adicional (vía Backend Proxy seguro)
+  if (ctx.concreteRequest && ctx.concreteRequest.trim().length > 6 && !isAlreadyConverted) {
     try {
       const prompt = `Analiza la intención comercial del siguiente prospecto odontológico:
 - Paciente: ${ctx.fullName}
@@ -575,35 +641,25 @@ Responde ÚNICAMENTE un JSON con:
   "marketingRecommendation": "acción comercial recomendada en 1 línea"
 }`;
 
-      const res = await fetch(GROQ_API_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: GROQ_MODELS[0],
-          messages: [
-            { role: 'system', content: 'Eres el Agente de Marketing de NexoSalud Dental. Evalúas con precisión la intención comercial de los BUYERS.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.2,
-          max_tokens: 300,
-        }),
+      const content = await executeGroqChat({
+        model: GROQ_MODELS[0],
+        messages: [
+          { role: 'system', content: 'Eres el Agente de Marketing de NexoSalud Dental. Evalúas con precisión la intención comercial de los BUYERS.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.2,
+        max_tokens: 300,
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        const content = data.choices?.[0]?.message?.content?.replace(/```json/gi, '')?.replace(/```/g, '')?.trim();
-        if (content) {
-          const parsed = JSON.parse(content);
-          if (parsed.intentLevel) {
-            hasConcreteIntent = Boolean(parsed.hasConcreteIntent ?? hasConcreteIntent);
-            intentLevel = parsed.intentLevel;
-            intentReason = parsed.intentReason || intentReason;
-            suggestedAction = parsed.suggestedAction || suggestedAction;
-            marketingRecommendation = parsed.marketingRecommendation || marketingRecommendation;
-          }
+      if (content) {
+        const cleanJson = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(cleanJson);
+        if (parsed.intentLevel) {
+          hasConcreteIntent = Boolean(parsed.hasConcreteIntent ?? hasConcreteIntent);
+          intentLevel = parsed.intentLevel;
+          intentReason = parsed.intentReason || intentReason;
+          suggestedAction = parsed.suggestedAction || suggestedAction;
+          marketingRecommendation = parsed.marketingRecommendation || marketingRecommendation;
         }
       }
     } catch {
@@ -670,9 +726,8 @@ export async function analyzeIdentityResolutionWithAI(params: {
   const matches = eTokens.filter(t => rTokens.some(r => r.includes(t) || t.includes(r)));
   const overlapRatio = matches.length / Math.max(eTokens.length, 1);
 
-  // Consulta al modelo Groq
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-  if (apiKey && apiKey !== 'tu_groq_api_key_aqui') {
+  // Consulta al modelo Groq vía Proxy Seguro
+  try {
     const prompt = `Actúa como el Agente Inteligente de Marketing Odontológico especializado en Calidad de Datos y Resolución de Identidad de Pacientes.
 Compara estos dos nombres para determinar si corresponden a la misma persona (variación ortográfica, apodo, error tipográfico, omisión de segundo nombre o apellido) o si son personas claramente distintas (ej: familiar, hijo/padre, o titular diferente):
 
@@ -686,42 +741,29 @@ Responde ÚNICAMENTE en JSON válido con este formato:
   "reason": "explicación concisa en una sola frase"
 }`;
 
-    for (const model of GROQ_MODELS) {
-      try {
-        const response = await fetch(GROQ_API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: 'system', content: 'Eres un sistema de resolución de identidad de pacientes. Responde únicamente JSON.' },
-              { role: 'user', content: prompt }
-            ],
-            temperature: 0.1,
-            max_tokens: 150,
-            response_format: { type: 'json_object' }
-          }),
-        });
+    const content = await executeGroqChat({
+      messages: [
+        { role: 'system', content: 'Eres un sistema de resolución de identidad de pacientes. Responde únicamente JSON.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.1,
+      max_tokens: 150,
+      response_format: { type: 'json_object' }
+    });
 
-        if (response.ok) {
-          const data = await response.json();
-          const parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
-          if (parsed && typeof parsed.isSamePerson === 'boolean') {
-            return {
-              isSamePerson: parsed.isSamePerson,
-              confidence: Number(parsed.confidence) || (parsed.isSamePerson ? 0.95 : 0.1),
-              reason: parsed.reason || (parsed.isSamePerson ? 'Variación del mismo paciente' : 'Personas distintas detectadas'),
-              isDifferentPerson: !parsed.isSamePerson,
-            };
-          }
-        }
-      } catch {
-        // intentar con el siguiente modelo
+    if (content) {
+      const parsed = JSON.parse(content);
+      if (parsed && typeof parsed.isSamePerson === 'boolean') {
+        return {
+          isSamePerson: parsed.isSamePerson,
+          confidence: Number(parsed.confidence) || (parsed.isSamePerson ? 0.95 : 0.1),
+          reason: parsed.reason || (parsed.isSamePerson ? 'Variación del mismo paciente' : 'Personas distintas detectadas'),
+          isDifferentPerson: !parsed.isSamePerson,
+        };
       }
     }
+  } catch {
+    // Continuar al fallback heurístico
   }
 
   // Heurística de respaldo
@@ -747,10 +789,7 @@ Responde ÚNICAMENTE en JSON válido con este formato:
  * (ej: "TRANSFORMA TU SONRISA", "SONRISA PERFECTA HOY", "SONRÍE SIN LÍMITES")
  */
 export async function generateFlyerTitleWithAI(serviceName: string, patientName?: string): Promise<string> {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-
-  if (apiKey && apiKey !== 'tu_groq_api_key_aqui') {
-    const prompt = `Actúa como Director Creativo de Neuromarketing Odontológico de NexoSalud.
+  const prompt = `Actúa como Director Creativo de Neuromarketing Odontológico de NexoSalud.
 Crea un titular publicitario MAGNÉTICO, PERSUASIVO Y DE MÁXIMO IMPACTO de EXACTAMENTE 2 O 3 PALABRAS (NUNCA MÁS DE 3 PALABRAS) para la cabecera del flyer oficial de Canva.
 
 Tratamiento promocionado: "${serviceName}".
@@ -771,37 +810,26 @@ REGLAS DE ORO:
    - "RENUEVA TU SONRISA"
 5. NUNCA uses términos clínicos aburridos, preposiciones raras o frases incompletas. Responde ÚNICAMENTE las 2 o 3 palabras en MAYÚSCULAS sin comillas ni puntos.`;
 
-    // Intentar con el modelo más rápido con timeout estricto de 1.2s para no demorar la generación
-    try {
-      const response = await fetch(GROQ_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: GROQ_MODELS[0],
-          messages: [
-            { role: 'system', content: 'Eres un copywriter publicitario dental de élite. Responde únicamente un titular impactante en mayúsculas de 2 o 3 palabras.' },
-            { role: 'user', content: prompt },
-          ],
-          temperature: 0.5,
-          max_tokens: 20,
-        }),
-        signal: AbortSignal.timeout(1200),
-      });
+  try {
+    const raw = await executeGroqChat({
+      model: GROQ_MODELS[0],
+      messages: [
+        { role: 'system', content: 'Eres un copywriter publicitario dental de élite. Responde únicamente un titular impactante en mayúsculas de 2 o 3 palabras.' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.5,
+      max_tokens: 20,
+      signal: AbortSignal.timeout(1500),
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        let raw = data.choices?.[0]?.message?.content?.trim() || '';
-        raw = raw.replace(/["'«».:;\n\r]/g, '').trim();
-        const words = raw.split(/\s+/).filter(Boolean);
-        if (words.length >= 2) {
-          return words.slice(0, 3).join(' ').toUpperCase();
-        }
+    if (raw) {
+      let clean = raw.replace(/["'«».:;\n\r]/g, '').trim();
+      const words = clean.split(/\s+/).filter(Boolean);
+      if (words.length >= 2) {
+        return words.slice(0, 3).join(' ').toUpperCase();
       }
-    } catch (_) {}
-  }
+    }
+  } catch (_) {}
 
   // Fallback heurístico de alta persuasión por servicio (máximo 3 palabras)
   const lower = (serviceName || '').toLowerCase();
@@ -861,35 +889,19 @@ TU MISIÓN:
 5. Si pide más rebaja: explicar amablemente que el ${ctx.discountPct}% es el descuento máximo institucional permitido y ya incluye beneficios extra.
 6. Mantén tus respuestas claras y concisas (máximo 2 a 3 párrafos breves), con un tono cordial y emojis profesionales.`;
 
-  if (apiKey && apiKey !== 'tu_groq_api_key_aqui') {
-    for (const model of GROQ_MODELS) {
-      try {
-        const messages = [
-          { role: 'system', content: systemPrompt },
-          ...history.slice(-6).map((m) => ({ role: m.role, content: m.content })),
-          { role: 'user', content: userMessage },
-        ];
-        const response = await fetch(GROQ_API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model,
-            messages,
-            temperature: 0.7,
-            max_tokens: 350,
-          }),
-        });
-        if (response.ok) {
-          const data = await response.json();
-          const reply = data.choices?.[0]?.message?.content?.trim();
-          if (reply) return reply;
-        }
-      } catch (_) {}
-    }
-  }
+  try {
+    const messages: GroqMessage[] = [
+      { role: 'system', content: systemPrompt },
+      ...history.slice(-6).map((m) => ({ role: m.role, content: m.content })),
+      { role: 'user', content: userMessage },
+    ];
+    const reply = await executeGroqChat({
+      messages,
+      temperature: 0.7,
+      max_tokens: 350,
+    });
+    if (reply && reply.trim().length > 0) return reply.trim();
+  } catch (_) {}
 
   // Fallback heurístico si no hay API key o si se agota la cuota
   const lower = userMessage.toLowerCase();
@@ -1141,11 +1153,9 @@ export async function predictLeadNegotiationStrategy(params: {
     agendaFlexibility = 'Flexible ante disponibilidad de la sede';
   }
 
-  // Enriquecimiento con Groq AI si la API Key está activa
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-  if (apiKey && apiKey !== 'tu_groq_api_key_aqui') {
-    try {
-      const prompt = `Actúa como el Agente Negociador de la clínica odontológica NexoSalud Dental.
+  // Enriquecimiento con Groq AI vía Proxy Seguro
+  try {
+    const prompt = `Actúa como el Agente Negociador de la clínica odontológica NexoSalud Dental.
 Genera una estrategia de negociación personalizada y persuasiva:
 - Paciente: ${patientName}
 - Tratamiento: ${reqServicio} (Precio oficial: S/ ${officialPrice})
@@ -1161,35 +1171,24 @@ Responde ÚNICAMENTE un JSON con:
   "persuasiveSalesPitch": "Mensaje de WhatsApp cálido, empático, profesional y persuasivo listo para enviar (máximo 4 líneas con emojis)"
 }`;
 
-      const res = await fetch(GROQ_API_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: GROQ_MODELS[0],
-          messages: [
-            { role: 'system', content: 'Eres el Agente Negociador de NexoSalud Dental. Especialista en psicología de ventas y persuasión médica odontológica.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.3,
-          max_tokens: 300,
-        }),
-      });
+    const content = await executeGroqChat({
+      model: GROQ_MODELS[0],
+      messages: [
+        { role: 'system', content: 'Eres el Agente Negociador de NexoSalud Dental. Especialista en psicología de ventas y persuasión médica odontológica.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.3,
+      max_tokens: 300,
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        const content = data.choices?.[0]?.message?.content?.replace(/```json/gi, '')?.replace(/```/g, '')?.trim();
-        if (content) {
-          const parsed = JSON.parse(content);
-          if (parsed.strategyReason) strategyReason = parsed.strategyReason;
-          if (parsed.persuasiveSalesPitch) persuasiveSalesPitch = parsed.persuasiveSalesPitch;
-        }
-      }
-    } catch {
-      // Mantiene el fallback heurístico
+    if (content) {
+      const cleanJson = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
+      if (parsed.strategyReason) strategyReason = parsed.strategyReason;
+      if (parsed.persuasiveSalesPitch) persuasiveSalesPitch = parsed.persuasiveSalesPitch;
     }
+  } catch {
+    // Mantiene el fallback heurístico
   }
 
   return {
