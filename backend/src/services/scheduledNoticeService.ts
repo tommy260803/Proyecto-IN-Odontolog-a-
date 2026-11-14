@@ -268,17 +268,23 @@ export class ScheduledNoticeService {
     });
 
     // 7. Registrar incidencia de cobro directo exitoso
-    await prisma.incidencias.create({
-      data: {
-        id_persona: Reserva.id_persona,
-        id_reserva: Reserva.id_reserva,
-        tipo: 'COBRO_DIRECTO_CONFIRMADO',
-        descripcion: `COBRO_DIRECTO_GMAIL: Agente ejecutó el cobro directo de la reserva #${Reserva.id_reserva}, validó el pago en SQL Server, promovió al paciente a CUSTOMER y despachó la Constancia Oficial de Pago PDF a ${notif.email_destinatario}.`,
-        prioridad: 'Baja',
-        estado: 'CLOSED',
-        fecha_resolucion: new Date()
+    try {
+      if (prisma.incidencias?.create) {
+        await prisma.incidencias.create({
+          data: {
+            id_persona: Reserva.id_persona,
+            id_reserva: Reserva.id_reserva,
+            tipo: 'COBRO_DIRECTO_CONFIRMADO',
+            descripcion: `COBRO_DIRECTO_GMAIL: Agente ejecutó el cobro directo de la reserva #${Reserva.id_reserva}, validó el pago en SQL Server, promovió al paciente a CUSTOMER y despachó la Constancia Oficial de Pago PDF a ${notif.email_destinatario}.`,
+            prioridad: 'Baja',
+            estado: 'CLOSED',
+            fecha_resolucion: new Date()
+          }
+        });
       }
-    }).catch(() => {});
+    } catch {
+      // Ignorar fallos de incidencias accesorias
+    }
 
     console.log(`[SCHEDULED COBRO] ✅ Cobro directo efectuado y Constancia #${idNotificacion} enviada con éxito a ${notif.email_destinatario}`);
     return { success: true, emailResult, pago };
@@ -325,6 +331,33 @@ export class ScheduledNoticeService {
     return prisma.notificacionesCobroProgramadas.findMany({
       where: { id_reserva: reservaId },
       orderBy: { fecha_creacion: 'desc' }
+    });
+  }
+
+  /**
+   * Consulta todas las notificaciones de cobro registradas con datos de persona y reserva
+   */
+  static async listarTodas(limit = 100) {
+    if (!prisma.notificacionesCobroProgramadas?.findMany) return [];
+    return prisma.notificacionesCobroProgramadas.findMany({
+      include: {
+        Persona: true,
+        Reserva: {
+          include: {
+            Solicitud: { include: { Servicio: true } },
+            Opcion: {
+              include: {
+                Disponibilidad: {
+                  include: { Sede: true, Profesional: true }
+                }
+              }
+            },
+            Pagos: true,
+          }
+        }
+      },
+      orderBy: { fecha_creacion: 'desc' },
+      take: limit,
     });
   }
 

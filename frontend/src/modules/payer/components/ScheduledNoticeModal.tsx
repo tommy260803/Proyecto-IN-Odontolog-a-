@@ -97,6 +97,18 @@ export function ScheduledNoticeModal({ payer, isOpen, onClose }: ScheduledNotice
     }
   }, [isOpen, payer?.id]);
 
+  // Ajustar fecha y hora con un acceso rápido (ej. en 2 o 5 minutos)
+  const setQuickTime = (minutesAhead: number) => {
+    const dt = new Date(Date.now() + minutesAhead * 60 * 1000);
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    const hh = String(dt.getHours()).padStart(2, '0');
+    const min = String(dt.getMinutes()).padStart(2, '0');
+    setTargetDate(`${yyyy}-${mm}-${dd}`);
+    setTargetTime(`${hh}:${min}`);
+  };
+
   // Cargar historial de notificaciones programadas
   const loadHistory = async (reservaId: number) => {
     setIsLoadingHistory(true);
@@ -382,6 +394,41 @@ export function ScheduledNoticeModal({ payer, isOpen, onClose }: ScheduledNotice
                   required
                 />
               </div>
+            </div>
+
+            {/* Accesos Rápidos de Tiempo para Verificación & Despacho Inmediato */}
+            <div className="flex items-center gap-1.5 flex-wrap -mt-2">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Accesos rápidos:</span>
+              <button
+                type="button"
+                onClick={() => setQuickTime(2)}
+                className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 transition-colors cursor-pointer"
+                title="Programar para dentro de 2 minutos exactos y verificar el despacho del cron"
+              >
+                ⏱️ En 2 min (Prueba Rápida)
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuickTime(5)}
+                className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 transition-colors cursor-pointer"
+              >
+                ⏱️ En 5 min
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const tomorrow = new Date();
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  const yyyy = tomorrow.getFullYear();
+                  const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+                  const dd = String(tomorrow.getDate()).padStart(2, '0');
+                  setTargetDate(`${yyyy}-${mm}-${dd}`);
+                  setTargetTime('10:00');
+                }}
+                className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+              >
+                📅 Mañana 10:00 hrs
+              </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

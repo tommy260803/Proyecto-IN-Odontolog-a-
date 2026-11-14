@@ -1044,28 +1044,7 @@ export default function PublicPaymentPage() {
                   </Button>
                 </div>
 
-                {/* Caja de Modo Prueba Inmediata (Testing Express) */}
-                <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-2xl flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-700 flex items-center justify-center shrink-0">
-                      <Zap className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-amber-900 block leading-tight">Modo Prueba Express (Testing)</span>
-                      <span className="text-[10px] text-amber-800">Valida la cita en SQL Server en 1 segundo.</span>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="button"
-                    onClick={() => handleFinalizePayment('Yape (Test Express)', `TEST-${Date.now().toString().slice(-6)}`)}
-                    disabled={processingPayment}
-                    className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] h-8 px-3 rounded-xl shrink-0 cursor-pointer shadow-2xs"
-                  >
-                    ⚡ Aprobar Test
-                  </Button>
-                </div>
-
+            
 
               </div>
 

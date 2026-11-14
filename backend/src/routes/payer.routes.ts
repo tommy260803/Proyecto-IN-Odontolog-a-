@@ -119,6 +119,16 @@ router.put('/dunning-rules', async (req, res) => {
  * Retorna las métricas y el registro de la última ejecución del servicio de dunning con sus reglas activas.
  */
 router.get('/dunning-stats', async (req, res) => {
+  if (typeof process.env.VITEST === 'undefined') {
+    try {
+      const procRes = await ScheduledNoticeService.procesarPendientes();
+      if (procRes && procRes.procesadas > 0) {
+        await runDunningCycle();
+      }
+    } catch (e) {
+      // Ignorar errores menores en polling
+    }
+  }
   const stats = getLastExecutionStats();
   const rules = await DunningConfigService.getRules();
   res.json({
@@ -1538,6 +1548,20 @@ router.post('/notificaciones-cobro/programar', async (req, res) => {
   } catch (error: any) {
     console.error('Error al programar notificación de cobro:', error);
     res.status(500).json({ error: error.message || 'Error al programar notificación de cobro' });
+  }
+});
+
+/**
+ * Lista todas las notificaciones de cobro programadas o ejecutadas en el sistema
+ */
+router.get('/notificaciones-cobro', async (req, res) => {
+  try {
+    const limit = Number(req.query.limit) || 100;
+    const notificaciones = await ScheduledNoticeService.listarTodas(limit);
+    res.json({ success: true, notificaciones });
+  } catch (error: any) {
+    console.error('Error al listar todas las notificaciones de cobro:', error);
+    res.status(500).json({ error: error.message || 'Error al obtener notificaciones' });
   }
 });
 

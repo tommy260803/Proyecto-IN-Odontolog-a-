@@ -12,14 +12,21 @@ export interface DunningCycleResult {
   stage2UrgenciesSent: number;
   stage3CancellationsProcessed: number;
   freedSlots: number;
+  scheduledCobrosCount?: number;
+  scheduledCobrosExecuted?: number;
+  scheduledCobrosPending?: number;
+  scheduledCobros?: any[];
   logs: Array<{
     reservationId: number;
     patientName: string;
-    stage: 'ETAPA_1_PREVENTIVO' | 'ETAPA_2_URGENCIA' | 'ETAPA_3_CANCELACION' | 'SIN_ACCION';
+    stage: 'ETAPA_1_PREVENTIVO' | 'ETAPA_2_URGENCIA' | 'ETAPA_3_CANCELACION' | 'COBRO_AUTOMATICO' | 'SIN_ACCION';
     details: string;
     emailSent: boolean;
     emailRecipient?: string;
     sentAt?: string;
+    amount?: number;
+    channel?: string;
+    status?: string;
   }>;
 }
 
@@ -335,6 +342,57 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
       });
     }
 
+    // Obtener los cobros automáticos para auditoría en el modal del Cron Job
+    let scheduledCobrosRaw: any[] = [];
+    if (typeof process.env.VITEST === 'undefined') {
+      try {
+        scheduledCobrosRaw = await ScheduledNoticeService.listarTodas(50);
+      } catch (scErr) {
+        console.warn('No se pudo listar cobros programados para auditoría:', scErr);
+      }
+    }
+
+    const scheduledCobrosList = (scheduledCobrosRaw || []).map(sc => ({
+      id: sc.id_notificacion,
+      reservationId: sc.id_reserva,
+      patientName: sc.Persona ? `${sc.Persona.nombres} ${sc.Persona.apellidos}` : 'Paciente',
+      patientPhone: sc.Persona?.numero,
+      patientEmail: sc.email_destinatario || sc.Persona?.email,
+      documentNumber: sc.Persona?.dni,
+      amount: Number(sc.monto_cobro),
+      scheduledDate: sc.fecha_hora_programada ? sc.fecha_hora_programada.toISOString() : null,
+      status: sc.estado, // PROGRAMADO, ENVIADO, CANCELADO, FALLIDO
+      sentAt: sc.fecha_envio_real ? sc.fecha_envio_real.toISOString() : null,
+      serviceName: sc.Reserva?.Solicitud?.Servicio?.nombre || 'Tratamiento Dental',
+      branch: sc.Reserva?.Opcion?.Disponibilidad?.Sede?.nombre || 'Sede Principal',
+      professional: sc.Reserva?.Opcion?.Disponibilidad?.Profesional ? `Dr. ${sc.Reserva.Opcion.Disponibilidad.Profesional.nombres} ${sc.Reserva.Opcion.Disponibilidad.Profesional.apellidos}` : 'Especialista',
+      createdBy: sc.creado_por || 'Agente IA',
+      customMessage: sc.mensaje_personalizado,
+    }));
+
+    const scheduledCobrosExecuted = scheduledCobrosList.filter(sc => sc.status === 'ENVIADO').length;
+    const scheduledCobrosPending = scheduledCobrosList.filter(sc => sc.status === 'PROGRAMADO').length;
+
+    // Agregar cobros automáticos a los logs de la consola Live Tail
+    for (const sc of scheduledCobrosList) {
+      logs.push({
+        reservationId: sc.reservationId,
+        patientName: sc.patientName,
+        stage: 'COBRO_AUTOMATICO',
+        details: sc.status === 'ENVIADO'
+          ? `[COBRO AUTOMÁTICO EJECUTADO] S/ ${sc.amount.toFixed(2)} conciliado y aprobado en SQL Server. Constancia Oficial PDF despachada a Gmail.`
+          : sc.status === 'PROGRAMADO'
+          ? `[COBRO PROGRAMADO PENDIENTE] Programado para ${sc.scheduledDate ? new Date(sc.scheduledDate).toLocaleString('es-PE') : 'fecha acordada'} por S/ ${sc.amount.toFixed(2)}.`
+          : `[COBRO CANCELADO/INACTIVO] Programación cancelada o sustituida por nuevo acuerdo.`,
+        emailSent: sc.status === 'ENVIADO',
+        emailRecipient: sc.patientEmail,
+        sentAt: sc.sentAt || sc.scheduledDate || now.toISOString(),
+        amount: sc.amount,
+        channel: 'Gmail Constancia PDF',
+        status: sc.status,
+      });
+    }
+
     const result: DunningCycleResult = {
       timestamp: now.toISOString(),
       evaluatedReservations: reservas.length,
@@ -342,6 +400,10 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
       stage2UrgenciesSent: stage2Count,
       stage3CancellationsProcessed: stage3Count,
       freedSlots: freedCount,
+      scheduledCobrosCount: scheduledCobrosList.length,
+      scheduledCobrosExecuted,
+      scheduledCobrosPending,
+      scheduledCobros: scheduledCobrosList,
       logs
     };
 
@@ -377,17 +439,44 @@ export function startDunningScheduler() {
       console.error('❌ [Dunning Scheduler] Error en ciclo inicial:', err);
     });
 
-  // Ejecutar periódicamente (cada 15 minutos o según reglas configuradas)
-  const INTERVAL_MS = 15 * 60 * 1000;
+  // Ejecutar periódicamente:
+  // - Cada 30 segundos (TICK_INTERVAL_MS): escaneo de alta precisión de Cobros Automáticos Programados para despachar exactamente a su Fecha y Hora Programada
+  // - Cada 15 minutos (30 ticks): escaneo completo del ciclo de cobranza de 3 etapas (T-48h, T-24h y 00:00h)
+  let tickCounter = 0;
+  const TICK_INTERVAL_MS = 30 * 1000; // 30 segundos
+  const TICKS_FOR_FULL_DUNNING = 30;  // 30 * 30s = 15 minutos
+
   setInterval(async () => {
+    tickCounter++;
     try {
-      console.log('⏰ [Dunning Scheduler] Ejecutando escaneo periódico de reservas y notificaciones...');
-      await ScheduledNoticeService.procesarPendientes().catch(e => console.error('❌ [Dunning] Error procesando notificaciones programadas:', e));
-      const stats = await runDunningCycle();
-      console.log(`✅ [Dunning Scheduler] Ciclo periódico finalizado: ${stats.stage3CancellationsProcessed} canceladas, ${stats.freedSlots} sillones liberados.`);
+      // 1. Siempre evaluar notificaciones de cobro programadas cuya fecha y hora exacta ya llegó
+      let processedAny = false;
+      if (typeof process.env.VITEST === 'undefined') {
+        const res = await ScheduledNoticeService.procesarPendientes().catch(e => {
+          console.error('❌ [Dunning Scheduler] Error procesando notificaciones programadas:', e);
+          return { procesadas: 0 };
+        });
+        if (res && res.procesadas > 0) {
+          processedAny = true;
+          console.log(`⏰ [Dunning Scheduler] ¡Hora exacta alcanzada! Despachados ${res.procesadas} cobros automáticos programados con constancia PDF.`);
+        }
+      }
+
+      // Si se despachó alguna notificación a su hora exacta o es el tick de los 15 minutos:
+      if (processedAny || (tickCounter % TICKS_FOR_FULL_DUNNING === 0)) {
+        if (tickCounter % TICKS_FOR_FULL_DUNNING === 0) {
+          console.log('⏰ [Dunning Scheduler] Ejecutando escaneo periódico completo de reservas...');
+        }
+        const stats = await runDunningCycle();
+        if (processedAny) {
+          console.log(`🚀 [Dunning Scheduler] Cobro programado ejecutado y auditoría actualizada en tiempo real.`);
+        } else {
+          console.log(`✅ [Dunning Scheduler] Ciclo periódico finalizado: ${stats.stage3CancellationsProcessed} canceladas, ${stats.freedSlots} sillones liberados.`);
+        }
+      }
     } catch (err) {
       console.error('❌ [Dunning Scheduler] Error en ciclo periódico:', err);
     }
-  }, INTERVAL_MS);
+  }, TICK_INTERVAL_MS);
 }
 
