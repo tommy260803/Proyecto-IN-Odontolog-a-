@@ -3,6 +3,7 @@ import { sendPaymentNoticeOrConfirmation, generateBackendPdfBase64 } from '../ro
 import { appointmentMidnightInLima } from './appointmentPolicy';
 import { WhatsAppService } from './whatsappService';
 import { DunningConfigService } from './dunningConfigService';
+import { ScheduledNoticeService } from './scheduledNoticeService';
 
 export interface DunningCycleResult {
   timestamp: string;
@@ -41,6 +42,11 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
   let freedCount = 0;
 
   try {
+    // Procesar cualquier notificación de cobro puntual programada cuya fecha/hora haya llegado
+    if (typeof process.env.VITEST === 'undefined') {
+      await ScheduledNoticeService.procesarPendientes().catch(e => console.error('❌ [Dunning] Error procesando notificaciones programadas:', e));
+    }
+
     // Buscar todas las reservas que no estén ya validadas
     const reservas = await prisma.reservas.findMany({
       include: {
@@ -369,11 +375,12 @@ export function startDunningScheduler() {
       console.error('❌ [Dunning Scheduler] Error en ciclo inicial:', err);
     });
 
-  // Ejecutar cada 15 minutos (900,000 ms)
+  // Ejecutar periódicamente (cada 15 minutos o según reglas configuradas)
   const INTERVAL_MS = 15 * 60 * 1000;
   setInterval(async () => {
     try {
-      console.log('⏰ [Dunning Scheduler] Ejecutando escaneo periódico de reservas y vencimientos...');
+      console.log('⏰ [Dunning Scheduler] Ejecutando escaneo periódico de reservas y notificaciones...');
+      await ScheduledNoticeService.procesarPendientes().catch(e => console.error('❌ [Dunning] Error procesando notificaciones programadas:', e));
       const stats = await runDunningCycle();
       console.log(`✅ [Dunning Scheduler] Ciclo periódico finalizado: ${stats.stage3CancellationsProcessed} canceladas, ${stats.freedSlots} sillones liberados.`);
     } catch (err) {

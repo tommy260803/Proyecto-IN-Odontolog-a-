@@ -106,6 +106,7 @@ model Personas {
   EventosEtapa        EventosEtapa[]
   DecisionesIA        DecisionesIA[]
   Incidencias         Incidencias[]
+  NotificacionesCobro NotificacionesCobroProgramadas[]
 }
 
 model DatosAcademicos {
@@ -323,6 +324,7 @@ model Reservas {
   Pagos                     Pagos[]
   Atenciones                Atenciones[]
   Incidencias               Incidencias[]
+  NotificacionesCobro       NotificacionesCobroProgramadas[]
 
   @@index([fecha_reserva, estado])
 }
@@ -538,3 +540,22 @@ model ReglasAgentePayer {
   actualizado_por           String?  @default("Admin") @db.VarChar(100)
   motivo_calibracion        String?  @db.VarChar(255)
 }
+
+model NotificacionesCobroProgramadas {
+  id_notificacion       Int       @id @default(autoincrement())
+  id_reserva            Int
+  id_persona            Int
+  fecha_hora_programada DateTime  @db.DateTime2
+  estado                String    @default("PROGRAMADO") @db.VarChar(20)
+  tipo_aviso            String    @default("AVISO_COBRO") @db.VarChar(50)
+  email_destinatario    String    @db.VarChar(150)
+  monto_cobro           Decimal   @db.Decimal(10, 2)
+  asunto                String?   @db.VarChar(200)
+  mensaje_personalizado String?   @db.NVarChar(Max)
+  fecha_envio_real      DateTime? @db.DateTime2
+  creado_por            String?   @default("Agente IA") @db.VarChar(50)
+  fecha_creacion        DateTime  @default(now()) @db.DateTime2
+  Reserva               Reservas  @relation(fields: [id_reserva], references: [id_reserva], onDelete: NoAction, onUpdate: NoAction)
+  Persona               Personas  @relation(fields: [id_persona], references: [id_persona], onDelete: NoAction, onUpdate: NoAction)
+}
+

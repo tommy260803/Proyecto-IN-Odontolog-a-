@@ -1,3 +1,10 @@
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Cargar variables de entorno desde backend/.env y .env raíz
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import { prisma } from './db';
@@ -25,6 +32,7 @@ app.use('/api/lead', leadRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/payer', payerRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/payment', paymentRoutes);
 app.use('/api/customer', customerRoutes);
 app.use('/api/turned', turnedRoutes);
 app.use('/api/config', configRoutes);

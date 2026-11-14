@@ -151,7 +151,7 @@ async function validateAndPromotePayer(payerId: number | string, channel: string
  * Consulta los medios de pago configurados en la cuenta de Mercado Pago.
  */
 router.get('/payment-methods', async (req, res) => {
-  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN || 'APP_USR-4001730668702458-091700-e25cb8b7b1adb93aed667a28cfa96a3a-3595881654';
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
   try {
     const response = await fetch('https://api.mercadopago.com/v1/payment_methods', {
       headers: { Authorization: `Bearer ${accessToken}` }
@@ -168,8 +168,8 @@ router.get('/payment-methods', async (req, res) => {
  */
 router.post('/process-yape', async (req, res) => {
   const { payerId, amount, phone, otpCode, email } = req.body;
-  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN || 'APP_USR-4001730668702458-091700-e25cb8b7b1adb93aed667a28cfa96a3a-3595881654';
-  const publicKey = process.env.MERCADOPAGO_PUBLIC_KEY || 'APP_USR-21a7cc3a-0afb-4ac6-b41e-5d129a9022c5';
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  const publicKey = process.env.MERCADOPAGO_PUBLIC_KEY;
 
   const rawPhone = String(phone || '').replace(/\D/g, '');
   const rawOtp = String(otpCode || '').replace(/\D/g, '');
@@ -284,41 +284,76 @@ router.post('/process-yape', async (req, res) => {
 });
 
 /**
- * Crea una preferencia de pago para el flujo de Checkout Pro.
+ * Crea una preferencia de pago para el flujo de Checkout Pro de Mercado Pago.
  */
 router.post('/create-preference', async (req, res) => {
-  const { payerId, title, amount, personName, email } = req.body;
+  const { payerId, orderCode, title, amount, personName, email, phone, returnUrl } = req.body;
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
 
-  if (!accessToken) {
-    return res.status(500).json({ error: 'MERCADOPAGO_ACCESS_TOKEN no configurado en backend/.env' });
+  if (!payerId) {
+    return res.status(400).json({ error: 'payerId es requerido' });
   }
 
   try {
+    const paymentAmount = Math.max(Number(amount) || 1, 1);
+    const targetCode = orderCode || `ORD-${String(payerId).padStart(5, '0')}-2026`;
+    const frontendBase = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
+    
+    // Ruta de retorno al portal de pago o página del paciente
+    const basePath = returnUrl ? returnUrl.replace(frontendBase, '') : `/pasarela-pago/${targetCode}`;
+    const cleanBasePath = basePath.startsWith('/') ? basePath : `/${basePath}`;
+
+    const successBackUrl = `${frontendBase}${cleanBasePath}?payment_status=approved`;
+    const failureBackUrl = `${frontendBase}${cleanBasePath}?payment_status=failure`;
+    const pendingBackUrl = `${frontendBase}${cleanBasePath}?payment_status=pending`;
+
+    const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
+    const nameParts = (personName || 'Paciente NexoSalud').trim().split(/\s+/);
+    const firstName = nameParts[0] || 'Paciente';
+    const lastName = nameParts.slice(1).join(' ') || 'Titular';
+
+    const isLocalhost = frontendBase.includes('localhost') || frontendBase.includes('127.0.0.1');
+
     const preferenceData: any = {
       items: [
         {
-          id: String(payerId || '1'),
-          title: title || 'Reserva de Servicio Odontológico',
+          id: String(payerId),
+          title: title || 'Reserva y Sillón Odontológico NexoSalud',
+          description: `Servicio Odontológico Oficial NexoSalud - Orden #${targetCode}`,
           quantity: 1,
           currency_id: 'PEN',
-          unit_price: Number(amount) || 2.00,
+          unit_price: Number(paymentAmount.toFixed(2)),
         },
       ],
       payer: {
-        name: personName || 'Paciente NexoSalud',
-        email: (email && email.includes('@')) ? email : 'paciente_prueba@test.com',
+        name: firstName,
+        surname: lastName,
+        email: (email && email.includes('@')) ? email.trim() : 'paciente@nexosalud.com',
+        phone: cleanPhone ? { number: cleanPhone } : undefined,
       },
       back_urls: {
-        success: `${(process.env.FRONTEND_URL || process.env.APP_URL || 'https://proyecto-in-odontologia.vercel.app').replace(/\/+$/, '')}/payer/${payerId}?status=approved`,
-        failure: `${(process.env.FRONTEND_URL || process.env.APP_URL || 'https://proyecto-in-odontologia.vercel.app').replace(/\/+$/, '')}/payer/${payerId}?status=failure`,
-        pending: `${(process.env.FRONTEND_URL || process.env.APP_URL || 'https://proyecto-in-odontologia.vercel.app').replace(/\/+$/, '')}/payer/${payerId}?status=pending`,
+        success: successBackUrl,
+        failure: failureBackUrl,
+        pending: pendingBackUrl,
       },
+      external_reference: String(payerId),
+      statement_descriptor: 'NEXOSALUD',
       payment_methods: {
         excluded_payment_types: [],
-        installments: 1
+        installments: 12
       }
     };
+
+    // Mercado Pago requiere auto_return solo con URLs públicas HTTPS
+    if (!isLocalhost && successBackUrl.startsWith('https://')) {
+      preferenceData.auto_return = 'approved';
+    }
+
+    // Agregar webhook de notificación si existe URL de backend pública
+    const webhookBase = process.env.APP_URL || process.env.BACKEND_URL;
+    if (webhookBase && !webhookBase.includes('localhost')) {
+      preferenceData.notification_url = `${webhookBase.replace(/\/+$/, '')}/api/payments/webhook`;
+    }
 
     const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
@@ -332,7 +367,7 @@ router.post('/create-preference', async (req, res) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Error desde la API de Mercado Pago:', data);
+      console.error('Error desde la API de Mercado Pago al crear preferencia:', data);
       return res.status(response.status).json({
         error: data.message || (data.cause && data.cause[0]?.description) || 'Error generando preferencia en Mercado Pago',
         details: data
@@ -342,12 +377,78 @@ router.post('/create-preference', async (req, res) => {
     res.json({
       id: data.id,
       initPoint: data.init_point,
-      sandboxInitPoint: data.sandbox_init_point,
+      sandboxInitPoint: data.sandbox_init_point || data.init_point,
       isMock: false
     });
   } catch (error: any) {
-    console.error('Error en servidor payment.routes:', error);
+    console.error('Error en servidor payment.routes /create-preference:', error);
     res.status(500).json({ error: error.message || 'Error interno al procesar preferencia' });
+  }
+});
+
+/**
+ * Confirma el pago retornado desde Mercado Pago (Checkout Pro) y promueve a CUSTOMER en NexoSaludDB.
+ */
+router.post('/confirm-mercadopago', async (req, res) => {
+  const { payerId, paymentId, status, paymentType, merchantOrderId, amount } = req.body;
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+
+  if (!payerId) {
+    return res.status(400).json({ error: 'payerId es requerido para confirmar el abono.' });
+  }
+
+  try {
+    let finalAmount = Number(amount) || undefined;
+    let paymentChannel = 'MERCADOPAGO';
+    let isRealApproved = status === 'approved' || status === 'in_process';
+
+    // 1. Si tenemos paymentId y accessToken, verificamos directamente contra la API de Mercado Pago
+    if (paymentId && accessToken) {
+      try {
+        const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (mpRes.ok) {
+          const mpData = await mpRes.json();
+          if (mpData.status === 'approved' || mpData.status === 'in_process') {
+            isRealApproved = true;
+            finalAmount = Number(mpData.transaction_amount) || finalAmount;
+            paymentChannel = (mpData.payment_method_id || mpData.payment_type_id || 'MERCADOPAGO').toUpperCase();
+          }
+        }
+      } catch (mpErr) {
+        console.warn('[confirm-mercadopago] Consulta a API de Mercado Pago no disponible, usando status de callback:', mpErr);
+      }
+    }
+
+    if (!isRealApproved) {
+      return res.status(400).json({ error: 'El pago no figura como aprobado en Mercado Pago.' });
+    }
+
+    // 2. Ejecutar validación y promoción oficial en NexoSaludDB
+    const result = await validateAndPromotePayer(
+      payerId,
+      paymentChannel,
+      `MP-${paymentId || Date.now()}`,
+      finalAmount
+    );
+
+    if (!result) {
+      return res.status(404).json({ error: `No se encontró la reserva u orden activa para el ID #${payerId}` });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Pago validado y confirmado exitosamente en NexoSaludDB.',
+      payerId,
+      reservaId: result.reserva.id_reserva,
+      personaId: result.persona.id_persona,
+      pagoId: result.pago?.id_pago,
+      channel: paymentChannel
+    });
+  } catch (err: any) {
+    console.error('[confirm-mercadopago] Error:', err);
+    return res.status(500).json({ error: err.message || 'Error al confirmar pago de Mercado Pago en la base de datos' });
   }
 });
 
@@ -442,14 +543,14 @@ router.post('/process-checkout-api', async (req, res) => {
 /**
  * Webhook oficial de Mercado Pago para notificaciones asíncronas de cobros aprobados.
  */
-router.post('/webhook', async (req, res) => {
-  const { type, data, action } = req.body;
-  const paymentId = data?.id || req.query['data.id'] || req.query.id;
+const handleWebhookEvent = async (req: import('express').Request, res: import('express').Response) => {
+  const { type, data, action } = req.body || {};
+  const paymentId = data?.id || req.query['data.id'] || req.query.id || req.body?.id;
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
 
-  console.log(`[Mercado Pago Webhook] Recibido evento: type=${type || action}, paymentId=${paymentId}`);
+  console.log(`[Mercado Pago Webhook] Notificación recibida: type=${type || action || req.query.topic}, paymentId=${paymentId}`);
 
-  // Responder 200 inmediatamente a Mercado Pago
+  // Responder 200 OK inmediatamente a Mercado Pago según especificación oficial
   res.status(200).send('OK');
 
   if (!paymentId || !accessToken) return;
@@ -459,19 +560,22 @@ router.post('/webhook', async (req, res) => {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
 
-    if (!mpRes.ok) return;
+    if (!mpRes.ok) {
+      console.warn(`[Mercado Pago Webhook] Consulta de pago ${paymentId} falló con HTTP ${mpRes.status}`);
+      return;
+    }
 
     const mpPayment = await mpRes.json();
     console.log(`[Mercado Pago Webhook] Pago ${paymentId} status=${mpPayment.status}, external_reference=${mpPayment.external_reference}`);
 
-    if (mpPayment.status === 'approved') {
+    if (mpPayment.status === 'approved' || mpPayment.status === 'in_process') {
       const payerId = mpPayment.external_reference || (mpPayment.additional_info?.items?.[0]?.id);
       if (payerId) {
         await validateAndPromotePayer(
           payerId,
           mpPayment.payment_method_id?.toUpperCase() || 'MERCADOPAGO',
           `MP-${mpPayment.id}`,
-          mpPayment.transaction_amount
+          Number(mpPayment.transaction_amount)
         );
         console.log(`[Mercado Pago Webhook] Payer ${payerId} validado y promovido a CUSTOMER exitosamente.`);
       }
@@ -479,6 +583,9 @@ router.post('/webhook', async (req, res) => {
   } catch (err) {
     console.error('[Mercado Pago Webhook Error]:', err);
   }
-});
+};
+
+router.post('/webhook', handleWebhookEvent);
+router.get('/webhook', handleWebhookEvent);
 
 export default router;

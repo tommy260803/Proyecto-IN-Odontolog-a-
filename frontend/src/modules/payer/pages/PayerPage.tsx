@@ -25,6 +25,7 @@ import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDia
 import { PayerDetailModal } from '../components/PayerDetailModal';
 import { PayerExcelExportModal } from '../components/PayerExcelExportModal';
 import { DunningConfigModal } from '../components/DunningConfigModal';
+import { ScheduledNoticeModal } from '../components/ScheduledNoticeModal';
 import { calculatePayerRisk } from '@/shared/services/groqService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 
@@ -44,6 +45,7 @@ export default function PayerPage() {
 
   // Modales y Cron Auditoría
   const [selectedPayerId, setSelectedPayerId] = useState<string | null>(null);
+  const [scheduledNoticePayer, setScheduledNoticePayer] = useState<PayerWithDetails | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PayerWithDetails | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
@@ -533,6 +535,17 @@ export default function PayerPage() {
                 <Zap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>{testingWaId === p.id ? '...' : 'Test WA'}</span>
               </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setScheduledNoticePayer(p)}
+                className="text-teal-700 bg-teal-50 hover:bg-teal-100 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 text-xs px-2.5 h-8 gap-1 font-semibold"
+                title="Programar o probar notificación de cobro a Gmail con Orden PDF"
+              >
+                <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <span>Cobro Gmail</span>
+              </Button>
             </>
           )}
           <Button variant="ghost" size="sm" onClick={() => setSelectedPayerId(p.id)} className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800">
@@ -719,6 +732,13 @@ export default function PayerPage() {
         payerId={selectedPayerId} 
         isOpen={!!selectedPayerId} 
         onClose={() => setSelectedPayerId(null)} 
+      />
+
+      {/* Modal Notificaciones de Cobro Automáticas a Gmail */}
+      <ScheduledNoticeModal
+        payer={scheduledNoticePayer}
+        isOpen={!!scheduledNoticePayer}
+        onClose={() => setScheduledNoticePayer(null)}
       />
 
       {/* Modal Centro de Auditoría y Monitoreo del Cron Job (Live Tail) */}

@@ -219,13 +219,15 @@ export default function PublicPaymentPage() {
     setTimeout(() => setCopiedKey(null), 2500);
   };
 
+  const isProduction = Boolean(import.meta.env.PROD || import.meta.env.VITE_MERCADOPAGO_ENV === 'production');
+
   const amountToPay = payer?.amountToPay ? Number(payer.amountToPay) : 200.0;
   const originalPrice = Number(payer?.originalPrice || (amountToPay > 200 ? amountToPay * 1.4 : 350.0));
   const discountAmount = originalPrice > amountToPay ? originalPrice - amountToPay : 0;
   const discountPct = originalPrice > 0 ? Math.round(((originalPrice - amountToPay) / originalPrice) * 100) : 0;
   const displayCode = rawCode || (payer?.payment as any)?.preReservationCode || (payerId ? `ORD-${String(payerId).padStart(5, '0')}-2026` : 'ORD-NEXOSALUD');
 
-  // 4. Procesar y Validar el Pago en SQL Server
+  // 4. Procesar y Validar el Pago en SQL Server (Modo Simulación / Manual)
   const handleFinalizePayment = async (channel: string, refText?: string) => {
     if (!payerId) return;
     setProcessingPayment(true);
@@ -270,6 +272,118 @@ export default function PublicPaymentPage() {
       setProcessingPayment(false);
     }
   };
+
+  // 5. Redirigir a Pasarela Oficial Mercado Pago (Checkout Pro)
+  const handlePayWithMercadoPago = async () => {
+    if (!payerId) return;
+    setProcessingPayment(true);
+    try {
+      const res = await fetch(`${API_URL}/payments/create-preference`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          payerId,
+          orderCode: displayCode,
+          title: payer?.serviceName || 'Tratamiento Odontológico NexoSalud',
+          amount: amountToPay,
+          personName: `${payer?.person?.firstName || ''} ${payer?.person?.lastName || ''}`.trim(),
+          email: payer?.person?.email,
+          phone: payer?.person?.phone,
+          returnUrl: `/pasarela-pago/${displayCode}`
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Error al conectar con la pasarela de Mercado Pago');
+      }
+
+      const redirectUrl = data.initPoint || data.sandboxInitPoint;
+      if (!redirectUrl) {
+        throw new Error('No se recibió la dirección de pago de Mercado Pago.');
+      }
+
+      // Redirigir a la pasarela de pagos oficial de Mercado Pago
+      window.location.href = redirectUrl;
+    } catch (err: any) {
+      console.error('[Mercado Pago Redirect Error]:', err);
+      toast({
+        title: 'Error al conectar con Mercado Pago',
+        description: err.message || 'No se pudo iniciar la pasarela de pagos oficial.',
+        variant: 'destructive',
+      });
+      setProcessingPayment(false);
+    }
+  };
+
+  // 6. Detección y confirmación automática del retorno de Mercado Pago
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment_status') || searchParams.get('status') || searchParams.get('collection_status');
+    const paymentId = searchParams.get('payment_id') || searchParams.get('collection_id');
+
+    if (!payerId || isApproved) return;
+
+    if (paymentStatus === 'approved') {
+      const confirmMercadoPago = async () => {
+        setProcessingPayment(true);
+        try {
+          const res = await fetch(`${API_URL}/payments/confirm-mercadopago`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              payerId,
+              paymentId: paymentId || undefined,
+              status: 'approved',
+              paymentType: searchParams.get('payment_type'),
+              merchantOrderId: searchParams.get('merchant_order_id'),
+              amount: amountToPay
+            })
+          });
+
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data.error) {
+            throw new Error(data.error || 'Error al validar el pago de Mercado Pago en la base de datos.');
+          }
+
+          setIsApproved(true);
+          setIsExpired(false);
+          toast({
+            title: '¡Pago Confirmado vía Mercado Pago! 🎉',
+            description: `Cobro de S/ ${amountToPay.toFixed(2)} verificado con éxito. Su cita y sillón odontológico han sido confirmados.`,
+          });
+
+          // Limpiar parámetros de la URL para evitar re-confirmar al refrescar
+          if (typeof window !== 'undefined' && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+
+          fetchOrder();
+        } catch (err: any) {
+          console.error('[confirm-mercadopago frontend error]:', err);
+          toast({
+            title: 'Error al confirmar con Mercado Pago',
+            description: err.message || 'No se pudo actualizar el pago en el sistema.',
+            variant: 'destructive',
+          });
+        } finally {
+          setProcessingPayment(false);
+        }
+      };
+
+      confirmMercadoPago();
+    } else if (paymentStatus === 'failure') {
+      toast({
+        title: 'Pago Cancelado o Rechazado',
+        description: 'La transacción no se completó en Mercado Pago. Puedes intentar nuevamente o usar otro método.',
+        variant: 'destructive'
+      });
+    } else if (paymentStatus === 'pending') {
+      toast({
+        title: 'Pago en Proceso',
+        description: 'Tu pago está en proceso de verificación por Mercado Pago. Te notificaremos al confirmarse.',
+      });
+    }
+  }, [searchParams, payerId]);
 
   // Handlers
   const handlePayYape = async (e: React.FormEvent) => {
@@ -901,6 +1015,35 @@ export default function PublicPaymentPage() {
                   </div>
                 )}
 
+                {/* Banner Oficial Mercado Pago */}
+                <div className="p-3.5 bg-gradient-to-r from-sky-50 via-teal-50 to-emerald-50 border border-sky-200/80 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-2xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-[#009EE3] text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
+                      MP
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-slate-900">Mercado Pago Checkout Pro</span>
+                        <span className="text-[10px] bg-sky-100 text-sky-800 font-bold px-1.5 py-0.5 rounded">Oficial</span>
+                      </div>
+                      <span className="text-[11px] text-slate-600 block">
+                        Tarjetas (Crédito/Débito), Yape QR, PagoEfectivo y cuenta MP con confirmación automática.
+                      </span>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={handlePayWithMercadoPago}
+                    disabled={processingPayment}
+                    className="w-full sm:w-auto bg-[#009EE3] hover:bg-[#0081ba] text-white font-bold text-xs h-9 px-4 rounded-xl shrink-0 cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    {processingPayment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
+                    <span>Ir a Mercado Pago</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+
                 {/* Caja de Modo Prueba Inmediata (Testing Express) */}
                 <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-2xl flex items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2">
@@ -923,6 +1066,7 @@ export default function PublicPaymentPage() {
                   </Button>
                 </div>
 
+
               </div>
 
               {/* Footer Fijo con el Botón Principal (Idéntico a PreReservationPage) */}
@@ -935,9 +1079,13 @@ export default function PublicPaymentPage() {
                 <Button
                   type="button"
                   onClick={(e) => {
-                    if (canalPago === 'Yape / Plin') handlePayYape(e);
-                    else if (canalPago === 'Tarjeta') handlePayCard(e);
-                    else handlePayTransfer(e);
+                    if (isProduction) {
+                      handlePayWithMercadoPago();
+                    } else {
+                      if (canalPago === 'Yape / Plin') handlePayYape(e);
+                      else if (canalPago === 'Tarjeta') handlePayCard(e);
+                      else handlePayTransfer(e);
+                    }
                   }}
                   disabled={processingPayment}
                   className="w-full sm:w-auto sm:min-w-[270px] h-10 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl shadow-md shadow-teal-700/20 text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
@@ -945,7 +1093,13 @@ export default function PublicPaymentPage() {
                   {processingPayment ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Validando Transacción...</span>
+                      <span>Conectando con Pasarela...</span>
+                    </>
+                  ) : isProduction ? (
+                    <>
+                      <Lock className="w-4 h-4" />
+                      <span>Pagar S/ {amountToPay.toFixed(2)} con Mercado Pago</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </>
                   ) : (
                     <>

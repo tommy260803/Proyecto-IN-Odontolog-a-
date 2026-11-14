@@ -58,6 +58,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/shared/constants';
 import { callGroqAssistant, type PayerContext, type AiCollectionResult } from '@/shared/services/groqService';
 import { PaymentNoticePdfModal } from './PaymentNoticePdfModal';
+import { ScheduledNoticeModal } from './ScheduledNoticeModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -96,6 +97,7 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
   const [aiError, setAiError] = useState('');
   const [aiCalled, setAiCalled] = useState(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [isScheduledNoticeOpen, setIsScheduledNoticeOpen] = useState(false);
   const [showCopyPreview, setShowCopyPreview] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState<'FRIENDLY' | 'URGENCY' | 'RESCUE_50'>('FRIENDLY');
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
@@ -651,6 +653,16 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
 
                 </>
               )}
+
+              <Button
+                type="button"
+                onClick={() => setIsScheduledNoticeOpen(true)}
+                className="bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs h-9.5 px-4 font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 border border-teal-500/40"
+                title="Programar o probar notificación de cobro a Gmail con fecha/hora específica"
+              >
+                <Clock className="w-4 h-4" />
+                <span>Cobro Gmail Programado</span>
+              </Button>
 
               <Button
                 type="button"
@@ -1218,6 +1230,14 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
             customMessage={aiResult?.whatsappMessage}
             emailSubject={aiResult?.emailSubject}
             emailBody={aiResult?.emailBody}
+          />
+        )}
+
+        {payer && (
+          <ScheduledNoticeModal
+            payer={payer}
+            isOpen={isScheduledNoticeOpen}
+            onClose={() => setIsScheduledNoticeOpen(false)}
           />
         )}
       </DialogContent>

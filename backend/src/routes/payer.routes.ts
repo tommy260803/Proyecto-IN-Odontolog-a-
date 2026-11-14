@@ -8,6 +8,7 @@ import { runDunningCycle, getLastExecutionStats } from '../services/dunningSched
 import { generatePayerConsolidatedExcel, generatePayerFullBiWorkbook } from '../services/payerExcelExportService';
 import { WhatsAppService } from '../services/whatsappService';
 import { DunningConfigService } from '../services/dunningConfigService';
+import { ScheduledNoticeService } from '../services/scheduledNoticeService';
 
 const router = Router();
 const paymentLogoDataUrl = `data:image/png;base64,${readFileSync(path.resolve(__dirname, '../../assets/Logo_NexoSalud.png')).toString('base64')}`;
@@ -1154,6 +1155,15 @@ export async function sendPaymentNoticeOrConfirmation(params: {
             <div class="total-amount">S/ ${formattedAmount}</div>
           </div>
 
+          ${!isValidated && code ? `
+          <div style="text-align: center; margin: 24px 0 16px 0;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/pasarela-pago/${code}" style="background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%); color: #ffffff; padding: 13px 26px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.3);">
+              💳 Acceder a la Pasarela de Pago Oficial
+            </a>
+            <p style="font-size: 11px; color: #64748b; margin-top: 8px;">Acceda de manera segura para abonar mediante Yape, Plin o Transferencia bancaria cuando decida confirmar su cita.</p>
+          </div>
+          ` : ''}
+
           ${includePdf ? `<p style="font-size: 12px; color: #64748b; margin-top: 20px; text-align: center;"><em>📎 ${isValidated ? 'Adjuntamos su Constancia de Pago en PDF.' : 'Adjuntamos su Orden de Pago en PDF.'}</em></p>` : ''}
         </div>
         <div class="footer">
@@ -1498,6 +1508,91 @@ router.post('/confirmar-prorroga', async (req, res) => {
     return res.status(409).json(result);
   }
   res.json(result);
+});
+
+/**
+ * Programa una notificación de cobro para una fecha y hora específica
+ */
+router.post('/notificaciones-cobro/programar', async (req, res) => {
+  try {
+    const { reservaId, fechaHoraProgramada, emailDestinatario, tipoAviso, asunto, mensajePersonalizado, creadoPor } = req.body;
+    if (!reservaId || !fechaHoraProgramada) {
+      return res.status(400).json({ error: 'reservaId y fechaHoraProgramada son obligatorios.' });
+    }
+
+    const notificacion = await ScheduledNoticeService.programar({
+      reservaId: Number(reservaId),
+      fechaHoraProgramada,
+      emailDestinatario,
+      tipoAviso,
+      asunto,
+      mensajePersonalizado,
+      creadoPor: creadoPor || 'Operador / Agente IA'
+    });
+
+    res.json({
+      success: true,
+      message: 'Notificación de cobro programada exitosamente.',
+      notificacion
+    });
+  } catch (error: any) {
+    console.error('Error al programar notificación de cobro:', error);
+    res.status(500).json({ error: error.message || 'Error al programar notificación de cobro' });
+  }
+});
+
+/**
+ * Lista las notificaciones de cobro programadas o ejecutadas para una reserva
+ */
+router.get('/notificaciones-cobro/:reservaId', async (req, res) => {
+  try {
+    const reservaId = Number(req.params.reservaId);
+    if (!reservaId || isNaN(reservaId)) {
+      return res.status(400).json({ error: 'ID de reserva inválido.' });
+    }
+
+    const notificaciones = await ScheduledNoticeService.listarPorReserva(reservaId);
+    res.json({ success: true, notificaciones });
+  } catch (error: any) {
+    console.error('Error al listar notificaciones de cobro:', error);
+    res.status(500).json({ error: error.message || 'Error al obtener notificaciones' });
+  }
+});
+
+/**
+ * Cancela una notificación de cobro programada
+ */
+router.post('/notificaciones-cobro/cancelar/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ error: 'ID de notificación inválido.' });
+    }
+
+    const notificacion = await ScheduledNoticeService.cancelar(id);
+    res.json({ success: true, message: 'Notificación de cobro cancelada.', notificacion });
+  } catch (error: any) {
+    console.error('Error al cancelar notificación de cobro:', error);
+    res.status(500).json({ error: error.message || 'Error al cancelar notificación' });
+  }
+});
+
+/**
+ * Dispara inmediatamente una notificación de cobro (prueba en vivo a Gmail)
+ */
+router.post('/notificaciones-cobro/disparar/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ error: 'ID de notificación inválido.' });
+    }
+
+    const result = await ScheduledNoticeService.disparar(id);
+    res.json({ success: true, message: 'Notificación de cobro enviada a Gmail exitosamente.', result });
+  } catch (error: any) {
+    console.error('Error al disparar notificación de cobro:', error);
+    res.status(500).json({ error: error.message || 'Error al enviar notificación' });
+  }
 });
 
 export default router;
