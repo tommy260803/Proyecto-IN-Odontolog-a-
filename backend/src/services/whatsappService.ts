@@ -10,6 +10,8 @@ export interface SendWhatsAppParams {
   amount?: number;
   serviceName?: string;
   dueDateStr?: string;
+  appointmentTimeStr?: string;
+  appointmentDateStr?: string;
 }
 
 export interface WhatsAppSendResult {
@@ -278,6 +280,29 @@ export class WhatsAppService {
 
     const formattedAmount = Number(params.amount || 0).toFixed(2);
 
+    let appointmentTime = params.appointmentTimeStr;
+    let appointmentDate = params.appointmentDateStr || params.dueDateStr;
+
+    if ((!appointmentTime || !appointmentDate) && params.reservaId) {
+      try {
+        const r = await prisma.reservas.findUnique({
+          where: { id_reserva: params.reservaId },
+          include: { Opcion: { include: { Disponibilidad: true } } }
+        });
+        if (r?.Opcion?.Disponibilidad?.hora_inicio && !appointmentTime) {
+          appointmentTime = r.Opcion.Disponibilidad.hora_inicio.toISOString().substring(11, 16);
+        }
+        if (r?.Opcion?.Disponibilidad?.fecha && !appointmentDate) {
+          appointmentDate = r.Opcion.Disponibilidad.fecha.toISOString().split('T')[0];
+        }
+      } catch (e) {
+        // Ignorar si falla consulta auxiliar
+      }
+    }
+
+    const timeDisplay = appointmentTime ? `${appointmentTime} hrs` : 'Horario programado';
+    const dateDisplay = appointmentDate || 'Fecha acordada';
+
     const messageText = `
 🏥 *CLÍNICA ODONTOLÓGICA NEXOSALUD*
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -285,6 +310,8 @@ Estimado(a) *${params.patientName}*,
 
 Le recordamos que su sillón odontológico reservado para el tratamiento de *${params.serviceName || 'Tratamiento Especializado'}* se encuentra próximo a vencer.
 
+🗓️ *Fecha de cita:* ${dateDisplay}
+🕒 *Hora de cita:* ${timeDisplay}
 💰 *Monto a regularizar:* S/ ${formattedAmount}
 ⏰ *Plazo de tolerancia:* Hasta hoy a las 23:59 hrs.
 
@@ -327,7 +354,10 @@ _NexoSalud Odontología Integral - Atención al Paciente_
       }
     }
 
-    return result;
+    return {
+      ...result,
+      messageText
+    } as any;
   }
 
   /**

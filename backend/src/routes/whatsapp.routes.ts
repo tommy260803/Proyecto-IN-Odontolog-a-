@@ -262,6 +262,12 @@ router.post('/test-dunning', async (req, res) => {
     const serviceName = reserva.Solicitud?.Servicio?.nombre || 'Consulta Odontológica';
     const amount = Number(reserva.Opcion?.precio_ofrecido || 150.00);
     const orderCode = `ORD-${String(reserva.id_reserva).padStart(5, '0')}-${new Date().getFullYear()}`;
+    const apptTime = reserva.Opcion?.Disponibilidad?.hora_inicio
+      ? reserva.Opcion.Disponibilidad.hora_inicio.toISOString().substring(11, 16)
+      : '10:00';
+    const apptDate = reserva.Opcion?.Disponibilidad?.fecha
+      ? reserva.Opcion.Disponibilidad.fecha.toISOString().split('T')[0]
+      : new Date().toISOString().slice(0, 10);
 
     const sendResult = await WhatsAppService.sendDunningUrgencyWhatsApp({
       toPhone: reserva.Persona.numero || process.env.TEST_RECEIVER_NUMBER || '51904388543',
@@ -270,7 +276,9 @@ router.post('/test-dunning', async (req, res) => {
       amount,
       orderCode,
       reservaId: reserva.id_reserva,
-      dueDateStr: new Date().toISOString().slice(0, 10)
+      dueDateStr: apptDate,
+      appointmentDateStr: apptDate,
+      appointmentTimeStr: apptTime
     });
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -280,6 +288,7 @@ router.post('/test-dunning', async (req, res) => {
       reservaId: reserva.id_reserva,
       paciente: patientName,
       sendResult,
+      mensajeEnviado: (sendResult as any).messageText,
       prorrogaWebUrl: `${frontendUrl}/prorroga-express/${reserva.id_reserva}`,
       instruccionPrueba: 'Puedes probar la prórroga respondiendo "PRORROGA" desde WhatsApp o abriendo el enlace prorrogaWebUrl en el navegador.'
     });

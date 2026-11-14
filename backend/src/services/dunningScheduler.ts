@@ -220,7 +220,9 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
               amount: amountToPay,
               orderCode,
               reservaId: r.id_reserva,
-              dueDateStr: reservationDateStr
+              dueDateStr: reservationDateStr,
+              appointmentDateStr: reservationDateStr,
+              appointmentTimeStr: reservationTimeStr
             });
             waSent = waRes.success;
           } catch (waErr) {
