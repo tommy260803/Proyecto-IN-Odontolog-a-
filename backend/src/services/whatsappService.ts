@@ -1,4 +1,5 @@
 import { prisma } from '../db';
+import { DunningConfigService } from './dunningConfigService';
 
 export interface SendWhatsAppParams {
   toPhone: string;
@@ -406,15 +407,17 @@ _NexoSalud Odontología Integral - Atención al Paciente_
       };
     }
 
-    // Extender el vencimiento de bloqueo por 24 horas adicionales
+    // Extender el vencimiento de bloqueo por las horas configuradas en la BD
+    const rules = await DunningConfigService.getRules();
+    const extHours = rules.prorroga_express_horas || 24;
     const baseDate = reserva.fecha_vencimiento_bloqueo || new Date();
-    const nuevoVencimiento = new Date(baseDate.getTime() + 24 * 60 * 60 * 1000);
+    const nuevoVencimiento = new Date(baseDate.getTime() + extHours * 60 * 60 * 1000);
 
     await prisma.reservas.update({
       where: { id_reserva: reserva.id_reserva },
       data: {
         fecha_vencimiento_bloqueo: nuevoVencimiento,
-        ultima_alerta_dunning: 'Prórroga Concedida (+24h)'
+        ultima_alerta_dunning: `Prórroga Concedida (+${extHours}h)`
       }
     });
 
@@ -426,7 +429,7 @@ _NexoSalud Odontología Integral - Atención al Paciente_
           id_reserva: reserva.id_reserva,
           tipo: 'PRORROGA_24H_SOLICITADA',
           motivo_tipificado: 'Prórroga de Pago Solicitada vía WhatsApp',
-          descripcion: `Prórroga de 24h otorgada con éxito. Nuevo vencimiento: ${nuevoVencimiento.toISOString()}`,
+          descripcion: `Prórroga de ${extHours}h otorgada con éxito. Nuevo vencimiento: ${nuevoVencimiento.toISOString()}`,
           estado: 'Cerrada'
         }
       });
@@ -449,6 +452,380 @@ _NexoSalud Odontología Integral - Atención al Paciente_
       message: 'Prórroga de 24 horas concedida exitosamente.',
       nuevoVencimiento,
       pacienteNombre: `${reserva.Persona.nombres} ${reserva.Persona.apellidos}`
+    };
+  }
+
+  /**
+   * Obtiene la información completa de la reserva para la pantalla de prórroga interactiva,
+   * sin aplicar ninguna modificación en la base de datos.
+   */
+  static async getProrrogaInfo(identifier: { reservaId?: number; phone?: string }) {
+    let reserva: any = null;
+
+    if (identifier.reservaId) {
+      reserva = await prisma.reservas.findUnique({
+        where: { id_reserva: Number(identifier.reservaId) },
+        include: {
+          Persona: true,
+          Solicitud: { include: { Servicio: true } },
+          Opcion: {
+            include: {
+              Disponibilidad: {
+                include: { Sede: true, Profesional: true }
+              }
+            }
+          },
+          Incidencias: true,
+          Pagos: true,
+        }
+      });
+    } else if (identifier.phone) {
+      const cleanPhone = this.formatPhoneNumber(identifier.phone);
+      const testPhone = this.formatPhoneNumber(process.env.TEST_RECEIVER_NUMBER || '51987654321');
+      const isDev = process.env.NODE_ENV !== 'production' || process.env.FORCE_DEV_REDIRECT === 'true';
+
+      if (isDev && cleanPhone === testPhone) {
+        reserva = await prisma.reservas.findFirst({
+          where: { estado: { in: ['Pendiente', 'Pre-reservada'] } },
+          include: {
+            Persona: true,
+            Solicitud: { include: { Servicio: true } },
+            Opcion: { include: { Disponibilidad: { include: { Sede: true, Profesional: true } } } },
+            Incidencias: true,
+            Pagos: true,
+          },
+          orderBy: { id_reserva: 'desc' }
+        });
+      } else {
+        const persona = await prisma.personas.findFirst({
+          where: {
+            OR: [
+              { numero: cleanPhone },
+              { numero: cleanPhone.replace(/^51/, '') },
+              { numero: `+${cleanPhone}` }
+            ]
+          }
+        });
+
+        if (persona) {
+          reserva = await prisma.reservas.findFirst({
+            where: { id_persona: persona.id_persona, estado: { in: ['Pendiente', 'Pre-reservada'] } },
+            include: {
+              Persona: true,
+              Solicitud: { include: { Servicio: true } },
+              Opcion: { include: { Disponibilidad: { include: { Sede: true, Profesional: true } } } },
+              Incidencias: true,
+              Pagos: true,
+            },
+            orderBy: { id_reserva: 'desc' }
+          });
+        }
+      }
+    }
+
+    if (!reserva) {
+      return {
+        success: false,
+        message: 'No se encontró la reserva solicitada o no está disponible para prórroga.'
+      };
+    }
+
+    const rules = await DunningConfigService.getRules();
+    const yaTieneProrroga = reserva.Incidencias.some(
+      (inc: any) => inc.tipo === 'PRORROGA_24H_SOLICITADA' || inc.tipo === 'PRORROGA_CONCEDIDA'
+    );
+
+    const disp = reserva.Opcion?.Disponibilidad;
+    let fechaCitaStr = '';
+    if (disp?.fecha) {
+      fechaCitaStr = disp.fecha instanceof Date ? disp.fecha.toISOString().slice(0, 10) : String(disp.fecha).slice(0, 10);
+    }
+
+    let horaCitaStr = '09:00 - 13:00 (Mañana)';
+    if (disp?.hora_inicio) {
+      const hInicio = disp.hora_inicio instanceof Date ? disp.hora_inicio.toISOString().slice(11, 16) : '09:00';
+      const hFin = disp?.hora_fin instanceof Date ? disp.hora_fin.toISOString().slice(11, 16) : '13:00';
+      horaCitaStr = `${hInicio} - ${hFin}`;
+    }
+
+    // Fecha prometida de pago: vencimiento de bloqueo o medianoche del día previo a la cita
+    let fechaPrometidaPago: Date;
+    if (reserva.fecha_vencimiento_bloqueo) {
+      fechaPrometidaPago = new Date(reserva.fecha_vencimiento_bloqueo);
+    } else if (disp?.fecha) {
+      const d = new Date(disp.fecha);
+      d.setHours(23, 59, 59, 999);
+      d.setDate(d.getDate() - 1);
+      fechaPrometidaPago = d;
+    } else {
+      fechaPrometidaPago = new Date();
+    }
+
+    const orderCode = reserva.Pagos?.[0]?.referencia_pago
+      || `ORD-${String(reserva.id_reserva).padStart(5, '0')}-${new Date().getFullYear()}`;
+
+    return {
+      success: true,
+      reserva: {
+        id_reserva: reserva.id_reserva,
+        codigoReserva: orderCode,
+        pacienteNombre: `${reserva.Persona.nombres} ${reserva.Persona.apellidos}`,
+        telefono: reserva.Persona.numero,
+        email: reserva.Persona.email,
+        servicioNombre: reserva.Solicitud?.Servicio?.nombre || 'Evaluación General Odontológica',
+        monto: Number(reserva.Opcion?.precio_ofrecido || reserva.Pagos?.[0]?.importe || 150),
+        sedeNombre: disp?.Sede?.nombre || 'Sede Central',
+        sedeDireccion: disp?.Sede?.direccion || 'Av. Larco 820, Trujillo',
+        profesionalNombre: disp?.Profesional ? `${disp.Profesional.nombres} ${disp.Profesional.apellidos}` : 'Especialista Odontológico',
+        fechaCitaActual: fechaCitaStr,
+        horaCitaActual: horaCitaStr,
+        fechaPrometidaPago: fechaPrometidaPago.toISOString(),
+        estado: reserva.estado,
+        yaTieneProrroga,
+      },
+      rules: {
+        prorroga_express_horas: rules.prorroga_express_horas || 24,
+        maxDiasProrroga: 3,
+        whatsapp_activo: rules.whatsapp_activo,
+      }
+    };
+  }
+
+  /**
+   * Confirma la prórroga autogestionada por el paciente:
+   * Reagenda la fecha de la cita en Disponibilidad, amplía el vencimiento en Reservas
+   * y registra la incidencia y auditoría en SQL Server.
+   */
+  static async confirmProrrogaAndReschedule(params: {
+    reservaId: number;
+    nuevaFechaCita: string;
+    nuevoTurno?: string;
+    motivo?: string;
+  }) {
+    const reservaId = Number(params.reservaId);
+    if (!reservaId || isNaN(reservaId)) {
+      return { success: false, message: 'ID de reserva inválido.' };
+    }
+
+    if (!params.nuevaFechaCita || !/^\d{4}-\d{2}-\d{2}$/.test(params.nuevaFechaCita)) {
+      return { success: false, message: 'Fecha de cita inválida. Formato esperado YYYY-MM-DD.' };
+    }
+
+    const reserva = await prisma.reservas.findUnique({
+      where: { id_reserva: reservaId },
+      include: {
+        Persona: true,
+        Solicitud: { include: { Servicio: true } },
+        Opcion: {
+          include: {
+            Disponibilidad: {
+              include: { Sede: true, Profesional: true }
+            }
+          }
+        },
+        Incidencias: true,
+        Pagos: true,
+      }
+    });
+
+    if (!reserva) {
+      return { success: false, message: 'Reserva no encontrada en el sistema.' };
+    }
+
+    if (!['Pendiente', 'Pre-reservada', 'PENDIENTE', 'IN_REVIEW', 'En_Revision'].includes(reserva.estado)) {
+      return { success: false, message: `La reserva está en estado '${reserva.estado}' y no requiere prórroga.` };
+    }
+
+    // Regla Anti-Abuso: Máximo 1 prórroga por reserva
+    const yaTieneProrroga = reserva.Incidencias.some(
+      (inc: any) => inc.tipo === 'PRORROGA_24H_SOLICITADA' || inc.tipo === 'PRORROGA_CONCEDIDA'
+    );
+    if (yaTieneProrroga) {
+      return {
+        success: false,
+        message: 'Ya se concedió previamente una prórroga para esta reserva. Debe regularizar su abono para asegurar su sillón odontológico.'
+      };
+    }
+
+    // Validación de Límites de Fecha: Máximo 3 días desde la fecha prometida de pago
+    const targetDate = new Date(`${params.nuevaFechaCita}T12:00:00.000Z`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Fecha base prometida
+    const baseDueDate = reserva.fecha_vencimiento_bloqueo
+      ? new Date(reserva.fecha_vencimiento_bloqueo)
+      : (reserva.Opcion?.Disponibilidad?.fecha ? new Date(reserva.Opcion.Disponibilidad.fecha) : new Date());
+
+    const maxAllowedDate = new Date(baseDueDate);
+    maxAllowedDate.setDate(maxAllowedDate.getDate() + 3);
+    maxAllowedDate.setHours(23, 59, 59, 999);
+
+    // Dar margen si la fecha prometida era en el pasado
+    const minAllowedMax = new Date(today);
+    minAllowedMax.setDate(minAllowedMax.getDate() + 3);
+    minAllowedMax.setHours(23, 59, 59, 999);
+    const finalMaxDate = maxAllowedDate > minAllowedMax ? maxAllowedDate : minAllowedMax;
+
+    if (targetDate < today) {
+      return { success: false, message: 'La nueva fecha de cita no puede ser anterior al día de hoy.' };
+    }
+
+    if (targetDate > finalMaxDate) {
+      return {
+        success: false,
+        message: `La fecha seleccionada supera el límite máximo permitido de 3 días (${finalMaxDate.toISOString().slice(0, 10)}).`
+      };
+    }
+
+    // Extraer horas de turno
+    let hInicio = '09:00';
+    let hFin = '13:00';
+    const turnoStr = params.nuevoTurno || '09:00 - 13:00 (Mañana)';
+
+    if (turnoStr.includes('Tarde') || turnoStr.includes('14:00')) {
+      hInicio = '14:00';
+      hFin = '18:00';
+    } else if (turnoStr.includes('Noche') || turnoStr.includes('18:00')) {
+      hInicio = '18:00';
+      hFin = '21:00';
+    } else {
+      const match = /^([01]\d|2[0-3]):([0-5]\d) - ([01]\d|2[0-3]):([0-5]\d)/.exec(turnoStr);
+      if (match) {
+        hInicio = `${match[1]}:${match[2]}`;
+        hFin = `${match[3]}:${match[4]}`;
+      }
+    }
+
+    const inicioTurno = new Date(`1970-01-01T${hInicio}:00.000Z`);
+    const finTurno = new Date(`1970-01-01T${hFin}:00.000Z`);
+
+    // Calcular nuevo vencimiento de pago:
+    // La noche previa a la nueva cita (23:59:59) o mínimo horas de prórroga desde ahora
+    const rules = await DunningConfigService.getRules();
+    const extHours = rules.prorroga_express_horas || 24;
+    const nightBeforeAppointment = new Date(`${params.nuevaFechaCita}T23:59:59.000Z`);
+    nightBeforeAppointment.setDate(nightBeforeAppointment.getDate() - 1);
+
+    const minFromNow = new Date(Date.now() + extHours * 60 * 60 * 1000);
+    const nuevoVencimiento = nightBeforeAppointment > minFromNow ? nightBeforeAppointment : minFromNow;
+
+    const fechaCitaAnterior = reserva.Opcion?.Disponibilidad?.fecha
+      ? new Date(reserva.Opcion.Disponibilidad.fecha).toISOString().slice(0, 10)
+      : 'No asignada';
+
+    // Ejecución transaccional en Base de Datos SQL Server respetando triggers de auditoría
+    await prisma.$transaction(async (tx) => {
+      const currentSlot = reserva.Opcion?.Disponibilidad;
+      const currentProfId = currentSlot?.id_profesional || 1;
+      const currentSedeId = currentSlot?.id_sede || 1;
+
+      // 1. Liberar el slot de disponibilidad anterior si existía
+      if (currentSlot?.id_disponibilidad) {
+        try {
+          await tx.disponibilidad.update({
+            where: { id_disponibilidad: currentSlot.id_disponibilidad },
+            data: { estado: 'Disponible' },
+          });
+        } catch (slotErr) {
+          console.warn('⚠️ No se pudo liberar slot anterior:', slotErr);
+        }
+      }
+
+      // 2. Crear nueva Disponibilidad con la fecha y turno elegidos por el paciente
+      const newSlot = await tx.disponibilidad.create({
+        data: {
+          id_profesional: currentProfId,
+          id_sede: currentSedeId,
+          fecha: targetDate,
+          hora_inicio: inicioTurno,
+          hora_fin: finTurno,
+          estado: 'Reservado',
+        },
+      });
+
+      // 3. Crear nueva Opcion asociada a la solicitud y al nuevo slot
+      const newOpcion = await tx.opciones.create({
+        data: {
+          id_solicitud: reserva.id_solicitud,
+          id_disponibilidad: newSlot.id_disponibilidad,
+          precio_ofrecido: reserva.Opcion?.precio_ofrecido || 150,
+          seleccionada: true,
+          fecha_ofrecida: new Date(),
+          estado_respuesta: 'Aceptada',
+          fecha_respuesta: new Date(),
+        },
+      });
+
+      // 4. Actualizar Reserva con la nueva opción, nuevo límite de pago y marca de dunning
+      await tx.reservas.update({
+        where: { id_reserva: reserva.id_reserva },
+        data: {
+          id_opcion: newOpcion.id_opcion,
+          fecha_vencimiento_bloqueo: nuevoVencimiento,
+          ultima_alerta_dunning: `Prórroga Confirmada (Cita: ${params.nuevaFechaCita} ${hInicio})`,
+        },
+      });
+
+      // 5. Registrar Incidencia de Auditoría
+      await tx.incidencias.create({
+        data: {
+          id_persona: reserva.id_persona,
+          id_reserva: reserva.id_reserva,
+          tipo: 'PRORROGA_24H_SOLICITADA',
+          motivo_tipificado: 'Prórroga Autogestionada y Reagendamiento de Cita',
+          descripcion: `Prórroga confirmada por paciente. Cita reprogramada del ${fechaCitaAnterior} al ${params.nuevaFechaCita} (${turnoStr}). Nuevo límite de pago: ${nuevoVencimiento.toISOString()}`,
+          estado: 'Cerrada',
+        },
+      });
+
+      // 6. Registrar Interacción
+      await tx.interacciones.create({
+        data: {
+          id_persona: reserva.id_persona,
+          id_solicitud: reserva.id_solicitud,
+          tipo: 'PRORROGA_CONCEDIDA',
+          mensaje: `Paciente confirmó prórroga en portal web. Cita reagendada para el ${params.nuevaFechaCita} turno ${turnoStr}. Vencimiento extendido a ${nuevoVencimiento.toISOString()}`,
+          resultado: 'Reagendada y Concedida',
+        },
+      });
+    });
+
+    const pacienteNombre = `${reserva.Persona.nombres} ${reserva.Persona.apellidos}`;
+
+    // 5. Enviar confirmación interactiva por WhatsApp si el canal está activo
+    if (rules.whatsapp_activo && reserva.Persona?.numero) {
+      try {
+        const orderCode = reserva.Pagos?.[0]?.referencia_pago
+          || `ORD-${String(reserva.id_reserva).padStart(5, '0')}-${new Date().getFullYear()}`;
+        const payUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/pasarela-pago/${orderCode}`;
+        const waMsg = `
+✅ *PRÓRROGA Y CITA CONFIRMADA*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Estimado(a) *${pacienteNombre}*, su prórroga ha sido procesada exitosamente.
+
+📅 *Nueva Fecha de Cita:* ${params.nuevaFechaCita}
+⏰ *Turno:* ${turnoStr}
+📍 *Sede:* ${reserva.Opcion?.Disponibilidad?.Sede?.nombre || 'Sede NexoSalud'}
+⏳ *Nuevo límite de abono:* ${nuevoVencimiento.toLocaleString('es-PE')}
+
+Su sillón odontológico ha quedado asegurado. Puede completar su pago cuando guste en:
+👉 ${payUrl}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        `.trim();
+        await this.sendTextMessage(reserva.Persona.numero, waMsg);
+      } catch (waErr) {
+        console.warn('⚠️ No se pudo enviar WhatsApp de confirmación de prórroga:', waErr);
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Prórroga concedida y cita reagendada exitosamente.',
+      nuevaFechaCita: params.nuevaFechaCita,
+      nuevoTurno: turnoStr,
+      nuevoVencimiento,
+      pacienteNombre,
     };
   }
 }

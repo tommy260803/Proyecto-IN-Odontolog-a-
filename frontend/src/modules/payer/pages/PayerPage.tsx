@@ -11,7 +11,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { usePayers } from '../hooks/usePayerQueries';
 import { PayerState } from '@/domain/enums';
-import { Search, Eye, AlertTriangle, Trash2, X, RotateCcw, Zap, Bot, Sparkles, CheckCircle2, Clock, Mail, ShieldCheck, RefreshCw, Radio, Play, Pause, Filter, Terminal, BarChart3, XCircle, Flame, FileSpreadsheet, Download, CreditCard, ExternalLink } from 'lucide-react';
+import { Search, Eye, AlertTriangle, Trash2, X, RotateCcw, Zap, Bot, Sparkles, CheckCircle2, Clock, Mail, ShieldCheck, RefreshCw, Radio, Play, Pause, Filter, Terminal, BarChart3, XCircle, Flame, FileSpreadsheet, Download, CreditCard, ExternalLink, Sliders } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { PayerWithDetails } from '@/application/use-cases/payer';
@@ -24,6 +24,7 @@ import { useToast } from '@/shared/hooks/use-toast';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 import { PayerDetailModal } from '../components/PayerDetailModal';
 import { PayerExcelExportModal } from '../components/PayerExcelExportModal';
+import { DunningConfigModal } from '../components/DunningConfigModal';
 import { calculatePayerRisk } from '@/shared/services/groqService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 
@@ -47,6 +48,7 @@ export default function PayerPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isCronModalOpen, setIsCronModalOpen] = useState(false);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isDunningRunning, setIsDunningRunning] = useState(false);
   const [dunningStats, setDunningStats] = useState<any | null>(null);
   const [isLiveTailActive, setIsLiveTailActive] = useState(true);
@@ -79,9 +81,8 @@ export default function PayerPage() {
       if (res.ok && data.success) {
         toast({
           title: '📱 ¡WhatsApp Dunning Despachado!',
-          description: `Aviso T-24h enviado a tu número de prueba (${data.sendResult?.recipient || 'configurado'}). Abriendo vista de prórroga interactiva...`,
+          description: `Aviso T-24h enviado exitosamente al número ${data.sendResult?.recipient || 'configurado'} con su enlace personalizado de prórroga para esta cita.`,
         });
-        window.open(data.prorrogaWebUrl || `/prorroga-express/${payerId}`, '_blank');
       } else {
         throw new Error(data.error || 'No se pudo enviar la prueba de WhatsApp.');
       }
@@ -600,13 +601,15 @@ export default function PayerPage() {
             <span>Exportar Excel (.xlsx)</span>
           </button>
 
-          <Link
-            to="/reportes?tab=payer"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all shadow-sm"
+          <button
+            type="button"
+            onClick={() => setIsConfigModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 border border-teal-300 dark:border-teal-700 text-xs font-bold hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-all shadow-sm cursor-pointer select-none"
+            title="Calibrar cadencia de cobranza, prórrogas y blindaje de sillón en base de datos"
           >
-            <BarChart3 className="w-3.5 h-3.5" />
-            Reporte DataMart
-          </Link>
+            <Sliders className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+            <span>Calibrar Reglas Agente</span>
+          </button>
 
           <button
             type="button"
@@ -796,19 +799,46 @@ export default function PayerPage() {
 
             {/* Políticas de Negocio del Cron Job */}
             <div className="bg-gradient-to-r from-teal-50/70 to-slate-50 dark:from-teal-950/30 dark:to-slate-900 p-3.5 rounded-xl border border-teal-200/70 dark:border-teal-900/60 text-xs space-y-2 shadow-2xs">
-              <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0" />
-                Políticas Automáticas de Recaudación en Servidor:
+              <div className="flex items-center justify-between">
+                <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0" />
+                  Políticas Dinámicas de Blindaje en Servidor (SQL Server):
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsConfigModalOpen(true)}
+                  className="h-7 px-2.5 text-[11px] text-teal-700 dark:text-teal-300 bg-white dark:bg-slate-900 border-teal-300 dark:border-teal-800 hover:bg-teal-50 font-bold gap-1 shadow-2xs cursor-pointer"
+                  title="Abrir formulario de calibración de reglas"
+                >
+                  <Sliders className="w-3 h-3 text-teal-600" />
+                  <span>Calibrar Reglas</span>
+                </Button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
                 <div className="bg-white/80 dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700">
-                  <span className="font-bold text-teal-700 dark:text-teal-400">1. T-48h Preventivo:</span> Correo cordial con Orden de Pago PDF adjunta.
+                  <span className="font-bold text-teal-700 dark:text-teal-400">
+                    1. T-{dunningStats?.activeRules?.etapa1_preventivo_horas ?? 48}h Preventivo:
+                  </span>{' '}
+                  Correo cordial con Orden de Pago PDF adjunta.
                 </div>
                 <div className="bg-white/80 dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700">
-                  <span className="font-bold text-amber-700 dark:text-amber-400">2. T-24h Urgencia:</span> Alerta de plazo límite a medianoche (23:59).
+                  <span className="font-bold text-amber-700 dark:text-amber-400">
+                    2. T-{dunningStats?.activeRules?.etapa2_urgencia_horas ?? 24}h Urgencia:
+                  </span>{' '}
+                  Alerta límite a medianoche + Prórroga (+{dunningStats?.activeRules?.prorroga_express_horas ?? 24}h).
                 </div>
                 <div className="bg-white/80 dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700">
-                  <span className="font-bold text-rose-700 dark:text-rose-400">3. 00:00 hrs Cierre:</span> Cancelación en BD y liberación de sillón.
+                  <span className="font-bold text-rose-700 dark:text-rose-400">
+                    3.{' '}
+                    {dunningStats?.activeRules?.auto_cancelar_medianoche !== false
+                      ? '00:00 hrs Cierre:'
+                      : 'Modo Manual:'}
+                  </span>{' '}
+                  {dunningStats?.activeRules?.auto_cancelar_medianoche !== false
+                    ? 'Cancelación en BD y liberación de sillón.'
+                    : 'Cancelación manual.'}
                 </div>
               </div>
             </div>
@@ -1022,6 +1052,13 @@ export default function PayerPage() {
         isOpen={isExcelModalOpen}
         onClose={() => setIsExcelModalOpen(false)}
         totalRecords={payers?.length || 124}
+      />
+
+      {/* Modal Calibración de Reglas Agente Orquestador (SQL Server Persistente) */}
+      <DunningConfigModal
+        isOpen={isConfigModalOpen}
+        onClose={() => setIsConfigModalOpen(false)}
+        onSaved={() => handleOpenDunningAudit(true)}
       />
     </div>
   );

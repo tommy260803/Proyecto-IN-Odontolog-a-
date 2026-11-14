@@ -155,6 +155,47 @@ ${extensionResult.message}
 });
 
 /**
+ * Consulta la información completa de la reserva para la pantalla de prórroga interactiva.
+ * No confirma ni aplica cambios automáticamente.
+ */
+router.get('/prorroga-info/:reservaId', async (req, res) => {
+  const reservaId = Number(req.params.reservaId);
+  if (!reservaId || isNaN(reservaId)) {
+    return res.status(400).json({ error: 'ID de reserva inválido.' });
+  }
+
+  const result = await WhatsAppService.getProrrogaInfo({ reservaId });
+  if (!result.success) {
+    return res.status(404).json(result);
+  }
+
+  res.json(result);
+});
+
+/**
+ * Confirma la prórroga seleccionada por el usuario y actualiza la fecha de la cita en BD.
+ */
+router.post('/confirmar-prorroga', async (req, res) => {
+  const { reservaId, nuevaFechaCita, nuevoTurno, motivo } = req.body || {};
+  if (!reservaId || !nuevaFechaCita) {
+    return res.status(400).json({ error: 'Debe proveer reservaId y nuevaFechaCita.' });
+  }
+
+  const result = await WhatsAppService.confirmProrrogaAndReschedule({
+    reservaId: Number(reservaId),
+    nuevaFechaCita,
+    nuevoTurno,
+    motivo,
+  });
+
+  if (!result.success) {
+    return res.status(409).json(result);
+  }
+
+  res.json(result);
+});
+
+/**
  * Extiende en 24 horas el vencimiento de una pre-reserva mediante API.
  */
 router.post('/request-extension', async (req, res) => {
@@ -239,7 +280,7 @@ router.post('/test-dunning', async (req, res) => {
       reservaId: reserva.id_reserva,
       paciente: patientName,
       sendResult,
-      prorrogaWebUrl: `${frontendUrl}/api/payer/prorroga-express/${reserva.id_reserva}`,
+      prorrogaWebUrl: `${frontendUrl}/prorroga-express/${reserva.id_reserva}`,
       instruccionPrueba: 'Puedes probar la prórroga respondiendo "PRORROGA" desde WhatsApp o abriendo el enlace prorrogaWebUrl en el navegador.'
     });
   } catch (error: any) {

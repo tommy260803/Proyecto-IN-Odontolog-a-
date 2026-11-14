@@ -114,9 +114,8 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
       if (res.ok && data.success) {
         toast({
           title: '📱 ¡WhatsApp Dunning Despachado!',
-          description: `Aviso T-24h enviado al número de prueba (${data.sendResult?.recipient || 'configurado'}). Abriendo vista de prórroga interactiva...`,
+          description: `Aviso T-24h enviado exitosamente al número ${data.sendResult?.recipient || 'configurado'} con su enlace personalizado de prórroga para esta cita.`,
         });
-        window.open(data.prorrogaWebUrl || `/prorroga-express/${idToTest}`, '_blank');
       } else {
         throw new Error(data.error || 'No se pudo enviar la prueba de WhatsApp.');
       }
@@ -399,18 +398,16 @@ export function PayerDetailModal({ payerId, isOpen, onClose }: PayerDetailModalP
           </div>
 
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto" onClick={(e) => e.stopPropagation()}>
-            {p.state !== PayerState.VALIDATED && (
-              <button
-                type="button"
-                onClick={() => handleLaunchTestWhatsApp(p.id)}
-                disabled={isSendingWa}
-                className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/80 hover:bg-emerald-200 dark:hover:bg-emerald-900 px-3 py-1.5 rounded-xl transition-all disabled:opacity-50 shadow-2xs border border-emerald-300/70 dark:border-emerald-800/80 cursor-pointer"
-                title="Lanzar recordatorio interactivo WhatsApp T-24h y probar prórroga"
-              >
-                <Zap className={`w-3.5 h-3.5 ${isSendingWa ? 'animate-pulse text-amber-500' : 'text-emerald-600'}`} />
-                <span>{isSendingWa ? 'Enviando...' : 'Probar WhatsApp Dunning'}</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => handleLaunchTestWhatsApp(p.id)}
+              disabled={isSendingWa}
+              className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/80 hover:bg-emerald-200 dark:hover:bg-emerald-900 px-3 py-1.5 rounded-xl transition-all disabled:opacity-50 shadow-2xs border border-emerald-300/70 dark:border-emerald-800/80 cursor-pointer"
+              title="Lanzar recordatorio interactivo WhatsApp T-24h y probar prórroga"
+            >
+              <Zap className={`w-3.5 h-3.5 ${isSendingWa ? 'animate-pulse text-amber-500' : 'text-emerald-600'}`} />
+              <span>{isSendingWa ? 'Enviando...' : 'Probar WhatsApp Dunning'}</span>
+            </button>
 
             <button
               type="button"

@@ -7,6 +7,7 @@ import path from 'path';
 import { runDunningCycle, getLastExecutionStats } from '../services/dunningScheduler';
 import { generatePayerConsolidatedExcel, generatePayerFullBiWorkbook } from '../services/payerExcelExportService';
 import { WhatsAppService } from '../services/whatsappService';
+import { DunningConfigService } from '../services/dunningConfigService';
 
 const router = Router();
 const paymentLogoDataUrl = `data:image/png;base64,${readFileSync(path.resolve(__dirname, '../../assets/Logo_NexoSalud.png')).toString('base64')}`;
@@ -57,16 +58,78 @@ router.post('/run-dunning-cycle', async (req, res) => {
 });
 
 /**
- * Retorna las métricas y el registro de la última ejecución del servicio de dunning.
+ * Consulta las reglas temporales y operativas del Agente Orquestador persistidas en BD.
  */
-router.get('/dunning-stats', (req, res) => {
+router.get('/dunning-rules', async (req, res) => {
+  try {
+    const rules = await DunningConfigService.getRules(true);
+    res.json({ success: true, rules });
+  } catch (error: any) {
+    console.error('Error obteniendo reglas de dunning:', error);
+    res.status(500).json({ error: error.message || 'Error al obtener reglas del agente' });
+  }
+});
+
+/**
+ * Actualiza las reglas temporales y operativas del Agente Orquestador en la BD.
+ */
+router.put('/dunning-rules', async (req, res) => {
+  try {
+    const {
+      etapa1_preventivo_horas,
+      etapa2_urgencia_horas,
+      prorroga_express_horas,
+      anticipacion_minima_horas,
+      frecuencia_cron_minutos,
+      auto_cancelar_medianoche,
+      whatsapp_activo,
+      email_activo,
+      actualizado_por,
+      motivo_calibracion
+    } = req.body;
+
+    const updated = await DunningConfigService.updateRules(
+      {
+        etapa1_preventivo_horas,
+        etapa2_urgencia_horas,
+        prorroga_express_horas,
+        anticipacion_minima_horas,
+        frecuencia_cron_minutos,
+        auto_cancelar_medianoche,
+        whatsapp_activo,
+        email_activo
+      },
+      actualizado_por || 'Jefe de Operaciones / Caja',
+      motivo_calibracion || 'Calibración interactiva desde panel de control'
+    );
+
+    res.json({
+      success: true,
+      message: 'Reglas del Agente Orquestador actualizadas exitosamente en base de datos.',
+      rules: updated
+    });
+  } catch (error: any) {
+    console.error('Error actualizando reglas de dunning:', error);
+    res.status(400).json({ error: error.message || 'Error al actualizar reglas del agente' });
+  }
+});
+
+/**
+ * Retorna las métricas y el registro de la última ejecución del servicio de dunning con sus reglas activas.
+ */
+router.get('/dunning-stats', async (req, res) => {
   const stats = getLastExecutionStats();
+  const rules = await DunningConfigService.getRules();
   res.json({
     activePolicy: 'CADENCIA_3_ETAPAS',
-    stage1Timing: 'T - 48h (Recordatorio Preventivo + PDF)',
-    stage2Timing: 'T - 24h (Urgencia Clínica + Advertencia a medianoche)',
-    stage3Timing: 'T = 00:00 hrs del día de la cita (Cancelación & Liberación de Sillón)',
-    minimumBookingAdvance: '72 horas mínimas requeridas',
+    stage1Timing: `T - ${rules.etapa1_preventivo_horas}h (Recordatorio Preventivo + PDF)`,
+    stage2Timing: `T - ${rules.etapa2_urgencia_horas}h (Urgencia Clínica + Advertencia a medianoche)`,
+    stage3Timing: rules.auto_cancelar_medianoche 
+      ? 'T = 00:00 hrs del día de la cita (Cancelación & Liberación de Sillón)' 
+      : 'Desactivada (Requiere cancelación manual)',
+    minimumBookingAdvance: `${rules.anticipacion_minima_horas} horas mínimas requeridas`,
+    extensionHours: `${rules.prorroga_express_horas} horas concedidas por prórroga`,
+    activeRules: rules,
     lastExecution: stats
   });
 });
@@ -1395,82 +1458,46 @@ router.post('/send-notice-email', async (req, res) => {
   }
 });
 
-// Endpoint interactivo para prórroga express (acceso con 1 clic desde WhatsApp)
+// Endpoint interactivo para prórroga express (acceso con 1 clic desde WhatsApp o correo)
+// Redirige al frontend para permitir al paciente elegir su fecha y confirmar interactivamente.
 router.get('/prorroga-express/:reservaId', async (req, res) => {
   const reservaId = Number(req.params.reservaId);
-  if (!reservaId || isNaN(reservaId)) {
-    return res.status(400).send('ID de reserva inválido.');
-  }
-
-  const result = await WhatsAppService.grant24HourExtension({ reservaId });
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-
-  if (!result.success) {
-    return res.status(409).send(`
-      <!DOCTYPE html>
-      <html lang="es">
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Aviso de Prórroga - NexoSalud</title>
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f8fafc; color: #1e293b; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 16px; }
-          .card { max-width: 480px; width: 100%; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); padding: 32px 24px; text-align: center; border: 1px solid #e2e8f0; }
-          .icon { font-size: 48px; margin-bottom: 16px; }
-          h1 { font-size: 20px; font-weight: 700; color: #b45309; margin: 0 0 12px 0; }
-          p { font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0; }
-          .btn { display: inline-block; background: #0d9488; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px; }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <div class="icon">⚠️</div>
-          <h1>Aviso de Prórroga</h1>
-          <p>${result.message}</p>
-          <a class="btn" href="${frontendUrl}/payer">Ir a la Pasarela de Pago</a>
-        </div>
-      </body>
-      </html>
-    `);
+  if (!reservaId || isNaN(reservaId)) {
+    return res.redirect(`${frontendUrl}/payer`);
   }
+  return res.redirect(`${frontendUrl}/prorroga-express/${reservaId}`);
+});
 
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>Prórroga Concedida - NexoSalud</title>
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f0fdf4; color: #1e293b; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 16px; }
-        .card { max-width: 480px; width: 100%; background: #ffffff; border-radius: 20px; box-shadow: 0 12px 30px -5px rgba(16, 185, 129, 0.15); padding: 36px 28px; text-align: center; border: 1px solid #bbf7d0; }
-        .icon { font-size: 54px; margin-bottom: 14px; }
-        h1 { font-size: 22px; font-weight: 800; color: #065f46; margin: 0 0 10px 0; }
-        .highlight { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 16px; margin: 20px 0; }
-        .time-label { font-size: 12px; font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 0.5px; }
-        .time-value { font-size: 18px; font-weight: 800; color: #047857; margin-top: 4px; }
-        p { font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 20px 0; }
-        .btn { display: inline-block; background: #059669; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25); }
-        .footer-note { font-size: 11px; color: #94a3b8; margin-top: 20px; }
-      </style>
-    </head>
-    <body>
-      <div class="card">
-        <div class="icon">✅</div>
-        <h1>¡Prórroga de 24h Concedida!</h1>
-        <p>Estimado(a) <strong>${result.pacienteNombre}</strong>, su reserva se ha extendido exitosamente. Su sillón odontológico queda asegurado.</p>
-        
-        <div class="highlight">
-          <div class="time-label">Nuevo plazo límite de pago</div>
-          <div class="time-value">${result.nuevoVencimiento?.toLocaleString('es-PE')}</div>
-        </div>
+// Alias en payer.routes para consultar info de prórroga
+router.get('/prorroga-info/:reservaId', async (req, res) => {
+  const reservaId = Number(req.params.reservaId);
+  if (!reservaId || isNaN(reservaId)) {
+    return res.status(400).json({ error: 'ID de reserva inválido.' });
+  }
+  const result = await WhatsAppService.getProrrogaInfo({ reservaId });
+  if (!result.success) {
+    return res.status(404).json(result);
+  }
+  res.json(result);
+});
 
-        <a class="btn" href="${frontendUrl}/payer">Pagar Pre-Reserva Ahora</a>
-        <div class="footer-note">Clínica Odontológica NexoSalud • Sistema Automatizado de Admisión</div>
-      </div>
-    </body>
-    </html>
-  `);
+// Alias en payer.routes para confirmar la prórroga y reagendamiento
+router.post('/confirmar-prorroga', async (req, res) => {
+  const { reservaId, nuevaFechaCita, nuevoTurno, motivo } = req.body || {};
+  if (!reservaId || !nuevaFechaCita) {
+    return res.status(400).json({ error: 'Debe proveer reservaId y nuevaFechaCita.' });
+  }
+  const result = await WhatsAppService.confirmProrrogaAndReschedule({
+    reservaId: Number(reservaId),
+    nuevaFechaCita,
+    nuevoTurno,
+    motivo,
+  });
+  if (!result.success) {
+    return res.status(409).json(result);
+  }
+  res.json(result);
 });
 
 export default router;
