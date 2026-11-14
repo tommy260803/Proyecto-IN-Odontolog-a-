@@ -2,6 +2,7 @@ import { prisma } from '../db';
 import { sendPaymentNoticeOrConfirmation, generateBackendPdfBase64 } from '../routes/payer.routes';
 import { appointmentMidnightInLima } from './appointmentPolicy';
 import { WhatsAppService } from './whatsappService';
+import { DunningConfigService } from './dunningConfigService';
 
 export interface DunningCycleResult {
   timestamp: string;
@@ -31,6 +32,7 @@ let lastExecutionStats: DunningCycleResult | null = null;
  * - Etapa 3 (T = 00:00 hrs del día de la cita): Cancelación automática, liberación de sillón y correo formal de expiración.
  */
 export async function runDunningCycle(): Promise<DunningCycleResult> {
+  const rules = await DunningConfigService.getRules();
   const now = new Date();
   const logs: DunningCycleResult['logs'] = [];
   let stage1Count = 0;
@@ -96,7 +98,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
       const sentStage2 = r.Incidencias.some(inc => inc.descripcion?.includes('NOTIFICACION_ETAPA_2_URGENCIA'));
 
       // Etapa 3: Vencimiento a las 00:00 hrs del día de la cita (cancelación y liberación de cupo)
-      if (hoursUntilMidnightDeadline <= 0) {
+      if (rules.auto_cancelar_medianoche && hoursUntilMidnightDeadline <= 0) {
         await prisma.reservas.update({
           where: { id_reserva: r.id_reserva },
           data: { 
@@ -129,7 +131,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
         }
 
         let emailSent = false;
-        if (patientEmail) {
+        if (rules.email_activo && patientEmail) {
           const cancelHtmlMessage = `
             Estimado(a) <strong>${patientName}</strong>,<br/><br/>
             Le informamos que su cita programada para el día <strong>${reservationDateStr}</strong> a las <strong>${reservationTimeStr} hrs</strong> con el <strong>${professionalName}</strong> en nuestra <strong>${branchName}</strong> ha sido <strong>CANCELADA AUTOMÁTICAMENTE</strong> por nuestro sistema al no registrarse el abono correspondiente antes del plazo límite (00:00 hrs del día de hoy).<br/><br/>
@@ -170,10 +172,10 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
         continue;
       }
 
-      // Etapa 2: Ventana de urgencia (24h antes de la medianoche del día de la cita)
-      if (hoursUntilMidnightDeadline <= 24 && hoursUntilMidnightDeadline > 0 && !sentStage2) {
+      // Etapa 2: Ventana de urgencia (dinámica según configuración del agente)
+      if (hoursUntilMidnightDeadline <= rules.etapa2_urgencia_horas && hoursUntilMidnightDeadline > 0 && !sentStage2) {
         let emailSent = false;
-        if (patientEmail) {
+        if (rules.email_activo && patientEmail) {
           const urgencyMessage = `
             Estimado(a) <strong>${patientName}</strong>,<br/><br/>
             Le informamos que el sillón odontológico para su cita de <strong>${serviceName}</strong> con el <strong>${professionalName}</strong> programada para mañana <strong>${reservationDateStr} (${reservationTimeStr} hrs)</strong> se encuentra en <strong>RESERVA TEMPORAL</strong>.<br/><br/>
@@ -203,7 +205,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
 
         // Envío multicanal mediante WhatsApp con enlace de pago y opción de prórroga
         let waSent = false;
-        if (r.Persona.numero) {
+        if (rules.whatsapp_activo && r.Persona.numero) {
           try {
             const waRes = await WhatsAppService.sendDunningUrgencyWhatsApp({
               toPhone: r.Persona.numero,
@@ -223,7 +225,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
         await prisma.reservas.update({
           where: { id_reserva: r.id_reserva },
           data: {
-            ultima_alerta_dunning: 'T-24h Urgencia Clínica'
+            ultima_alerta_dunning: `T-${rules.etapa2_urgencia_horas}h Urgencia Clínica`
           }
         });
 
@@ -232,7 +234,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
             id_persona: r.id_persona,
             id_reserva: r.id_reserva,
             tipo: 'DUNNING_URGENCY',
-            motivo_tipificado: 'Alerta Dunning T-24h Urgencia',
+            motivo_tipificado: `Alerta Dunning T-${rules.etapa2_urgencia_horas}h Urgencia`,
             descripcion: `NOTIFICACION_ETAPA_2_URGENCIA: Alerta de vencimiento enviada a ${patientEmail || 'Email N/D'} y WhatsApp ${r.Persona.numero || 'N/D'}.`,
             estado: 'Abierta'
           }
@@ -251,10 +253,10 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
         continue;
       }
 
-      // Etapa 1: Ventana preventiva (48h a 24h antes de la medianoche del día de la cita)
-      if (hoursUntilMidnightDeadline <= 48 && hoursUntilMidnightDeadline > 24 && !sentStage1) {
+      // Etapa 1: Ventana preventiva (dinámica según configuración del agente)
+      if (hoursUntilMidnightDeadline <= rules.etapa1_preventivo_horas && hoursUntilMidnightDeadline > rules.etapa2_urgencia_horas && !sentStage1) {
         let emailSent = false;
-        if (patientEmail) {
+        if (rules.email_activo && patientEmail) {
           const friendlyMessage = `
             Estimado(a) <strong>${patientName}</strong>,<br/><br/>
             Esperamos que se encuentre muy bien. Le saludamos cordialmente de la Clínica Odontológica NexoSalud.<br/><br/>
@@ -286,7 +288,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
         await prisma.reservas.update({
           where: { id_reserva: r.id_reserva },
           data: {
-            ultima_alerta_dunning: 'T-48h Preventivo'
+            ultima_alerta_dunning: `T-${rules.etapa1_preventivo_horas}h Preventivo`
           }
         });
 
@@ -295,7 +297,7 @@ export async function runDunningCycle(): Promise<DunningCycleResult> {
             id_persona: r.id_persona,
             id_reserva: r.id_reserva,
             tipo: 'DUNNING_REMINDER',
-            motivo_tipificado: 'Recordatorio Dunning T-48h Preventivo',
+            motivo_tipificado: `Recordatorio Dunning T-${rules.etapa1_preventivo_horas}h Preventivo`,
             descripcion: `NOTIFICACION_ETAPA_1_PREVENTIVA: Recordatorio cordial enviado a ${patientEmail}.`,
             estado: 'Abierta'
           }

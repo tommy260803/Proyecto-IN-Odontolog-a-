@@ -522,3 +522,19 @@ model CambiosOpcionLead {
   es_pre_reserva_lead Boolean?
   fecha_registro_utc_lead DateTime? @default(dbgenerated("sysutcdatetime()")) @db.DateTime2
 }
+
+model ReglasAgentePayer {
+  id_regla                  Int      @id @default(autoincrement())
+  clave                     String   @unique @default("GLOBAL") @db.VarChar(50)
+  etapa1_preventivo_horas    Int      @default(48)
+  etapa2_urgencia_horas      Int      @default(24)
+  prorroga_express_horas    Int      @default(24)
+  anticipacion_minima_horas Int      @default(72)
+  frecuencia_cron_minutos   Int      @default(60)
+  auto_cancelar_medianoche  Boolean  @default(true)
+  whatsapp_activo           Boolean  @default(true)
+  email_activo              Boolean  @default(true)
+  fecha_actualizacion       DateTime @default(now()) @updatedAt @db.DateTime2
+  actualizado_por           String?  @default("Admin") @db.VarChar(100)
+  motivo_calibracion        String?  @db.VarChar(255)
+}
