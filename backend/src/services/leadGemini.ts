@@ -131,6 +131,7 @@ export class LeadGeminiError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
 }
 
+// Gemini interpreta la conversación comercial para proponer una intención y preferencias que el backend valida.
 export async function classifyLeadChat(
   context: { remitente: string; texto: string }[],
   config: { key: string; model: string },

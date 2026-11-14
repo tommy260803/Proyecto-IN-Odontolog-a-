@@ -226,10 +226,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   animation: toast-progress var(--toast-duration, 5000ms) linear forwards;
 }
 
-.group:hover .animate-toast-progress {
-  animation-play-state: paused;
-}
-
 /* ─── Nexo Salud Dental Loader Animations ─── */
 @keyframes dental-float {
   0%, 100% {
@@ -402,5 +398,27 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   .ns-skeleton::after,
   .ns-progress-bar {
     animation: none !important;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lead-alert-bell {
+    transform-origin: 50% 15%;
+    animation: lead-alert-ring 3s ease-in-out infinite;
+  }
+}
+
+@keyframes lead-alert-ring {
+  0%, 26%, 100% { transform: rotate(0); }
+  5%, 16% { transform: rotate(18deg); }
+  10%, 21% { transform: rotate(-18deg); }
+}
+
+.notification-viewport:has(> [data-below-header]) {
+  top: 4.25rem;
+}
+
+@media (min-width: 640px) {
+  .notification-viewport:has(> [data-below-header]) {
+    top: 5rem;
   }
 }

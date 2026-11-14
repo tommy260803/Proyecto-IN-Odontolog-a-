@@ -14,11 +14,12 @@ export function Toaster() {
   return (
     <ToastProvider duration={5000}>
       {toasts.map(function (
-        { id, title, description, action, variant, ...props }: ReturnType<typeof useToast>['toasts'][number]
+        { id, title, description, action, variant, belowHeader, ...props }: ReturnType<typeof useToast>['toasts'][number]
       ) {
         return (
           <Toast 
             key={id} 
+            data-below-header={belowHeader || undefined}
             variant={variant} 
             title={title} 
             description={description} 
@@ -35,7 +36,7 @@ export function Toaster() {
           </Toast>
         )
       })}
-      <ToastViewport />
+      <ToastViewport className="notification-viewport" />
     </ToastProvider>
   )
 }

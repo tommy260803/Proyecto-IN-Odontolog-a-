@@ -24,6 +24,7 @@ export async function findLeadNegotiationSlots(
     professionalId?: number;
     slotIds?: number[];
     excludedSlotId?: number;
+    preferredAppointment?: { date: string; start: string; end: string };
     limit?: 3 | 5;
   },
 ) {
@@ -74,6 +75,9 @@ export async function findLeadNegotiationSlots(
           AND ocupada.hora_inicio<d.hora_fin AND ocupada.hora_fin>d.hora_inicio
           AND r.estado NOT IN ('Cancelada','Vencida')
       )
-    ORDER BY d.fecha,d.hora_inicio,d.id_disponibilidad
+    ORDER BY ${context.preferredAppointment ? Prisma.sql`CASE WHEN d.fecha=CONVERT(date,${context.preferredAppointment.date})
+        AND d.hora_inicio=CONVERT(time,${context.preferredAppointment.start})
+        AND d.hora_fin=CONVERT(time,${context.preferredAppointment.end}) THEN 0 ELSE 1 END,` : Prisma.empty}
+      d.fecha,d.hora_inicio,d.id_disponibilidad
   `;
 }

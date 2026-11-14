@@ -1,12 +1,17 @@
 import { Router, type Request, type Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../db';
+import { formatAppointmentTime } from '../utils/appointmentTime';
 import { getLeadStaffIdentity, leadStaffAuthEnabled } from '../services/leadStaffAuth';
-import { assertTransferSchema, checkLeadProposalTerms, checkTransferOffer, createPreReservationAccess, executePayerTransfer,
+import { assertNoPendingLeadRevision, assertTransferSchema, checkLeadProposalTerms, checkTransferOffer, createPreReservationAccess, executePayerTransfer,
   loadTransferOffer, publicAccess, storePreReservationAccess, TransferError, transferId, transferIsolation, transferLock } from '../services/leadPayerTransfer';
 import { leadWhatsAppSettings, proposalWhatsAppToken, sendLeadWhatsApp, whatsAppChatId } from '../services/leadWhatsApp';
-import { resolveLeadFlyer } from '../services/leadFlyerAttachments';
-import { assertWhatsAppContactAllowed, chatbotSchemaInstalled, recordWhatsAppOffer } from '../services/leadWhatsAppInbox';
+import { downloadLeadFlyer, resolveLeadFlyer } from '../services/leadFlyerAttachments';
+import { publishWhatsAppAlertChange } from '../services/leadWhatsAppAlertEvents';
+import {
+  assertWhatsAppContactAllowed, assertWhatsAppControlOwner, chatbotSchemaInstalled, lockWhatsAppControl,
+  readWhatsAppControl, recordWhatsAppOffer, whatsAppControlOwnerKey, whatsAppControlTransaction,
+} from '../services/leadWhatsAppInbox';
 
 export const leadTransferRouter=Router();
 const handler=(fn:(req:Request,res:Response)=>Promise<unknown>, failure?: string)=>async(req:Request,res:Response)=>{
@@ -57,6 +62,7 @@ leadTransferRouter.post('/:id/pre-reservation-access',handler(async(req,res)=>{
   res.json(result);
 }));
 
+// Recibe el envío desde la Mesa, verifica la oferta seleccionada y vincula el mensaje de WhatsApp con esa propuesta.
 leadTransferRouter.post('/:id/proposal-whatsapp', handler(async (req, res) => {
   const origin = URL.parse(req.get('Origin') ?? '');
   const localNames = ['localhost', '127.0.0.1', '[::1]'];
@@ -73,8 +79,19 @@ leadTransferRouter.post('/:id/proposal-whatsapp', handler(async (req, res) => {
   const request = transferId(req.body?.id_solicitud);
   const option = transferId(req.body?.id_opcion);
   const settings = leadWhatsAppSettings();
+  const checkContact = async (tx: Prisma.TransactionClient, chat: string, ownerKey: string | null) => {
+    const scope = { sessionId: settings.sessionId, chat };
+    await assertWhatsAppContactAllowed(tx, scope);
+    const control = await readWhatsAppControl(tx, scope);
+    assertWhatsAppControlOwner(control, request, ownerKey);
+    if (control?.decision === 'CONTROL_ASESOR' && !control.ownerKey) {
+      throw new TransferError('Toma el control de la conversación antes de enviar la propuesta.');
+    }
+    return scope;
+  };
   const message = await prisma.$transaction(async tx => {
     const actor = await staff(req, tx, person, request);
+    const ownerKey = whatsAppControlOwnerKey(req, actor);
     await assertTransferSchema(tx);
     const offer = await loadTransferOffer(tx, person, request, option);
     await checkTransferOffer(tx, offer);
@@ -85,17 +102,17 @@ leadTransferRouter.post('/:id/proposal-whatsapp', handler(async (req, res) => {
     }
     const chatId = whatsAppChatId(patient.numero);
     const trackWhatsApp = await chatbotSchemaInstalled(tx);
-    if (trackWhatsApp) await assertWhatsAppContactAllowed(tx, { sessionId: settings.sessionId, chat: chatId });
+    if (trackWhatsApp) await checkContact(tx, chatId, ownerKey);
     const appointment = offer.slot;
     const expiry = offer.proposal.fecha_vigencia_hasta_utc_lead!;
     const limaDate = new Intl.DateTimeFormat('es-PE', {
-      dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Lima',
+      dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Lima', hour12: true,
     });
     const appointmentDate = new Intl.DateTimeFormat('es-PE', {
       dateStyle: 'long', timeZone: 'UTC',
     }).format(appointment.fecha);
-    const appointmentStart = appointment.hora_inicio.toISOString().slice(11, 16);
-    const appointmentEnd = appointment.hora_fin.toISOString().slice(11, 16);
+    const appointmentStart = formatAppointmentTime(appointment.hora_inicio.toISOString().slice(11, 16));
+    const appointmentEnd = formatAppointmentTime(appointment.hora_fin.toISOString().slice(11, 16));
     const sections = [
       `Hola, ${patient.nombres.trim().split(/\s+/)[0]} 👋 Te saludamos de NexoSalud Dental. Esta es tu propuesta:`,
       [
@@ -119,16 +136,26 @@ leadTransferRouter.post('/:id/proposal-whatsapp', handler(async (req, res) => {
       sections.push('💬 Si deseas continuar, responde a este mensaje y coordinaremos tu prerreserva.');
     }
     return { chatId, fingerprint: offer.huella, proposalId: offer.proposal.id_propuesta,
-      text: sections.join('\n\n'), imageUrl, trackWhatsApp };
+      text: sections.join('\n\n'), imageUrl, trackWhatsApp, ownerKey };
   }, transferIsolation);
 
-  // OpenWA can take several seconds to send. Release the SQL transaction first.
-  const result = await sendLeadWhatsApp(settings, message.fingerprint, message.chatId, message.text, message.imageUrl);
-  if (message.trackWhatsApp) {
-    await recordWhatsAppOffer(prisma, { sessionId: settings.sessionId, chat: message.chatId }, {
+  // Descarga el PNG antes de tomar el bloqueo de la conversación.
+  const flyerPng = message.imageUrl ? await downloadLeadFlyer(message.imageUrl) : undefined;
+  const send = () => sendLeadWhatsApp(settings, message.fingerprint, message.chatId, message.text, flyerPng);
+  const result = message.trackWhatsApp ? await prisma.$transaction(async tx => {
+    await lockWhatsAppControl(tx, { sessionId: settings.sessionId, chat: message.chatId });
+    const scope = await checkContact(tx, message.chatId, message.ownerKey);
+    const offer = await loadTransferOffer(tx, person, request, option);
+    if (offer.huella !== message.fingerprint) throw new TransferError('La propuesta cambió antes del envío.');
+    await checkTransferOffer(tx, offer);
+    await assertNoPendingLeadRevision(tx, offer);
+    const sent = await send();
+    await recordWhatsAppOffer(tx, scope, {
       personId: person, requestId: request, optionId: option, proposalId: message.proposalId, fingerprint: message.fingerprint,
-    }, result.messageId);
-  }
+    }, sent.messageId);
+    return sent;
+  }, whatsAppControlTransaction) : await send();
+  if (message.trackWhatsApp) publishWhatsAppAlertChange(settings.sessionId);
   res.json({ id_mensaje: result.messageId, reutilizado: result.reused,
     incluye_enlace: Boolean(settings.publicUrl), incluye_flyer: Boolean(message.imageUrl) });
 }, 'No se pudo preparar o enviar la propuesta por WhatsApp.'));

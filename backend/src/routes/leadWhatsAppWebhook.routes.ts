@@ -11,12 +11,14 @@ import {
 
 export const leadWhatsAppWebhookRouter = Router();
 
+// Comprueba la firma compartida con OpenWA para aceptar únicamente avisos auténticos del conector.
 export function verifyLeadWhatsAppSignature(raw: Buffer, signature: string | undefined, secret: string) {
   if (!signature || !/^sha256=[0-9a-f]{64}$/i.test(signature) || secret.length < 16) return false;
   const digest = createHmac('sha256', secret).update(raw).digest();
   return timingSafeEqual(digest, Buffer.from(signature.slice(7), 'hex'));
 }
 
+// OpenWA llama a este webhook cuando llega un mensaje o una confirmación de entrega o lectura.
 leadWhatsAppWebhookRouter.post('/', express.raw({ type: 'application/json', limit: '256kb', inflate: false }), async (req, res) => {
   const secret = chatbotWebhookSecret();
   if (!secret) return res.sendStatus(404);
@@ -34,6 +36,7 @@ leadWhatsAppWebhookRouter.post('/', express.raw({ type: 'application/json', limi
   if (event.event === 'test' && (!event.sessionId || event.sessionId === configuredSession)) return res.sendStatus(204);
   if (event.sessionId !== configuredSession) return res.sendStatus(403);
   const message = event.data;
+  // Guarda la confirmación disponible para conocer el estado del envío y evaluar el seguimiento.
   if (event.event === 'message.ack') {
     const id = externalId(message?.messageId) ?? externalId(message?.id);
     const status = message?.status;
@@ -63,6 +66,7 @@ leadWhatsAppWebhookRouter.post('/', express.raw({ type: 'application/json', limi
     if (!resolved) return res.sendStatus(204);
     const quoted = message.quotedMessage as { id?: unknown } | undefined;
     const quotedId = externalId(message.quotedMessageId) ?? externalId(quoted?.id);
+    // Conserva el mensaje en la cola de SQL Server y activa su procesamiento por el ChatBot LEAD.
     await enqueueWhatsAppMessage({ sessionId: settings.sessionId, chat: resolved }, {
       id, quotedId, text, optOut: explicitWhatsAppOptOut(text),
     });

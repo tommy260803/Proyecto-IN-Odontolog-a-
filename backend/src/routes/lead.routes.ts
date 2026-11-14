@@ -3,11 +3,14 @@ import { Prisma } from '@prisma/client';
 import { leadCommercialRouter } from './leadCommercial.routes';
 import { prisma, withRetry } from '../db';
 import { NegotiatorAgentService } from '../services/negotiatorAgentService';
-import { getServicioCommercialInfo } from './config.routes';
+import { getServiceDiscountLimit, getServicioCommercialInfo, getStoredServiciosRules } from './config.routes';
 import { leadTransferRouter } from './leadTransfer.routes';
 import { leadStaffAuthMode } from '../services/leadStaffAuth';
 import { checkTransferOffer, loadTransferOffer, TransferError, transferId, transferIsolation } from '../services/leadPayerTransfer';
 import { registerLeadFlyer } from '../services/leadFlyerAttachments';
+import { currentLeadTariff } from '../services/leadChatbotCatalog';
+import { quoteLeadDiscount, readLeadDiscount } from '../services/leadManualDiscount';
+import { readLeadProposalHistory } from '../services/leadProposalHistory';
 
 const router = Router();
 router.use('/commercial', leadCommercialRouter);
@@ -82,14 +85,15 @@ function parseCalendarDate(fecha: string): Date {
 router.get('/options/availability', async (req, res) => {
   try {
     const data = await withRetry(async () => {
+      const now = new Date();
       const profesionales = await prisma.profesionales.findMany({ where: { activo: true } });
       const sedes = await prisma.sedes.findMany({ where: { activo: true } });
       const servicios = await prisma.servicios.findMany({
         where: { activo: true },
         include: {
           Tarifas: {
-            where: { activo: true },
-            orderBy: { fecha_inicio: 'desc' },
+            where: { activo: true, fecha_inicio: { lte: now }, OR: [{ fecha_fin: null }, { fecha_fin: { gt: now } }] },
+            orderBy: [{ fecha_inicio: 'desc' }, { id_tarifa: 'desc' }],
             take: 1,
           }
         }
@@ -99,7 +103,10 @@ router.get('/options/availability', async (req, res) => {
         include: { Profesional: { include: { ProfesionalServicio: { select: { id_servicio: true } } } }, Sede: true },
         orderBy: [{ fecha: 'asc' }, { hora_inicio: 'asc' }, { id_disponibilidad: 'asc' }],
       })).filter(isUpcomingLimaSlot);
-      return { profesionales, sedes, servicios, disponibilidades };
+      const rules = getStoredServiciosRules();
+      return { profesionales, sedes, disponibilidades, servicios: servicios.map(service => ({
+        ...service, descuentoMaximo: getServiceDiscountLimit(service.id_servicio, rules),
+      })) };
     });
 
     res.json(data);
@@ -225,7 +232,12 @@ router.get('/:id', async (req, res) => {
     }));
 
     if (!lead) return res.status(404).json({ error: 'LEAD no encontrado' });
-    res.json(lead);
+    const { initial, drafts } = await readLeadProposalHistory(
+      lead.Solicitudes.flatMap(s => s.Opciones.map(o => o.id_opcion)), lead.Solicitudes.map(s => s.id_solicitud),
+    );
+    res.json({ ...lead, Solicitudes: lead.Solicitudes.map(s => ({ ...s,
+      Opciones: s.Opciones.filter(o => !drafts.has(o.id_opcion)).map(o => ({ ...o, propuesta_inicial: initial.get(o.id_opcion) })),
+    })) });
   } catch (error) {
     console.error('Error al obtener datos del LEAD:', error);
     res.status(500).json({ error: 'Error al obtener datos del LEAD' });
@@ -556,7 +568,7 @@ router.post('/:id/alternative', async (req, res) => {
   const id_persona = Number(req.params.id);
   const { id_solicitud, id_servicio, id_disponibilidad, precio_ofrecido, id_propuesta_lead,
     fecha_vigencia_hasta_utc_lead, promocion_aplicada, crear_version_propuesta,
-    confirmar_cambio_servicio, id_servicio_anterior,
+    confirmar_cambio_servicio, id_servicio_anterior, descuento_pct,
     id_preferencia_lead, pref_fecha_lead, pref_dia_semana_lead, pref_turno_lead,
     pref_hora_inicio_lead, pref_hora_fin_lead, ofr_turno_lead } = req.body;
   try {
@@ -627,9 +639,19 @@ router.post('/:id/alternative', async (req, res) => {
         where: { id_persona, id_preferencia: Number(id_preferencia_lead) }, include: { Horario: true },
       });
       if (id_preferencia_lead != null && !preference) throw new LeadConflict('La preferencia no corresponde al paciente.');
-      const promotion = typeof promocion_aplicada === 'string'
+      let promotion = typeof promocion_aplicada === 'string'
         ? promocion_aplicada.trim().slice(0, 150) || null
         : null;
+      if (descuento_pct !== undefined) {
+        const discount = readLeadDiscount(descuento_pct);
+        if (discount === null) throw new LeadConflict('Ingresa un porcentaje entre 0 y 99.99 con hasta dos decimales.');
+        const tariff = await currentLeadTariff(tx, serviceId);
+        if (!tariff?.precio.gt(0)) throw new LeadConflict('El tratamiento carece de una tarifa de lista vigente.');
+        const quote = quoteLeadDiscount(serviceId, tariff.precio, discount);
+        if (quote.error) throw new LeadConflict(quote.error);
+        if (!price.equals(quote.amount)) throw new LeadConflict('La tarifa de lista cambió. Actualiza el detalle antes de guardar.');
+        promotion = quote.promotion;
+      }
       let proposal;
       if (id_propuesta_lead == null) {
         proposal = await tx.propuestasEconomicasLead.create({
@@ -776,16 +798,11 @@ router.post('/:id/canva-flyer', async (req, res) => {
 
     const numOffered = offer ? Number(offer.proposal.precio_cotizado) : Number(offeredPrice) || 150;
     const numOriginal = offer ? Math.max(offer.listPrice ?? numOffered, numOffered) : Number(originalPrice) || 180;
-    let computedDiscount = offer
-      ? (numOriginal > 0 ? Math.round((1 - numOffered / numOriginal) * 100) : 0)
-      : Number(discountPct);
-    if (!offer && (isNaN(computedDiscount) || computedDiscount <= 0)) {
-      if (numOriginal > numOffered) {
-        computedDiscount = Math.round(((numOriginal - numOffered) / numOriginal) * 100);
-      } else {
-        computedDiscount = 20;
-      }
-    }
+    const savedDiscount = offer?.proposal.promocion_aplicada?.match(/\(-(\d{1,3}(?:\.\d{1,2})?)%\)$/)?.[1];
+    const inferredDiscount = numOriginal > numOffered ? Math.round((1 - numOffered / numOriginal) * 10_000) / 100 : 0;
+    const computedDiscount = offer
+      ? savedDiscount === undefined ? inferredDiscount : Number(savedDiscount)
+      : readLeadDiscount(discountPct) ?? inferredDiscount;
 
     let resolvedSede = offer
       ? [offer.slot.Sede.nombre, offer.slot.Sede.direccion].filter(Boolean).join(' - ')

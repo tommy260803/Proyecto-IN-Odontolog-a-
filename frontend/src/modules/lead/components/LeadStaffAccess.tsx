@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import LeadFollowUpForm from './LeadFollowUpForm';
+import { leadCommercialUrl as root, setLeadStaffSession, useLeadStaffSession, type LeadStaffSession } from '../services/leadWhatsAppAlerts';
 
-const root = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api') + '/lead/commercial';
-type Session = { token: string; expira_en: string; usuario: { nombres: string; apellidos: string; rol: string } };
-
-export default function LeadStaffAccess({ requestId, currentFollowUp, editable, onToken, qa = false }: {
+export default function LeadStaffAccess({ requestId, currentFollowUp, editable, onToken, shared = false, qa = false }: {
   requestId: string; currentFollowUp: string | null; editable: boolean; qa?: boolean;
-  onToken: (token: string | null) => void;
+  onToken?: (token: string | null) => void;
+  shared?: boolean;
 }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [localSession, setLocalSession] = useState<LeadStaffSession | null>(null);
+  const sharedSession = useLeadStaffSession();
+  const session = shared ? sharedSession : localSession;
+  const setSession = shared ? setLeadStaffSession : setLocalSession;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   return (
@@ -17,14 +19,14 @@ export default function LeadStaffAccess({ requestId, currentFollowUp, editable, 
       {session ? (
         <>
           <p>{session.usuario.nombres} {session.usuario.apellidos} · {session.usuario.rol}</p>
-          <p>Acceso verificado para esta solicitud.</p>
+          <p>{shared ? 'Sesión del personal LEAD activa.' : 'Acceso verificado para esta solicitud.'}</p>
           <button type="button" className="underline" onClick={() => {
             setSession(null);
-            onToken(null);
+            onToken?.(null);
             void fetch(root + '/staff/session', {
               method: 'DELETE', headers: { Authorization: `Bearer ${session.token}` },
             }).catch(() => setError('No se pudo confirmar el cierre en el servidor. La sesión local se eliminó.'));
-          }}>Cerrar sesión de QA</button>
+          }}>{qa ? 'Cerrar sesión de QA' : 'Cerrar sesión LEAD'}</button>
           {editable && <LeadFollowUpForm requestId={requestId} token={session.token} current={currentFollowUp} />}
         </>
       ) : (
@@ -34,7 +36,7 @@ export default function LeadStaffAccess({ requestId, currentFollowUp, editable, 
           const data = new FormData(form);
           setBusy(true);
           setError('');
-          let issued: Session | undefined;
+          let issued: LeadStaffSession | undefined;
           try {
             const result = await fetch(root + '/staff/session', {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -42,14 +44,14 @@ export default function LeadStaffAccess({ requestId, currentFollowUp, editable, 
             });
             if (!result.ok) throw new Error(result.status === 429 ? 'Demasiados intentos. Intenta más tarde.' :
               result.status === 401 ? 'Credenciales no válidas para LEAD.' : 'El acceso del personal no está disponible.');
-            issued = await result.json() as Session;
+            issued = await result.json() as LeadStaffSession;
             const access = await fetch(root + `/opportunities/${requestId}/staff-access`, {
               headers: { Authorization: `Bearer ${issued.token}` },
             });
             if (!access.ok) throw new Error(access.status === 403 ? 'Esta solicitud no está asignada a tu cuenta.' :
               'No fue posible verificar el acceso a esta solicitud.');
             setSession(issued);
-            onToken(issued.token);
+            onToken?.(issued.token);
             form.reset();
           } catch (failure) {
             if (issued) void fetch(root + '/staff/session', {

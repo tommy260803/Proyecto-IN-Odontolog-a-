@@ -1,6 +1,7 @@
 import { createHash, createHmac } from 'node:crypto';
 import { TransferError } from './leadPayerTransfer';
 
+// Lee del .env la URL del conector OpenWA, su clave y la sesión de WhatsApp que utilizará el sistema.
 export function leadWhatsAppSettings() {
   const base = process.env.OPENWA_BASE_URL?.trim();
   const apiKey = process.env.OPENWA_API_KEY?.trim();
@@ -50,15 +51,17 @@ export function proposalWhatsAppToken(settings: Settings, fingerprint: string, c
     .digest('hex');
 }
 
-export async function sendLeadWhatsApp(settings: Settings, fingerprint: string, chatId: string, text: string, imageUrl?: string) {
-  if (imageUrl && text.length > 1024) {
+// Envía texto o imagen a la API de OpenWA y utiliza una clave para evitar duplicar el mismo envío al reintentar.
+export async function sendLeadWhatsApp(settings: Settings, fingerprint: string, chatId: string, text: string, flyerPng?: Buffer,
+  options?: { stableKey: boolean }) {
+  if (flyerPng && text.length > 1024) {
     throw new TransferError('El mensaje es demasiado largo para acompañar al flyer. Puedes enviarlo solo como texto.', 422);
   }
-  const endpoint = imageUrl ? 'send-image' : 'send-text';
-  const body = JSON.stringify(imageUrl
-    ? { chatId, url: imageUrl, caption: text }
+  const endpoint = flyerPng ? 'send-image' : 'send-text';
+  const body = JSON.stringify(flyerPng
+    ? { chatId, base64: flyerPng.toString('base64'), mimetype: 'image/png', filename: 'propuesta-nexosalud.png', caption: text }
     : { chatId, text, linkPreview: false });
-  const key = 'nexosalud-lead-' + createHash('sha256').update(fingerprint).update(body).digest('hex');
+  const key = 'nexosalud-lead-' + createHash('sha256').update(fingerprint).update(options?.stableKey ? chatId : body).digest('hex');
   const url = `${settings.base}/api/sessions/${encodeURIComponent(settings.sessionId)}/messages/${endpoint}`;
   let response: Awaited<ReturnType<typeof fetch>>;
   try {
@@ -77,6 +80,10 @@ export async function sendLeadWhatsApp(settings: Settings, fingerprint: string, 
   if (response.status === 201 && typeof result?.messageId === 'string' && result.messageId.trim()) {
     return { messageId: result.messageId, reused: response.headers.get('Idempotent-Replayed') === 'true' };
   }
+  if (flyerPng) {
+    const code = typeof result?.code === 'string' && /^[A-Z_]{1,80}$/.test(result.code) ? result.code : undefined;
+    console.warn('[WhatsApp LEAD] OpenWA no confirmó el flyer.', { status: response.status, code });
+  }
   if (result?.code === 'IDEMPOTENCY_KEY_IN_PROGRESS') {
     throw new TransferError('OpenWA todavía está procesando este envío.', 409);
   }
@@ -92,7 +99,10 @@ export async function sendLeadWhatsApp(settings: Settings, fingerprint: string, 
   if (response.status === 429) {
     throw new TransferError('OpenWA pidió esperar antes de enviar otro mensaje.', 429);
   }
-  throw new TransferError(imageUrl
-    ? 'OpenWA rechazó el envío con flyer. Vuelve a generar el flyer o desmarca el adjunto.'
+  if (flyerPng && response.status === 413) {
+    throw new TransferError('OpenWA rechazó el tamaño del flyer. Genera una imagen más pequeña o desmarca el adjunto.', 413);
+  }
+  throw new TransferError(flyerPng
+    ? `OpenWA rechazó el adjunto (HTTP ${response.status}). Revisa el conector o desmarca el flyer para enviar solo la propuesta.`
     : 'OpenWA rechazó el mensaje. Verifica el número y la sesión.', 422);
 }

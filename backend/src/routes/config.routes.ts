@@ -129,8 +129,7 @@ export function saveServiciosRules(rules: Record<number, ServicioCommercialRule>
   }
 }
 
-export function getCommercialRuleForServicio(id_servicio: number): ServicioCommercialRule {
-  const allRules = getStoredServiciosRules();
+export function getCommercialRuleForServicio(id_servicio: number, allRules = getStoredServiciosRules()): ServicioCommercialRule {
   if (allRules[id_servicio]) {
     return allRules[id_servicio];
   }
@@ -139,6 +138,11 @@ export function getCommercialRuleForServicio(id_servicio: number): ServicioComme
     descuentosPermitidos: [10, 15, 20],
     serviciosRelacionadosIds: [],
   };
+}
+
+export function getServiceDiscountLimit(serviceId: number, rules?: Record<number, ServicioCommercialRule>): number {
+  const maximum = getCommercialRuleForServicio(serviceId, rules).descuentoMaximo;
+  return Number.isFinite(maximum) && maximum >= 0 && maximum <= 100 ? maximum : 0;
 }
 
 export async function getServicioCommercialInfo(serviceIdOrName: number | string) {

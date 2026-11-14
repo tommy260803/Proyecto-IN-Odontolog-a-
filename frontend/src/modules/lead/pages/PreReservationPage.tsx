@@ -21,6 +21,7 @@ import { chatWithNegotiatorAgent, type NegotiatorChatContext } from '@/shared/se
 import { leadService } from '../services/lead.service';
 import jsPDF from 'jspdf';
 import { createPaymentDocumentPdf } from '@/shared/pdf/paymentDocument';
+import { formatAppointmentTime } from '@/shared/utils/appointmentTime';
 import logoDataUrl from '@/shared/pdf/Logo_NexoSalud.png?inline';
 import {
   Sparkles,
@@ -642,7 +643,7 @@ export default function PreReservationPage() {
                   <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-500 font-medium">Fecha y Turno:</span>
                     <span className="font-semibold text-slate-800">
-                      {fechaCita} — {horaCita}
+                      {fechaCita} — {formatAppointmentTime(horaCita)}
                     </span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-slate-100">
@@ -982,7 +983,7 @@ export default function PreReservationPage() {
                     </div>
 
                     <div className="rounded-xl border border-teal-200 bg-teal-50 p-3 text-sm space-y-1">
-                      <p><strong>Horario ofrecido:</strong> {fechaCita} · {horaCita} (Lima)</p>
+                      <p><strong>Horario ofrecido:</strong> {fechaCita} · {formatAppointmentTime(horaCita)} (Lima)</p>
                       <p>{offerData.sede} · {offerData.doctor}</p>
                       <p className="text-xs">Esta confirmación conserva la alternativa recibida. Si necesitas otra sede, especialista o fecha, solicita una nueva alternativa al negociador.</p>
                     </div>

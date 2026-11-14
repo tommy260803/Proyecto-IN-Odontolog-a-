@@ -1,4 +1,5 @@
 import { leadUseCases } from '@/application/use-cases/lead';
+import { whatsAppStaffHeaders } from './leadWhatsAppAlerts';
 
 const useApi = import.meta.env.VITE_USE_API !== 'false';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -127,10 +128,34 @@ export const leadService = {
     const res = await fetch(`${API_URL}/lead/options/${id_opcion}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Error al actualizar alternativa');
-    return res.json();
+    const result = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(result?.error ?? 'Error al actualizar alternativa');
+    return result;
+  },
+
+  updateAlternativeDiscount: async (requestId: number, optionId: number | string, data: {
+    id_propuesta: number; id_tarifa: number; tarifa_base: string; descuento_pct: number;
+  }, staffToken?: string) => {
+    const res = await fetch(`${API_URL}/lead/commercial/opportunities/${requestId}/alternatives/${optionId}/discount`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...whatsAppStaffHeaders(staffToken) },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json().catch(() => null);
+    if (!res.ok || !result?.data) throw new Error(result?.error ?? 'No se pudo guardar el descuento.');
+    return result;
+  },
+
+  applyWhatsAppRevision: async (requestId: number, interactionId: number, staffToken?: string) => {
+    const res = await fetch(`${API_URL}/lead/commercial/opportunities/${requestId}/apply-revision`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...whatsAppStaffHeaders(staffToken) },
+      body: JSON.stringify({ id_interaccion: interactionId }),
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body?.id_opcion) throw new Error(body?.error || 'No se pudo aplicar la propuesta revisada.');
+    return body as { id_opcion: number; id_propuesta: number };
   },
 
   deleteAlternative: async (id_opcion: number | string) => {
@@ -243,10 +268,10 @@ export const leadService = {
     if (!response.ok) throw new Error(body.error || 'No se pudo preparar el enlace');
     return body;
   },
-  sendProposalWhatsApp: async (id: string, request: number, option: number | string, attachmentId?: string) => {
+  sendProposalWhatsApp: async (id: string, request: number, option: number | string, attachmentId?: string, staffToken?: string) => {
     const response = await fetch(`${API_URL}/lead/${encodeURIComponent(id)}/proposal-whatsapp`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...whatsAppStaffHeaders(staffToken) },
       body: JSON.stringify({ id_solicitud: request, id_opcion: option, id_adjunto: attachmentId }),
     });
     const body = await response.json();

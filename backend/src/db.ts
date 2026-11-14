@@ -2,9 +2,10 @@ import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Asegurar que las variables de entorno se cargan antes de instanciar Prisma
+// Carga backend/.env para que Prisma pueda leer SQLSERVER_URL al conectarse.
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
+// Este cliente ejecuta las consultas contra SQL Server. SSMS permite administrar y consultar ese mismo servidor.
 export const prisma = new PrismaClient({
   log: ['warn', 'error'],
 });

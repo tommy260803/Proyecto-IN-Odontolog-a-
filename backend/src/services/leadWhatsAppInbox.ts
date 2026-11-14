@@ -1,10 +1,21 @@
+import { createHash, randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
+import type { Request } from 'express';
 import { prisma } from '../db';
 import { TransferError, transferIsolation } from './leadPayerTransfer';
-import type { leadWhatsAppSettings } from './leadWhatsApp';
+import { whatsAppChatId, type leadWhatsAppSettings } from './leadWhatsApp';
+import { publishWhatsAppAlertChange } from './leadWhatsAppAlertEvents';
+import { leadOperationalPriority } from './leadOperationalPriority';
 
 type Db = Pick<Prisma.TransactionClient, '$queryRaw' | '$executeRaw'>;
 export type WhatsAppScope = { sessionId: string; chat: string };
+export type WhatsAppControlOwner = { key: string; name: string };
+
+export function whatsAppControlOwnerKey(req: Request, staffId: number | null) {
+  if (staffId !== null) return 'staff:' + staffId;
+  const token = req.get('X-Lead-Operator');
+  return token && /^[a-f0-9-]{36}$/i.test(token) ? 'local:' + createHash('sha256').update(token).digest('hex') : null;
+}
 export type WhatsAppOffer = { personId: number; requestId: number; proposalId: number; optionId: number; fingerprint: string };
 export type WhatsAppJob = {
   id: bigint; sessionId: string; chat: string; externalId: string; quotedId: string | null;
@@ -40,13 +51,13 @@ export async function resolveWhatsAppContact(settings: ReturnType<typeof leadWha
   return /^[1-9]\d{7,14}$/.test(phone) ? phone + '@c.us' : null;
 }
 
-export async function recordWhatsAppOffer(db: Db, scope: WhatsAppScope, offer: WhatsAppOffer, externalId: string) {
+export async function recordWhatsAppOffer(db: Db, scope: WhatsAppScope, offer: WhatsAppOffer, externalId: string, plan?: object) {
   // Store references only. The outbound proposal can contain a private reservation link.
   await db.$executeRaw`
     INSERT dbo.MensajesWhatsAppLead
-      (id_sesion, id_externo, chat, tipo, estado, id_persona, id_solicitud, id_propuesta, id_opcion, huella)
+      (id_sesion, id_externo, chat, tipo, estado, id_persona, id_solicitud, id_propuesta, id_opcion, huella, plan_respuesta)
     SELECT ${scope.sessionId}, ${externalId}, ${scope.chat}, 'OFERTA', 'FINALIZADO',
-      ${offer.personId}, ${offer.requestId}, ${offer.proposalId}, ${offer.optionId}, ${offer.fingerprint}
+      ${offer.personId}, ${offer.requestId}, ${offer.proposalId}, ${offer.optionId}, ${offer.fingerprint}, ${plan ? JSON.stringify(plan) : null}
     WHERE NOT EXISTS (
       SELECT 1 FROM dbo.MensajesWhatsAppLead WITH (UPDLOCK,HOLDLOCK)
       WHERE id_sesion=${scope.sessionId} AND id_externo=${externalId} AND tipo='OFERTA'
@@ -62,11 +73,12 @@ export async function assertWhatsAppContactAllowed(db: Db, scope: WhatsAppScope)
   if (row) throw new TransferError('El cliente pidió dejar de recibir mensajes por WhatsApp.', 403);
 }
 
+// Guarda la entrada de WhatsApp una sola vez para procesarla aunque el conector repita el aviso.
 export async function enqueueWhatsAppMessage(
   scope: WhatsAppScope,
   message: { id: string; quotedId: string | null; text: string; optOut: boolean },
 ) {
-  await prisma.$executeRaw`
+  const inserted = await prisma.$executeRaw`
     INSERT dbo.MensajesWhatsAppLead (id_sesion,id_externo,chat,id_citado,tipo,estado,texto,decision)
     SELECT ${scope.sessionId},${message.id},${scope.chat},${message.quotedId},'ENTRADA','PENDIENTE',
       ${message.text},${message.optOut ? 'BAJA' : null}
@@ -78,6 +90,7 @@ export async function enqueueWhatsAppMessage(
       WHERE id_sesion=${scope.sessionId} AND id_externo=${message.id} AND tipo='ENTRADA'
     )
   `;
+  if (inserted && message.optOut) publishWhatsAppAlertChange(scope.sessionId);
 }
 
 export async function claimWhatsAppMessage(sessionId: string) {
@@ -103,7 +116,7 @@ export async function claimWhatsAppMessage(sessionId: string) {
   return job;
 }
 
-export async function findWhatsAppOffers(db: Db, job: WhatsAppJob, includeExpired = false) {
+export async function findWhatsAppOffers(db: Db, job: WhatsAppJob, includeExpired = false, requestId?: number) {
   // An exact quote can point to an expired offer. The agent then explains or finds a replacement.
   // Without a quote, use only current offers and ask if several remain possible.
   return db.$queryRaw<WhatsAppOffer[]>`
@@ -120,6 +133,7 @@ export async function findWhatsAppOffers(db: Db, job: WhatsAppJob, includeExpire
       AND p.autoriza_contacto=1 AND e.nombre='LEAD' AND s.archivada_lead_en IS NULL
       AND s.estado IN ('Abierta',N'En negociación')
       AND COALESCE(s.resultado_comercial_lead,'')<>'CERRADA_SIN_ACUERDO'
+      ${requestId === undefined ? Prisma.empty : Prisma.sql`AND m.id_solicitud=${requestId}`}
       ${job.quotedId ? Prisma.sql`AND m.id_externo=${job.quotedId}` : Prisma.sql`
         AND (m.tipo='OFERTA' OR m.decision='CONTRAOFERTA')
         ${includeExpired ? Prisma.empty : Prisma.sql`
@@ -135,11 +149,15 @@ export async function findWhatsAppOffers(db: Db, job: WhatsAppJob, includeExpire
 
 export async function latestWhatsAppOutbound(job: WhatsAppJob) {
   const [message] = await prisma.$queryRaw<{ externalId: string; plan: string | null }[]>`
-    SELECT TOP (1) id_externo AS externalId, plan_respuesta AS [plan]
-    FROM dbo.MensajesWhatsAppLead
-    WHERE id_sesion=${job.sessionId} AND chat=${job.chat} AND tipo IN ('OFERTA','BOT')
-      AND estado='FINALIZADO' AND fecha_utc<=${job.receivedAt}
-    ORDER BY id_mensaje DESC
+    SELECT TOP (1) m.id_externo AS externalId, m.plan_respuesta AS [plan]
+    FROM dbo.MensajesWhatsAppLead m
+    WHERE m.id_sesion=${job.sessionId} AND m.chat=${job.chat} AND (m.tipo='OFERTA' OR (m.tipo='BOT' AND m.texto IS NOT NULL))
+      AND m.estado='FINALIZADO' AND m.fecha_utc<=${job.receivedAt}
+      AND NOT (m.tipo='BOT' AND m.decision='MENSAJE_ASESOR' AND EXISTS (
+        SELECT 1 FROM dbo.MensajesWhatsAppLead o WHERE o.id_sesion=m.id_sesion AND o.id_externo=m.id_externo
+          AND o.tipo='OFERTA' AND o.plan_respuesta IS NOT NULL
+      ))
+    ORDER BY m.id_mensaje DESC
   `;
   return message;
 }
@@ -151,12 +169,16 @@ export async function whatsappChannelId(db: Pick<Prisma.TransactionClient, 'cana
 }
 
 export async function chatHistoryForOffer(job: WhatsAppJob, offer: WhatsAppOffer) {
-  return prisma.$queryRaw<{ messageId: bigint; type: 'ENTRADA' | 'BOT'; text: string; externalId: string; plan: string | null }[]>`
-    SELECT TOP (30) id_mensaje AS messageId,tipo AS type,texto AS text,id_externo AS externalId,plan_respuesta AS [plan]
+  return prisma.$queryRaw<{ messageId: bigint; type: 'ENTRADA' | 'BOT'; text: string; externalId: string; plan: string | null; decision: string | null }[]>`
+    SELECT TOP (30) id_mensaje AS messageId,tipo AS type,texto AS text,id_externo AS externalId,plan_respuesta AS [plan],decision
     FROM dbo.MensajesWhatsAppLead
     WHERE id_sesion=${job.sessionId} AND chat=${job.chat} AND id_solicitud=${offer.requestId}
       AND (tipo='BOT' OR (tipo='ENTRADA' AND id_mensaje<${job.id}))
       AND texto IS NOT NULL AND estado IN ('FINALIZADO','REVISION')
+      AND id_mensaje>COALESCE((SELECT MAX(o.id_mensaje) FROM dbo.MensajesWhatsAppLead o
+        WHERE o.id_sesion=${job.sessionId} AND o.chat=${job.chat} AND o.id_solicitud=${offer.requestId}
+          AND o.tipo='OFERTA' AND o.fecha_utc<=${job.receivedAt}
+          AND JSON_VALUE(CASE WHEN ISJSON(o.plan_respuesta)=1 THEN o.plan_respuesta END,'$.revisionInteractionId') IS NOT NULL),0)
     ORDER BY ${job.quotedId ? Prisma.sql`CASE WHEN tipo='BOT' AND id_externo=${job.quotedId} THEN 0 ELSE 1 END,` : Prisma.empty}
       id_mensaje DESC;
   `;
@@ -171,19 +193,184 @@ export async function wasWhatsAppMenuShown(job: WhatsAppJob, offer: WhatsAppOffe
   return Boolean(row);
 }
 
-export async function isWhatsAppWithAdvisor(job: WhatsAppJob, offer: WhatsAppOffer) {
-  const [row] = await prisma.$queryRaw<{ paused: number }[]>`
+export async function readWhatsAppControl(db: Db, scope: WhatsAppScope) {
+  const [control] = await db.$queryRaw<{
+    id: bigint; requestId: number; decision: 'CONTROL_ASESOR' | 'CONTROL_BOT'; ownerKey: string | null; ownerName: string | null;
+  }[]>`
+    SELECT TOP (1) m.id_mensaje AS id,m.id_solicitud AS requestId,
+      CASE WHEN m.decision='CONTROL_ASESOR' AND
+        (s.archivada_lead_en IS NOT NULL OR s.estado NOT IN ('Abierta',N'En negociación')
+          OR COALESCE(s.resultado_comercial_lead,'') IN ('ACEPTADA','CERRADA_SIN_ACUERDO') OR e.nombre<>'LEAD')
+        THEN 'CONTROL_BOT' ELSE m.decision END AS decision,
+      JSON_VALUE(CASE WHEN ISJSON(m.plan_respuesta)=1 THEN m.plan_respuesta END,'$.key') AS ownerKey,
+      JSON_VALUE(CASE WHEN ISJSON(m.plan_respuesta)=1 THEN m.plan_respuesta END,'$.name') AS ownerName
+    FROM dbo.MensajesWhatsAppLead m
+    JOIN dbo.Solicitudes s ON s.id_solicitud=m.id_solicitud
+    JOIN dbo.Personas p ON p.id_persona=s.id_persona
+    JOIN dbo.Etapas e ON e.id_etapa=p.id_etapa_actual
+    WHERE m.id_sesion=${scope.sessionId} AND m.chat=${scope.chat}
+      AND m.tipo='BOT' AND m.decision IN ('CONTROL_ASESOR','CONTROL_BOT')
+    ORDER BY m.id_mensaje DESC
+  `;
+  return control;
+}
+
+export async function latestWhatsAppOfferForRequest(db: Db, scope: WhatsAppScope, requestId: number) {
+  const [offer] = await db.$queryRaw<WhatsAppOffer[]>`
+    SELECT TOP (1) id_persona AS personId,id_solicitud AS requestId,id_propuesta AS proposalId,
+      id_opcion AS optionId,huella AS fingerprint
+    FROM dbo.MensajesWhatsAppLead
+    WHERE id_sesion=${scope.sessionId} AND chat=${scope.chat} AND id_solicitud=${requestId}
+      AND tipo='OFERTA' AND estado='FINALIZADO'
+      AND id_persona IS NOT NULL AND id_propuesta IS NOT NULL AND id_opcion IS NOT NULL AND huella IS NOT NULL
+    ORDER BY id_mensaje DESC
+  `;
+  return offer;
+}
+
+export async function lockWhatsAppControl(tx: Prisma.TransactionClient, scope: WhatsAppScope) {
+  const key = 'LEAD:WhatsApp:' + createHash('sha256').update(JSON.stringify([scope.sessionId, scope.chat])).digest('hex');
+  const [lock] = await tx.$queryRaw<{ code: number }[]>`
+    DECLARE @code int;
+    EXEC @code=sys.sp_getapplock @Resource=${key},@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=25000;
+    SELECT @code AS code;
+  `;
+  if (!lock || lock.code < 0) throw new TransferError('Hay un envío o cambio de control en curso. Intenta nuevamente.');
+}
+
+export function assertWhatsAppControlOwner(control: Awaited<ReturnType<typeof readWhatsAppControl>>, requestId: number, ownerKey: string | null) {
+  if (control?.decision !== 'CONTROL_ASESOR') return;
+  if (control.requestId !== requestId) throw new TransferError('Este chat ya está bajo control de otra oportunidad.');
+  if (control.ownerKey && control.ownerKey !== ownerKey) {
+    throw new TransferError('Esta conversación ya está siendo atendida por ' + (control.ownerName || 'otro asesor') + '.');
+  }
+}
+
+export const whatsAppControlTransaction = { maxWait: 5000, timeout: 50000 } as const;
+
+export async function recordWhatsAppControl(tx: Db, scope: WhatsAppScope, offer: WhatsAppOffer, owner: WhatsAppControlOwner | null) {
+  await tx.$executeRaw`
+    INSERT dbo.MensajesWhatsAppLead
+      (id_sesion,id_externo,chat,tipo,estado,id_persona,id_solicitud,id_propuesta,id_opcion,huella,decision,plan_respuesta)
+    VALUES (${scope.sessionId},${'control:' + randomUUID()},${scope.chat},'BOT','FINALIZADO',
+      ${offer.personId},${offer.requestId},${offer.proposalId},${offer.optionId},${offer.fingerprint},
+      ${owner ? 'CONTROL_ASESOR' : 'CONTROL_BOT'},${owner ? JSON.stringify(owner) : null})
+  `;
+}
+
+export async function recordWhatsAppAdvisorMessage(
+  tx: Prisma.TransactionClient, scope: WhatsAppScope, offer: WhatsAppOffer, actorId: number | null,
+  externalId: string, text: string,
+) {
+  const [previous] = await tx.$queryRaw<{ requestId: number; interactionId: number }[]>`
+    SELECT id_solicitud AS requestId,id_interaccion AS interactionId FROM dbo.MensajesWhatsAppLead
+    WHERE id_sesion=${scope.sessionId} AND id_externo=${externalId} AND tipo='BOT' AND decision='MENSAJE_ASESOR'
+  `;
+  if (previous) {
+    if (previous.requestId !== offer.requestId) throw new TransferError('El envío ya pertenece a otra oportunidad.');
+    return previous.interactionId;
+  }
+  const interaction = await tx.interacciones.create({ data: {
+    id_persona: offer.personId, id_solicitud: offer.requestId, id_usuario: actorId,
+    id_canal: await whatsappChannelId(tx), tipo: 'Respuesta del asesor', resultado: 'WhatsApp',
+    mensaje: text, fecha_hora: new Date(),
+  } });
+  await tx.$executeRaw`
+    INSERT dbo.MensajesWhatsAppLead
+      (id_sesion,id_externo,chat,tipo,estado,id_persona,id_solicitud,id_propuesta,id_opcion,huella,id_interaccion,texto,decision)
+    VALUES (${scope.sessionId},${externalId},${scope.chat},'BOT','FINALIZADO',${offer.personId},
+      ${offer.requestId},${offer.proposalId},${offer.optionId},${offer.fingerprint},
+      ${interaction.id_interaccion},${text},'MENSAJE_ASESOR')
+  `;
+  return interaction.id_interaccion;
+}
+
+export async function hasWhatsAppReview(db: Db, scope: WhatsAppScope, requestId: number, before?: bigint) {
+  const [row] = await db.$queryRaw<{ paused: number }[]>`
     SELECT TOP (1) 1 AS paused FROM dbo.MensajesWhatsAppLead
-    WHERE id_sesion=${job.sessionId} AND chat=${job.chat} AND id_solicitud=${offer.requestId}
-      AND tipo='ENTRADA' AND estado='REVISION' AND id_mensaje<${job.id}
+    WHERE id_sesion=${scope.sessionId} AND chat=${scope.chat} AND id_solicitud=${requestId}
+      AND tipo='ENTRADA' AND estado='REVISION'
+      ${before === undefined ? Prisma.empty : Prisma.sql`AND id_mensaje<${before}`}
       AND id_mensaje>COALESCE((
         SELECT MAX(id_mensaje) FROM dbo.MensajesWhatsAppLead
-        WHERE id_sesion=${job.sessionId} AND chat=${job.chat} AND id_solicitud=${offer.requestId} AND tipo='OFERTA'
+        WHERE id_sesion=${scope.sessionId} AND chat=${scope.chat} AND id_solicitud=${requestId}
+          AND (tipo='OFERTA' OR (tipo='BOT' AND decision='CONTROL_BOT'))
       ),0)
   `;
   return Boolean(row);
 }
 
+export async function listWhatsAppReviews(db: Db, sessionId: string, advisorId: number | null) {
+  const rows = await db.$queryRaw<{
+    id: string; requestId: number; personId: number; chat: string; phone: string | null; receivedAt: Date;
+    followUp: Date | null; firstResponse: Date | null;
+  }[]>`
+    WITH Pending AS (
+      SELECT r.id_mensaje, r.id_solicitud, p.id_persona, r.chat, p.numero, r.fecha_utc,
+        s.fecha_proximo_seguimiento, s.fecha_primera_respuesta,
+        ROW_NUMBER() OVER (PARTITION BY r.id_solicitud, r.chat ORDER BY r.id_mensaje DESC) AS position
+      FROM dbo.MensajesWhatsAppLead r
+      JOIN dbo.Solicitudes s ON s.id_solicitud=r.id_solicitud
+      JOIN dbo.Personas p ON p.id_persona=s.id_persona
+      JOIN dbo.Etapas e ON e.id_etapa=p.id_etapa_actual
+      OUTER APPLY (
+        SELECT TOP (1) c.decision, c.id_solicitud
+        FROM dbo.MensajesWhatsAppLead c
+        WHERE c.id_sesion=r.id_sesion AND c.chat=r.chat
+          AND c.tipo='BOT' AND c.decision IN ('CONTROL_ASESOR','CONTROL_BOT')
+        ORDER BY c.id_mensaje DESC
+      ) control
+      WHERE r.id_sesion=${sessionId} AND r.tipo='ENTRADA' AND r.estado='REVISION'
+        AND p.autoriza_contacto=1 AND e.nombre='LEAD' AND s.archivada_lead_en IS NULL
+        AND s.estado IN ('Abierta',N'En negociación')
+        AND COALESCE(s.resultado_comercial_lead,'') NOT IN ('ACEPTADA','CERRADA_SIN_ACUERDO')
+        ${advisorId === null ? Prisma.empty : Prisma.sql`AND s.id_negociador=${advisorId}`}
+        AND EXISTS (
+          SELECT 1 FROM dbo.MensajesWhatsAppLead o
+          WHERE o.id_sesion=r.id_sesion AND o.chat=r.chat AND o.id_solicitud=r.id_solicitud
+            AND o.tipo='OFERTA' AND o.estado='FINALIZADO' AND o.id_mensaje<r.id_mensaje
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM dbo.MensajesWhatsAppLead m
+          WHERE m.id_sesion=r.id_sesion AND m.chat=r.chat AND (
+            m.decision='BAJA' OR (m.id_solicitud=r.id_solicitud AND m.id_mensaje>r.id_mensaje
+              AND (m.tipo='OFERTA' OR (m.tipo='BOT' AND m.decision IN ('CONTROL_ASESOR','CONTROL_BOT'))))
+          )
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM dbo.Solicitudes owned
+          JOIN dbo.Personas owner ON owner.id_persona=owned.id_persona
+          JOIN dbo.Etapas stage ON stage.id_etapa=owner.id_etapa_actual
+          WHERE control.decision='CONTROL_ASESOR' AND owned.id_solicitud=control.id_solicitud
+            AND owned.archivada_lead_en IS NULL AND owned.estado IN ('Abierta',N'En negociación')
+            AND COALESCE(owned.resultado_comercial_lead,'') NOT IN ('ACEPTADA','CERRADA_SIN_ACUERDO')
+            AND stage.nombre='LEAD'
+        )
+    )
+    SELECT CONVERT(varchar(20), id_mensaje) AS id, id_solicitud AS requestId, id_persona AS personId,
+      chat, numero AS phone, fecha_utc AS receivedAt, fecha_proximo_seguimiento AS followUp,
+      fecha_primera_respuesta AS firstResponse
+    FROM Pending WHERE position=1 ORDER BY id_mensaje DESC
+  `;
+  const now = new Date();
+  return rows.flatMap(({ phone, chat, followUp, firstResponse, ...alert }) => {
+    try {
+      return whatsAppChatId(phone) === chat
+        ? [{ ...alert, prioridad: leadOperationalPriority({ active: true, followUp, firstResponse }, now) }] : [];
+    } catch (error) {
+      if (!(error instanceof TransferError)) throw error;
+      return [];
+    }
+  }).sort((a, b) => a.prioridad.orden - b.prioridad.orden);
+}
+
+export async function isWhatsAppWithAdvisor(job: WhatsAppJob, offer: WhatsAppOffer) {
+  const control = await readWhatsAppControl(prisma, job);
+  return control?.decision === 'CONTROL_ASESOR' || Boolean(control && job.id < control.id) ||
+    await hasWhatsAppReview(prisma, job, offer.requestId, job.id);
+}
+
+// Relaciona el mensaje recibido con la persona, solicitud, propuesta y alternativa que se están negociando.
 export async function recordWhatsAppInbound(job: WhatsAppJob, offer: WhatsAppOffer) {
   if (job.interactionId) return;
   await prisma.$transaction(async tx => {
@@ -201,26 +388,28 @@ export async function recordWhatsAppInbound(job: WhatsAppJob, offer: WhatsAppOff
   }, transferIsolation);
 }
 
-export async function saveWhatsAppPlan(job: WhatsAppJob, plan: object, decision: string) {
-  const changed = await prisma.$executeRaw`
+export async function saveWhatsAppPlan(job: WhatsAppJob, plan: object, decision: string, db: Db = prisma) {
+  const changed = await db.$executeRaw`
     UPDATE dbo.MensajesWhatsAppLead SET plan_respuesta=${JSON.stringify(plan)}, decision=${decision}
     WHERE id_mensaje=${job.id} AND toma_utc=${job.claimedAt} AND estado='PROCESANDO'
   `;
   if (changed !== 1) throw new Error('La toma del mensaje ya no está vigente.');
 }
 
+// Registra el resultado del bot y su respuesta; una derivación queda pendiente de revisión por el asesor.
 export async function finishWhatsAppMessage(
   job: WhatsAppJob, decision: string,
   outbound?: { text: string; externalId: string; offer?: WhatsAppOffer; review?: boolean },
   review = false,
+  transaction?: Prisma.TransactionClient,
 ) {
-  await prisma.$transaction(async tx => {
+  const finish = async (tx: Prisma.TransactionClient) => {
     const changed = await tx.$executeRaw`
       UPDATE dbo.MensajesWhatsAppLead
       SET estado=${review ? 'REVISION' : 'FINALIZADO'}, decision=${decision}
       WHERE id_mensaje=${job.id} AND toma_utc=${job.claimedAt} AND estado='PROCESANDO'
     `;
-    if (changed !== 1 || !outbound) return;
+    if (changed !== 1 || !outbound) return changed === 1 && review;
     const offer = outbound.offer;
     const interaction = offer && await tx.interacciones.create({ data: {
       id_persona: offer.personId, id_solicitud: offer.requestId, id_canal: await whatsappChannelId(tx),
@@ -235,12 +424,17 @@ export async function finishWhatsAppMessage(
         ${offer?.fingerprint ?? null},${interaction ? interaction.id_interaccion : null}
       FROM dbo.MensajesWhatsAppLead WHERE id_mensaje=${job.id}
     `;
-  }, transferIsolation);
+    return review;
+  };
+  if (transaction) return finish(transaction);
+  const reviewCommitted = await prisma.$transaction(finish, transferIsolation);
+  if (reviewCommitted) publishWhatsAppAlertChange(job.sessionId);
+  return reviewCommitted;
 }
 
 export async function retryWhatsAppMessage(job: WhatsAppJob) {
   if (job.attempts >= 3) {
-    await prisma.$transaction(async tx => {
+    const reviewCommitted = await prisma.$transaction(async tx => {
       const [row] = await tx.$queryRaw<{ interactionId: number | null }[]>`
         UPDATE dbo.MensajesWhatsAppLead SET estado='REVISION',decision='FALLO'
         OUTPUT inserted.id_interaccion AS interactionId
@@ -249,7 +443,9 @@ export async function retryWhatsAppMessage(job: WhatsAppJob) {
       if (row?.interactionId) await tx.interacciones.update({
         where: { id_interaccion: row.interactionId }, data: { resultado: 'WhatsApp · requiere asesor' },
       });
+      return Boolean(row);
     }, transferIsolation);
+    if (reviewCommitted) publishWhatsAppAlertChange(job.sessionId);
     return;
   }
   await prisma.$executeRaw`

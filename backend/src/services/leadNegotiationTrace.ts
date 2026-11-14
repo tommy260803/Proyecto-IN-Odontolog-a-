@@ -1,4 +1,5 @@
 import type { LeadNegotiationSlot } from './leadNegotiationSlots';
+import { formatAppointmentTime } from '../utils/appointmentTime';
 
 export type AgentActivity = {
   codigo: 'CAP-01' | 'CAP-02' | 'CAP-03' | 'CAP-04' | 'CAP-05';
@@ -41,14 +42,16 @@ function readPlan(savedPlan: string | null | undefined): NegotiationPlan | null 
   }
 }
 
-export function describeSelectedWhatsAppSlot(slot: LeadNegotiationSlot) {
-  return `Anoté que prefieres ${slot.fecha} a las ${slot.inicio} en ${slot.sede}. Un asesor verificará el turno y preparará la propuesta.`;
+export function describeSelectedWhatsAppSlot(slot: LeadNegotiationSlot, time = formatAppointmentTime(slot.inicio)) {
+  return `Anoté que prefieres ${slot.fecha} a las ${time} en ${slot.sede}. Un asesor verificará el turno y preparará la propuesta.`;
 }
 
 function recoverSelectedSlot(text: string, previousAgendaPlan: string | null | undefined) {
   const slots = readPlan(previousAgendaPlan)?.slots;
   if (!Array.isArray(slots)) return undefined;
-  const matches = slots.filter(isSlot).filter(slot => describeSelectedWhatsAppSlot(slot) === text);
+  const matches = slots.filter(isSlot).filter(slot =>
+    describeSelectedWhatsAppSlot(slot) === text || describeSelectedWhatsAppSlot(slot, slot.inicio) === text,
+  );
   return matches.length === 1 ? matches[0] : undefined;
 }
 
@@ -68,9 +71,16 @@ export function describeWhatsAppNegotiation(decision: string | null, savedPlan: 
   }
 
   let accion_chatbot: string | undefined;
-  if (needsAdvisor) accion_chatbot = 'Derivó la conversación al asesor';
+  if (decision === 'REVISION_PROPUESTA' || decision === 'REVISION_APLICADA') accion_chatbot = 'El paciente confirmó la propuesta revisada';
+  else if (needsAdvisor) accion_chatbot = 'Derivó la conversación al asesor';
   else if (decision === 'MENU') accion_chatbot = 'Orientó al paciente';
+  else if (decision === 'FUERA_DE_TEMA') accion_chatbot = 'Orientó al paciente sobre los temas que atiende';
+  else if (decision === 'CATALOGO') accion_chatbot = 'Consultó el catálogo de atención';
+  else if (decision === 'PRERRESERVA_SIN_ENLACE') accion_chatbot = 'Explicó cómo continuar con la prerreserva';
+  else if (decision === 'RECHAZO') accion_chatbot = 'Registró la respuesta del paciente';
   else if (decision === 'VIGENCIA') accion_chatbot = 'Informó la vigencia de la propuesta';
+  else if (decision === 'SEGUIMIENTO_CONTACTO') accion_chatbot = 'Coordinó el próximo contacto';
+  else if (decision === 'SEGUIMIENTO_ENVIADO') accion_chatbot = 'Envió un seguimiento programado';
   else if (decision === 'AGENDA') accion_chatbot = slotCount ? 'Compartió alternativas de horario' : 'Continuó la consulta de horario';
   else if (decision === 'CONTRAOFERTA') {
     accion_chatbot = plan?.accionComercial === 'MEJORA_PROMOCION'
@@ -86,8 +96,10 @@ export function describeWhatsAppNegotiation(decision: string | null, savedPlan: 
   const confirmedOffer = decision === 'CONFIRMAR' || (decision === 'ASESOR' && plan?.confirmedOffer === true) ||
     (decision === 'CONTRAOFERTA' && (plan?.confirmedOffer === true ||
       (storedActivity?.codigo === 'CAP-02' && offer?.texto?.startsWith('📅 Esta es la propuesta vigente para el horario que elegiste.'))));
-  const actualizacion = offer?.id_opcion && offer.id_propuesta && (horario || confirmedOffer)
-    ? { id_opcion: offer.id_opcion, id_propuesta: offer.id_propuesta, huella: offer.huella ?? undefined, horario }
+  const isRevision = decision === 'REVISION_PROPUESTA' || decision === 'REVISION_APLICADA';
+  const actualizacion = offer?.id_opcion && offer.id_propuesta && (horario || confirmedOffer || isRevision)
+    ? { id_opcion: offer.id_opcion, id_propuesta: offer.id_propuesta, huella: offer.huella ?? undefined, horario,
+      aplicar_revision: isRevision || undefined, aplicada: decision === 'REVISION_APLICADA' || undefined }
     : undefined;
   return { accion_chatbot, actividad_agente, actualizacion };
 }

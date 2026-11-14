@@ -1,3 +1,4 @@
+// CAP-01 ordena la atención con reglas de seguimiento vencido, contacto de hoy y primera respuesta pendiente.
 export function leadOperationalPriority(row: {
   active: boolean; followUp: Date | null; firstResponse: Date | null; paused?: boolean;
 }, now = new Date()) {

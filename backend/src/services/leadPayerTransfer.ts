@@ -89,6 +89,7 @@ export async function checkTransferOffer(tx:Prisma.TransactionClient, offer:Awai
 export type TransferCommand={personId:number;requestId:number;optionId:number;fingerprint:string;key:string;
   accepted:boolean;authorized:boolean;contactConsent:boolean;source:'ASESOR'|'PACIENTE';evidence:string;actorId:number|null};
 
+// CAP-05 verifica el acuerdo y la autorización, crea la reserva pendiente y registra la transición a PAYER en una transacción.
 export async function executePayerTransfer(tx:Prisma.TransactionClient, command:TransferCommand) {
   const c=command;
   if(c.accepted!==true||c.authorized!==true)throw new TransferError('Confirma la aceptación comercial y la autorización expresa para reservar.',400);
@@ -139,6 +140,7 @@ export async function executePayerTransfer(tx:Prisma.TransactionClient, command:
   if(moved.count!==1)throw new TransferError('La persona cambió de etapa durante la confirmación.');
   const reservation=await tx.reservas.create({data:{id_persona:r.id_persona,id_solicitud:r.id_solicitud,id_opcion:o.id_opcion,
     estado:'Pendiente',confirmacion_explicita:true,fecha_confirmacion:now}});
+  // EventosEtapa conserva la evidencia del cambio de LEAD a PAYER para esta persona y solicitud.
   const event=await tx.eventosEtapa.create({data:{id_persona:r.id_persona,id_solicitud:r.id_solicitud,
     etapa_origen:lead.id_etapa,etapa_destino:payer.id_etapa,id_usuario:c.actorId,
     motivo:'Traspaso LEAD confirmado por '+c.source,evidencia:c.evidence}});
@@ -162,6 +164,7 @@ export async function storePreReservationAccess(
   actorId: number | null,
   token: string,
 ) {
+  await assertNoPendingLeadRevision(tx, offer);
   // Access may not outlive the actual price expiry. No fixed clinic deadline is invented.
   const expiry=offer.proposal.fecha_vigencia_hasta_utc_lead!;
   const hash = hashAccess(token);
@@ -169,6 +172,21 @@ export async function storePreReservationAccess(
     INSERT dbo.AccesosPreReservaLead(hash_token,id_persona,id_solicitud,id_opcion,huella,vence_utc,id_usuario)
     VALUES(${hash},${offer.request.id_persona},${offer.request.id_solicitud},${offer.option.id_opcion},${offer.huella},${expiry},${actorId})`;
   return {token,huella:offer.huella,vence_utc:expiry};
+}
+
+export async function assertNoPendingLeadRevision(tx: Prisma.TransactionClient, offer: Awaited<ReturnType<typeof loadTransferOffer>>) {
+  const [schema] = await tx.$queryRaw<{ present: number }[]>`
+    SELECT CASE WHEN OBJECT_ID(N'dbo.MensajesWhatsAppLead', N'U') IS NULL THEN 0 ELSE 1 END AS present`;
+  if (!schema?.present) return;
+  const [pending] = await tx.$queryRaw<{ pending: number }[]>`
+    SELECT TOP (1) 1 AS pending FROM dbo.MensajesWhatsAppLead m
+    WHERE m.id_solicitud=${offer.request.id_solicitud} AND m.tipo='BOT' AND m.decision='REVISION_PROPUESTA'
+      AND TRY_CONVERT(int, JSON_VALUE(CASE WHEN ISJSON(m.plan_respuesta)=1 THEN m.plan_respuesta END,
+        '$.revisionOrigin.optionId'))=${offer.option.id_opcion}
+      AND NOT EXISTS (SELECT 1 FROM dbo.MensajesWhatsAppLead later
+        WHERE later.id_solicitud=m.id_solicitud AND later.id_sesion=m.id_sesion AND later.chat=m.chat
+          AND later.tipo='OFERTA' AND later.id_mensaje>m.id_mensaje)`;
+  if (pending) throw new TransferError('Aplica la propuesta confirmada desde la conversación de WhatsApp.');
 }
 
 export async function publicAccess(tx:Prisma.TransactionClient, person:number, token:unknown) {

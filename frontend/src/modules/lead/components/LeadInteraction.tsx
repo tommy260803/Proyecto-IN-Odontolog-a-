@@ -1,11 +1,12 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import {
   ArrowDown, ArrowRight, Bot, CalendarDays, CheckCircle2, CircleAlert, ClipboardList,
-  Loader2, MessageSquare, Mic, Sparkles, UserRound,
+  Loader2, MessageSquare, Mic, Send, Sparkles, Trash2, UserRound,
 } from 'lucide-react';
 import { LeadWhatsAppStatus, type LeadWhatsAppTracking } from './LeadWhatsAppStatus';
+import { formatAppointmentTime } from '@/shared/utils/appointmentTime';
+import { leadCommercialUrl as api, leadWhatsAppControlChanged, whatsAppStaffHeaders } from '../services/leadWhatsAppAlerts';
 
-const api = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api') + '/lead/commercial';
 
 export type LeadInteractionAnalysis = {
   dia?: string;
@@ -23,7 +24,10 @@ export type LeadSuggestedSlot = {
   fecha: string; inicio: string; fin: string; sede: string; profesional: string;
 };
 
-export type WhatsAppProposalUpdate = { id_opcion: number; id_propuesta: number; huella?: string; horario?: LeadSuggestedSlot };
+export type WhatsAppProposalUpdate = {
+  id_opcion: number; id_propuesta: number; huella?: string; horario?: LeadSuggestedSlot;
+  aplicar_revision?: boolean; aplicada?: boolean; id_interaccion?: number;
+};
 
 type Recognition = {
   lang: string;
@@ -61,6 +65,7 @@ const messageTime = new Intl.DateTimeFormat('es-PE', {
 const slotDate = new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeZone: 'UTC' });
 const fieldClass = 'w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 text-sm font-normal text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-teal-600 focus:bg-white focus:ring-2 focus:ring-teal-600/20 disabled:opacity-60 [color-scheme:light] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-teal-500 dark:focus:bg-slate-950 dark:focus:ring-teal-500/25 dark:[color-scheme:dark]';
 const secondaryButton = 'inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-600 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800';
+const primaryButton = 'inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-[#0f766e] px-4 text-xs font-semibold text-white transition-colors hover:bg-teal-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 disabled:opacity-50';
 
 function AgentActivityCard({ activity, slots, promotions, onChooseSlot }: {
   activity: { codigo?: string; detalle: string };
@@ -89,7 +94,7 @@ function AgentActivityCard({ activity, slots, promotions, onChooseSlot }: {
               className="flex min-w-0 items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 text-left transition-colors hover:border-teal-500 hover:bg-teal-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-600 dark:border-slate-700 dark:bg-slate-950/60 dark:hover:border-teal-600 dark:hover:bg-teal-950">
               <CalendarDays aria-hidden="true" className="h-4 w-4 shrink-0 text-teal-700 dark:text-teal-300" />
               <span className="min-w-0 flex-1">
-                <span className="block text-xs font-semibold text-slate-900 dark:text-slate-100">{slotDate.format(new Date(slot.fecha + 'T00:00:00Z'))} · {slot.inicio}–{slot.fin}</span>
+                <span className="block text-xs font-semibold text-slate-900 dark:text-slate-100">{slotDate.format(new Date(slot.fecha + 'T00:00:00Z'))} · {formatAppointmentTime(`${slot.inicio} - ${slot.fin}`)}</span>
                 <span className="block text-xs text-slate-600 [overflow-wrap:anywhere] dark:text-slate-400">{slot.sede} · {slot.profesional}</span>
                 <span className="mt-1 block text-xs font-medium text-teal-800 dark:text-teal-300">Usar en la propuesta</span>
               </span>
@@ -108,7 +113,9 @@ function MessageCard({ message, channel, onUpdateProposal }: {
   onUpdateProposal?: LeadInteractionProps['onUpdateProposal'];
 }) {
   const fromBot = message.tipo === 'Respuesta del chatbot';
-  const whatsapp = fromBot || message.resultado?.startsWith('WhatsApp');
+  const fromAdvisor = message.tipo === 'Respuesta del asesor';
+  const outbound = fromBot || fromAdvisor;
+  const whatsapp = outbound || message.resultado?.startsWith('WhatsApp');
   const needsAdvisor = message.resultado?.toLowerCase().includes('requiere asesor');
   const Icon = fromBot ? Bot : UserRound;
   const text = message.mensaje ?? '';
@@ -122,7 +129,7 @@ function MessageCard({ message, channel, onUpdateProposal }: {
     setUpdating(true);
     setUpdateError('');
     try {
-      await onUpdateProposal(update);
+      await onUpdateProposal(update.aplicar_revision ? { ...update, id_interaccion: message.id_interaccion } : update);
       setUpdated(true);
     }
     catch (error) { setUpdateError(error instanceof Error ? error.message : 'No se pudo cargar la propuesta.'); }
@@ -131,14 +138,14 @@ function MessageCard({ message, channel, onUpdateProposal }: {
 
   return (
     <article className={`min-w-0 max-w-full rounded-xl border px-3.5 py-3 sm:max-w-[90%] ${
-      fromBot
+      outbound
         ? 'self-end border-teal-200 bg-teal-50/70 dark:border-teal-800 dark:bg-teal-950/60'
         : 'self-start border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
     }`}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${fromBot ? 'text-teal-800 dark:text-teal-200' : 'text-slate-900 dark:text-slate-100'}`}>
           <Icon aria-hidden="true" className="h-3.5 w-3.5" />
-          {fromBot ? 'ChatBot LEAD' : 'Paciente'}
+          {fromBot ? 'ChatBot LEAD' : fromAdvisor ? 'Asesor' : 'Paciente'}
         </span>
         <span className="text-[11px] text-slate-500 dark:text-slate-400">{whatsapp ? 'WhatsApp' : channel ?? 'Registrado por el asesor'}</span>
         <time dateTime={message.fecha_hora} className="text-[11px] text-slate-500 dark:text-slate-400">{messageTime.format(new Date(message.fecha_hora))}</time>
@@ -155,8 +162,8 @@ function MessageCard({ message, channel, onUpdateProposal }: {
       )}
       {message.confirmaciones_whatsapp && <div className="mt-2"><LeadWhatsAppStatus tracking={message.confirmaciones_whatsapp} /></div>}
       {fromBot && update && onUpdateProposal && <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-teal-200/70 pt-3 dark:border-teal-800/80">
-        <button type="button" className={secondaryButton} onClick={() => void updateProposal()} disabled={updating || updated}>
-          {updated ? 'Actualizado' : updating ? 'Cargando propuesta…' : 'Actualizar'}
+        <button type="button" className={secondaryButton} onClick={() => void updateProposal()} disabled={updating || updated || update.aplicada}>
+          {updated || update.aplicada ? 'Actualizado' : updating ? 'Actualizando…' : 'Actualizar'}
         </button>
         {updateError && <p role="alert" className="basis-full text-xs text-rose-700 dark:text-rose-300">{updateError}</p>}
       </div>}
@@ -164,12 +171,16 @@ function MessageCard({ message, channel, onUpdateProposal }: {
   );
 }
 
-async function request(path: string, body?: object) {
+async function request(path: string, body?: object, staffToken?: string | null) {
+  const isWhatsApp = path.endsWith('/whatsapp-control') || path.includes('comunicacion=whatsapp');
   const response = await fetch(api + path, {
-    method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json' },
+    method: body ? 'POST' : 'GET', headers: {
+      'Content-Type': 'application/json',
+      ...(staffToken || isWhatsApp ? whatsAppStaffHeaders(staffToken) : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
     cache: 'no-store',
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(path.endsWith('/whatsapp-control') ? 55_000 : 30_000),
   });
   const result = await response.json().catch(() => null);
   if (!response.ok || !result) throw new Error(result?.error ?? 'No se pudo completar la operación.');
@@ -178,11 +189,31 @@ async function request(path: string, body?: object) {
 
 type LeadInteractionProps = {
   requestId: number;
+  staffToken?: string | null;
   onAnalysis: (value: LeadInteractionAnalysis | null) => void;
   onChooseSlot: (value: LeadSuggestedSlot) => void;
   onUpdateProposal?: (update: WhatsAppProposalUpdate) => Promise<void>;
 };
 type Communication = 'whatsapp' | 'presencial';
+type WhatsAppControl = 'BOT' | 'PENDIENTE_ASESOR' | 'ASESOR' | 'OTRO_ASESOR' | 'OTRA_OPORTUNIDAD';
+const controlLabels: Record<WhatsAppControl, string> = {
+  BOT: 'Atiende el ChatBot LEAD',
+  PENDIENTE_ASESOR: 'Pendiente de atención del asesor',
+  ASESOR: 'Atiende el asesor · ChatBot pausado',
+  OTRO_ASESOR: 'Atiende otro asesor · ChatBot pausado',
+  OTRA_OPORTUNIDAD: 'Un asesor atiende este chat desde otra oportunidad',
+};
+type HiddenWhatsAppHistory = { through: number; offerId: string | null };
+
+function readHiddenWhatsAppHistory(key: string): HiddenWhatsAppHistory | null {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key) ?? 'null') as HiddenWhatsAppHistory | null;
+    return value && Number.isSafeInteger(value.through) && value.through >= 0 &&
+      (value.offerId === null || typeof value.offerId === 'string') ? value : null;
+  } catch {
+    return null;
+  }
+}
 
 export function LeadInteraction(props: LeadInteractionProps) {
   const [communication, setCommunication] = useState<Communication>('whatsapp');
@@ -217,14 +248,14 @@ export function LeadInteraction(props: LeadInteractionProps) {
       {tabs.map(({ value }) => (
         <div key={value} role="tabpanel" id={`${id}-panel-${value}`} aria-labelledby={`${id}-tab-${value}`}
           hidden={communication !== value}>
-          <ConversationPanel {...props} communication={value} active={communication === value} />
+          <ConversationPanel key={props.requestId} {...props} communication={value} active={communication === value} />
         </div>
       ))}
     </section>
   );
 }
 
-function ConversationPanel({ requestId, onAnalysis, onChooseSlot, onUpdateProposal, communication, active }: LeadInteractionProps & {
+function ConversationPanel({ requestId, staffToken, onAnalysis, onChooseSlot, onUpdateProposal, communication, active }: LeadInteractionProps & {
   communication: Communication;
   active: boolean;
 }) {
@@ -238,6 +269,14 @@ function ConversationPanel({ requestId, onAnalysis, onChooseSlot, onUpdatePropos
   const [error, setError] = useState('');
   const [history, setHistory] = useState<NegotiationMessage[]>([]);
   const [latestOffer, setLatestOffer] = useState<LeadWhatsAppTracking | null>(null);
+  const [control, setControl] = useState<WhatsAppControl | null>(null);
+  const [controlOwner, setControlOwner] = useState<string | null>(null);
+  const [controlBusy, setControlBusy] = useState(false);
+  const [controlError, setControlError] = useState('');
+  const [advisorMessage, setAdvisorMessage] = useState('');
+  const controlInFlight = useRef(false);
+  const controlRevision = useRef(0);
+  const pendingSend = useRef<{ text: string; key: string } | null>(null);
   const [suggestions, setSuggestions] = useState<Record<number, LeadInteractionAnalysis>>({});
   const [loaded, setLoaded] = useState(false);
   const [hasOlder, setHasOlder] = useState(false);
@@ -253,6 +292,11 @@ function ConversationPanel({ requestId, onAnalysis, onChooseSlot, onUpdatePropos
   const activeRef = useRef(active);
   activeRef.current = active;
   const manual = communication === 'presencial';
+  const storageKey = 'nexosalud:whatsapp:oculto:' + api + ':' + requestId;
+  const [hiddenHistory, setHiddenHistory] = useState(() => manual ? null : readHiddenWhatsAppHistory(storageKey));
+  const visibleHistory = hiddenHistory ? history.filter(message => message.id_interaccion > hiddenHistory.through) : history;
+  const visibleOffer = latestOffer?.id === hiddenHistory?.offerId ? null : latestOffer;
+  const hasVisibleOlder = hasOlder && (!hiddenHistory || history.every(message => message.id_interaccion > hiddenHistory.through));
   const scope = '/opportunities/' + requestId + '/interactions';
   const conversation = '/opportunities/' + requestId + '/conversation?comunicacion=' + communication;
   useEffect(() => {
@@ -265,11 +309,16 @@ function ConversationPanel({ requestId, onAnalysis, onChooseSlot, onUpdatePropos
       const presencial = available.find((c: { nombre: string }) => /presencial/i.test(c.nombre));
       setChannel(String(presencial?.id_canal ?? available[0]?.id_canal ?? ''));
     }).catch((e: Error) => { if (mounted) setError(e.message); });
-    request(conversation).then(({ mensajes, hay_anteriores, ultima_oferta_whatsapp }) => {
+    const initialRevision = controlRevision.current;
+    request(conversation, undefined, staffToken).then(({ mensajes, hay_anteriores, ultima_oferta_whatsapp, control_whatsapp, asesor_whatsapp }) => {
       if (mounted) {
         loadedFirstPage = true;
         setHistory(mensajes);
         setLatestOffer(ultima_oferta_whatsapp ?? null);
+        if (initialRevision === controlRevision.current) {
+          setControl(control_whatsapp ?? null);
+          setControlOwner(asesor_whatsapp ?? null);
+        }
         setHasOlder(hay_anteriores);
         setLoaded(true);
       }
@@ -279,10 +328,15 @@ function ConversationPanel({ requestId, onAnalysis, onChooseSlot, onUpdatePropos
       const panel = viewport.current?.closest('details');
       if (!activeRef.current || refreshing || document.hidden || (panel && !panel.open)) return;
       refreshing = true;
+      const revision = controlRevision.current;
       try {
-        const { mensajes, hay_anteriores, ultima_oferta_whatsapp } = await request(conversation);
+        const { mensajes, hay_anteriores, ultima_oferta_whatsapp, control_whatsapp, asesor_whatsapp } = await request(conversation, undefined, staffToken);
         if (!mounted) return;
         setLatestOffer(ultima_oferta_whatsapp ?? null);
+        if (!controlInFlight.current && revision === controlRevision.current) {
+          setControl(control_whatsapp ?? null);
+          setControlOwner(asesor_whatsapp ?? null);
+        }
         if (!loadedFirstPage) {
           loadedFirstPage = true;
           setHasOlder(hay_anteriores);
@@ -317,7 +371,7 @@ function ConversationPanel({ requestId, onAnalysis, onChooseSlot, onUpdatePropos
       window.clearInterval(refresh);
       recognition.current?.abort();
     };
-  }, []);
+  }, [conversation, manual, staffToken]);
 
   useEffect(() => {
     if (!active) {
@@ -338,14 +392,30 @@ function ConversationPanel({ requestId, onAnalysis, onChooseSlot, onUpdatePropos
     } else {
       setNewMessages(true);
     }
-  }, [history, suggestions, active]);
+  }, [history, hiddenHistory, suggestions, active]);
+
+  function hideWhatsAppHistory() {
+    const hidden = {
+      through: Math.max(hiddenHistory?.through ?? 0, history.at(-1)?.id_interaccion ?? 0),
+      offerId: latestOffer?.id ?? hiddenHistory?.offerId ?? null,
+    };
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(hidden));
+    } catch {
+      // The panel can still hide the history for the current visit.
+    }
+    stayAtBottom.current = true;
+    scrollSnapshot.current = null;
+    setHiddenHistory(hidden);
+    setNewMessages(false);
+  }
 
   async function loadOlder() {
-    if (!hasOlder || olderInFlight.current || !history.length) return;
+    if (!hasVisibleOlder || olderInFlight.current || !history.length) return;
     olderInFlight.current = true;
     setLoadingOlder(true);
     try {
-      const page = await request(conversation + '&antes=' + history[0].id_interaccion);
+      const page = await request(conversation + '&antes=' + history[0].id_interaccion, undefined, staffToken);
       const element = viewport.current;
       if (element) scrollSnapshot.current = { height: element.scrollHeight, top: element.scrollTop };
       setHistory((current) => {
@@ -361,6 +431,51 @@ function ConversationPanel({ requestId, onAnalysis, onChooseSlot, onUpdatePropos
     }
   }
 
+  // Solicita tomar o devolver el control del chat y envía las respuestas del asesor que lo está atendiendo.
+  async function manageWhatsApp(action: 'tomar' | 'devolver' | 'enviar') {
+    if (controlInFlight.current) return;
+    const text = advisorMessage.trim();
+    if (action === 'enviar' && (control !== 'ASESOR' || !text)) return;
+    controlInFlight.current = true;
+    controlRevision.current++;
+    setControlBusy(true);
+    setControlError('');
+    try {
+      if (action === 'enviar' && pendingSend.current?.text !== text) {
+        pendingSend.current = { text, key: crypto.randomUUID() };
+      }
+      const result = await request('/opportunities/' + requestId + '/whatsapp-control', {
+        accion: action, ...(action === 'enviar' ? { mensaje: text, clave: pendingSend.current?.key } : {}),
+      }, staffToken);
+      setControl(result.estado);
+      if (action !== 'enviar') window.dispatchEvent(new Event(leadWhatsAppControlChanged));
+      if (action === 'enviar') {
+        setAdvisorMessage('');
+        pendingSend.current = null;
+        stayAtBottom.current = true;
+        const page = await request(conversation, undefined, staffToken).catch(() => null);
+        if (page) setHistory(current => {
+          const entries = new Map(current.map(entry => [entry.id_interaccion, entry]));
+          for (const entry of page.mensajes as NegotiationMessage[]) entries.set(entry.id_interaccion, entry);
+          return [...entries.values()].sort((a, b) => a.id_interaccion - b.id_interaccion);
+        });
+      }
+    } catch (error) {
+      setControlError(error instanceof Error ? error.message : 'No se pudo completar la acción de WhatsApp.');
+      const page = await request(conversation, undefined, staffToken).catch(() => null);
+      if (page) {
+        setControl(page.control_whatsapp ?? null);
+        setControlOwner(page.asesor_whatsapp ?? null);
+      }
+      window.dispatchEvent(new Event(leadWhatsAppControlChanged));
+    } finally {
+      controlRevision.current++;
+      controlInFlight.current = false;
+      setControlBusy(false);
+    }
+  }
+
+  // Solicita el análisis de la interacción presencial o telefónica y muestra las sugerencias del Agente Negociador.
   async function analyze(interaction: number) {
     const result = await request(scope + '/' + interaction + '/analyze', {});
     setSuggestions((current) => ({ ...current, [interaction]: result }));
@@ -412,25 +527,47 @@ function ConversationPanel({ requestId, onAnalysis, onChooseSlot, onUpdatePropos
         <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-3.5 py-3 dark:border-slate-800 dark:bg-slate-900">
           <MessageSquare aria-hidden="true" className="h-4 w-4 text-[#0f766e] dark:text-teal-300" />
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{manual ? 'Atención presencial y telefónica' : 'Conversación de WhatsApp'}</h3>
+          {!manual && (visibleHistory.length > 0 || visibleOffer) && (
+            <button type="button" onClick={hideWhatsAppHistory} title="Ocultar el historial en este navegador"
+              className={secondaryButton + ' ml-auto text-rose-700 hover:text-rose-800 dark:text-rose-300'}>
+              <Trash2 aria-hidden="true" className="h-3.5 w-3.5" /> Eliminar
+            </button>
+          )}
         </div>
-        {!manual && latestOffer && <div className="space-y-1.5 border-b border-slate-200 bg-white px-3.5 py-3 dark:border-slate-800 dark:bg-slate-900">
+        {!manual && control && (
+          <div className={`flex flex-wrap items-center justify-between gap-2 border-b px-3.5 py-2.5 ${control === 'PENDIENTE_ASESOR'
+            ? 'border-rose-200 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/40'
+            : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'}`}>
+            <div role="status" className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
+              {control === 'PENDIENTE_ASESOR' && <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-800 dark:bg-rose-950 dark:text-rose-200">URGENTE</span>}
+              <span>{control === 'OTRO_ASESOR' && controlOwner ? `Atiende ${controlOwner} · ChatBot pausado` : controlLabels[control]}</span>
+            </div>
+            {control !== 'OTRA_OPORTUNIDAD' && control !== 'OTRO_ASESOR' && <div className="flex flex-wrap gap-2">
+              {control !== 'ASESOR' && <button type="button" className={control === 'PENDIENTE_ASESOR' ? primaryButton : secondaryButton}
+                disabled={controlBusy} onClick={() => void manageWhatsApp('tomar')}>Tomar control</button>}
+              {control !== 'BOT' && <button type="button" className={secondaryButton}
+                disabled={controlBusy} onClick={() => void manageWhatsApp('devolver')}>Devolver al ChatBot</button>}
+            </div>}
+          </div>
+        )}
+        {!manual && visibleOffer && <div className="space-y-1.5 border-b border-slate-200 bg-white px-3.5 py-3 dark:border-slate-800 dark:bg-slate-900">
           <h4 className="text-xs font-medium text-slate-700 dark:text-slate-200">Última propuesta enviada desde la mesa</h4>
-          <LeadWhatsAppStatus tracking={latestOffer} />
+          <LeadWhatsAppStatus tracking={visibleOffer} />
         </div>}
         <div ref={viewport} tabIndex={0}
-          className={`space-y-3 overflow-y-auto overscroll-contain bg-slate-50/70 p-3.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-600 dark:bg-slate-950/60 ${history.length ? 'max-h-[28rem]' : ''}`}
+          className={`space-y-3 overflow-y-auto overscroll-contain bg-slate-50/70 p-3.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-600 dark:bg-slate-950/60 ${visibleHistory.length ? 'max-h-[28rem]' : ''}`}
           aria-label="Historial de negociación" onScroll={(event) => {
             const element = event.currentTarget;
             stayAtBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 48;
             if (stayAtBottom.current) setNewMessages(false);
             if (element.scrollTop < 32) void loadOlder();
           }}>
-          {hasOlder && <div className="text-center">
+          {hasVisibleOlder && <div className="text-center">
             <button type="button" disabled={loadingOlder} onClick={() => void loadOlder()} className={secondaryButton}>
               {loadingOlder ? 'Cargando…' : 'Ver mensajes anteriores'}
             </button>
           </div>}
-          {history.map(message => {
+          {visibleHistory.map(message => {
             const suggestion = suggestions[message.id_interaccion] ?? message.analisis_agente;
             const activityCode = suggestion?.intencion === 'HORARIO' || suggestion?.intencion === 'SEDE' ? 'CAP-02'
               : suggestion?.intencion === 'PRECIO' ? 'CAP-03' : undefined;
@@ -444,18 +581,32 @@ function ConversationPanel({ requestId, onAnalysis, onChooseSlot, onUpdatePropos
               </div>
             );
           })}
-          {!history.length && <p className="px-2 py-5 text-center text-sm text-slate-500 dark:text-slate-400">
-            {loaded ? manual ? 'Registra lo que comenta el paciente para consultar al Agente.' : 'Los mensajes de WhatsApp aparecerán aquí.'
+          {!visibleHistory.length && <p className="px-2 py-5 text-center text-sm text-slate-500 dark:text-slate-400">
+            {loaded ? manual ? 'Registra lo que comenta el paciente para consultar al Agente.'
+              : hiddenHistory ? 'Historial oculto. Los mensajes nuevos aparecerán aquí.' : 'Los mensajes de WhatsApp aparecerán aquí.'
               : error ? 'El historial se actualizará al recuperar la conexión.' : 'Cargando conversación…'}
           </p>}
         </div>
-        {newMessages && <div className="border-t border-slate-200 bg-white px-3 py-2 text-center dark:border-slate-800 dark:bg-slate-900">
+        {newMessages && visibleHistory.length > 0 && <div className="border-t border-slate-200 bg-white px-3 py-2 text-center dark:border-slate-800 dark:bg-slate-900">
           <button type="button" className={secondaryButton} onClick={() => {
             stayAtBottom.current = true;
             if (viewport.current) viewport.current.scrollTop = viewport.current.scrollHeight;
             setNewMessages(false);
           }}><ArrowDown aria-hidden="true" className="h-3.5 w-3.5" /> Ir al último mensaje</button>
         </div>}
+        {!manual && control === 'ASESOR' && <form className="space-y-2 border-t border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900"
+          onSubmit={event => { event.preventDefault(); void manageWhatsApp('enviar'); }}>
+          <label htmlFor={`advisor-message-${requestId}`} className="block text-xs font-semibold">Mensaje del asesor</label>
+          <div className="flex flex-wrap items-end gap-2">
+            <textarea id={`advisor-message-${requestId}`} rows={2} maxLength={2000} value={advisorMessage}
+              disabled={controlBusy} onChange={event => setAdvisorMessage(event.target.value)}
+              className="min-w-48 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+            <button type="submit" disabled={controlBusy || !advisorMessage.trim()} className={secondaryButton}>
+              <Send aria-hidden="true" className="h-3.5 w-3.5" /> Enviar por WhatsApp
+            </button>
+          </div>
+        </form>}
+        {!manual && controlError && <p role="alert" className="border-t border-slate-200 p-3 text-xs text-rose-700 dark:border-slate-800 dark:text-rose-300">{controlError}</p>}
       </div>
       {manual && <form className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900" onSubmit={(event) => {
         event.preventDefault();
@@ -509,7 +660,7 @@ function ConversationPanel({ requestId, onAnalysis, onChooseSlot, onUpdatePropos
         <div className="flex flex-wrap items-center gap-2">
           {listening && <span role="status" className="text-xs text-teal-800 dark:text-teal-300">Escuchando…</span>}
           <button type="submit" disabled={busy || listening || !loaded || !channel || !note.trim()}
-            className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-[#0f766e] px-4 text-xs font-semibold text-white transition-colors hover:bg-teal-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 disabled:opacity-50">
+            className={primaryButton}>
             {busy ? <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />}
             {busy ? 'Consultando…' : 'Consultar al Agente'}
           </button>

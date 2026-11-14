@@ -6,10 +6,109 @@ const fecha_hora = '2026-11-12T15:00:00.000Z';
 
 afterEach(() => {
   cleanup();
+  localStorage.clear();
   vi.unstubAllGlobals();
 });
 
 describe('Conversación de negociación', () => {
+  it('permite al asesor tomar el chat, enviar con el bot pausado y devolver el control', async () => {
+    let control = 'PENDIENTE_ASESOR';
+    let messages: unknown[] = [];
+    const actions: string[] = [];
+    const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
+      if (input.endsWith('/report-catalogs')) return Response.json({ canales: [] });
+      if (input.endsWith('/whatsapp-control')) {
+        const body = JSON.parse(String(init?.body));
+        actions.push(body.accion);
+        if (body.accion === 'tomar') control = 'ASESOR';
+        if (body.accion === 'enviar') {
+          expect(control).toBe('ASESOR');
+          expect(body.clave).toMatch(/^[a-z0-9-]+$/i);
+          messages = [{ id_interaccion: 18, fecha_hora, tipo: 'Respuesta del asesor', resultado: 'WhatsApp', mensaje: body.mensaje }];
+        }
+        if (body.accion === 'devolver') control = 'BOT';
+        return Response.json({ estado: control });
+      }
+      return Response.json({ mensajes: messages, hay_anteriores: false, control_whatsapp: control });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<LeadInteraction requestId={1} onAnalysis={vi.fn()} onChooseSlot={vi.fn()} staffToken="prueba" />);
+    expect(await screen.findByText('Pendiente de atención del asesor')).toBeVisible();
+    expect(screen.queryByLabelText('Mensaje del asesor')).toBeNull();
+    expect(screen.getByText('URGENTE')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Tomar control' }));
+    const input = await screen.findByLabelText('Mensaje del asesor');
+    expect(screen.getByText('Atiende el asesor · ChatBot pausado')).toBeVisible();
+    expect(screen.queryByText('URGENTE')).toBeNull();
+    fireEvent.change(input, { target: { value: 'Hola, soy tu asesor.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar por WhatsApp' }));
+    const message = (await screen.findByText('Asesor', { exact: true })).closest('article')!;
+    expect(within(message).getByText('Hola, soy tu asesor.')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Devolver al ChatBot' }));
+    expect(await screen.findByText('Atiende el ChatBot LEAD')).toBeVisible();
+    expect(screen.queryByLabelText('Mensaje del asesor')).toBeNull();
+    expect(actions).toEqual(['tomar', 'enviar', 'devolver']);
+    expect(fetchMock.mock.calls.filter(([url]) => url.endsWith('/whatsapp-control'))
+      .every(([, init]) => new Headers(init?.headers).get('Authorization') === 'Bearer prueba')).toBe(true);
+  });
+
+  it('muestra quién se adelantó a tomar el chat y conserva el historial en modo lectura', async () => {
+    let taken = false;
+    vi.stubGlobal('fetch', vi.fn(async (input: string) => {
+      if (input.endsWith('/report-catalogs')) return Response.json({ canales: [] });
+      if (input.includes('comunicacion=presencial')) return Response.json({ mensajes: [], hay_anteriores: false });
+      if (input.endsWith('/whatsapp-control')) {
+        taken = true;
+        return Response.json({ error: 'Esta conversación ya está siendo atendida por Ana Ramos.' }, { status: 409 });
+      }
+      return Response.json({
+        mensajes: [{ id_interaccion: 13, fecha_hora, tipo: 'Respuesta del paciente', resultado: 'WhatsApp', mensaje: 'Necesito ayuda.' }],
+        hay_anteriores: false,
+        control_whatsapp: taken ? 'OTRO_ASESOR' : 'PENDIENTE_ASESOR',
+        asesor_whatsapp: taken ? 'Ana Ramos' : null,
+      });
+    }));
+    render(<LeadInteraction requestId={1} onAnalysis={vi.fn()} onChooseSlot={vi.fn()} staffToken="prueba" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Tomar control' }));
+    expect(await screen.findByText('Atiende Ana Ramos · ChatBot pausado')).toBeVisible();
+    expect(screen.getByText('Necesito ayuda.')).toBeVisible();
+    expect(screen.queryByLabelText('Mensaje del asesor')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Devolver al ChatBot' })).toBeNull();
+  });
+
+  it('oculta solo el historial anterior de WhatsApp en el navegador y conserva mensajes nuevos', async () => {
+    const oldMessage = {
+      id_interaccion: 10, fecha_hora, tipo: 'Respuesta del paciente', resultado: 'WhatsApp', mensaje: 'Mensaje anterior.',
+    };
+    const newMessage = { ...oldMessage, id_interaccion: 11, mensaje: 'Mensaje nuevo.' };
+    let messages = [oldMessage];
+    const fetchMock = vi.fn(async (input: string, _init?: RequestInit) => {
+      if (input.endsWith('/report-catalogs')) return Response.json({ canales: [] });
+      if (input.includes('comunicacion=presencial')) {
+        return Response.json({ mensajes: [{ ...oldMessage, mensaje: 'Nota presencial.' }], hay_anteriores: false });
+      }
+      return Response.json({ mensajes: messages, hay_anteriores: true });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const props = { requestId: 1, onAnalysis: vi.fn(), onChooseSlot: vi.fn() };
+    const view = render(<LeadInteraction {...props} />);
+    await screen.findByText('Mensaje anterior.');
+    fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+    expect(screen.getByText('Historial oculto. Los mensajes nuevos aparecerán aquí.')).toBeVisible();
+    expect(screen.queryByText('Mensaje anterior.')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ver mensajes anteriores' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Presencial/Llamada' }));
+    expect(await screen.findByText('Nota presencial.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Eliminar' })).toBeNull();
+    view.unmount();
+    messages = [oldMessage, newMessage];
+    render(<LeadInteraction {...props} />);
+    expect(await screen.findByText('Mensaje nuevo.')).toBeVisible();
+    expect(screen.queryByText('Mensaje anterior.')).toBeNull();
+    expect(fetchMock.mock.calls.every(([, init]) => init?.method === 'GET')).toBe(true);
+  });
+
   it('muestra la actividad del Agente y las respuestas del ChatBot en tarjetas distintas', async () => {
     const onUpdateProposal = vi.fn().mockResolvedValue(undefined);
     const horario = { id_disponibilidad: 8, id_sede: 1, id_profesional: 2, fecha: '2026-11-20',

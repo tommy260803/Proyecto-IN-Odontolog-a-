@@ -6,6 +6,9 @@ import { leadOperationalPriority } from '../services/leadOperationalPriority';
 import { buildLeadFollowUpMessage } from '../services/leadFollowUpMessage';
 import { readWhatsAppTracking, whatsappFollowUpSuggestion } from '../services/leadWhatsAppTracking';
 import { leadStaffAuthEnabled, getLeadStaffIdentity } from '../services/leadStaffAuth';
+import { automaticFollowUpInstalled, scheduleAdvisorWhatsAppFollowUp } from '../services/leadWhatsAppAutomaticFollowUp';
+import { isFollowUpTurn } from '../services/leadWhatsAppFollowUpWindow';
+import { hasWhatsAppReview, readWhatsAppControl } from '../services/leadWhatsAppInbox';
 export const leadFollowUpRouter = Router();
 leadFollowUpRouter.use(async (req,res,next) => {
   if (req.path.startsWith('/connector/')) return next();
@@ -21,7 +24,9 @@ leadFollowUpRouter.use(async (req,res,next) => {
     return next();
   } catch { return res.sendStatus(401); }
 });
-type State = { estado: string; motivo: string; borrador: string | null; clave_envio: string | null; revision: number; ultimo_envio_utc: Date | null };
+type State = { estado: string; motivo: string; borrador: string | null; clave_envio: string | null; revision: number;
+  ultimo_envio_utc: Date | null; origen_whatsapp?: string | null; turno_whatsapp?: string | null;
+  sesion_seguimiento?: string | null; chat_seguimiento?: string | null };
 
 leadFollowUpRouter.use('/connector', (req,res,next) => {
   const key=process.env.LEAD_FOLLOWUP_CONNECTOR_TOKEN;
@@ -98,23 +103,57 @@ leadFollowUpRouter.get('/:id', async (req,res) => {
     const row = await prisma.solicitudes.findUnique({ where: { id_solicitud: id }, include: { Persona: { include: { Etapa: true } } } });
     if (!row) return res.sendStatus(404);
     const ready = await installed(prisma);
-    const [state] = ready ? await prisma.$queryRaw<State[]>`SELECT * FROM dbo.SeguimientoOperativoLead WHERE id_solicitud=${id}` : [];
+    const automatic = ready && await automaticFollowUpInstalled(prisma);
+    const [state] = ready ? await prisma.$queryRaw<State[]>`
+      SELECT f.estado,f.motivo,f.borrador,f.revision,f.ultimo_envio_utc
+        ${automatic ? Prisma.sql`,f.origen_whatsapp,f.turno_whatsapp,
+          m.id_sesion AS sesion_seguimiento,m.chat AS chat_seguimiento,
+          JSON_VALUE(CASE WHEN ISJSON(m.plan_respuesta)=1 THEN m.plan_respuesta END,'$.followUpPreference.time') AS hora_solicitada` : Prisma.empty}
+      FROM dbo.SeguimientoOperativoLead f
+      ${automatic ? Prisma.sql`LEFT JOIN dbo.MensajesWhatsAppLead m ON m.id_mensaje=f.id_mensaje_origen_whatsapp` : Prisma.empty}
+      WHERE f.id_solicitud=${id}
+    ` : [];
+    const scope = state?.sesion_seguimiento && state.chat_seguimiento
+      ? { sessionId: state.sesion_seguimiento, chat: state.chat_seguimiento } : undefined;
+    const awaitingAdvisor = Boolean(scope && state?.estado === 'PROGRAMADO' &&
+      ((await readWhatsAppControl(prisma, scope))?.decision === 'CONTROL_ASESOR' || await hasWhatsAppReview(prisma, scope, id)));
+    const { sesion_seguimiento, chat_seguimiento, ...publicState } = state ?? {};
     const [whatsapp] = await readWhatsAppTracking(prisma, id);
     const canSuggest = row.Persona.Etapa.nombre === 'LEAD' && ['Abierta', 'En negociación'].includes(row.estado) && !row.archivada_lead_en &&
       !['ACEPTADA', 'CERRADA_SIN_ACUERDO'].includes(row.resultado_comercial_lead ?? '') && state?.estado !== 'PAUSADO' &&
       state?.estado !== 'CANCELADO' && state?.estado !== 'ENVIADO' && !row.fecha_proximo_seguimiento;
-    res.set('Cache-Control','no-store').json({ instalado: ready, seguimiento: state ?? null, fecha: row.fecha_proximo_seguimiento,
+    res.set('Cache-Control','no-store').json({ instalado: ready, automatico_disponible: automatic,
+      seguimiento: state ? { ...publicState, espera_asesor: awaitingAdvisor } : null, fecha: row.fecha_proximo_seguimiento,
       whatsapp, sugerencia_whatsapp: canSuggest ? whatsappFollowUpSuggestion(whatsapp) : null });
   } catch { res.status(500).json({ error: 'No se pudo consultar el seguimiento.' }); }
 });
 leadFollowUpRouter.post('/:id', async (req,res) => {
   try {
     const id = Number(req.params.id);
-    const { accion,motivo,revision,fecha_lima } = req.body;
+    const { accion,motivo,revision,fecha_lima,turno,hora } = req.body;
     if (!Number.isSafeInteger(id) || id < 1 || !['programar','pausar','cancelar','preparar','actualizar_mensaje'].includes(accion) ||
         typeof motivo !== 'string' || !motivo.trim() || motivo.length>400 || !Number.isSafeInteger(revision)) return res.status(400).json({ error: 'Indica acción, motivo y revisión válidos.' });
+    if (accion === 'programar' && turno !== undefined &&
+        (typeof fecha_lima !== 'string' || (turno !== null && !isFollowUpTurn(turno)) ||
+          (hora !== undefined && (typeof hora !== 'string' || !isFollowUpTurn(turno))))) {
+      return res.status(400).json({ error: 'Indica una fecha, un turno y una hora opcional válidos.' });
+    }
+    if (accion === 'programar' && turno !== undefined && !leadStaffAuthEnabled()) {
+      const origin = URL.parse(req.get('Origin') ?? '');
+      const local = ['localhost', '127.0.0.1', '[::1]'];
+      if (!origin || !['http:', 'https:'].includes(origin.protocol) || !local.includes(origin.hostname) ||
+          !local.includes(req.hostname) || !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '') ||
+          req.get('Forwarded') || req.get('X-Forwarded-For')) {
+        return res.status(403).json({ error: 'Abre la mesa LEAD en localhost o ingresa con una sesión del personal.' });
+      }
+    }
     const result = await prisma.$transaction(async tx => {
       if (!await installed(tx)) throw new Error('Requiere instalar 10_SEGUIMIENTO_OPERATIVO_LEAD.sql.');
+      if (accion === 'programar' && turno !== undefined) {
+        await scheduleAdvisorWhatsAppFollowUp(tx, id, revision, fecha_lima, turno ?? undefined, motivo.trim(), hora || undefined);
+        return { estado: 'PROGRAMADO' };
+      }
+      const automatic = await automaticFollowUpInstalled(tx);
       const row = await tx.solicitudes.findUnique({ where: { id_solicitud: id }, include: { Persona: { include: { Etapa: true } }, Servicio: true } });
       if (!row || row.Persona.Etapa.nombre!=='LEAD' || row.archivada_lead_en || !['Abierta','En negociación'].includes(row.estado) ||
           ['ACEPTADA','CERRADA_SIN_ACUERDO'].includes(row.resultado_comercial_lead ?? '')) throw new Error('La negociación ya no admite seguimiento.');
@@ -132,6 +171,7 @@ leadFollowUpRouter.post('/:id', async (req,res) => {
       }
       if (accion==='cancelar') await tx.solicitudes.updateMany({ where: { id_solicitud: id },data: { fecha_proximo_seguimiento: null } });
       if (accion==='preparar' || accion==='actualizar_mensaje') {
+        if (old?.origen_whatsapp) throw new Error('El seguimiento automático prepara el mensaje al enviarlo. Guarda una fecha manual para preparar tu propio mensaje.');
         if (accion==='actualizar_mensaje' && old?.estado!=='PREPARADO') throw new Error('Solo se puede actualizar un mensaje preparado y todavía no enviado.');
         if (old?.estado==='PAUSADO') throw new Error('Reprograma para reanudar el seguimiento.');
         if (!row.Persona.autoriza_contacto || !row.Persona.numero) throw new Error('Falta autorización de contacto o teléfono.');
@@ -171,6 +211,7 @@ leadFollowUpRouter.post('/:id', async (req,res) => {
         MERGE dbo.SeguimientoOperativoLead WITH (HOLDLOCK) AS t
         USING (SELECT ${id} AS id_solicitud) s ON t.id_solicitud=s.id_solicitud
         WHEN MATCHED THEN UPDATE SET estado=${state},motivo=${motivo.trim()},borrador=${draft},clave_envio=CONVERT(uniqueidentifier,CONVERT(varchar(36),${key})),revision=${next},actualizado_utc=SYSUTCDATETIME()
+          ${automatic ? Prisma.sql`,origen_whatsapp=NULL,turno_whatsapp=NULL` : Prisma.empty}
         WHEN NOT MATCHED THEN INSERT(id_solicitud,estado,motivo,borrador,clave_envio,revision) VALUES(${id},${state},${motivo.trim()},${draft},CONVERT(uniqueidentifier,CONVERT(varchar(36),${key})),${next});
       `;
       await tx.$executeRaw`INSERT dbo.HistorialSeguimientoOperativoLead(id_solicitud,estado,motivo,borrador,revision) VALUES(${id},${state},${motivo.trim()},${draft},${next})`;

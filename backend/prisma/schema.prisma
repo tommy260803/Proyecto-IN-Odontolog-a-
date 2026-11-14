@@ -1,8 +1,10 @@
+// SQLSERVER_URL en backend/.env indica el servidor, la base y las credenciales de conexión a SQL Server.
 datasource db {
   provider = "sqlserver"
   url      = env("SQLSERVER_URL")
 }
 
+// Genera el cliente con el que el backend consulta las tablas y relaciones de este esquema.
 generator client {
   provider = "prisma-client-js"
 }

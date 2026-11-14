@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   Bell,
@@ -29,6 +29,12 @@ import {
 import { CLINIC_BRANCH_OPTIONS, useSidebar } from '@/shared/context/SidebarContext';
 import { useTheme } from '@/shared/context/ThemeContext';
 import { staffAuthService } from '@/shared/services/staffAuthService';
+import {
+  getLeadWhatsAppAlerts, leadCommercialUrl, leadWhatsAppAlertsKey, leadWhatsAppControlChanged,
+  requiresLeadStaff, setLeadStaffSession, useLeadStaffSession, whatsappAlertRoute,
+} from '@/modules/lead/services/leadWhatsAppAlerts';
+import { useLeadUrgentNotifications } from '@/modules/lead/components/useLeadUrgentNotifications';
+import { useLeadWhatsAppAlertStream } from '@/modules/lead/components/useLeadWhatsAppAlertStream';
 import { CommandPaletteModal } from './CommandPaletteModal';
 import { Sidebar } from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
@@ -63,23 +69,54 @@ const INITIAL_NOTIFICATIONS = [
   },
 ];
 
+function readNotificationIds(key: string): string[] {
+  try {
+    const ids: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
+    return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+const leadAlertDate = new Intl.DateTimeFormat('es-PE', {
+  timeZone: 'America/Lima', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+});
+
 export function Header() {
   const { theme } = useTheme();
   const { activeBranch, setActiveBranch, commandOpen, setCommandOpen } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const leadStaff = useLeadStaffSession();
+  const alertsScope = leadStaff?.expira_en ?? 'local';
+  const alertsEnabled = !requiresLeadStaff || Boolean(leadStaff);
+  const alertsLive = useLeadWhatsAppAlertStream(alertsEnabled, alertsScope, leadStaff?.token);
+  const { data: urgentAlerts = [] } = useQuery({
+    queryKey: [...leadWhatsAppAlertsKey, alertsScope],
+    queryFn: ({ signal }) => getLeadWhatsAppAlerts(signal, leadStaff?.token),
+    enabled: alertsEnabled,
+    refetchInterval: alertsLive ? 60_000 : 10_000,
+    retry: false,
+  });
+  const pendingAlerts = requiresLeadStaff && !leadStaff ? [] : urgentAlerts;
+  const hasUrgent = pendingAlerts.length > 0;
 
   const [openMenu, setOpenMenu] = useState<OpenMenuId>(null);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [syncingNow, setSyncingNow] = useState(false);
   const [lastSyncMinutes, setLastSyncMinutes] = useState(2);
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [paymentGatewayEnabled, setPaymentGatewayEnabled] = useState(true);
 
   const menusContainerRef = useRef<HTMLDivElement>(null);
 
   const session = staffAuthService.getSession();
+  const notificationKey = `nexosalud:notifications:read:${session?.email ?? 'local'}`;
+  const [readState, setReadState] = useState(() => ({ key: notificationKey, ids: readNotificationIds(notificationKey) }));
+  const readIds = readState.key === notificationKey ? readState.ids : readNotificationIds(notificationKey);
+  const notifications = INITIAL_NOTIFICATIONS.map(item => ({ ...item, unread: item.unread && !readIds.includes(item.id) }));
+  const openNotifications = useCallback(() => setOpenMenu('notifications'), []);
+  useLeadUrgentNotifications(pendingAlerts, leadStaff?.expira_en ?? session?.email ?? 'local', openNotifications);
   const logoSrc = theme === 'dark' ? '/Logo_NexoSalus_Oscuro.png' : '/Logo_NexoSalud.png';
 
   const displayFullName = session
@@ -91,6 +128,13 @@ export function Header() {
 
   const breadcrumbs = resolveBreadcrumbs(location.pathname, location.search);
   const unreadCount = notifications.filter((n) => n.unread).length;
+  const notificationCount = unreadCount + pendingAlerts.length;
+
+  useEffect(() => {
+    const refresh = () => void queryClient.invalidateQueries({ queryKey: leadWhatsAppAlertsKey });
+    window.addEventListener(leadWhatsAppControlChanged, refresh);
+    return () => window.removeEventListener(leadWhatsAppControlChanged, refresh);
+  }, [queryClient]);
 
   // Cerrar menús al hacer clic fuera o presionar Escape
   useEffect(() => {
@@ -133,12 +177,20 @@ export function Header() {
     }, 450);
   };
 
-  const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  const markNotificationsRead = (ids: string[]) => {
+    const next = [...new Set([...readNotificationIds(notificationKey), ...readIds, ...ids])];
+    setReadState({ key: notificationKey, ids: next });
+    try { localStorage.setItem(notificationKey, JSON.stringify(next)); } catch { /* Retain the state for this visit. */ }
   };
 
   const handleLogout = () => {
     setOpenMenu(null);
+    if (leadStaff) {
+      setLeadStaffSession(null);
+      void fetch(leadCommercialUrl + '/staff/session', {
+        method: 'DELETE', headers: { Authorization: 'Bearer ' + leadStaff.token },
+      }).catch(() => undefined);
+    }
     staffAuthService.logout();
     navigate('/');
   };
@@ -434,13 +486,13 @@ export function Header() {
               onClick={() => toggleMenu('notifications')}
               aria-expanded={openMenu === 'notifications'}
               title="Notificaciones clínicas y del embudo"
-              aria-label="Notificaciones"
+              aria-label={hasUrgent ? `Notificaciones, ${pendingAlerts.length === 1 ? '1 alerta urgente' : `${pendingAlerts.length} alertas urgentes`} de WhatsApp LEAD` : 'Notificaciones'}
               className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white cursor-pointer"
             >
-              <Bell className="h-[15px] w-[15px]" strokeWidth={1.75} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#0f766e] px-1 font-mono text-[10px] font-semibold text-white ring-2 ring-white dark:ring-slate-900">
-                  {unreadCount}
+              <Bell className={`h-[15px] w-[15px] ${hasUrgent ? 'lead-alert-bell text-rose-700 dark:text-rose-300' : ''}`} strokeWidth={1.75} />
+              {notificationCount > 0 && (
+                <span className={`absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-mono text-[10px] font-semibold text-white ring-2 ring-white dark:ring-slate-900 ${hasUrgent ? 'bg-rose-700' : 'bg-[#0f766e]'}`}>
+                  {notificationCount > 99 ? '99+' : notificationCount}
                 </span>
               )}
             </button>
@@ -461,7 +513,7 @@ export function Header() {
                     {unreadCount > 0 && (
                       <button
                         type="button"
-                        onClick={handleMarkAllRead}
+                        onClick={() => markNotificationsRead(notifications.filter(item => item.unread).map(item => item.id))}
                         className="text-[11px] font-medium text-[#0f766e] hover:underline cursor-pointer"
                       >
                         Marcar leídas
@@ -469,15 +521,30 @@ export function Header() {
                     )}
                   </div>
 
-                  <div className="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
+                  <div className="mt-2 max-h-[min(24rem,60vh)] divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+                    {pendingAlerts.map(alert => (
+                      <Link key={alert.id}
+                        to={whatsappAlertRoute(alert)}
+                        onClick={() => setOpenMenu(null)}
+                        className="block rounded-lg px-2 py-2.5 hover:bg-rose-50 focus-visible:outline focus-visible:outline-rose-600 dark:hover:bg-rose-950/40">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-800 dark:bg-rose-950 dark:text-rose-200">URGENTE</span>
+                          <span className="text-xs font-semibold text-slate-900 dark:text-white">WhatsApp LEAD · Solicitud #{alert.requestId}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                          {alert.prioridad?.motivo ?? 'Requiere atención del asesor'}
+                        </p>
+                        <time dateTime={alert.receivedAt} className="mt-1 block text-[10px] text-slate-500 dark:text-slate-400">
+                          {leadAlertDate.format(new Date(alert.receivedAt))}
+                        </time>
+                      </Link>
+                    ))}
                     {notifications.map((item) => (
                       <button
                         key={item.id}
                         type="button"
                         onClick={() => {
-                          setNotifications((prev) =>
-                            prev.map((n) => (n.id === item.id ? { ...n, unread: false } : n))
-                          );
+                          if (item.unread) markNotificationsRead([item.id]);
                           setOpenMenu(null);
                           navigate(item.to);
                         }}

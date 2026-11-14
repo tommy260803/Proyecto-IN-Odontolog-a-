@@ -1,12 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   ArrowUpRight,
-  Check,
   X,
   Plus,
   Edit3,
@@ -42,16 +41,20 @@ import { configService } from '@/modules/config/services/config.service';
 import { LeadState } from '@/domain/enums';
 import { QUERY_KEYS } from '@/shared/constants';
 import { useToast } from '@/shared/hooks/use-toast';
+import { formatAppointmentTime } from '@/shared/utils/appointmentTime';
 import { LoadingState } from '@/shared/components/feedback/LoadingState';
 import { ErrorState } from '@/shared/components/feedback/ErrorState';
 import { ConfirmationDialog } from '@/shared/components/feedback/ConfirmationDialog';
 import { LeadInteraction, type LeadInteractionAnalysis, type WhatsAppProposalUpdate } from './LeadInteraction';
+import LeadStaffAccess from './LeadStaffAccess';
+import { requiresLeadStaff, useLeadStaffSession } from '../services/leadWhatsAppAlerts';
 import { LeadOperationalFollowUp } from './LeadOperationalFollowUp';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { renderLeadStatusBadge } from './LeadListView';
 import { LeadProfileEditModal } from './LeadProfileEditModal';
 import { OfferDateCalendar } from './OfferDateCalendar';
+import { LeadProposalVersions } from './LeadProposalVersions';
 
 interface LeadDetailViewProps {
   leadId: string;
@@ -60,6 +63,47 @@ interface LeadDetailViewProps {
 const emptySchedule = { date: '', start: '', end: '' };
 type UpdatedOfferField = 'branch' | 'professional' | keyof typeof emptySchedule;
 const offerFieldClass = 'h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:border-[#0f766e] focus:outline-none disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:disabled:text-slate-500 [color-scheme:light] dark:[color-scheme:dark] data-[actualizado=true]:border-sky-600 data-[actualizado=true]:bg-sky-50 data-[actualizado=true]:ring-2 data-[actualizado=true]:ring-sky-600/30 dark:data-[actualizado=true]:border-sky-400 dark:data-[actualizado=true]:bg-sky-950 dark:data-[actualizado=true]:ring-sky-400/35';
+
+function parseDiscount(value: string, maximum: number | undefined) {
+  const normalized = value.trim().replace(',', '.');
+  const percent = Number(normalized);
+  return /^\d{1,3}(?:\.\d{1,2})?$/.test(normalized) && maximum !== undefined && percent <= maximum && percent < 100
+    ? percent : null;
+}
+
+function discountedPrice(base: number, percent: number) {
+  const cents = Math.round(base * 100);
+  const remaining = 10_000 - Math.round(percent * 100);
+  return Math.round(cents * remaining / 10_000) / 100;
+}
+
+function discountFromPrice(base: number, price: number) {
+  return base > 0 ? Math.round(Math.max(0, base - price) / base * 10_000) / 100 : 0;
+}
+
+function recordedDiscount(promotion?: string | null) {
+  const match = promotion?.match(/\(-(\d{1,3}(?:\.\d{1,2})?)%\)$/);
+  return match ? Number(match[1]) : undefined;
+}
+
+function DiscountField({ id, value, maximum, onChange, disabled, invalid }: {
+  id: string;
+  value: string;
+  maximum: number | undefined;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  invalid?: boolean;
+}) {
+  return <div className="grid min-w-0 gap-1.5">
+    <label htmlFor={id} className="text-xs font-medium text-slate-700 dark:text-slate-300">Descuento (%)</label>
+    <input id={id} inputMode="decimal" value={value} onChange={event => onChange(event.target.value)}
+      disabled={disabled || maximum === undefined} aria-invalid={invalid} aria-describedby={`${id}-limit`}
+      placeholder="0" className={`${offerFieldClass} font-mono tabular-nums`} />
+    <span id={`${id}-limit`} className="text-xs text-slate-500 dark:text-slate-400">
+      {maximum === undefined ? 'Límite de descuento no disponible' : `Máximo ${Math.min(maximum, 99.99)} %`}
+    </span>
+  </div>;
+}
 
 function OfferTimeField({ id, label, value, times, disabled, onChange, highlight }: {
   id: string;
@@ -78,7 +122,7 @@ function OfferTimeField({ id, label, value, times, disabled, onChange, highlight
           <SelectValue placeholder="--:--" />
         </SelectTrigger>
         <SelectContent className="border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
-          {times.map(time => <SelectItem key={time} value={time}>{time}</SelectItem>)}
+          {times.map(time => <SelectItem key={time} value={time}>{formatAppointmentTime(time)}</SelectItem>)}
         </SelectContent>
       </Select>
     </div>
@@ -115,10 +159,22 @@ function parseCompanyHours(companyHorario: string) {
 
 export function LeadDetailView({ leadId }: LeadDetailViewProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const whatsappStaff = useLeadStaffSession();
+  const conversationPanel = useRef<HTMLDetailsElement>(null);
+  const params = new URLSearchParams(location.search);
+  const requestedOpportunity = params.get('solicitud');
+  const openWhatsApp = params.get('conversacion') === 'whatsapp';
 
-  const [lead, setLead] = useState<any>(null);
+  const [leadData, setLead] = useState<any>(null);
+  const lead = useMemo(() => {
+    if (!leadData || !requestedOpportunity) return leadData;
+    const requests: { id_solicitud: number }[] = leadData.Solicitudes ?? [];
+    const selected = requests.find(row => String(row.id_solicitud) === requestedOpportunity);
+    return selected ? { ...leadData, Solicitudes: [selected, ...requests.filter(row => row !== selected)] } : null;
+  }, [leadData, requestedOpportunity]);
   const [options, setOptions] = useState<any>({
     profesionales: [],
     sedes: [],
@@ -163,14 +219,14 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     [companyHorario]
   );
 
-  const [precioOfrecido, setPrecioOfrecido] = useState('150.00');
+  const [precioOfrecido, setPrecioOfrecido] = useState('');
+  const [draftDiscount, setDraftDiscount] = useState<string | null>(null);
   const [condiciones, setCondiciones] = useState('');
   const [promocionAplicada, setPromocionAplicada] = useState('');
   const [offerErrors, setOfferErrors] = useState<Record<string, string>>({});
 
-  // Edición rápida de tarifa en las opciones del tablero
-  const [editingOptionId, setEditingOptionId] = useState<number | string | null>(null);
-  const [editingPrice, setEditingPrice] = useState<string>('');
+  const [discountEdit, setDiscountEdit] = useState<{ optionId: number | string; value: string } | null>(null);
+  const [discountError, setDiscountError] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingOptionTarget, setDeletingOptionTarget] = useState<any | null>(null);
   const [isDeletingOption, setIsDeletingOption] = useState(false);
@@ -227,11 +283,20 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     if (leadId) {
       setActiveProposal(null);
       setWhatsAppDraft(null);
+      setDiscountEdit(null);
       setUpdatedOfferFields([]);
       setOfferSchedule(emptySchedule);
       fetchLeadData();
     }
-  }, [leadId]);
+  }, [leadId, requestedOpportunity]);
+
+  useEffect(() => {
+    const panel = conversationPanel.current;
+    if (!openWhatsApp || loading || !panel) return;
+    panel.open = true;
+    panel.scrollIntoView?.({ block: 'start' });
+    panel.querySelector('summary')?.focus({ preventScroll: true });
+  }, [openWhatsApp, loading, location.key]);
 
   // Pre-carga inteligente al obtener datos
   useEffect(() => {
@@ -257,8 +322,10 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
       const activeServicio = options.servicios.find(
         (s: any) => String(s.id_servicio) === initialServicioId
       );
-      const officialPrice = Number(activeServicio?.Tarifas?.[0]?.precio || 180);
-      setPrecioOfrecido(officialPrice.toFixed(2));
+      const officialPrice = Number(activeServicio?.Tarifas?.[0]?.precio ?? 0);
+      setPrecioOfrecido(officialPrice > 0 ? officialPrice.toFixed(2) : '');
+      setDraftDiscount(null);
+      setPromocionAplicada('');
     }
 
     const prefSede = lead.Preferencias?.[0]?.sede_preferida;
@@ -305,12 +372,11 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     return `Hasta ${customVal || 'Personalizado'}`;
   };
 
-  const currentOfficialPrice = useMemo(() => {
-    const s = options.servicios?.find(
-      (item: any) => String(item.id_servicio) === selectedServicioId
-    );
-    return Number(s?.Tarifas?.[0]?.precio || 180);
-  }, [options.servicios, selectedServicioId]);
+  const selectedService = options.servicios?.find((item: any) => String(item.id_servicio) === selectedServicioId);
+  const currentOfficialPrice = Number(selectedService?.Tarifas?.[0]?.precio ?? 0);
+  const discountLimit: number | undefined = selectedService?.descuentoMaximo;
+  const draftPercent = draftDiscount === null ? null : parseDiscount(draftDiscount, discountLimit);
+  const invalidDraftDiscount = draftDiscount !== null && (draftPercent === null || !precioOfrecido);
 
   const numericOfferPrice = useMemo(() => {
     const val = parseFloat(precioOfrecido);
@@ -319,21 +385,16 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
 
   const discountMetrics = useMemo(() => {
     const saving = Math.max(0, currentOfficialPrice - numericOfferPrice);
-    const pct =
-      currentOfficialPrice > 0 ? Math.round((saving / currentOfficialPrice) * 100) : 0;
+    const pct = draftPercent ?? recordedDiscount(promocionAplicada) ?? discountFromPrice(currentOfficialPrice, numericOfferPrice);
     return { saving, pct };
-  }, [currentOfficialPrice, numericOfferPrice]);
+  }, [currentOfficialPrice, numericOfferPrice, draftPercent, promocionAplicada]);
 
-  const applyQuickDiscount = (pct: number, type?: 'CAMPANA' | 'REGULAR') => {
-    const discounted = currentOfficialPrice * (1 - pct / 100);
-    setPrecioOfrecido(discounted.toFixed(2));
-    if (type === 'CAMPANA') {
-      setCondiciones(`Tarifa promocional autorizada (-${pct}%) con reserva anticipada`);
-      setPromocionAplicada(pct === 15 ? 'Promoción (-15%)' : `Campaña (-${pct}%)`);
-    } else if (type === 'REGULAR') {
-      setCondiciones('');
-      setPromocionAplicada('');
-    }
+  const updateDraftDiscount = (value: string) => {
+    setDraftDiscount(value);
+    const percent = parseDiscount(value, discountLimit);
+    const amount = percent === null ? 0 : discountedPrice(currentOfficialPrice, percent);
+    setPrecioOfrecido(amount > 0 ? amount.toFixed(2) : '');
+    setPromocionAplicada(percent && amount > 0 ? `Promoción (-${percent}%)` : '');
     if (offerErrors.precio) setOfferErrors((p) => ({ ...p, precio: '' }));
   };
 
@@ -410,8 +471,8 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     } else if (calculatedExpiry.getTime() <= Date.now()) {
       errors.vigencia = 'La vigencia debe terminar en una fecha futura.';
     }
-    if (!precioOfrecido || isNaN(Number(precioOfrecido)) || Number(precioOfrecido) <= 0) {
-      errors.precio = 'Ingresa una tarifa mayor a 0.';
+    if (invalidDraftDiscount || numericOfferPrice <= 0) {
+      errors.precio = 'Indica un descuento válido para obtener una tarifa mayor a 0.';
     }
     if (!offeredSlot) {
       errors.horario = matchingOfferSlots.length
@@ -457,6 +518,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         crear_version_propuesta: Boolean(activeProposal && activeProposal.terms !== proposalTerms),
         ofr_turno_lead: selectedFranja.split(' (')[0],
         precio_ofrecido: precioOfrecido,
+        ...(draftPercent === null ? {} : { descuento_pct: draftPercent }),
         condiciones: fullCondiciones,
         // Campos adicionales para modo mock/fallback
         service: serviceName,
@@ -481,6 +543,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
       setOfferSchedule(emptySchedule);
       setCondiciones('');
       setPromocionAplicada('');
+      setDraftDiscount(null);
       toast({
         title: 'Propuesta comercial añadida',
         description: 'La oferta fue incorporada a la mesa de negociación.',
@@ -499,31 +562,34 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     }
   };
 
-  const handleSaveEdit = async (e: React.MouseEvent, id_opcion: number | string) => {
-    e.stopPropagation();
-    if (!editingPrice || isNaN(Number(editingPrice)) || Number(editingPrice) <= 0) {
-      toast({
-        title: 'Tarifa inválida',
-        description: 'Ingresa un monto válido mayor a 0.',
-        variant: 'destructive',
-      });
-      return;
-    }
+  const handleSaveEdit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (savingEdit || !discountEdit || editingPercent === null || !editingTotal || !editingOption?.id_propuesta_lead ||
+        !editingTariff?.id_tarifa || !ultimaSolicitud?.id_solicitud) return;
+    const requestId = ultimaSolicitud.id_solicitud;
+    const previousId = editingOption.id_propuesta_lead;
     setSavingEdit(true);
+    setDiscountError('');
     try {
-      await leadService.updateAlternative(id_opcion, { precio_ofrecido: editingPrice });
-      setEditingOptionId(null);
-      fetchLeadData();
+      const { data } = await leadService.updateAlternativeDiscount(requestId, discountEdit.optionId, {
+        id_propuesta: previousId, id_tarifa: editingTariff.id_tarifa, tarifa_base: editingListPrice.toFixed(2),
+        descuento_pct: editingPercent,
+      }, whatsappStaff?.token);
+      setLead((current: any) => current && ({ ...current, Solicitudes: current.Solicitudes.map((request: any) =>
+        request.id_solicitud === requestId ? { ...request, Opciones: request.Opciones.map((option: any) =>
+          option.id_opcion === data.id_opcion ? { ...option, ...data } : option) } : request,
+      ) }));
+      if (previousId !== data.id_propuesta_lead) {
+        setActiveProposal(current => current?.id === previousId ? null : current);
+        setPublicLink(current => current?.option === String(data.id_opcion) ? null : current);
+      }
+      setDiscountEdit(null);
       toast({
-        title: 'Tarifa actualizada',
-        description: `Nuevo monto: S/ ${Number(editingPrice).toFixed(2)}`,
+        title: 'Descuento guardado',
+        description: `Tarifa ofertada S/ ${Number(data.precio_ofrecido).toFixed(2)}`,
       });
-    } catch {
-      toast({
-        title: 'Error al actualizar tarifa',
-        description: 'No se pudo modificar la propuesta.',
-        variant: 'destructive',
-      });
+    } catch (error) {
+      setDiscountError(error instanceof Error ? error.message : 'No se pudo guardar el descuento.');
     } finally {
       setSavingEdit(false);
     }
@@ -639,9 +705,16 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     }
   };
   const opciones: any[] = ultimaSolicitud?.Opciones || [];
+  const editingOption = opciones.find(option => option.id_opcion === discountEdit?.optionId);
+  const editingService = options.servicios?.find((service: any) =>
+    service.id_servicio === (editingOption?.Propuesta?.id_servicio ?? ultimaSolicitud?.id_servicio));
+  const editingTariff = editingService?.Tarifas?.[0];
+  const editingListPrice = Number(editingTariff?.precio ?? 0);
+  const editingPercent = parseDiscount(discountEdit?.value ?? '', editingService?.descuentoMaximo);
+  const editingTotal = editingPercent === null ? null : discountedPrice(editingListPrice, editingPercent);
   const selectedOptData = opciones.find((o: any) => o.id_opcion === selectedOpcion);
   const selectedOfferKey = ultimaSolicitud?.id_solicitud && selectedOpcion
-    ? `${leadId}:${ultimaSolicitud.id_solicitud}:${selectedOpcion}`
+    ? `${leadId}:${ultimaSolicitud.id_solicitud}:${selectedOpcion}:${selectedOptData?.id_propuesta_lead ?? ''}`
     : null;
   const availableFlyerId = selectedOfferKey && canvaResult?.offerKey === selectedOfferKey
     ? canvaResult.attachmentId
@@ -653,6 +726,18 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
       throw new Error('La oportunidad ya no está abierta para negociar.');
     }
     const requestId = ultimaSolicitud.id_solicitud;
+    if (update.aplicar_revision && update.id_interaccion) {
+      const applied = await leadService.applyWhatsAppRevision(requestId, update.id_interaccion, whatsappStaff?.token);
+      setSelectedOpcion(applied.id_opcion);
+      setWhatsAppDraft(null);
+      setUpdatedOfferFields([]);
+      setActiveProposal(null);
+      setOfferSchedule(emptySchedule);
+      setPublicLink(null);
+      fetchLeadData();
+      toast({ title: 'Propuesta actualizada', description: 'El nuevo enlace de prerreserva se envió por WhatsApp.' });
+      return;
+    }
     const offer = await leadService.transferPreview(leadId, requestId, update.id_opcion, Boolean(slot));
     if (offer.id_propuesta !== update.id_propuesta || (!slot && update.huella && offer.huella !== update.huella)) {
       throw new Error('La propuesta cambió. Revisa las opciones vigentes de la mesa.');
@@ -660,7 +745,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
 
     if (!slot) {
       const current = await leadService.getLeadDetails(leadId);
-      const currentRequest = current?.Solicitudes?.[0];
+      const currentRequest = current?.Solicitudes?.find((row: { id_solicitud: number }) => row.id_solicitud === requestId);
       if (currentRequest?.id_solicitud !== requestId || !currentRequest.Opciones?.some((option: any) => option.id_opcion === update.id_opcion)) {
         throw new Error('La propuesta ya no aparece entre las opciones vigentes.');
       }
@@ -706,6 +791,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
       slot.inicio < '18:00' ? 'Turno Tarde (01:00 PM – 06:00 PM)' : `Turno Noche (06:00 PM – ${closeTime})`);
     setOfferSchedule(nextSchedule);
     setPrecioOfrecido(offer.precio);
+    setDraftDiscount(null);
     setPromocionAplicada(promotion ?? '');
     setCondiciones('');
     setActiveProposal({ id: update.id_propuesta, terms: JSON.stringify({
@@ -730,7 +816,9 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         ? `Esp. ${selectedOptData.Disponibilidad.Profesional.apellidos}`
         : 'Staff Odontológico Colegiado';
       const expiry = selectedOptData.Propuesta?.fecha_vigencia_hasta_utc_lead;
-      const fechaVigencia = expiry ? new Date(expiry).toLocaleString('es-PE',{timeZone:'America/Lima'}) : 'por verificar';
+      const fechaVigencia = expiry ? new Date(expiry).toLocaleString('es-PE', { timeZone: 'America/Lima', hour12: true }) : 'por verificar';
+      const slot = selectedOptData.Disponibilidad;
+      const schedule = slot?.fecha && slot.hora_inicio && slot.hora_fin ? slotSchedule(slot) : null;
 
       return (
         `Hola ${patientFirstName}, te saludamos de NexoSalud Dental.\n\n` +
@@ -738,7 +826,9 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         `• Tarifa Preferencial: S/ ${precio}\n` +
         `• Vigencia: Hasta el ${fechaVigencia}\n` +
         `• Sede: ${sede}\n` +
-        `• Especialista: ${doctor}\n\n` +
+        `• Especialista: ${doctor}\n` +
+        (schedule ? `• Horario: ${schedule.date} · ${formatAppointmentTime(`${schedule.start} - ${schedule.end}`)} (Lima)\n` : '') +
+        '\n' +
         `Puedes confirmar tu pre-reserva en línea aquí:\n` +
         `${linkOverride || (publicLink?.option===String(selectedOpcion)?publicLink.url:'Solicita el enlace privado mediante Pre-Reserva.')}\n\n` +
         `Quedamos atentos para asegurar tu turno.`
@@ -752,6 +842,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     );
   };
 
+  // Envía al backend la alternativa elegida y el flyer opcional para compartir la propuesta por WhatsApp.
   const handleSendWhatsApp = async () => {
     if (whatsAppDraft || sendingWhatsApp || generatingCanva || !selectedOpcion || !ultimaSolicitud?.id_solicitud) return;
     setSendingWhatsApp(true);
@@ -759,6 +850,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
       const result = await leadService.sendProposalWhatsApp(
         leadId, ultimaSolicitud.id_solicitud, selectedOpcion,
         checkedFlyerId === availableFlyerId ? availableFlyerId : undefined,
+        whatsappStaff?.token,
       );
       toast({
         title: result.reutilizado ? 'Envío anterior confirmado por OpenWA' : 'Envío aceptado por OpenWA',
@@ -824,9 +916,14 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
     setCanvaResult(null);
     try {
       const reqServicio = ultimaSolicitud?.Servicio?.nombre || 'Consulta Odontológica';
-      const precio = selectedOptData
-        ? Number(selectedOptData.precio_ofrecido).toFixed(2)
-        : numericOfferPrice.toFixed(2);
+      const precio = selectedOptData ? Number(selectedOptData.precio_ofrecido) : numericOfferPrice;
+      const flyerServiceId = selectedOptData?.Propuesta?.id_servicio ?? ultimaSolicitud?.id_servicio;
+      const flyerTariff = selectedOptData
+        ? Number(options.servicios?.find((service: any) => service.id_servicio === flyerServiceId)?.Tarifas?.[0]?.precio ?? precio)
+        : currentOfficialPrice;
+      const flyerDiscount = selectedOptData
+        ? recordedDiscount(selectedOptData.Propuesta?.promocion_aplicada) ?? discountFromPrice(flyerTariff, precio)
+        : discountMetrics.pct;
       const matchedSedeObj =
         selectedOptData?.Disponibilidad?.Sede ||
         options.sedes?.find((s: any) => String(s.id_sede) === selectedSedeId) ||
@@ -844,9 +941,9 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         serviceName: reqServicio,
         sedeName: sede,
         doctorName: doctor,
-        offeredPrice: Number(precio),
-        originalPrice: currentOfficialPrice || 180,
-        discountPct: discountMetrics?.pct || 15,
+        offeredPrice: precio,
+        originalPrice: flyerTariff,
+        discountPct: flyerDiscount,
         expirationDate: rawExpDate,
         fechaLimite: rawExpDate,
         diasFaltantes: 2,
@@ -1396,8 +1493,9 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                       const serv = options.servicios?.find(
                         (s: any) => String(s.id_servicio) === val
                       );
-                      const baseP = Number(serv?.Tarifas?.[0]?.precio || 180);
-                      setPrecioOfrecido(baseP.toFixed(2));
+                      const baseP = Number(serv?.Tarifas?.[0]?.precio ?? 0);
+                      setPrecioOfrecido(baseP > 0 ? baseP.toFixed(2) : '');
+                      setDraftDiscount(null);
                       setPromocionAplicada('');
                     }}
                     className={offerFieldClass}
@@ -1517,75 +1615,40 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                 </div>
               </div>
 
-              {/* Comparador Financiero Sobrio y Descuentos Rápidos */}
               <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/50 p-4 space-y-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                    Esquema Tarifario y Descuentos Autorizados
-                  </span>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => applyQuickDiscount(15, 'CAMPANA')}
-                      className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:border-[#0f766e] hover:text-[#0f766e] cursor-pointer"
-                    >
-                      Promoción (-15%)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyQuickDiscount(20, 'CAMPANA')}
-                      className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:border-[#0f766e] hover:text-[#0f766e] cursor-pointer"
-                    >
-                      Campaña (-20%)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyQuickDiscount(0, 'REGULAR')}
-                      className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 cursor-pointer"
-                    >
-                      Tarifa Regular
-                    </button>
-                  </div>
-                </div>
+                <h3 className="text-xs font-semibold text-slate-800 dark:text-slate-200">Esquema Tarifario y Descuentos Autorizados</h3>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5">
                     <span className="block text-[11px] text-slate-500">Precio de Lista</span>
                     <span className="font-mono text-sm font-semibold text-slate-500 line-through tabular-nums">
-                      S/ {currentOfficialPrice.toFixed(2)}
+                      {currentOfficialPrice > 0 ? `S/ ${currentOfficialPrice.toFixed(2)}` : 'Sin tarifa vigente'}
                     </span>
                   </div>
 
                   <div className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5">
                     <span className="block text-[11px] text-slate-500">Tarifa Ofertada</span>
                     <span className="font-mono text-base font-bold text-slate-900 dark:text-white tabular-nums">
-                      S/ {numericOfferPrice.toFixed(2)}
+                      {precioOfrecido ? `S/ ${numericOfferPrice.toFixed(2)}` : '—'}
                     </span>
                   </div>
 
                   <div className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5">
                     <span className="block text-[11px] text-slate-500">Beneficio / Ahorro</span>
                     <span className="font-mono text-sm font-semibold text-[#0f766e] dark:text-teal-400 tabular-nums">
-                      S/ {discountMetrics.saving.toFixed(2)} ({discountMetrics.pct}% OFF)
+                      {precioOfrecido ? `S/ ${discountMetrics.saving.toFixed(2)} (${discountMetrics.pct} %)` : '—'}
                     </span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Monto Final a Proponer (S/)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={precioOfrecido}
-                      onChange={(e) => {
-                        setPrecioOfrecido(e.target.value);
-                        setPromocionAplicada('');
-                      }}
-                      className="h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 font-mono text-xs font-semibold text-slate-900 dark:text-white tabular-nums focus:border-[#0f766e] focus:outline-none"
-                    />
+                    <DiscountField id="lead-offer-discount" value={draftDiscount ?? (precioOfrecido ? String(discountMetrics.pct) : '')}
+                      maximum={discountLimit} disabled={currentOfficialPrice <= 0} invalid={invalidDraftDiscount}
+                      onChange={updateDraftDiscount} />
+                    {invalidDraftDiscount && !offerErrors.precio && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+                      Usa un porcentaje dentro del límite, con hasta dos decimales.
+                    </p>}
                     {offerErrors.precio && <p role="alert" className="mt-1 text-xs text-rose-600">{offerErrors.precio}</p>}
                   </div>
 
@@ -1619,7 +1682,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                                 time < '18:00' ? 'Turno Tarde (01:00 PM – 06:00 PM)' : `Turno Noche (06:00 PM – ${closeTime})`);
                               updateOfferSchedule(slotSchedule(slot));
                             }}>
-                            {String(slot.fecha).slice(0, 10)} · {time} · {slot.Sede?.nombre} · {slot.Profesional?.apellidos}
+                            {String(slot.fecha).slice(0, 10)} · {formatAppointmentTime(time)} · {slot.Sede?.nombre} · {slot.Profesional?.apellidos}
                           </button>;
                         })}
                       </div>
@@ -1689,6 +1752,8 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {opciones.map((opt: any) => {
                     const isSelected = selectedOpcion === opt.id_opcion;
+                    const schedule = opt.Disponibilidad ? slotSchedule(opt.Disponibilidad) : emptySchedule;
+                    const professional = opt.Disponibilidad?.Profesional;
                     return (
                       <div
                         key={opt.id_opcion}
@@ -1699,107 +1764,40 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                             : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:border-slate-300'
                         }`}
                       >
-                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
-                          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                            <Clock className="h-3.5 w-3.5 text-slate-400" />
-                            <span>
-                              Fecha del turno ofrecido: {opt.Disponibilidad?.fecha?.split('T')[0] || 'No registrada'}
-                            </span>
-                          </span>
-
-                          {editingOptionId === opt.id_opcion ? (
-                            <div
-                              className="flex items-center gap-1"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <input
-                                type="number"
-                                value={editingPrice}
-                                onChange={(e) => setEditingPrice(e.target.value)}
-                                className="h-7 w-20 rounded border border-[#0f766e] bg-white dark:bg-slate-900 px-2 font-mono text-xs font-bold text-slate-900 dark:text-white"
-                                autoFocus
-                              />
-                              <button
-                                type="button"
-                                onClick={(e) => handleSaveEdit(e, opt.id_opcion)}
-                                disabled={savingEdit}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded bg-[#0f766e] text-white"
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingOptionId(null);
-                                }}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 text-slate-500"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-sm font-bold text-slate-900 dark:text-white tabular-nums">
-                                S/ {Number(opt.precio_ofrecido).toFixed(2)}
-                              </span>
-                              <div
-                                className="flex items-center gap-0.5"
-                                onClick={(e) => e.stopPropagation()}
-                              >
+                        <LeadProposalVersions initial={opt.propuesta_inicial} current={{
+                          precio: opt.precio_ofrecido, sede: opt.Disponibilidad?.Sede?.nombre,
+                          especialista: professional ? [professional.nombres, professional.apellidos].filter(Boolean).join(' ') : undefined,
+                          fecha: schedule.date, inicio: schedule.start, fin: schedule.end,
+                          vigencia: opt.Propuesta?.fecha_vigencia_hasta_utc_lead, promocion: opt.Propuesta?.promocion_aplicada,
+                          condiciones: opt.condiciones, servicio: ultimaSolicitud?.Servicio?.nombre,
+                        }} actions={<>
+                              {opt.id_propuesta_lead && !isAbandoned && !isConverted &&
+                                (!opt.estado_respuesta || opt.estado_respuesta === 'Pendiente') && opt.Propuesta?.estado === 'Pendiente' && (
                                 <button
                                   type="button"
-                                  title="Editar tarifa"
+                                  title="Editar descuento"
+                                  aria-label="Editar descuento"
                                   onClick={() => {
-                                    setEditingOptionId(opt.id_opcion);
-                                    setEditingPrice(String(opt.precio_ofrecido || ''));
+                                    const serviceId = opt.Propuesta?.id_servicio ?? ultimaSolicitud?.id_servicio;
+                                    const base = Number(options.servicios?.find((service: any) => service.id_servicio === serviceId)?.Tarifas?.[0]?.precio ?? 0);
+                                    const percent = recordedDiscount(opt.Propuesta?.promocion_aplicada) ?? discountFromPrice(base, Number(opt.precio_ofrecido));
+                                    setDiscountError('');
+                                    setDiscountEdit({ optionId: opt.id_opcion, value: String(percent) });
                                   }}
-                                  className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+                                  className="rounded p-1 text-slate-500 hover:bg-teal-50 hover:text-teal-700 dark:text-slate-400 dark:hover:bg-teal-950 dark:hover:text-teal-300"
                                 >
                                   <Edit3 className="h-3.5 w-3.5" />
                                 </button>
-                                <button
-                                  type="button"
-                                  title="Eliminar propuesta"
-                                  onClick={() => setDeletingOptionTarget(opt)}
-                                  className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
-                          <p>
-                            <span className="font-medium text-slate-500">Sede:</span>{' '}
-                            {opt.Disponibilidad?.Sede?.nombre || 'Todas las sedes'}
-                          </p>
-                          <p>
-                            <span className="font-medium text-slate-500">Especialista:</span>{' '}
-                            {opt.Disponibilidad?.Profesional?.apellidos
-                              ? `Esp. ${opt.Disponibilidad.Profesional.apellidos}`
-                              : 'Staff Colegiado'}
-                          </p>
-                          {opt.Propuesta?.promocion_aplicada && (
-                            <p>
-                              <span className="font-medium text-slate-500">Promoción:</span>{' '}
-                              {opt.Propuesta.promocion_aplicada}
-                            </p>
-                          )}
-                          {opt.Propuesta?.fecha_vigencia_hasta_utc_lead && (
-                            <p>
-                              <span className="font-medium text-slate-500">Precio vigente hasta:</span>{' '}
-                              {format(new Date(opt.Propuesta.fecha_vigencia_hasta_utc_lead), 'dd/MM/yyyy HH:mm')}
-                            </p>
-                          )}
-                          {opt.condiciones && (
-                            <p className="pt-1 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
-                              {opt.condiciones}
-                            </p>
-                          )}
-                        </div>
+                              )}
+                              <button
+                                type="button"
+                                title="Eliminar propuesta"
+                                onClick={() => setDeletingOptionTarget(opt)}
+                                className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                        </>} />
 
                         <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px]">
                           <span
@@ -1959,7 +1957,7 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
             </section>
             {canAbandon && (
               <>
-                <details key={'conversation-panel-'+ultimaSolicitud.id_solicitud} className="group border-t border-slate-200 dark:border-slate-800">
+                <details ref={conversationPanel} key={'conversation-panel-'+ultimaSolicitud.id_solicitud} className="group scroll-mt-20 border-t border-slate-200 dark:border-slate-800">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-5 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-600 sm:px-6 dark:hover:bg-slate-800 [&::-webkit-details-marker]:hidden">
                     <span>
                       <span className="block text-sm font-semibold text-slate-900 dark:text-white">4. Conversación de negociación</span>
@@ -1967,7 +1965,11 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
                     </span>
                     <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-90 dark:text-slate-400" />
                   </summary>
-                  <LeadInteraction key={ultimaSolicitud.id_solicitud} requestId={ultimaSolicitud.id_solicitud}
+                  {requiresLeadStaff &&
+                    <LeadStaffAccess key={ultimaSolicitud.id_solicitud} requestId={String(ultimaSolicitud.id_solicitud)} currentFollowUp={null} editable={false} shared
+                      qa={import.meta.env.VITE_LEAD_STAFF_AUTH_QA === 'true'} />}
+                  <LeadInteraction key={openWhatsApp ? location.key : ultimaSolicitud.id_solicitud} requestId={ultimaSolicitud.id_solicitud}
+                    staffToken={whatsappStaff?.token}
                     onUpdateProposal={updateFromWhatsApp}
                     onChooseSlot={(slot) => {
                       setSelectedServicioId(String(ultimaSolicitud.id_servicio));
@@ -1997,6 +1999,35 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
         </div>
 
 
+      <Dialog open={Boolean(discountEdit && editingOption)} onOpenChange={open => { if (!open && !savingEdit) setDiscountEdit(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar descuento</DialogTitle>
+            <DialogDescription>Escribe el porcentaje de descuento sobre la tarifa de lista vigente.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveEdit} className="space-y-4">
+            <dl className="grid grid-cols-3 gap-2 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
+              <div><dt className="text-xs text-slate-500 dark:text-slate-400">Tarifa de lista</dt><dd className="font-semibold tabular-nums">{editingListPrice > 0 ? `S/ ${editingListPrice.toFixed(2)}` : 'Sin tarifa vigente'}</dd></div>
+              <div><dt className="text-xs text-slate-500 dark:text-slate-400">Tarifa actual</dt><dd className="font-semibold tabular-nums">S/ {Number(editingOption?.precio_ofrecido ?? 0).toFixed(2)}</dd></div>
+              <div><dt className="text-xs text-slate-500 dark:text-slate-400">Nueva tarifa</dt><dd className="font-semibold tabular-nums text-teal-700 dark:text-teal-300">{editingTotal === null || editingListPrice <= 0 ? '—' : `S/ ${editingTotal.toFixed(2)}`}</dd></div>
+            </dl>
+            <DiscountField id="lead-edit-discount" value={discountEdit?.value ?? ''} maximum={editingService?.descuentoMaximo}
+              disabled={savingEdit || !editingTariff?.id_tarifa || editingListPrice <= 0} invalid={editingPercent === null}
+              onChange={value => { setDiscountEdit(current => current && { ...current, value }); setDiscountError(''); }} />
+            {editingPercent === null && discountEdit?.value && editingService?.descuentoMaximo !== undefined &&
+              <p className="text-xs text-rose-700 dark:text-rose-400">Usa un porcentaje dentro del límite, con hasta dos decimales.</p>}
+            {discountError && <p role="alert" className="text-sm text-rose-700 dark:text-rose-400">{discountError}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" disabled={savingEdit} onClick={() => setDiscountEdit(null)} className="rounded-md border px-3 py-2 text-sm">Cancelar</button>
+              <button type="submit" disabled={savingEdit || !editingTotal || !editingTariff?.id_tarifa || editingListPrice <= 0}
+                className="rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {savingEdit ? 'Guardando…' : 'Guardar descuento'}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!transferPreview} onOpenChange={(open)=>{if(!open&&!reserving)setTransferPreview(null);}}>
         <DialogContent>
           <DialogHeader>
@@ -2007,8 +2038,8 @@ export function LeadDetailView({ leadId }: LeadDetailViewProps) {
             <div className="rounded-lg border p-3 text-sm space-y-1">
               <p>{transferPreview.servicio} · S/ {transferPreview.precio}</p>
               <p>{transferPreview.sede} · {transferPreview.profesional}</p>
-              <p>{transferPreview.fecha} · {transferPreview.inicio}–{transferPreview.fin} (Lima)</p>
-              <p>Precio vigente hasta {new Date(transferPreview.vence).toLocaleString('es-PE',{timeZone:'America/Lima'})}</p>
+              <p>{transferPreview.fecha} · {formatAppointmentTime(`${transferPreview.inicio} - ${transferPreview.fin}`)} (Lima)</p>
+              <p>Precio vigente hasta {new Date(transferPreview.vence).toLocaleString('es-PE', { timeZone: 'America/Lima', hour12: true })}</p>
             </div>
             <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={transferAccepted} onChange={e=>setTransferAccepted(e.target.checked)} disabled={reserving}/>El paciente aceptó expresamente esta propuesta y su importe.</label>
             <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={transferAuthorized} onChange={e=>setTransferAuthorized(e.target.checked)} disabled={reserving}/>El paciente autorizó reservar este horario con estas condiciones.</label>

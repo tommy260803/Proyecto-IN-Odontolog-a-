@@ -192,13 +192,23 @@ const Toast = React.forwardRef<
       title?: React.ReactNode;
       description?: React.ReactNode;
     }
->(({ className, variant, icon: customIcon, duration = 5000, title, description, children, ...props }, ref) => {
+>(({ className, variant, icon: customIcon, duration = 5000, title, description, children, onPause, onResume, ...props }, ref) => {
   const meta = resolveToastMeta(variant, title, description, customIcon);
+  const progress = React.useRef<HTMLDivElement>(null);
 
   return (
     <ToastPrimitives.Root
       ref={ref}
       className={cn(toastVariants({ variant }), className)}
+      duration={duration}
+      onPause={() => {
+        if (progress.current) progress.current.style.animationPlayState = 'paused';
+        onPause?.();
+      }}
+      onResume={() => {
+        if (progress.current) progress.current.style.animationPlayState = 'running';
+        onResume?.();
+      }}
       {...props}
     >
       <div className="p-3.5 sm:p-4 flex items-start gap-3 w-full">
@@ -218,7 +228,8 @@ const Toast = React.forwardRef<
 
       {/* Barra de Progreso de Tiempo de Notificación */}
       <div className="w-full h-1 bg-slate-100/80 dark:bg-slate-800/80 overflow-hidden shrink-0">
-        <div 
+        <div
+          ref={progress}
           className={cn("h-full animate-toast-progress origin-left", meta.progressClass)}
           style={{
             ['--toast-duration' as any]: `${duration}ms`

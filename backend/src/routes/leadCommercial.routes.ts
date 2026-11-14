@@ -2,15 +2,24 @@ import { Prisma } from '@prisma/client';
 import { Router, type Request, type Response } from 'express';
 import { createHash, randomBytes } from 'node:crypto';
 import { prisma } from '../db';
-import { executePayerTransfer, loadTransferOffer, TransferError } from '../services/leadPayerTransfer';
+import { checkTransferOffer, executePayerTransfer, loadTransferOffer, storePreReservationAccess, transferLock, TransferError } from '../services/leadPayerTransfer';
+import { checkWhatsAppPromotion, describeOffer } from '../services/leadChatbotAgent';
+import { currentLeadTariff } from '../services/leadChatbotCatalog';
+import { quoteLeadDiscount, readLeadDiscount } from '../services/leadManualDiscount';
 import { classifyLeadChat, excludedLeadSites, leadScheduleConstraints, LeadGeminiError } from '../services/leadGemini';
 import { getLeadStaffIdentity, leadStaffAuthEnabled, leadStaffAuthMode, loginLeadStaff, logoutLeadStaff, type LeadStaffIdentity } from '../services/leadStaffAuth';
 
 import { findLeadNegotiationSlots } from '../services/leadNegotiationSlots';
-import { chatbotSchemaInstalled } from '../services/leadWhatsAppInbox';
+import {
+  assertWhatsAppContactAllowed, assertWhatsAppControlOwner, chatbotSchemaInstalled, hasWhatsAppReview, latestWhatsAppOfferForRequest, listWhatsAppReviews,
+  lockWhatsAppControl, readWhatsAppControl, recordWhatsAppAdvisorMessage, recordWhatsAppControl, recordWhatsAppOffer,
+  whatsAppControlOwnerKey, whatsAppControlTransaction, type WhatsAppOffer, type WhatsAppScope,
+} from '../services/leadWhatsAppInbox';
+import { leadWhatsAppSettings, proposalWhatsAppToken, sendLeadWhatsApp, whatsAppChatId } from '../services/leadWhatsApp';
 import { describeWhatsAppNegotiation } from '../services/leadNegotiationTrace';
 import { readWhatsAppTracking } from '../services/leadWhatsAppTracking';
 import { readLeadInteractionAnalyses, saveLeadInteractionAnalysis } from '../services/leadInteractionAnalysis';
+import { publishWhatsAppAlertChange, subscribeWhatsAppAlertChanges } from '../services/leadWhatsAppAlertEvents';
 
 export const leadCommercialRouter = Router();
 const router = leadCommercialRouter;
@@ -23,7 +32,8 @@ router.use((req, res, next) => {
   if (leadStaffAuthMode() !== 'enabled' || ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ||
       req.path === '/staff/session' || (req.method === 'POST' && req.path === '/indicators')) return next();
   const supported =
-    (req.method === 'PATCH' && /^\/opportunities\/\d+\/(follow-up|alternatives\/\d+)$/.test(req.path)) ||
+    (req.method === 'POST' && /^\/opportunities\/\d+\/(whatsapp-control|apply-revision)$/.test(req.path)) ||
+    (req.method === 'PATCH' && /^\/opportunities\/\d+\/(follow-up|alternatives\/\d+(\/discount)?)$/.test(req.path)) ||
     (req.method === 'POST' && /^\/opportunities\/\d+\/alternatives$/.test(req.path)) ||
     (req.method === 'POST' && /^\/opportunities\/\d+\/staff\/(reservation-authorization|payer-transfer|interactions|proposals|outcome)$/.test(req.path)) ||
     (req.method === 'POST' && /^\/opportunities\/\d+\/staff\/proposals\/\d+\/decision$/.test(req.path));
@@ -1174,6 +1184,278 @@ const manualConversationFilter: Prisma.InteraccionesWhereInput = {
   ],
 };
 
+function localWhatsAppOwnerName(req: Request) {
+  const fallback = 'otro asesor';
+  try {
+    const name = decodeURIComponent(req.get('X-Lead-Operator-Name') ?? '').trim();
+    return name && name.length <= 120 && !/[\x00-\x1f\x7f]/.test(name) ? name : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+async function conversationControl(tx: Prisma.TransactionClient, row: Awaited<ReturnType<typeof activeConversation>>, ownerKey: string | null) {
+  const sessionId = process.env.OPENWA_SESSION_ID?.trim();
+  if (!sessionId || !row.Persona.autoriza_contacto || !await chatbotSchemaInstalled(tx)) return null;
+  let scope: WhatsAppScope;
+  try {
+    scope = { sessionId, chat: whatsAppChatId(row.Persona.numero) };
+    await assertWhatsAppContactAllowed(tx, scope);
+  } catch (error) {
+    if (!(error instanceof TransferError)) throw error;
+    return null;
+  }
+  if (!await latestWhatsAppOfferForRequest(tx, scope, row.id_solicitud)) return null;
+  const control = await readWhatsAppControl(tx, scope);
+  if (control?.decision === 'CONTROL_ASESOR') {
+    if (control.requestId !== row.id_solicitud) return { state: 'OTRA_OPORTUNIDAD', owner: control.ownerName };
+    if (!control.ownerKey) return { state: 'PENDIENTE_ASESOR', owner: null };
+    return { state: ownerKey === control.ownerKey ? 'ASESOR' : 'OTRO_ASESOR', owner: control.ownerName };
+  }
+  return { state: await hasWhatsAppReview(tx, scope, row.id_solicitud) ? 'PENDIENTE_ASESOR' : 'BOT', owner: null };
+}
+
+function requireLocalWhatsAppAccess(req: Request) {
+  const originHeader = req.get('Origin');
+  const origin = URL.parse(originHeader ?? '');
+  const local = ['localhost', '127.0.0.1', '[::1]'];
+  const localOrigin = origin && ['http:', 'https:'].includes(origin.protocol) && local.includes(origin.hostname);
+  const sameOriginRead = req.method === 'GET' && !originHeader && req.get('Sec-Fetch-Site') === 'same-origin';
+  if ((!localOrigin && !sameOriginRead) ||
+      !local.includes(req.hostname) || !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '') ||
+      req.get('Forwarded') || req.get('X-Forwarded-For')) {
+    throw new InputError('Abre la Mesa LEAD en localhost o ingresa con una sesión del personal.', 403);
+  }
+}
+
+router.patch('/opportunities/:id/alternatives/:option/discount', route(async (req, res) => {
+  const optionId = id(req.params.option);
+  const proposalId = id(req.body?.id_propuesta);
+  const tariffId = id(req.body?.id_tarifa);
+  const expectedBase = price(req.body?.tarifa_base);
+  const discount = readLeadDiscount(req.body?.descuento_pct);
+  if (discount === null) throw new InputError('Ingresa un porcentaje entre 0 y 99.99 con hasta dos decimales.');
+  if (!leadStaffAuthEnabled()) requireLocalWhatsAppAccess(req);
+  const updated = await prisma.$transaction(async tx => {
+    if (leadStaffAuthEnabled()) await staffOpportunity(tx, req);
+    const request = await activeConversation(tx, req.params.id);
+    const offer = await loadTransferOffer(tx, request.id_persona, request.id_solicitud, optionId);
+    const { option, proposal } = offer;
+    if (proposal.id_propuesta !== proposalId) throw new InputError('La propuesta cambió. Actualiza el detalle para volver a editarla.', 409);
+    if ((option.estado_respuesta && option.estado_respuesta !== 'Pendiente') || proposal.estado !== 'Pendiente') {
+      throw new InputError('Solo puedes cambiar el descuento de una propuesta pendiente.', 409);
+    }
+    await checkTransferOffer(tx, offer);
+    const tariff = await currentLeadTariff(tx, proposal.id_servicio);
+    if (!tariff?.precio.gt(0)) throw new InputError('El tratamiento carece de una tarifa de lista vigente.', 409);
+    if (tariff.id_tarifa !== tariffId || !tariff.precio.equals(expectedBase)) {
+      throw new InputError('La tarifa de lista cambió. Actualiza el detalle antes de guardar.', 409);
+    }
+
+    const quote = quoteLeadDiscount(proposal.id_servicio, tariff.precio, discount);
+    if (quote.error) throw new InputError(quote.error);
+    const { amount, promotion } = quote;
+    const include = { Propuesta: true, Disponibilidad: { include: { Profesional: true, Sede: true } } } as const;
+    if (amount.equals(proposal.precio_cotizado) && proposal.promocion_aplicada === promotion && !proposal.id_promocion_lead) {
+      return tx.opciones.findUniqueOrThrow({ where: { id_opcion: optionId }, include });
+    }
+
+    // A quote shared by other cards stays valid for those cards when this one gets a different discount.
+    const shared = await tx.opciones.findFirst({
+      where: { id_propuesta_lead: proposalId, id_opcion: { not: optionId }, archivada_lead_en: null },
+      select: { id_opcion: true },
+    });
+    const version = await tx.propuestasEconomicasLead.create({ data: {
+      id_solicitud: request.id_solicitud, id_servicio: proposal.id_servicio, id_sede_lead: proposal.id_sede_lead,
+      id_propuesta_raiz: shared ? null : proposal.id_propuesta_raiz ?? proposalId,
+      numero_version: shared ? 1 : proposal.numero_version + 1,
+      precio_cotizado: amount, promocion_aplicada: promotion,
+      fecha_vigencia_hasta_utc_lead: proposal.fecha_vigencia_hasta_utc_lead,
+    } });
+    return tx.opciones.update({
+      where: { id_opcion: optionId }, data: { id_propuesta_lead: version.id_propuesta, precio_ofrecido: amount }, include,
+    });
+  }, serializable);
+  res.json({ data: updated });
+}));
+
+async function whatsappAlertsAccess(req: Request) {
+  if (!leadStaffAuthEnabled()) {
+    requireLocalWhatsAppAccess(req);
+    return null;
+  }
+  const user = await getLeadStaffIdentity(req, prisma);
+  if (!user) throw new InputError('Se requiere una sesión vigente del personal de LEAD.', 401);
+  return user;
+}
+
+router.post('/opportunities/:id/apply-revision', route(async (req, res) => {
+  if (!leadStaffAuthEnabled()) requireLocalWhatsAppAccess(req);
+  const interactionId = id(req.body?.id_interaccion);
+  const requestId = id(req.params.id);
+  const settings = leadWhatsAppSettings();
+  if (!settings.publicUrl) throw new InputError('Configura la URL de prerreserva antes de aplicar los cambios.', 409);
+  const publicUrl = settings.publicUrl;
+  const result = await prisma.$transaction(async tx => {
+    const actor = leadStaffAuthEnabled() ? (await staffOpportunity(tx, req)).user : null;
+    const request = await activeConversation(tx, requestId);
+    if (!request.Persona.autoriza_contacto) throw new InputError('El paciente no autorizó el contacto por WhatsApp.', 403);
+    const scope = { sessionId: settings.sessionId, chat: whatsAppChatId(request.Persona.numero) };
+    await lockWhatsAppControl(tx, scope);
+    await assertWhatsAppContactAllowed(tx, scope);
+    const control = await readWhatsAppControl(tx, scope);
+    assertWhatsAppControlOwner(control, requestId, whatsAppControlOwnerKey(req, actor?.id_usuario ?? null));
+    await transferLock(tx);
+
+    const [row] = await tx.$queryRaw<{ messageId: bigint; plan: string }[]>`
+      SELECT id_mensaje AS messageId,plan_respuesta AS [plan] FROM dbo.MensajesWhatsAppLead
+      WHERE id_interaccion=${interactionId} AND id_solicitud=${requestId} AND id_sesion=${scope.sessionId}
+        AND chat=${scope.chat} AND tipo='BOT' AND estado='FINALIZADO' AND decision IN ('REVISION_PROPUESTA','REVISION_APLICADA')`;
+    if (!row) throw new InputError('No se encontró la confirmación del paciente.', 404);
+    const { offer, revisionOrigin } = JSON.parse(row.plan) as { offer: WhatsAppOffer; revisionOrigin: WhatsAppOffer };
+    if (offer?.personId !== request.id_persona || revisionOrigin?.personId !== request.id_persona ||
+        offer.requestId !== requestId || revisionOrigin.requestId !== requestId || offer.optionId === revisionOrigin.optionId) {
+      throw new InputError('La confirmación no corresponde a esta oportunidad.', 409);
+    }
+    const [applied] = await tx.$queryRaw<{ id: number }[]>`
+      SELECT TOP (1) 1 AS id FROM dbo.MensajesWhatsAppLead WHERE id_sesion=${scope.sessionId} AND chat=${scope.chat}
+        AND id_solicitud=${requestId} AND tipo='OFERTA'
+        AND JSON_VALUE(CASE WHEN ISJSON(plan_respuesta)=1 THEN plan_respuesta END,'$.revisionInteractionId')=${String(interactionId)}`;
+    if (applied) return { id_opcion: offer.optionId, id_propuesta: offer.proposalId };
+    const [newer] = await tx.$queryRaw<{ id: number }[]>`
+      SELECT TOP (1) 1 AS id FROM dbo.MensajesWhatsAppLead WHERE id_sesion=${scope.sessionId} AND chat=${scope.chat}
+        AND id_solicitud=${requestId} AND id_mensaje>${row.messageId}
+        AND (tipo='OFERTA' OR (tipo='BOT' AND decision IN ('REVISION_PROPUESTA','CONTRAOFERTA')))`;
+    if (newer) throw new InputError('Hay una propuesta posterior en esta conversación. Revisa el último acuerdo.', 409);
+
+    const original = await loadTransferOffer(tx, request.id_persona, requestId, revisionOrigin.optionId);
+    const revision = await loadTransferOffer(tx, request.id_persona, requestId, offer.optionId);
+    if (original.huella !== revisionOrigin.fingerprint || original.option.archivada_lead_en || original.proposal.estado !== 'Pendiente' ||
+        revision.huella !== offer.fingerprint || revision.proposal.estado !== 'Pendiente' || revision.proposal.id_propuesta !== offer.proposalId) {
+      throw new InputError('Las condiciones cambiaron después de la confirmación. Revisa la conversación.', 409);
+    }
+    await checkWhatsAppPromotion(tx, revision);
+    await checkTransferOffer(tx, revision);
+    await tx.opciones.update({ where: { id_opcion: original.option.id_opcion }, data: { archivada_lead_en: new Date(), seleccionada: false } });
+    if (original.option.seleccionada) {
+      await tx.opciones.update({ where: { id_opcion: revision.option.id_opcion }, data: { seleccionada: true } });
+    }
+    await tx.$executeRaw`UPDATE dbo.AccesosPreReservaLead SET vence_utc=SYSUTCDATETIME()
+      WHERE id_solicitud=${requestId} AND id_opcion=${original.option.id_opcion} AND vence_utc>SYSUTCDATETIME()`;
+    const token = proposalWhatsAppToken(settings, offer.fingerprint, scope.chat);
+    await storePreReservationAccess(tx, revision, actor?.id_usuario ?? null, token);
+    const link = new URL(`/pre-reserva/${request.id_persona}`, publicUrl);
+    link.hash = 'token=' + token;
+    const label = settings.localReservation ? 'Abre este enlace en la PC donde corre NexoSalud para completar tu prerreserva.' : 'Abre el nuevo enlace para completar tu prerreserva.';
+    const summary = 'Tus cambios quedaron registrados. Esta es tu *propuesta actualizada*.\n\n' + describeOffer(revision);
+    const sent = await sendLeadWhatsApp(settings, `lead-revision:${interactionId}`, scope.chat,
+      `${summary}\n\n🔗 ${label}\n${link.href}`, undefined, { stableKey: true });
+    await recordWhatsAppOffer(tx, scope, offer, sent.messageId, { offer, revisionOrigin, revisionInteractionId: interactionId });
+    await recordWhatsAppAdvisorMessage(tx, scope, offer, actor?.id_usuario ?? null, sent.messageId, summary + '\n\nNuevo enlace de prerreserva enviado.');
+    await tx.$executeRaw`UPDATE dbo.MensajesWhatsAppLead SET decision='REVISION_APLICADA' WHERE id_mensaje=${row.messageId}`;
+    await tx.$executeRaw`UPDATE dbo.MensajesWhatsAppLead SET estado='FINALIZADO'
+      WHERE id_sesion=${scope.sessionId} AND chat=${scope.chat} AND id_solicitud=${requestId}
+        AND tipo='ENTRADA' AND decision='REVISION_PROPUESTA' AND estado='REVISION' AND id_mensaje<${row.messageId}`;
+    return { id_opcion: offer.optionId, id_propuesta: offer.proposalId };
+  }, { ...serializable, ...whatsAppControlTransaction });
+  publishWhatsAppAlertChange(settings.sessionId);
+  res.set('Cache-Control', 'no-store').json(result);
+}));
+
+router.get('/whatsapp/alerts', route(async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const user = await whatsappAlertsAccess(req);
+  const sessionId = process.env.OPENWA_SESSION_ID?.trim();
+  const alerts = sessionId && await chatbotSchemaInstalled(prisma)
+    ? await listWhatsAppReviews(prisma, sessionId, user && user.rol !== 'Administrador' ? user.id_usuario : null)
+    : [];
+  res.json({ alerts });
+}));
+
+// Mantiene una conexión abierta para avisar a la campana cuando cambian las alertas de WhatsApp.
+router.get('/whatsapp/alerts/stream', route(async (req, res) => {
+  const user = await whatsappAlertsAccess(req);
+  const sessionId = process.env.OPENWA_SESSION_ID?.trim();
+  if (res.destroyed) return;
+  if (!sessionId) return res.sendStatus(204);
+  res.set({
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-store, no-transform',
+    'X-Accel-Buffering': 'no',
+  });
+  const write = (frame: string) => {
+    if (res.destroyed || res.writableEnded) return;
+    try {
+      if (!res.write(frame)) res.destroy();
+    } catch {
+      res.destroy();
+    }
+  };
+  // The signal carries no patient data. Each browser reloads the alerts allowed by its own session.
+  const refresh = () => write('data: refresh\n\n');
+  const unsubscribe = subscribeWhatsAppAlertChanges(sessionId, refresh);
+  const heartbeat = setInterval(() => write(': heartbeat\n\n'), 15_000).unref();
+  const reauthenticate = user && setTimeout(() => res.end(), 5 * 60_000).unref();
+  res.once('close', () => {
+    unsubscribe();
+    clearInterval(heartbeat);
+    if (reauthenticate) clearTimeout(reauthenticate);
+  });
+  res.flushHeaders();
+  refresh();
+}));
+
+// Asigna el chat al primer asesor que lo toma, permite sus respuestas y devuelve el control al bot cuando termina.
+router.post('/opportunities/:id/whatsapp-control', route(async (req, res) => {
+  const authenticated = leadStaffAuthEnabled();
+  if (!authenticated) requireLocalWhatsAppAccess(req);
+  const action = req.body?.accion;
+  if (!['tomar', 'devolver', 'enviar'].includes(action)) throw new InputError('Selecciona una acción de control.');
+  const text = action === 'enviar' ? requiredText(req.body.mensaje, 2000) : '';
+  const key = action === 'enviar' ? requiredText(req.body.clave, 80) : '';
+  if (action === 'enviar' && !/^[a-z0-9_-]{16,80}$/i.test(key)) throw new InputError('Clave de envío inválida.');
+  const settings = leadWhatsAppSettings();
+  const result = await prisma.$transaction(async tx => {
+    const actor = authenticated ? (await staffOpportunity(tx, req)).user : null;
+    const ownerKey = whatsAppControlOwnerKey(req, actor?.id_usuario ?? null);
+    if (!ownerKey) throw new InputError('Actualiza la Mesa LEAD para identificar esta sesión.', 403);
+    const ownerName = actor ? `${actor.nombres} ${actor.apellidos}`.trim() : localWhatsAppOwnerName(req);
+    const initial = await activeConversation(tx, req.params.id);
+    const scope = { sessionId: settings.sessionId, chat: whatsAppChatId(initial.Persona.numero) };
+    await lockWhatsAppControl(tx, scope);
+    const row = await activeConversation(tx, req.params.id);
+    if (!row.Persona.autoriza_contacto || whatsAppChatId(row.Persona.numero) !== scope.chat) {
+      throw new InputError('El contacto de WhatsApp cambió o no tiene autorización vigente.', 409);
+    }
+    if (!await chatbotSchemaInstalled(tx)) throw new InputError('El buzón de WhatsApp LEAD no está instalado.', 503);
+    await assertWhatsAppContactAllowed(tx, scope);
+    const offer = await latestWhatsAppOfferForRequest(tx, scope, row.id_solicitud);
+    if (!offer) throw new InputError('Primero envía una propuesta desde esta oportunidad.', 409);
+    const control = await readWhatsAppControl(tx, scope);
+    const advisorActive = control?.decision === 'CONTROL_ASESOR';
+    assertWhatsAppControlOwner(control, row.id_solicitud, ownerKey);
+    if (advisorActive && !control.ownerKey && action !== 'tomar') {
+      throw new InputError('Toma el control para asignarte esta conversación.', 409);
+    }
+    if (action === 'enviar') {
+      if (!advisorActive) throw new InputError('Toma el control del chat antes de enviar.', 409);
+      const sent = await sendLeadWhatsApp(settings, 'lead-asesor:' + row.id_solicitud + ':' + key, scope.chat, text);
+      const id_interaccion = await recordWhatsAppAdvisorMessage(tx, scope, offer, actor?.id_usuario ?? null, sent.messageId, text);
+      return { estado: 'ASESOR', id_interaccion };
+    }
+    if (action === 'tomar') {
+      if (!advisorActive || !control.ownerKey) await recordWhatsAppControl(tx, scope, offer, { key: ownerKey, name: ownerName });
+      return { estado: 'ASESOR' };
+    }
+    if (advisorActive || await hasWhatsAppReview(tx, scope, row.id_solicitud)) {
+      await recordWhatsAppControl(tx, scope, offer, null);
+    }
+    return { estado: 'BOT' };
+  }, whatsAppControlTransaction);
+  if (action !== 'enviar') publishWhatsAppAlertChange(settings.sessionId);
+  res.set('Cache-Control', 'no-store').json(result);
+}));
+
 router.get('/opportunities/:id/conversation', route(async (req, res) => {
   const before = req.query.antes === undefined ? undefined : id(req.query.antes);
   const communication = req.query.comunicacion;
@@ -1187,11 +1469,14 @@ router.get('/opportunities/:id/conversation', route(async (req, res) => {
       { resultado: { startsWith: 'WhatsApp' } },
     ],
   };
-  const messages = await prisma.$transaction(async tx => {
-    if (leadStaffAuthMode() === 'enabled') await staffOpportunity(tx, req);
-    await activeConversation(tx, req.params.id);
+  const { messages, control } = await prisma.$transaction(async tx => {
+    const actor = leadStaffAuthMode() === 'enabled' || (leadStaffAuthMode() === 'qa' && req.get('Authorization'))
+      ? (await staffOpportunity(tx, req)).user : null;
+    const row = await activeConversation(tx, req.params.id);
+    const ownerKey = whatsAppControlOwnerKey(req, actor?.id_usuario ?? null);
+    const control = communication === 'whatsapp' ? await conversationControl(tx, row, ownerKey) : null;
     const entries = await tx.interacciones.findMany({
-      where: { id_solicitud: id(req.params.id), tipo: { in: ['Respuesta del paciente', 'Respuesta del chatbot'] },
+      where: { id_solicitud: row.id_solicitud, tipo: { in: ['Respuesta del paciente', 'Respuesta del chatbot', 'Respuesta del asesor'] },
         ...(communication === 'whatsapp' ? { AND: whatsappFilter }
           : communication === 'presencial' ? { AND: manualConversationFilter } : {}),
         ...(before ? { id_interaccion: { lt: before } } : {}) },
@@ -1206,7 +1491,7 @@ router.get('/opportunities/:id/conversation', route(async (req, res) => {
       analisis_agente: analyses.get(entry.id_interaccion),
     }));
     const external = withAnalysis.filter(entry => entry.tipo === 'Respuesta del chatbot' || entry.resultado?.startsWith('WhatsApp'));
-    if (!external.length || !await chatbotSchemaInstalled(tx)) return withAnalysis;
+    if (!external.length || !await chatbotSchemaInstalled(tx)) return { messages: withAnalysis, control };
     const whatsapp = await tx.$queryRaw<{
       id_interaccion: number; texto: string; decision: string | null; plan_respuesta: string | null;
       id_opcion: number | null; id_propuesta: number | null; huella: string | null;
@@ -1225,14 +1510,14 @@ router.get('/opportunities/:id/conversation', route(async (req, res) => {
       WHERE m.id_solicitud=${id(req.params.id)} AND m.id_interaccion IN (${Prisma.join(external.map(entry => entry.id_interaccion))})
     `;
     const messagesById = new Map(whatsapp.map(message => [message.id_interaccion, message]));
-    return withAnalysis.map(entry => {
+    return { control, messages: withAnalysis.map(entry => {
       const message = messagesById.get(entry.id_interaccion);
       if (!message) return entry;
       const trace = entry.tipo === 'Respuesta del chatbot'
         ? describeWhatsAppNegotiation(message.decision, message.plan_respuesta, entry.resultado === 'Requiere asesor', message)
         : {};
       return { ...entry, mensaje: message.texto ?? entry.mensaje, ...trace };
-    });
+    }) };
   });
   const page = messages.slice(0, 20).reverse();
   const tracking = communication === 'whatsapp'
@@ -1241,6 +1526,8 @@ router.get('/opportunities/:id/conversation', route(async (req, res) => {
   res.set('Cache-Control', 'no-store').json({
     mensajes: page.map(message => ({ ...message, confirmaciones_whatsapp: byInteraction.get(message.id_interaccion) })),
     ultima_oferta_whatsapp: tracking.find(record => record.tipo === 'OFERTA'),
+    control_whatsapp: control?.state ?? null,
+    asesor_whatsapp: control?.owner ?? null,
     hay_anteriores: messages.length > 20,
   });
 }));
@@ -1291,6 +1578,7 @@ router.get('/catalogs', route(async (_req, res) => {
   res.json({ promociones, motivos });
 }));
 
+// Analiza con Gemini la interacción registrada en Presencial/Llamada para sugerir cómo continuar la negociación.
 router.post('/opportunities/:id/interactions/:interaction/analyze', route(async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const context = await prisma.$transaction(async tx => {

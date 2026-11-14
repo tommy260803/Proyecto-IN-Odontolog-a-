@@ -1,16 +1,20 @@
 import { once } from 'node:events';
 import { type AddressInfo } from 'node:net';
 import express from 'express';
+import { Prisma } from '@prisma/client';
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 
 const { tx, db } = vi.hoisted(() => {
   const tx = {
-    solicitudes: { findUnique: vi.fn(), update: vi.fn() },
+    solicitudes: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
     propuestasEconomicasLead: { findFirst: vi.fn(), create: vi.fn() },
     opciones: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn() },
     personas: { findUnique: vi.fn() },
     usuarios: { findUnique: vi.fn() },
-    reservas: { findMany: vi.fn(), create: vi.fn() },
+    reservas: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn() },
+    tarifas: { findFirst: vi.fn() },
+    profesionalServicio: { findFirst: vi.fn() },
+    eventosEtapa: { findFirst: vi.fn() },
     motivosRechazoLead: { findFirst: vi.fn() },
     $queryRaw: vi.fn(),
   };
@@ -21,6 +25,7 @@ vi.mock('../src/db', () => ({ prisma: db }));
 import { leadCommercialRouter } from '../src/routes/leadCommercial.routes';
 import leadRoutes from '../src/routes/lead.routes';
 import { hashLeadStaffPassword } from '../src/services/leadStaffAuth';
+import { hashAccess } from '../src/services/leadPayerTransfer';
 
 const app = express();
 app.use(express.json());
@@ -50,6 +55,111 @@ function post(path: string, body: unknown) {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
   });
 }
+
+test('edita la tarifa con un porcentaje decimal y rechaza descuentos superiores al máximo', async () => {
+  vi.stubEnv('LEAD_STAFF_AUTH_QA', 'false');
+  vi.stubEnv('LEAD_STAFF_AUTH_ENABLED', 'false');
+  const serviceId = 1;
+  const base = new Prisma.Decimal('125.50');
+  const person = { Etapa: { nombre: 'LEAD' } };
+  const request = { id_solicitud: 12, id_persona: 5, id_servicio: serviceId, estado: 'Abierta', Persona: person, Servicio: { activo: true } };
+  const proposal = { id_propuesta: 20, numero_version: 1, id_solicitud: 12, id_servicio: serviceId,
+    estado: 'Pendiente', precio_cotizado: base, fecha_vigencia_hasta_utc_lead: new Date('2099-08-19T15:00:00Z') };
+  const slot = { id_disponibilidad: 40, id_sede: 2, id_profesional: 3, fecha: new Date('2099-08-20'),
+    hora_inicio: new Date('1970-01-01T09:00:00Z'), hora_fin: new Date('1970-01-01T09:30:00Z'),
+    estado: 'Disponible', Profesional: { activo: true }, Sede: { activo: true } };
+  tx.solicitudes.findUnique.mockResolvedValue(request);
+  tx.solicitudes.findFirst.mockResolvedValue(request);
+  tx.opciones.findFirst.mockImplementation(async ({ where }) => where.id_opcion === 30
+    ? { id_opcion: 30, Propuesta: proposal, Disponibilidad: slot, precio_ofrecido: base } : null);
+  tx.profesionalServicio.findFirst.mockResolvedValue({});
+  tx.tarifas.findFirst.mockResolvedValue({ id_tarifa: 2, precio: base });
+  tx.$queryRaw.mockImplementation(async (strings: TemplateStringsArray) => strings.join('').includes('HistorialOpcionesLead') ? [{ ok: 1 }] : []);
+  tx.propuestasEconomicasLead.create.mockResolvedValue({ id_propuesta: 21 });
+  tx.opciones.update.mockImplementation(async ({ data }) => ({ id_opcion: 30, ...data }));
+  const patch = (discount: number) => fetch(url + '/opportunities/12/alternatives/30/discount', {
+    method: 'PATCH', headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
+    body: JSON.stringify({ id_propuesta: 20, id_tarifa: 2, tarifa_base: '125.50', descuento_pct: discount }),
+  });
+  try {
+    const excessive = await patch(99);
+    expect(excessive.status).toBe(400);
+    expect((await excessive.json()).error).toMatch(/descuento máximo/);
+    expect(tx.propuestasEconomicasLead.create).not.toHaveBeenCalled();
+    const edited = await patch(7.5);
+    expect(edited.status).toBe(200);
+    expect((await edited.json()).data).toMatchObject({ id_propuesta_lead: 21, precio_ofrecido: '116.09' });
+    expect(tx.propuestasEconomicasLead.create.mock.calls[0][0].data.promocion_aplicada).toBe('Promoción (-7.5%)');
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
+test('aplica la revisión confirmada y reintenta sin volver a enviar por OpenWA', async () => {
+  vi.stubEnv('LEAD_STAFF_AUTH_QA', 'false');
+  vi.stubEnv('LEAD_STAFF_AUTH_ENABLED', 'false');
+  vi.stubEnv('OPENWA_SESSION_ID', 'qa');
+  vi.stubEnv('OPENWA_BASE_URL', 'https://openwa.example');
+  vi.stubEnv('OPENWA_API_KEY', 'test');
+  vi.stubEnv('LEAD_PUBLIC_RESERVATION_URL', 'https://reservas.example');
+  const base = new Prisma.Decimal(100);
+  const expiry = new Date('2099-08-19T15:00:00Z');
+  const date = new Date('2099-08-20');
+  const request = { id_solicitud: 12, id_persona: 5, id_servicio: 7, estado: 'Abierta', Servicio: { activo: true, nombre: 'Limpieza' },
+    Persona: { autoriza_contacto: true, numero: '900000000', Etapa: { nombre: 'LEAD' } } };
+  tx.solicitudes.findUnique.mockResolvedValue(request);
+  tx.solicitudes.findFirst.mockResolvedValue(request);
+  tx.profesionalServicio.findFirst.mockResolvedValue({});
+  const option = (id: number, site: string, professional: string) => ({ id_opcion: id, seleccionada: id === 30, precio_ofrecido: base,
+    Propuesta: { id_propuesta: id - 10, numero_version: 1, id_solicitud: 12, id_servicio: 7, estado: 'Pendiente',
+      precio_cotizado: base, fecha_vigencia_hasta_utc_lead: expiry },
+    Disponibilidad: { id_disponibilidad: id + 10, id_sede: id, id_profesional: id, fecha: date,
+      hora_inicio: new Date('1970-01-01T09:00:00Z'), hora_fin: new Date('1970-01-01T09:30:00Z'),
+      estado: 'Disponible', Profesional: { activo: true, nombres: professional, apellidos: 'Mendoza' }, Sede: { activo: true, nombre: site } } });
+  tx.opciones.findFirst.mockImplementation(async ({ where }) => where.id_opcion === 30
+    ? option(30, 'Centro Histórico', 'Valeria') : option(31, 'California', 'Ana'));
+  const reference = (id: number) => ({ personId: 5, requestId: 12, optionId: id, proposalId: id - 10,
+    fingerprint: hashAccess(JSON.stringify([5, 12, id, id - 10, 1, '100.00', expiry.toISOString(), '100.00',
+      id + 10, id, id, '2099-08-20', '09:00:00', '09:30:00'])) });
+  let sent = false;
+  const plan = JSON.stringify({ revisionOrigin: reference(30), offer: reference(31) });
+  const sqlWrites: string[] = [];
+  Object.assign(tx, { canales: { findFirst: vi.fn().mockResolvedValue({ id_canal: 1 }) },
+    interacciones: { create: vi.fn().mockResolvedValue({ id_interaccion: 51 }) },
+    $executeRaw: async (strings: TemplateStringsArray) => { sqlWrites.push(strings.join('')); return 1; } });
+  tx.$queryRaw.mockImplementation(async (strings: TemplateStringsArray) => {
+    const sql = strings.join('');
+    if (sql.includes('sp_getapplock')) return [{ code: 0 }];
+    if (sql.includes('AS messageId')) return [{ messageId: 41n, plan }];
+    if (sql.includes('revisionInteractionId') && sent) return [{ id: 1 }];
+    if (sql.includes('HistorialOpcionesLead')) return [{ ok: 1 }];
+    return [];
+  });
+  const actualFetch = globalThis.fetch;
+  const outbound: string[] = [];
+  const mocked = vi.spyOn(globalThis, 'fetch').mockImplementation(async (target, init) => {
+    if (!String(target).startsWith('https://openwa.example/')) return actualFetch(target, init);
+    outbound.push(JSON.parse(String(init?.body)).text);
+    sent = true;
+    return Response.json({ messageId: 'mock-revision' }, { status: 201 });
+  });
+  const apply = () => fetch(url + '/opportunities/12/apply-revision', { method: 'POST',
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' }, body: JSON.stringify({ id_interaccion: 40 }) });
+  try {
+    const applied = await apply();
+    expect(applied.status).toBe(200);
+    expect(await applied.json()).toEqual({ id_opcion: 31, id_propuesta: 21 });
+    expect((await apply()).status).toBe(200);
+    expect(outbound).toHaveLength(1);
+    expect(outbound[0]).toMatch(/propuesta actualizada[\s\S]*California[\s\S]*Ana Mendoza[\s\S]*reservas\.example\/pre-reserva\/5#token=/);
+    expect(tx.opciones.update).toHaveBeenCalledTimes(2);
+    expect(tx.opciones.update.mock.calls[0][0].data.archivada_lead_en).toBeInstanceOf(Date);
+    expect(sqlWrites.some(sql => sql.includes('UPDATE dbo.AccesosPreReservaLead'))).toBe(true);
+  } finally {
+    mocked.mockRestore();
+    vi.unstubAllEnvs();
+  }
+});
 
 test('el selector de paciente devuelve sus solicitudes por separado y pagina por solicitud', async () => {
   db.$queryRaw.mockResolvedValue(Array.from({ length: 26 }, (_, index) => ({

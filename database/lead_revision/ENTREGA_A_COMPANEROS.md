@@ -354,9 +354,17 @@ Aplica [`12_CHATBOT_WHATSAPP_LEAD.sql`](12_CHATBOT_WHATSAPP_LEAD.sql) sobre la O
 
 Aplica también [`13_ANALISIS_INTERACCIONES_LEAD.sql`](13_ANALISIS_INTERACCIONES_LEAD.sql) para registrar el análisis de interacciones presenciales o telefónicas y [`14_CONFIRMACIONES_WHATSAPP_LEAD.sql`](14_CONFIRMACIONES_WHATSAPP_LEAD.sql) para registrar entrega y lectura. Para recibir esos avisos, incluye `message.ack` en el webhook.
 
+El incremento [`15_SEGUIMIENTO_AUTOMATICO_WHATSAPP_LEAD.sql`](15_SEGUIMIENTO_AUTOMATICO_WHATSAPP_LEAD.sql) habilita el envío automático por OpenWA de un primer recordatorio para nuevas ofertas. El backend lo programa a las 24 horas de lectura o a las 48 horas de entrega sin lectura confirmada. Si el paciente pide retomar por WhatsApp otro día y turno, esa fecha tiene prioridad. En la sección 5 se puede consultar, pausar o cancelar el seguimiento. Los mensajes de ofertas anteriores a la instalación conservan su comportamiento previo y se pueden atender manualmente.
+
 En OpenWA registra el evento `message.received` con el mismo secreto. Para Docker Desktop y el backend local en el puerto 3001, usa `http://host.docker.internal:3001/api/lead/whatsapp/webhook` y permite ese nombre en `SSRF_ALLOWED_HOSTS` del contenedor. El botón **Test** del webhook debe devolver HTTP 204. [Configuración de webhooks en OpenWA](https://docs.open-wa.org/guides/webhooks).
 
-Envía una propuesta desde la Mesa LEAD para vincular su ID externo con la oferta. Abre **Conversación de negociación** para ver las respuestas recibidas y las intervenciones del chatbot. Con varias ofertas activas, el paciente puede citar la que desea revisar. Si requiere un asesor, la Mesa lo indica y el bot deja la conversación al personal. Para reanudar el flujo automatizado con el mismo paciente, presenta y envía una nueva oferta desde la Mesa. Una solicitud expresa de baja suspende los envíos por el canal.
+Envía una propuesta desde la Mesa LEAD para vincular su ID externo con la oferta. Abre **Conversación de negociación** para ver las respuestas recibidas y las intervenciones del chatbot. Con varias ofertas activas, el paciente puede citar la que desea revisar. Si el caso requiere atención humana, la Mesa muestra **Pendiente de asesor**. Usa **Tomar control** para pausar al bot y responder por WhatsApp desde la Mesa. Usa **Devolver al ChatBot** para reanudar las respuestas automáticas a partir del siguiente mensaje. Una solicitud expresa de baja suspende los envíos por el canal.
+
+Las derivaciones pendientes aparecen como **URGENTE** en la campana y generan un aviso flotante con sonido. Si se detectan varias a la vez, el aviso las agrupa y la bandeja conserva una entrada por solicitud. La alerta abre la conversación y desaparece cuando alguien toma el control. Con autenticación LEAD habilitada, el administrador ve todas las derivaciones y cada asesor ve las de sus solicitudes asignadas.
+
+La campana recibe los cambios en tiempo real una vez registrados en la base. Si se interrumpe la conexión, la bandeja consulta las alertas cada diez segundos mientras se reconecta.
+
+El primer asesor que toma el control queda a cargo del chat. El resto del personal autorizado puede consultar el historial y ver quién atiende. El responsable responde desde la Mesa y devuelve el control al ChatBot al terminar.
 
 El chatbot consulta las ofertas vigentes y la agenda. Las nuevas condiciones que requieran aprobación, el seguimiento solicitado y la confirmación sin acceso público a la prerreserva se derivan al asesor. El traspaso conserva las comprobaciones de CAP-05.
 

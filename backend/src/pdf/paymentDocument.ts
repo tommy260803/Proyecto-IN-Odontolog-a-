@@ -1,5 +1,8 @@
 import jsPDF from 'jspdf';
 import { regularFont, boldFont } from './paymentFonts';
+import { formatAppointmentTime } from '../utils/appointmentTime';
+
+export { formatAppointmentTime } from '../utils/appointmentTime';
 
 export interface PaymentDocumentData {
   type: 'ORDER' | 'RECEIPT';
@@ -40,19 +43,6 @@ function dateLabel(value?: string | Date): string {
   }
   const parsed = value instanceof Date ? value : new Date(value);
   return Number.isNaN(parsed.getTime()) ? String(value) : new Intl.DateTimeFormat('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' }).format(parsed);
-}
-
-export function formatAppointmentTime(value?: string): string {
-  if (!value?.trim()) return 'Por coordinar';
-  const match = value.trim().match(/^(\d{1,2}):([0-5]\d)(?::[0-5]\d)?(?:\s*-\s*(\d{1,2}):([0-5]\d)(?::[0-5]\d)?)?$/);
-  if (!match) return value;
-  const convert = (hours: string, minutes: string) => {
-    const hour = Number(hours);
-    if (hour > 23) return `${hours}:${minutes}`;
-    return `${hour % 12 || 12}:${minutes} ${hour >= 12 ? 'p. m.' : 'a. m.'}`;
-  };
-  const start = convert(match[1], match[2]);
-  return match[3] ? `${start} - ${convert(match[3], match[4])}` : start;
 }
 
 export function createPaymentDocumentPdf(data: PaymentDocumentData, logoDataUrl: string): jsPDF {

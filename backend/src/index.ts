@@ -15,6 +15,7 @@ import { canvaOAuthRouter } from './routes/canvaOAuth.routes';
 import { startDunningScheduler } from './services/dunningScheduler';
 import { leadWhatsAppWebhookRouter } from './routes/leadWhatsAppWebhook.routes';
 import { startLeadWhatsAppChatbot } from './services/leadChatbot';
+import { startWhatsAppFollowUps } from './services/leadWhatsAppAutomaticFollowUp';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -158,4 +159,5 @@ app.listen(port, () => {
   console.log(`Servidor backend corriendo en http://localhost:${port}`);
   startDunningScheduler();
   startLeadWhatsAppChatbot();
+  startWhatsAppFollowUps();
 });
