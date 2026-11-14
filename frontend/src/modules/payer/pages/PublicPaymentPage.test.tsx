@@ -155,6 +155,7 @@ describe('Vista Pública de Pasarela de Pago (PublicPaymentPage)', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
+    vi.stubEnv('VITE_MERCADOPAGO_ENV', 'sandbox');
     render(
       <MemoryRouter initialEntries={['/pasarela-pago/ORD-00759-2026']}>
         <Routes>
@@ -165,8 +166,11 @@ describe('Vista Pública de Pasarela de Pago (PublicPaymentPage)', () => {
 
     expect(await screen.findByText('Natalia Cueva')).toBeInTheDocument();
 
-    const testBtn = screen.getByRole('button', { name: /⚡ Aprobar Test/i });
-    fireEvent.click(testBtn);
+    const autoTestBtn = screen.getByRole('button', { name: /Auto-test/i });
+    fireEvent.click(autoTestBtn);
+
+    const payBtn = screen.getByRole('button', { name: /Pagar S\/.*con Yape/i });
+    fireEvent.click(payBtn);
 
     await waitFor(() => {
       expect(screen.getByText(/¡Pago Confirmado, Natalia!/i)).toBeInTheDocument();
